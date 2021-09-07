@@ -1,0 +1,198 @@
+#########################
+# Makefile for Orange'S #
+#########################
+
+# Programs, flags, etc.
+ASM		= nasm
+DASM	= ndisasm
+CC		= gcc
+LD		= ld
+AR		= ar
+
+ASMKFLAGS	= -I include/ -f elf
+ARFLAGS		= rcs
+
+CFLAGS		= -I include/ -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
+LDFLAGS		= -m elf_i386 -s -Tuser/user/lds
+
+LDFLAGS_init	= -m elf_i386 -s -Tuser/init/lds	#added by mingxuan 2021-4-6
+LDFLAGS_init_gdb	= -m elf_i386					#added by mingxuan 2021-4-6
+LDFLAGS_user_gdb	= -m elf_i386					#added by mingxuan 2021-8-21
+
+ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
+
+OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
+		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o\
+		user/user/sig_0.o user/user/sig_1.o user/user/userstart.o
+
+ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
+			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin\
+			user/user/sig_0.bin user/user/sig_1.bin # modified by mingxuan 2021-2-28
+
+#added by mingxuan 2021-8-21
+GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
+
+OBJSULIB 	= user/ulib/syscall.o user/ulib/string.o user/ulib/printf.o user/ulib/vsprintf.o user/ulib/scanf.o user/ulib/signal.o user/ulib/malloc.o
+
+OBJSINIT	= user/init/init.o user/init/util.o user/init/initstart.o	#added by mingxuan 2021-4-6
+
+GDBBIN = user/init/init.gdb.bin	#added by mingxuan 2021-4-6
+
+include user/init/makefile	 #added by mingxuan 2019-5-19
+
+# All Phony Targets
+.PHONY : everything final image clean_user realclean_user disasm all buildimg install_elf  #modified by mingxuan 2019-5-19
+
+# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-2-7
+# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-8-8
+everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER) install_elf clean_user # modified by mingxuan 2021-8-21
+
+all : realclean_user everything
+
+image : realclean_user everything buildimg_mbr tags install_elf build_fs # modified by mingxuan 2020-12-8
+
+clean_user :
+	rm -f $(OBJSINIT) $(OBJSUSER) $(OBJSULIB)
+
+realclean_user :
+	rm -f $(ORANGESINIT) $(ORANGESUSER) $(OBJSULIB)
+
+install_elf:
+	cd user/init && \
+	make
+
+
+#--------------------------------------init-------------------------------------------------
+$(GDBBIN) : $(OBJSINIT)
+#	$(LD) $(LDFLAGS_init_gdb) -o $@ $(OBJSINIT)
+	$(LD) $(LDFLAGS_init_gdb) -o $(GDBBIN) $(OBJSINIT) $(OBJSULIB)	# modified by mingxuan 2021-8-8
+
+$(ORANGESINIT) : $(OBJSINIT)
+	$(LD) $(LDFLAGS_init) -o $(ORANGESINIT) $(OBJSINIT) $(OBJSULIB)
+
+user/init/util.o: user/init/util.c user/init/util.h user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/init/init.o: user/init/init.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/init/initstart.o: user/init/initstart.asm
+	$(ASM) $(ASMKFLAGS) -o $@ $<
+
+
+#--------------------------------------ulib-------------------------------------------------
+user/ulib/ulib.a:  $(OBJSULIB)
+	$(AR) $(ARFLAGS) -o $@  $(OBJSULIB)
+
+#ulib/syscall.o : ulib/syscall.asm include/sconst.inc
+user/ulib/syscall.o : user/ulib/syscall.asm
+	$(ASM) $(ASMKFLAGS) -o $@ $<
+
+# stringasm.o	added by mingxuan 2019-5-19
+user/ulib/stringasm.o: user/ulib/string.asm
+	$(ASM) $(ASMKFLAGS) -o $@ $<
+
+# stringc.o	added by mingxuan 2019-5-19
+user/ulib/stringc.o:	user/ulib/string.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# string.o	added by mingxuan 2019-5-19
+user/ulib/string.o : user/ulib/stringasm.o user/ulib/stringc.o
+	$(LD) -m elf_i386 -r -o $@ $<
+
+user/ulib/malloc.o: user/ulib/malloc.c user/include/malloc.h user/include/type.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+# printf.o	added by mingxuan 2019-5-19
+user/ulib/printf.o: user/ulib/printf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# vsprintf.o	added by mingxuan 2019-5-19
+user/ulib/vsprintf.o: user/ulib/vsprintf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+# scanf.o	added by mingxuan 2019-5-19
+user/ulib/scanf.o: user/ulib/scanf.c
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/ulib/signal.o: user/ulib/signal.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+
+#--------------------------------------user-------------------------------------------------
+user/user/userstart.o: user/user/userstart.asm
+	$(ASM) $(ASMKFLAGS) -o $@ $<
+
+# added by mingxuan 2021-2-7
+user/user/shell_0.o: user/user/shell_0.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/shell_0.bin : user/user/shell_0.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+#added by mingxuan 2021-8-21
+user/user/shell_0.gdb.bin : user/user/shell_0.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS_user_gdb) -o $@ $^
+
+user/user/shell_1.o: user/user/shell_1.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/shell_1.bin : user/user/shell_1.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+
+user/user/shell_2.o: user/user/shell_2.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/shell_2.bin : user/user/shell_2.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+
+
+user/user/test_0.o: user/user/test_0.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_0.bin : user/user/test_0.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+
+user/user/test_1.o: user/user/test_1.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_1.bin : user/user/test_1.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+# added by mingxuan 2021-8-21
+user/user/test_1.gdb.bin : user/user/test_1.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS_user_gdb) -o $@ $^
+
+user/user/test_2.o: user/user/test_2.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_2.bin : user/user/test_2.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/test_3.o: user/user/test_3.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_3.bin : user/user/test_3.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+
+user/user/sig_0.o: user/user/sig_0.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/sig_0.bin : user/user/sig_0.o user/ulib/signal.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/sig_1.o: user/user/sig_1.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/sig_1.bin : user/user/sig_1.o user/ulib/signal.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+
+
+
+
+

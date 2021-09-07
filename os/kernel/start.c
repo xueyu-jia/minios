@@ -1,0 +1,246 @@
+
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                            start.c
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                    Forrest Yu, 2005
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+/*
+#include "type.h"
+#include "const.h"
+#include "protect.h"
+#include "string.h"
+#include "proc.h"
+#include "global.h"
+#include "proto.h"
+*/
+#include "../include/type.h"
+#include "../include/const.h"
+#include "../include/protect.h"
+#include "../include/string.h"
+#include "../include/proc.h"
+#include "../include/global.h"
+#include "../include/proto.h"
+#include "../include/buddy.h"
+
+PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute); //added by mingxuan 2021-8-25
+
+//added by mingxuan 2021-8-25
+PUBLIC int init_kernel_page()
+{
+	//第一步: 生成一张内核用的页目录表
+	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
+
+	//第二步: 重建页表映射, 分为两步，先初始化低端0~kernel_size内核的映射，再初始化3G~3G+kernel_size的内核映射
+	u32 AddrLin = 0, phy_addr = 0;
+	//建立对低端0~kernel_size内核的映射
+	for (AddrLin = 0, phy_addr = 0; AddrLin < 0 + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
+		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
+											 phy_addr, //物理地址
+											 kernel_pde_addr_phy,
+											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+		if (err_temp != 0)
+		{
+			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
+			return -1;
+		}
+	}
+
+	//建立3G~3G+kernel_size的内核映射
+	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
+		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
+											 phy_addr, //物理地址
+											 kernel_pde_addr_phy,
+											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+		if (err_temp != 0)
+		{
+			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
+			return -1;
+		}
+	}
+
+	//第三步：更换cr3
+	__asm__(
+		"mov %0, %%eax\n"
+		"mov %%eax, %%cr3\n"
+		:
+		: "m"(kernel_pde_addr_phy));
+}
+
+//added by mingxuan 2021-8-29
+PUBLIC void init_gdt()
+{
+	//modified by mingxuan 2021-8-25
+	//init_gdt 只有3个段
+	init_descriptor(&gdt[INDEX_DUMMY], 0, 0, 0);
+	init_descriptor(&gdt[INDEX_FLAT_C], 0, 0x0fffff, DA_CR | DA_32 | DA_LIMIT_4K);
+	init_descriptor(&gdt[INDEX_FLAT_RW], 0, 0x0fffff, DA_DRWA | DA_32 | DA_LIMIT_4K);
+	//init_descriptor(&gdt[INDEX_VIDEO], 0x0B8000, 0x0ffff, DA_DRWA | DA_DPL3);
+
+	//显存描述符 //add by visual 2016.5.12
+	init_descriptor(&gdt[INDEX_VIDEO],
+					K_PHY2LIN(0x0B8000),
+					0x0ffff,
+					DA_DRW | DA_DPL3);
+
+	// 填充 GDT 中 TSS 这个描述符
+	memset(&tss, 0, sizeof(tss));
+	tss.ss0		= SELECTOR_KERNEL_DS;
+	init_descriptor(&gdt[INDEX_TSS],
+			vir2phys(seg2phys(SELECTOR_KERNEL_DS), &tss),
+			sizeof(tss) - 1,
+			DA_386TSS);
+	tss.iobase	= sizeof(tss);	// 没有I/O许可位图
+
+	// 填充 GDT 中进程的 LDT 的描述符
+	int i;
+	PROCESS* p_proc	= proc_table;
+	u16 selector_ldt = INDEX_LDT_FIRST << 3;
+	//for(i=0;i<NR_TASKS;i++){
+	for(i=0;i<NR_PCBS;i++){										//edit by visual 2016.4.5
+		init_descriptor(&gdt[selector_ldt>>3],
+				vir2phys(seg2phys(SELECTOR_KERNEL_DS),proc_table[i].task.ldts),
+				LDT_SIZE * sizeof(DESCRIPTOR) - 1,
+				DA_LDT);
+		p_proc++;
+		selector_ldt += 1 << 3;
+	}
+
+	u16 *p_gdt_limit = (u16 *)(&gdt_ptr[0]);
+	u32 *p_gdt_base = (u32 *)(&gdt_ptr[2]);
+	*p_gdt_limit = GDT_SIZE * sizeof(DESCRIPTOR) - 1;
+	*p_gdt_base = (u32)&gdt;
+}
+
+/*======================================================================*
+                            cstart
+ *======================================================================*/
+PUBLIC void cstart()
+{
+	disp_str("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n-----\"cstart\" begins-----\n");
+
+	buddy_init(); //moved from kernel_main, mingxuan 2021-8-25
+
+	if (-1 == init_kernel_page())
+	{
+		disp_color_str("reinit_kernel_page error!\n", 0x74);
+	};
+
+	// 将 LOADER 中的 GDT 复制到新的 GDT 中
+	/*	//deleted by mingxuan 2021-8-25
+	memcpy(	&gdt,				    // New GDT
+		(void*)(*((u32*)(&gdt_ptr[2]))),   // Base  of Old GDT
+		*((u16*)(&gdt_ptr[0])) + 1	    // Limit of Old GDT
+		);
+	// gdt_ptr[6] 共 6 个字节：0~15:Limit  16~47:Base。用作 sgdt 以及 lgdt 的参数。
+	u16* p_gdt_limit = (u16*)(&gdt_ptr[0]);
+	u32* p_gdt_base  = (u32*)(&gdt_ptr[2]);
+	*p_gdt_limit = GDT_SIZE * sizeof(DESCRIPTOR) - 1;
+	*p_gdt_base  = (u32)&gdt;
+	*/
+
+	//modified by mingxuan 2021-8-25
+	/*
+	//init_gdt 只有4个段
+	init_descriptor(&gdt[INDEX_DUMMY], 0, 0, 0);
+	init_descriptor(&gdt[INDEX_FLAT_C], 0, 0x0fffff, DA_CR | DA_32 | DA_LIMIT_4K);
+	init_descriptor(&gdt[INDEX_FLAT_RW], 0, 0x0fffff, DA_DRWA | DA_32 | DA_LIMIT_4K);
+	init_descriptor(&gdt[INDEX_VIDEO], 0x0B8000, 0x0ffff, DA_DRWA | DA_DPL3);
+
+	//修改显存描述符 //add by visual 2016.5.12
+	init_descriptor(&gdt[INDEX_VIDEO],
+					K_PHY2LIN(0x0B8000),
+					0x0ffff,
+					DA_DRW | DA_DPL3);
+
+	// 填充 GDT 中 TSS 这个描述符
+	memset(&tss, 0, sizeof(tss));
+	tss.ss0		= SELECTOR_KERNEL_DS;
+	init_descriptor(&gdt[INDEX_TSS],
+			vir2phys(seg2phys(SELECTOR_KERNEL_DS), &tss),
+			sizeof(tss) - 1,
+			DA_386TSS);
+	tss.iobase	= sizeof(tss);	// 没有I/O许可位图
+
+	// 填充 GDT 中进程的 LDT 的描述符
+	int i;
+	PROCESS* p_proc	= proc_table;
+	u16 selector_ldt = INDEX_LDT_FIRST << 3;
+	//for(i=0;i<NR_TASKS;i++){
+	for(i=0;i<NR_PCBS;i++){										//edit by visual 2016.4.5
+		init_descriptor(&gdt[selector_ldt>>3],
+				vir2phys(seg2phys(SELECTOR_KERNEL_DS),proc_table[i].task.ldts),
+				LDT_SIZE * sizeof(DESCRIPTOR) - 1,
+				DA_LDT);
+		p_proc++;
+		selector_ldt += 1 << 3;
+	}
+
+	u16 *p_gdt_limit = (u16 *)(&gdt_ptr[0]);
+	u32 *p_gdt_base = (u32 *)(&gdt_ptr[2]);
+	*p_gdt_limit = GDT_SIZE * sizeof(DESCRIPTOR) - 1;
+	*p_gdt_base = (u32)&gdt;
+	*/
+
+	init_gdt();
+
+	// idt_ptr[6] 共 6 个字节：0~15:Limit  16~47:Base。用作 sidt 以及 lidt 的参数。
+	/*
+	u16 *p_idt_limit = (u16 *)(&idt_ptr[0]);
+	u32 *p_idt_base = (u32 *)(&idt_ptr[2]);
+	*p_idt_limit = IDT_SIZE * sizeof(GATE) - 1;
+	*p_idt_base = (u32)&idt;
+	*/
+
+	//init_prot();
+	init_8259A();	//added by mingxuan 2021-8-29
+	init_idt();		//added by mingxuan 2021-8-29
+
+	disp_str("-----\"cstart\" finished-----\n");
+}
+
+/*======================================================================*
+                           init_page_tbl		delete by visual 2016.4.19
+ *======================================================================
+PUBLIC	void init_page_tbl()
+{
+	PageTblNum = *(u32*)PageTblNumAddr;		//读取保存的内存信息
+	//disp_int(PageTblNum);
+
+	int i,j;
+	int *addr_temp;
+	int	*value_temp;
+	int temp;
+
+	for(i=0;  i<NR_PCBS ; i++)
+	{//NR_PCBS是进程表的数量,每个进程一个页目录
+		addr_temp =	(u32*)PageDirBaseProc + 1024*(PageTblNum+1) * i;
+		value_temp = addr_temp + 1024;
+		for(j=0; j<PageTblNum; j++)
+		{//页目录
+			*(addr_temp) = (((u32)value_temp) & 0xFFFFF000) | PG_P  | PG_USU | PG_RWW;	//1111 1111 1111 1111 0000 0000 0000
+			addr_temp++;
+			value_temp += 1024;
+		}
+
+		addr_temp = (u32*)PageDirBaseProc + 1024*(PageTblNum+1) * i + 1024;//跳过页目录
+		value_temp = 0; //用这个变量,表示物理地址,从0开始
+		for(j=1024; j<2048 ; j++)
+		{//第一页,与前4M物理地址一一对应
+			*(addr_temp) = (((u32)value_temp) & 0xFFFFF000) | PG_P  | PG_USU | PG_RWW;
+			addr_temp++;
+			value_temp += 1024;
+		}
+
+		temp = 1024 *(PageTblNum+1);
+		for(  ; j<temp ; j++)
+		{//其它页也与物理地址一一对应
+			*(addr_temp) = (((u32)value_temp) & 0xFFFFF000) | PG_P  | PG_USU | PG_RWW;  //1111 1111 1111 1111 0000 0000 0000
+			addr_temp++;
+			value_temp += 1024;
+		}
+	}
+}*/

@@ -1,0 +1,19 @@
+﻿built by wang 2021.5.8
+  
+
+
+
+
+miniOS-v1.3.6.2 
+实现了内核页表加载到1M，kernel加载到1M+128K等功能，物理内存上限设置的3G，qemu模拟的物理内存为2G。
+
+miniOS-v1.3.6.3
+在miniOS-v1.6.2的基础上把bitmap改为内核和用户共用，相当于两个bitmap改为一个。
+
+
+
+added by wang 2021.6.25
+
+miniOS-v1.3.6.4     
+在1.3.6.3的基础上实现了do_kmalloc_over4k/do_kfree_over4k两个函数以及test_kmalloc_free_over4k测试函数，可以支持分配/释放大于4k的内存。改进了memory_init函数，使得要挂在buddy上的内存块有碎片（有碎片指内存块起始和终止地址非4k对齐或者内存块小于4k）时，将碎片利用起来挂在kmalloc的空闲分区表ktable上。改进后使得do_kmalloc_over4k函数支持分配大于4k连续内存的同时没有任何内存空间的浪费。
+
