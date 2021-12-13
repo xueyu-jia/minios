@@ -1,7 +1,7 @@
 //#include "memman.h"
 //#include "buddy.h"
 #include "../include/buddy.h" //added by mingxuan 2021-3-8
-
+#include "../include/shm.h"
 /*
 u32 MemInfo[256] = {0};			//存放FMIBuff后1k内容
 void init()
@@ -663,7 +663,7 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 
 	if (phy_addr % num_4K != 0)
 	{
-		disp_color_str("phy_free_4k: addr Error", 0x74);
+		disp_color_str("phy_free_4k: addr Error1", 0x74);
 		return 0;
 	}
 
@@ -671,7 +671,7 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 	{
 		if (phy_addr <= KUWALL2)
 		{
-			disp_color_str("phy_free_4k: addr Error", 0x74);
+			disp_color_str("phy_free_4k: addr Error2", 0x74);
 			return 0;
 		}
 	}
@@ -679,7 +679,7 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 	{
 		if (phy_addr <= KUWALL1)
 		{
-			disp_color_str("phy_free_4k: addr Error", 0x74);
+			disp_color_str("phy_free_4k: addr Error3", 0x74);
 			return 0;
 		}
 	}

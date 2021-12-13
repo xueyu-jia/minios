@@ -54,6 +54,12 @@ _NR_sigsend			equ 28;		//added by mingxuan 2021-2-28
 _NR_sigreturn		equ 29;		//added by mingxuan 2021-2-28
 _NR_total_mem_size  equ 30;      //added by wang     2021-8-21
 
+_NR_shmget          equ  31  	;added by xiaofeng 2021-9-8
+_NR_shmat           equ  32		;added by xiaofeng 2021-9-8
+_NR_shmdt           equ  33		;added by xiaofeng 2021-9-8
+_NR_shmctl          equ  34  	;added by xiaofeng 2021-9-8
+_NR_shmmemcpy       equ  35  	;added by xiaofeng 2021-9-8
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -101,6 +107,12 @@ global __signal		;		//added by mingxuan 2021-2-28
 global sigsend		;		//added by mingxuan 2021-2-28
 global sigreturn	;		//added by mingxuan 2021-2-28
 global total_mem_size  ;    //added by wang 2021-8-26
+
+global shmget ;added by Ding Leilei 2021-1-7
+global _shmat ;added by Ding Leilei 2021-1-7
+global _shmdt ;added by Ding Leilei 2021-1-7
+global shmctl ;added by Ding Leilei 2021-1-7
+global shmmemcpy
 
 bits 32
 [section .text]
@@ -530,6 +542,59 @@ total_mem_size:
 ; ====================================================================
 ;                             signal		added by mingxuan 2021-2-28
 ; ====================================================================
+
+;/**********************shm.c*****************/
+;//add by dingleilei,2021.1.1
+; ====================================================================
+;                              shmget		added by Ding Leilei 2021-1-8
+; ====================================================================
+shmget:
+	push 3			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_shmget
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                              shmat	added by Ding Leilei 2021-1-8
+; ====================================================================
+_shmat:
+	push 3			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_shmat
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                              shmdt 		added by Ding Leilei 2021-1-8
+; ====================================================================
+_shmdt:
+	push 1		;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_shmdt
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                              shmctl		added by Ding Leilei 2021-1-8
+; ====================================================================
+shmctl:
+	push 3			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_shmctl
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                              shmmemcpy	added by Ding Leilei 2021-1-8
+; ====================================================================
+shmmemcpy:
+	push 3			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_shmmemcpy
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
 
 %macro	SYS_CALL 1
 	push ebx

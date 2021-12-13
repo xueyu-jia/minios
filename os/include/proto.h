@@ -88,9 +88,9 @@ PUBLIC int   get_ticks();
 PUBLIC int   get_pid();					//add by visual 2016.4.6
 PUBLIC void* kmalloc(int size);			//edit by visual 2016.5.9
 PUBLIC void* kmalloc_4k();				//edit by visual 2016.5.9
-PUBLIC void* malloc(int size);			//edit by visual 2016.5.9
+// PUBLIC void* malloc(int size);			//edit by visual 2016.5.9
 PUBLIC void* malloc_4k();				//edit by visual 2016.5.9
-PUBLIC int free(void *arg);				//edit by visual 2016.5.9
+// PUBLIC int free(void *arg);				//edit by visual 2016.5.9
 PUBLIC int free_4k(void* AdddrLin);		//edit by visual 2016.5.9
 PUBLIC int fork();						//add by visual 2016.4.8
 PUBLIC int pthread(void *arg);			//add by visual 2016.4.11
@@ -102,6 +102,11 @@ PUBLIC void sleep(int n);			//added by xw, 18/4/19
 PUBLIC void print_E();
 PUBLIC void print_F();
 PUBLIC u32 toatl_mem_size();           //added by wang 2021.8.26
+PUBLIC int shmget(void *uesp);              //added by xiaofeng 2021-9-8
+PUBLIC void *_shmat(void *uesp);             //added by xiaofeng 2021-9-8
+PUBLIC void _shmdt(void *uesp);               //added by xiaofeng 2021-9-8
+PUBLIC struct ipc_shm *shmctl(void *uesp);  //added by xiaofeng 2021-9-8
+PUBLIC void *shmmemcpy(void *uesp);         //added by xiaofeng 2021-9-8
 
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */
@@ -156,6 +161,13 @@ PUBLIC int sys_wait();                 //added by mingxuan 2021-1-6
 //PUBLIC void sys_exit(int status);       //added by mingxuan 2021-1-6
 PUBLIC void sys_exit(void *uesp);         //modified by mingxuan 2021-8-13
 
+/* shm.c */
+PUBLIC int sys_shmget(void *uesp);              //added by xiaofeng 2021-9-8
+PUBLIC void *sys_shmat(void *uesp);             //added by xiaofeng 2021-9-8
+PUBLIC void sys_shmdt(void *uesp);               //added by xiaofeng 2021-9-8
+PUBLIC struct ipc_shm *sys_shmctl(void *uesp);  //added by xiaofeng 2021-9-8
+PUBLIC void *sys_shmmemcpy(void *uesp);         //added by xiaofeng 2021-9-8
+
 /***************************************************************
 * 以上是系统调用相关函数的声明
 ****************************************************************/
@@ -176,3 +188,5 @@ PUBLIC  u32 vmalloc(u32 size);
 PUBLIC  int lin_mapping_phy(u32 AddrLin,u32 phy_addr,u32 pid,u32 pde_Attribute,u32 pte_Attribute);//edit by visual 2016.5.19
 PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
+/*memman.c*/
+PUBLIC u32 phy_free_4k(u32 phy_addr);
