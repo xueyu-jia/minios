@@ -88,7 +88,8 @@
 //#define NR_SYS_CALL     32    //modified by ran
 //#define NR_SYS_CALL     33    //modified by mingxuan 2021-2-7
 //#define NR_SYS_CALL     36	//modified by mingxuan 2021-2-28
-#define NR_SYS_CALL       31	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
+// #define NR_SYS_CALL       31	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
+#define NR_SYS_CALL       36	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口    
 
 /* TTY */
 //added by mingxuan 2019-5-19
@@ -118,8 +119,10 @@
 #define SharePageBase			VpageLinLimitMAX			//共享页线性地址，执行fork\pthread的时候用,共享页必须4K对齐
 #define SharePageLimit			(SharePageBase+num_4K)		//大小：4k
 #define HeapLinBase 			SharePageLimit	 			//堆的起始地址
-#define HeapLinLimitMAX  		(HeapLinBase+0x40000000)  	//大小：1G
-#define StackLinLimitMAX		HeapLinLimitMAX				//栈的大小： 1G-128M-4K（注意栈的基址和界限方向）
+#define HeapLinLimitMAX  		(HeapLinBase+0x3FD00000)  	//大小：1G-3M
+#define ShareLinBase			(HeapLinLimitMAX+0x100000) 			//共享内存的起始地址	共享内存与堆顶有1M空闲
+#define ShareLinLimitMAX		(ShareLinBase + 0x100000)	//大小：1M
+#define StackLinLimitMAX		(ShareLinLimitMAX+ 0x100000)//栈的大小： 1G-128M-4K（注意栈的基址和界限方向）
 #define StackLinBase			(ArgLinBase-num_4B)			//=(StackLinLimitMAX+1G-128M-4K-4B)栈的起始地址,放在参数位置之前（注意堆栈的增长方向）
 #define ArgLinBase 				(KernelLinBase-0x1000)		//参数存放位置起始地址，放在3G前，暂时还没没用到
 #define ArgLinLimitMAX  		KernelLinBase  				//=(ArgLinBase+0x1000)大小：4K。

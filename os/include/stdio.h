@@ -16,7 +16,7 @@ void* kmalloc(int size);
 void* kmalloc_4k();			
 void* malloc(int size);			
 void* malloc_4k();				
-int free(void *arg);				
+// int free(void *arg);				
 int free_4k(void* AdddrLin);	
 int fork();			
 int pthread(void *arg);	

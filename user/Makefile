@@ -22,17 +22,18 @@ LDFLAGS_user_gdb	= -m elf_i386					#added by mingxuan 2021-8-21
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
 OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
-		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o\
-		user/user/sig_0.o user/user/sig_1.o user/user/userstart.o
+		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o user/user/test_4.o\
+		user/user/test_5.o user/user/sig_0.o user/user/sig_1.o user/user/userstart.o
 
 ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
-			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin\
-			user/user/sig_0.bin user/user/sig_1.bin # modified by mingxuan 2021-2-28
+			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
+			user/user/test_5.bin user/user/sig_0.bin user/user/sig_1.bin # modified by mingxuan 2021-2-28
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
 
-OBJSULIB 	= user/ulib/syscall.o user/ulib/string.o user/ulib/printf.o user/ulib/vsprintf.o user/ulib/scanf.o user/ulib/signal.o user/ulib/malloc.o
+OBJSULIB 	= user/ulib/syscall.o user/ulib/string.o user/ulib/printf.o user/ulib/vsprintf.o user/ulib/scanf.o\
+			user/ulib/signal.o user/ulib/malloc.o user/ulib/ushm.o
 
 OBJSINIT	= user/init/init.o user/init/util.o user/init/initstart.o	#added by mingxuan 2021-4-6
 
@@ -118,6 +119,8 @@ user/ulib/scanf.o: user/ulib/scanf.c
 user/ulib/signal.o: user/ulib/signal.c user/include/stdio.h
 	$(CC) $(CFLAGS) -o $@ $<
 
+user/ulib/ushm.o: user/ulib/ushm.c
+	$(CC) $(CFLAGS) -o $@ $<
 
 #--------------------------------------user-------------------------------------------------
 user/user/userstart.o: user/user/userstart.asm
@@ -178,6 +181,17 @@ user/user/test_3.o: user/user/test_3.c user/include/stdio.h
 user/user/test_3.bin : user/user/test_3.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
+user/user/test_4.o: user/user/test_4.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_4.bin : user/user/test_4.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/test_5.o: user/user/test_5.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/test_5.bin : user/user/test_5.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
 user/user/sig_0.o: user/user/sig_0.c user/include/stdio.h
 	$(CC) $(CFLAGS) -o $@ $<
