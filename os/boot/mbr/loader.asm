@@ -5,8 +5,8 @@
 ;                                                     Forrest Yu, 2005
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-
 org  0100h
+
 
 	jmp	LABEL_START		; Start
 
@@ -37,22 +37,85 @@ SelectorVideo		equ	LABEL_DESC_VIDEO	- LABEL_GDT + SA_RPL3
 FAT_START_SECTOR 	DD 	0 ;FAT表的起始扇区号 ;added by mingxuan 2020-9-17
 DATA_START_SECTOR 	DD  0 ;数据区起始扇区号 ;added by mingxuan 2020-9-17
 
+
+DATA				equ		0x6			;added by yangxiaofeng 2021-12-1
+ROOT				equ		0x7			;added by yangxiaofeng 2021-12-1
+
+;----------------------------------------------------------------------------
+; 函数名: _NEXT_CLUSTER
+;----------------------------------------------------------------------------
+_NEXT_CLUSTER:				;added by yangxiaofeng 2021-12-1
+	; 根据簇号计算扇区号
+	sub  EAX,2  
+	XOR  EBX,EBX
+
+	MOV  BL, BYTE [ fs:BPB_SecPerClu ];modified by mingxuan 2020-9-16
+
+	MUL  EBX 
+	ADD  EAX, [DATA_START_SECTOR] ;modified by mingxuan 2020-9-17
+	MOV  DWORD[ BP - DAP_SECTOR_LOW  ], EAX
+	;xchg	bx,bx
+	cmp		byte[esp+2], DATA	; esp+2指向我们压栈压入的参数
+	je		.A1			;压入的参数为Data，执行Data Ruster的代码
+	; ax为 ROOT 设置缓冲区
+	mov		dword [BP - DAP_SECTOR_LOW], eax;modified by mingxuan 2020-9-17
+	ret
+	.A1:
+		MOV  BL , BYTE [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
+
+		; ; 设置缓冲区
+		MOV  WORD [ BP - DAP_BUFFER_SEG   ], CX
+		MOV  WORD [ BP - DAP_BUFFER_OFF   ], OffsetOfKernelFile
+		ret
+
+;====================================================================
+; 检查是否还有下一个簇(读取FAT表的相关信息)
+;  LET   N = 数据簇号
+;  THUS FAT_BYTES  = N*4  (FAT32)
+;  FAT_SECTOR = FAT_BYTES / BPB_BytesPerSec
+;  FAT_OFFSET = FAT_BYTES % BPB_BytesPerSec
+;====================================================================
+; 计算FAT所在的簇号和偏移 
+_CHECK_NEXT_CLUSTER:			;added by yangxiaofeng 2021-12-1
+	
+	MOV  EAX,DWORD[BP - CURRENT_CLUSTER]
+	SHL  EAX,2
+	cmp	 edx,ROOT
+	jne	 .L1_c
+	XOR  	EDX, EDX;
+	XOR  	ECX,ECX
+	MOV  CX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
+	DIV  ECX  ; EAX = Sector EDX = OFFSET
+	jmp	 .L2_c
+.L1_c:
+	XOR  EDX, EDX;
+	XOR  EBX,EBX
+	MOV  BX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
+	DIV  EBX   ; EAX = Sector  EDX = Offset
+	MOV  WORD [BP - DAP_BUFFER_SEG  ], 0x09000 
+	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
+.L2_c:
+	ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17
+	MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX 
+	
+	call  ReadSector
+	
+	; 检查下一个簇
+	MOV  DI,DX
+	ADD  DI,DATA_BUF_OFF
+	MOV  EAX,DWORD[DI]  ; EAX = 下一个要读的簇号
+	AND  EAX,CLUSTER_MASK
+	MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX
+	CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了
+	ret
+
+
+times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
+dw 	0xaa55				; 结束标志
+; _NEXT_CLUSTER 结束-------------------------------------------------------------
+; ------------------------------------------------------------------------
+
 LABEL_START:			; <--- 从这里开始 *************
-
-	;for test
-	;added by mingxuan 2020-9-11
-	; 清屏
-	;mov		ax, 0600h		; AH = 6,  AL = 0h
-	;mov		bx, 0700h		; 黑底白字(BL = 07h)
-	;mov		cx, 0			; 左上角: (0, 0)
-	;mov		dx, 0184fh		; 右下角: (80, 50)
-	;int		10h				; int 10h
-
-	;for test
-	;added by mingxuan 2020-9-11
-	;mov		dh, 1
-	;call 	DispStrRealMode
-	;jmp 	$
 
 	cld
 	mov		ax, cs
@@ -108,15 +171,6 @@ LABEL_START:			; <--- 从这里开始 *************
 ;_MISSING_LOADER: 	;deleted by mingxuan 2020-9-16
 _MISSING_KERNEL:	;modified by mingxuan 2020-9-16
 _DISK_ERROR:
-	;for test
-	;added by mingxuan 2020-9-16
-	; 清屏
-	;mov		ax, 0600h		; AH = 6,  AL = 0h
-	;mov		bx, 0700h		; 黑底白字(BL = 07h)
-	;mov		cx, 0			; 左上角: (0, 0)
-	;mov		dx, 0184fh		; 右下角: (80, 50)
-	;int		10h				; int 10h
-
 	jmp	$
 
 ReadSector:
@@ -124,7 +178,6 @@ ReadSector:
 	mov		ah, 42h
 	lea 	si, [BP - DAP_PACKET_SIZE]
 
-	;mov	dl, [BS_DriveNum]	;deleted by mingxuan 2020-9-16
 	mov		dl, [fs:BS_DriveNum];modified by mingxuan 2020-9-16
 
 	int 	13h
@@ -132,7 +185,7 @@ ReadSector:
 	popa
 	ret
 
-;_SEARCH_LOADER:	;deleted by mingxuan 2020-9-16
+
 _SEARCH_KERNEL:		;modified by mingxuan 2020-9-16
 	mov		word [bp - DAP_BUFFER_OFF], DATA_BUF_OFF
 
@@ -142,21 +195,16 @@ _SEARCH_KERNEL:		;modified by mingxuan 2020-9-16
 	mov		dword [bp - CURRENT_CLUSTER], eax
 
 _NEXT_ROOT_CLUSTER:
-	dec 	eax
-	dec 	eax
-	xor		ebx, ebx
-
-	;mov	bl, byte [BPB_SecPerClu]	;deleted by mingxuan 2020-9-16
-	mov		bl, byte [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
-
-	mul		ebx
-	;add		eax, DATA_START_SECTOR
-	add		eax, [DATA_START_SECTOR] ;modified by mingxuan 2020-9-17
-	mov		dword [BP - DAP_SECTOR_LOW], eax
-
-	;mov	dl, [BPB_SecPerClu] ;deleted by mingxuan 2020-9-16
-	mov		dl, [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
-
+	;dec 	eax									;deleted by yangxiaofeng 2021-12-1
+	;dec 	eax									;deleted by yangxiaofeng 2021-12-1
+	;xor		ebx, ebx						;deleted by yangxiaofeng 2021-12-1
+	;mov		bl, byte [fs:BPB_SecPerClu] 	;;deleted by yangxiaofeng 2021-12-1
+	;mul		ebx
+	;add		eax, [DATA_START_SECTOR] 			;deleted by yangxiaofeng 2021-12-1
+	;mov		dword [BP - DAP_SECTOR_LOW], eax	;deleted by yangxiaofeng 2021-12-1
+	push	ROOT								;added by yangxiaofeng 2021-12-1
+	call  	_NEXT_CLUSTER						;added by yangxiaofeng 2021-12-1
+	add		esp,2								;added by yangxiaofeng 2021-12-1
 _NEXT_ROOT_SECTOR:
 	call	ReadSector
 
@@ -170,17 +218,10 @@ _NEXT_ROOT_ENTRY:
 
 	push 	di;
 
-	;cmpsb将DS:SI和ES:DI中的字符串进行比较, 故需要修改一下es, mingxuan
-	;mov		ax, ds ;added by mingxuan 2020-9-16
-	;mov		es, ax ;added by mingxuan 2020-9-16
 
 	mov		si, KernelFileName
 	mov		cx, 10
 	repe	cmpsb ;将DS:SI和ES:DI中的字符串进行比较
-
-	;把es再改回BaseOfBoot，用于索引FAT32的配置信息, mingxuan
-	;mov		ax, BaseOfBoot ;added by mingxuan 2020-9-16
-	;mov 	es, ax		   ;added by mingxuan 2020-9-16
 
 	;jcxz	_FOUND_LOADER
 	jcxz	_FOUND_KERNEL ;modified by mingxuan 2020-9-16
@@ -197,34 +238,32 @@ _NEXT_ROOT_ENTRY:
 
 _CHECK_NEXT_ROOT_CLUSTER:
 
-	 ; 计算FAT所在的簇号和偏移
-	 ; FatOffset = ClusterNum*4
-	 XOR  EDX,EDX
-	 MOV  EAX,DWORD[BP - CURRENT_CLUSTER]
-	 SHL  EAX,2
-	 XOR  ECX,ECX
+	 ; 计算FAT所在的簇号和偏移 
+	;  XOR  EDX,EDX								;deleted by yangxiaofeng 2021-12-1
+	;  MOV  EAX,DWORD[BP - CURRENT_CLUSTER]		;deleted by yangxiaofeng 2021-12-1
+	;  SHL  EAX,2								;deleted by yangxiaofeng 2021-12-1
+	;  XOR  ECX,ECX								;deleted by yangxiaofeng 2021-12-1
 
-	 ;MOV  CX,WORD [ BPB_BytesPerSec ]	;deleted by mingxuan 2020-9-16
-	 MOV  CX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
-
-	 DIV  ECX  ; EAX = Sector EDX = OFFSET
-	 ;ADD  EAX, FAT_START_SECTOR
-	 ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17
-	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX
-
-	 call  ReadSector
-
-	 ; 检查下一个簇
-	 MOV  DI,DX
-	 ADD  DI,DATA_BUF_OFF
-	 MOV  EAX,DWORD[DI]  ; EAX = 下一个要读的簇号
-	 AND  EAX,CLUSTER_MASK
-	 MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX
-	 CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了
-	 JB  _NEXT_ROOT_CLUSTER
-
-	 ;JMP  _MISSING_LOADER	;deleted by mingxuan 2020-9-16
-	 JMP  _MISSING_KERNEL	;modified by mingxuan 2020-9-16
+	;  MOV  CX,WORD [ fs:BPB_BytesPerSec ]		;deleted by yangxiaofeng 2021-12-1
+	 
+	;  DIV  ECX  ; EAX = Sector EDX = OFFSET	;deleted by yangxiaofeng 2021-12-1
+	;  ADD  EAX, [FAT_START_SECTOR] 			;deleted by yangxiaofeng 2021-12-1
+	;  MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX 	;deleted by yangxiaofeng 2021-12-1
+	   
+	;  call  ReadSector							;deleted by yangxiaofeng 2021-12-1
+	  
+	;  ; 检查下一个簇
+	;  MOV  DI,DX								;deleted by yangxiaofeng 2021-12-1
+	;  ADD  DI,DATA_BUF_OFF						;deleted by yangxiaofeng 2021-12-1
+	;  MOV  EAX,DWORD[DI]  ; EAX = 下一个要读的簇号;deleted by yangxiaofeng 2021-12-1
+	;  AND  EAX,CLUSTER_MASK					;deleted by yangxiaofeng 2021-12-1
+	;  MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX	;deleted by yangxiaofeng 2021-12-1
+	;  CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了	;deleted by yangxiaofeng 2021-12-1
+	mov edx,ROOT							;added by yangxiaofeng 2021-12-1
+	call _NEXT_CLUSTER						;added by yangxiaofeng 2021-12-1
+	JB  _NEXT_ROOT_CLUSTER
+	
+	JMP  _MISSING_KERNEL	;modified by mingxuan 2020-9-16
 
 ;_FOUND_LOADER:
 _FOUND_KERNEL: ;modified by mingxuan 2020-9-16
@@ -238,89 +277,85 @@ _FOUND_KERNEL: ;modified by mingxuan 2020-9-16
 	 mov  cx, BaseOfKernelFile      ; CX  = 缓冲区段地址
 
 _NEXT_DATA_CLUSTER:
-	 ; 根据簇号计算扇区号
-	 DEC  EAX
-	 DEC  EAX
-	 XOR  EBX,EBX
+	; 根据簇号计算扇区号
+	;DEC  EAX			;deleted by yangxiaofeng 2021-12-1
+	;DEC  EAX  			;deleted by yangxiaofeng 2021-12-1
+	;XOR  EBX,EBX		;deleted by yangxiaofeng 2021-12-1
 
-	 ;MOV  BL, BYTE [ BPB_SecPerClu ] ;deleted by mingxuan 2020-9-16
-	 MOV  BL, BYTE [ fs:BPB_SecPerClu ];modified by mingxuan 2020-9-16
+	;MOV  BL, BYTE [ fs:BPB_SecPerClu ];;deleted by yangxiaofeng 2021-12-1
 
-	 MUL  EBX
-	 ;ADD  EAX, DATA_START_SECTOR
-	 ADD  EAX, [DATA_START_SECTOR] ;modified by mingxuan 2020-9-17
-	 MOV  DWORD[ BP - DAP_SECTOR_LOW  ], EAX
+	;MUL  EBX 
+	;ADD  EAX, [DATA_START_SECTOR] ;;deleted by yangxiaofeng 2021-12-1
+	;MOV  DWORD[ BP - DAP_SECTOR_LOW  ], EAX	;deleted by yangxiaofeng 2021-12-1
+	; MOV  BL , BYTE [fs:BPB_SecPerClu] ;;deleted by yangxiaofeng 2021-12-1
 
-	 ;MOV  BL , BYTE [BPB_SecPerClu]	;deleted by mingxuan 2020-9-16
-	 MOV  BL , BYTE [fs:BPB_SecPerClu] ;modified by mingxuan 2020-9-16
-
-	 ; 设置缓冲区
-	 MOV  WORD [ BP - DAP_BUFFER_SEG   ], CX
-	 MOV  WORD [ BP - DAP_BUFFER_OFF   ], OffsetOfKernelFile
+	; ; 设置缓冲区
+	; MOV  WORD [ BP - DAP_BUFFER_SEG   ], CX					;deleted by yangxiaofeng 2021-12-1
+	; MOV  WORD [ BP - DAP_BUFFER_OFF   ], OffsetOfKernelFile	;deleted by yangxiaofeng 2021-12-1
+	push	DATA							;added by yangxiaofeng 2021-12-1
+	call  	_NEXT_CLUSTER					;added by yangxiaofeng 2021-12-1
+	add		esp,2							;added by yangxiaofeng 2021-12-1
 
 _NEXT_DATA_SECTOR:
-	 ; 读取簇中的每个扇区(内层循环)
-	 ; 注意 : 通过检查文件大小，可以避免读取最后一个不满簇的所有大小
-	 call  ReadSector
+	; 读取簇中的每个扇区(内层循环)
+	; 注意 : 通过检查文件大小，可以避免读取最后一个不满簇的所有大小
+	call  ReadSector
+	
+	; 更新地址，继续读取
+	;MOV  AX, WORD [BPB_BytesPerSec] ;deleted by mingxuan 2020-9-16
+	MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
 
-	 ; 更新地址，继续读取
-	 ;MOV  AX, WORD [BPB_BytesPerSec] ;deleted by mingxuan 2020-9-16
-	 MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
+	ADD  WORD  [BP - DAP_BUFFER_OFF], ax 
+	INC  DWORD [BP - DAP_SECTOR_LOW]  ; 递增扇区号
+	DEC  BL        ; 内层循环计数
+	JNZ  _NEXT_DATA_SECTOR
+	
+	; 更新读取下一个簇的缓冲区地址
+	MOV  CL, BYTE [ fs:BPB_SecPerClu ] ;modified by mingxuan 2020-9-16
+	
+	MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
 
-	 ADD  WORD  [BP - DAP_BUFFER_OFF], ax
-	 INC  DWORD [BP - DAP_SECTOR_LOW]  ; 递增扇区号
-	 DEC  BL        ; 内层循环计数
-	 JNZ  _NEXT_DATA_SECTOR
+	SHR  AX, 4
+	MUL  CL
+	ADD  AX, WORD [ BP - DAP_BUFFER_SEG ] 
+	MOV  CX, AX ; 保存下一个簇的缓冲区段地址
+	mov  edx,DATA						;added by yangxiaofeng 2021-12-1
+	call _CHECK_NEXT_CLUSTER			;added by yangxiaofeng 2021-12-1
+	;====================================================================
+	; 检查是否还有下一个簇(读取FAT表的相关信息)
+	;  LET   N = 数据簇号
+	;  THUS FAT_BYTES  = N*4  (FAT32)
+	;  FAT_SECTOR = FAT_BYTES / BPB_BytesPerSec
+	;  FAT_OFFSET = FAT_BYTES % BPB_BytesPerSec
+	;====================================================================
+	
+	; 计算FAT所在的簇号和偏移 
+	;  MOV  EAX,DWORD [BP - CURRENT_CLUSTER]	;deleted by yangxiaofeng 2021-12-1
+	;  XOR  EDX,EDX								;deleted by yangxiaofeng 2021-12-1
+	;  SHL  EAX,2								;deleted by yangxiaofeng 2021-12-1
+	;  XOR  EBX,EBX								;deleted by yangxiaofeng 2021-12-1
+	 
+	;  MOV  BX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16	;deleted by yangxiaofeng 2021-12-1
+	 
+	;  DIV  EBX   ; EAX = Sector  EDX = Offset	;deleted by yangxiaofeng 2021-12-1
+	 
+	;  ; 设置缓冲区地址
+	;  ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17	;deleted by yangxiaofeng 2021-12-1
+	;  MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX 				;deleted by yangxiaofeng 2021-12-1
+	;  MOV  WORD [BP - DAP_BUFFER_SEG  ], 0x09000 			;deleted by yangxiaofeng 2021-12-1
+	;  MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF		;deleted by yangxiaofeng 2021-12-1
 
-	 ; 更新读取下一个簇的缓冲区地址
-	 ;MOV  CL, BYTE [ BPB_SecPerClu ]	;deleted by mingxuan 2020-9-16
-	 MOV  CL, BYTE [ fs:BPB_SecPerClu ] ;modified by mingxuan 2020-9-16
-
-	 ;MOV  AX, WORD [BPB_BytesPerSec]	;deleted by mingxuan 2020-9-16
-	 MOV  AX, WORD [fs:BPB_BytesPerSec] ;modified by mingxuan 2020-9-16
-
-	 SHR  AX, 4
-	 MUL  CL
-	 ADD  AX, WORD [ BP - DAP_BUFFER_SEG ]
-	 MOV  CX, AX ; 保存下一个簇的缓冲区段地址
-
-	 ;====================================================================
-	 ; 检查是否还有下一个簇(读取FAT表的相关信息)
-	 ;  LET   N = 数据簇号
-	 ;  THUS FAT_BYTES  = N*4  (FAT32)
-	 ;  FAT_SECTOR = FAT_BYTES / BPB_BytesPerSec
-	 ;  FAT_OFFSET = FAT_BYTES % BPB_BytesPerSec
-	 ;====================================================================
-
-	 ; 计算FAT所在的簇号和偏移
-	 MOV  EAX,DWORD [BP - CURRENT_CLUSTER]
-	 XOR  EDX,EDX
-	 SHL  EAX,2
-	 XOR  EBX,EBX
-
-	 ;MOV  BX,WORD [ BPB_BytesPerSec ]	;deleted by mingxuan 2020-9-16
-	 MOV  BX,WORD [ fs:BPB_BytesPerSec ];modified by mingxuan 2020-9-16
-
-	 DIV  EBX   ; EAX = Sector  EDX = Offset
-
-	 ; 设置缓冲区地址
-	 ;ADD  EAX, FAT_START_SECTOR
-	 ADD  EAX, [FAT_START_SECTOR] ;modified by mingxuan 2020-9-17
-	 MOV  DWORD [ BP - DAP_SECTOR_LOW ], EAX
-	 MOV  WORD [BP - DAP_BUFFER_SEG  ], 0x09000
-	 MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
-
-	 ; 读取扇区
-	 CALL  ReadSector
-
-	 ; 检查下一个簇
-	 MOV  DI,DX
-	 ADD  DI,DATA_BUF_OFF
-	 MOV  EAX,DWORD[DI]  ; EAX = 下一个要读的簇号
-	 AND  EAX,CLUSTER_MASK
-	 MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX
-	 CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了
-	 JB  _NEXT_DATA_CLUSTER
+	;  ; 读取扇区	
+	;  CALL  ReadSector			;deleted by yangxiaofeng 2021-12-1
+	  
+	;  ; 检查下一个簇
+	;  MOV  DI,DX				;deleted by yangxiaofeng 2021-12-1
+	;  ADD  DI,DATA_BUF_OFF		;deleted by yangxiaofeng 2021-12-1
+	;  MOV  EAX,DWORD[DI]  ; EAX = 下一个要读的簇号	;deleted by yangxiaofeng 2021-12-1
+	;  AND  EAX,CLUSTER_MASK		;deleted by yangxiaofeng 2021-12-1
+	;  MOV  DWORD[ BP - CURRENT_CLUSTER ],EAX		;deleted by yangxiaofeng 2021-12-1
+	;  CMP  EAX,CLUSTER_LAST  ; CX >= 0FFFFFF8H，则意味着没有更多的簇了	;deleted by yangxiaofeng 2021-12-1
+	JB  _NEXT_DATA_CLUSTER
 
 	;jmp _KERNEL_LOADED
 
@@ -369,45 +404,7 @@ Message4		db	"exReady. "		;add by liang 2016.04.20
 Message5		db	"No ECHO  "		;add by liang 2016.04.20
 ;============================================================================
 
-;----------------------------------------------------------------------------
-; 函数名: DispStrRealMode
-;----------------------------------------------------------------------------
-; 运行环境:
-;	实模式（保护模式下显示字符串由函数 DispStr 完成）
-; 作用:
-;	显示一个字符串, 函数开始时 dh 中应该是字符串序号(0-based)
-DispStrRealMode:
-	mov		ax, MessageLength
-	mul		dh
-	add		ax, LoadMessage
-	mov		bp, ax			; ┓
-	mov		ax, ds			; ┣ ES:BP = 串地址
-	mov		es, ax			; ┛
-	mov		cx, MessageLength	; CX = 串长度
-	mov		ax, 01301h		; AH = 13,  AL = 01h
-	mov		bx, 0007h		; 页号为0(BH = 0) 黑底白字(BL = 07h)
-	mov		dl, 0
-	add		dh, 3			; 从第 3 行往下显示
-	int		10h			; int 10h
-	ret
-;----------------------------------------------------------------------------
 
-
-;----------------------------------------------------------------------------
-; 函数名: KillMotor
-;----------------------------------------------------------------------------
-; 作用:
-;	关闭软驱马达
-KillMotor:
-	push	dx
-	mov	dx, 03F2h
-	mov	al, 0
-	out	dx, al
-	pop	dx
-	ret
-;----------------------------------------------------------------------------
-
-; 从此以后的代码在保护模式下执行 ----------------------------------------------------
 ; 32 位代码段. 由实模式跳入 ---------------------------------------------------------
 [SECTION .s32]
 
