@@ -25,6 +25,10 @@
 #define ENOMEM  (-7)
 #define ENOSPC  (-8)
 
+//block type
+#define SND_TO_FULL     0x1
+#define RCV_FROM_NULL   0x2
+
 typedef int key_t;
 
 //message queue types
@@ -75,6 +79,15 @@ typedef struct list_item{
     struct list_item* type_list_pre;
 }list_item;
 
+//block queue type
+typedef struct block_proc
+{
+    int op;
+    int type;
+    struct block_proc* nxt;
+}block_proc;
+
+
 //消息队列类型，包括id、key和指向type 0头结点的指针
 typedef struct msg_queue{
     int key;
@@ -82,6 +95,9 @@ typedef struct msg_queue{
 	int use;//是否占用
     int num;//队列中消息数量
     msqid_ds info; //队列信息
+    //block queue
+    
+    //end
 }msg_queue;
 
 

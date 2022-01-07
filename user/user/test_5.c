@@ -42,8 +42,25 @@ int main(int arg, char *argv[])
 
 	printf("read done\n");
 
+	int p_child = fork();
+	if(p_child == 0){
+		//child
+		printf("child\n");
+		int q1_c = msgget(key_0, IPC_CREAT);
+		M.t = 999;
+		msgsnd(q1_c, &M, 1, IPC_NOWAIT);
+		exit(0);
+	}else{
+		printf("parent\n");
+		wait_();
+		clear_msg(&recv);
+		l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+		printf("(parent)from q1 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
+	}
+
 	msgctl(q1, IPC_RMID, NULL);
-	msgctl(q2, IPC_RMID, NULL);	
+	msgctl(q2, IPC_RMID, NULL);
+	
 	exit(0);
 	return 0;
 }
