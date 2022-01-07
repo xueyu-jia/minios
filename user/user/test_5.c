@@ -15,6 +15,7 @@ void clear_msg(my_msg* m){
 
 int main(int arg, char *argv[])
 {
+	printf("%d\n", -1);
 	key_t key_0 = ftok("string bvhew", 999);
 	key_t key_1 = ftok("string wettyu", 100);
 	int q1 = msgget(key_0, IPC_CREAT|IPC_EXCL);
