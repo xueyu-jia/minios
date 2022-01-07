@@ -6,6 +6,7 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 //#include <signal/signal.h>  //added by mingxuan 2021-2-28
 #include "signal.h"  //modified by mingxuan 2021-8-7
+#include "msg.h" //added by yingchi 2022.01.07
 
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
@@ -167,6 +168,13 @@ PUBLIC void *sys_shmat(void *uesp);             //added by xiaofeng 2021-9-8
 PUBLIC void sys_shmdt(void *uesp);               //added by xiaofeng 2021-9-8
 PUBLIC struct ipc_shm *sys_shmctl(void *uesp);  //added by xiaofeng 2021-9-8
 PUBLIC void *sys_shmmemcpy(void *uesp);         //added by xiaofeng 2021-9-8
+
+/*msg.c*/
+PUBLIC int sys_ftok(void* args);
+PUBLIC int sys_msgget(void* args);
+PUBLIC int sys_msgsnd(void* args);
+PUBLIC int sys_msgrcv(void* args);
+PUBLIC int sys_msgctl(void* args);
 
 /***************************************************************
 * 以上是系统调用相关函数的声明

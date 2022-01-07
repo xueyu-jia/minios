@@ -69,14 +69,14 @@ buildimg_mbr:
 
 	dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc
 
-	sudo losetup -P /dev/loop0 b.img
+	sudo losetup -P /dev/loop50 b.img
 
-	sudo mkfs.vfat -F 32 -s8 /dev/loop0p1	# modified by mingxuan 2021-2-28
+	sudo mkfs.vfat -F 32 -s8 /dev/loop50p1	# modified by mingxuan 2021-2-28
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	dd if=os/boot/mbr/boot.bin of=b.img bs=1 count=420 seek=$(OSBOOT_START_OFFSET) conv=notrunc
 
-	sudo mount /dev/loop0p1 iso/
+	sudo mount /dev/loop50p1 iso/
 
 	sudo cp -fv os/boot/mbr/loader.bin iso/
 	sudo cp -fv kernel.bin iso/
@@ -95,22 +95,26 @@ buildimg_mbr:
 	sudo cp -fv user/user/test_3.bin iso/
 	sudo cp -fv user/user/test_4.bin iso/
 	sudo cp -fv user/user/test_5.bin iso/
+
+	# added by yingchi 2022.01.05
+	# sudo cp -fv user/user/myTest.bin iso/
 	
 	# added by mingxuan 2021-2-28
 	sudo cp -fv user/user/sig_0.bin iso/
 	sudo cp -fv user/user/sig_1.bin iso/
 
+
 	sudo umount iso/
 
-	sudo losetup -d /dev/loop0
+	sudo losetup -d /dev/loop50
 
 # added by mingxuan 2020-10-22
 build_fs:
 	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
 
-	sudo losetup -P /dev/loop0 b.img
-	sudo mkfs.vfat -F32 /dev/loop0p6
-	sudo losetup -d /dev/loop0
+	sudo losetup -P /dev/loop50 b.img
+	sudo mkfs.vfat -F 32 /dev/loop50p6
+	sudo losetup -d /dev/loop50
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 

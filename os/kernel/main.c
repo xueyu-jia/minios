@@ -30,6 +30,8 @@
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
+PRIVATE void init_msgq();				//added by yingchi 2021.12.24
+extern msg_queue q_list[MAX_MSQ_NUM];	//added by yingchi 2021.12.24
 
 /*======================================================================*
                             kernel_main
@@ -87,6 +89,9 @@ PUBLIC int kernel_main()
 
 	/* initialize hd-irq and hd rdwt queue */
 	init_hd();
+
+	/* initialize message queue */
+	init_msgq(); //added by yingchi 2021.12.24
 
 	/* enable interrupt, we should read information of some devices by interrupt.
 	 * Note that you must have initialized all devices ready before you enable
@@ -540,4 +545,17 @@ PRIVATE int initialize_processes()
 	}
 
 	return 0;
+}
+
+/*************************************************************************
+*	初始化消息队列 		added by yinchi 2021.12.24
+***************************************************************************/
+void init_msgq(){
+	int i;
+	for(i=0;i<MAX_MSQ_NUM;i++){
+		q_list[i].key = 0;
+		q_list[i].use = 0;//set queue unuesd
+		q_list[i].head = NULL;//set head pointer NULL
+	}
+	disp_str("Message queue initialization done.\n");
 }

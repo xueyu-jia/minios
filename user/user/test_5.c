@@ -1,89 +1,48 @@
 #include "../include/stdio.h"
-#include "../include/ushm.h"
+#include "../include/msg.h"
 
-#define key 123456
-void main(int arg, char *argv[])
+typedef struct my_msg{
+	long t;
+	char m[20];
+}my_msg;
+
+void clear_msg(my_msg* m){
+	int i;
+	for(i=0;i<20;i++){
+		m->m[i] = '\0';
+	}
+}
+
+int main(int arg, char *argv[])
 {
+	key_t key_0 = ftok("string bvhew", 999);
+	key_t key_1 = ftok("string wettyu", 100);
+	int q1 = msgget(key_0, IPC_CREAT|IPC_EXCL);
+	int q2 = msgget(key_1, IPC_CREAT|IPC_EXCL);
+	if(q1<0 || q2<0){
+		printf("queue exist.\n");
+		exit(1);
+	}
 
-	//udisp_int(shmid);
-	// int q = fork();
-    
+	my_msg M = {1, "MESSAGE"}, recv;
+	clear_msg(&recv);
+	msgsnd(q1, &M, 3, IPC_NOWAIT);
+	msgsnd(q2, &M, 7, IPC_NOWAIT);
 
-	// if (q == 0)
-	
-		int shmidA = -1;
-		udisp_str("\nchirldA: ");
-		shmidA = shmget(key, 4, IPC_CREAT);
-		int *p = NULL;
+	int l;
+	l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+	printf("from q1 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
+	clear_msg(&recv);
+	l = msgrcv(q2, &recv, 2, 0, IPC_NOWAIT|MSG_NOERROR);
+	printf("from q2 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
 
-		p = shmat(shmidA, NULL, 0);
+	l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+	printf("rt:%d\n", l);
 
-		/********int***********/
-		/*
-        *p = 1024;
-        udisp_int(*p);
-*/
+	printf("read done\n");
 
-		/***********buf***********/
-
-		int i = 0;
-		int q[15] = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7};
-		memcpy(p, q, sizeof(q));
-		for (i = 0; i < 14; i++)
-		{
-			udisp_int(*(p + i));
-		}
-
-		shmdt(p);
-	
-    // shmctl(shmidA, DELETE, NULL);
-	// else
-	// {
-	// 	int t;
-
-	// 	t = fork();
-	// 	if (t == 0)
-	// 	{
-	// 		int shmidB = -1;
-	// 		sleep(500);
-	// 		udisp_str("\nchirldB: ");
-	// 		shmidB = shmget(key, 4, IPC_CREAT);
-	// 		int *pp = NULL;
-	// 		pp = shmat(shmidB, NULL, 0);
-
-	// 		/********int***********/
-	// 		/*
-	// 	int a = *pp;
-	// 	udisp_int(a);
-	// */
-	// 		/**********buf*******/
-	// 		int i = 0;
-	// 		for (i = 0; i < 14; i++)
-	// 		{
-	// 			udisp_int(*(pp + i));
-	// 		}
-
-	// 		*pp = 5;
-	// 		/*********打印内核信息************/
-
-	// 		shmdt(pp);
-	// 		struct ipc_shm *buf;
-	// 		buf = shmctl(shmidB, INFO, buf);
-	// 		int c = buf->in_use;
-
-	// 		udisp_str("\nINFO_in_Pro: ");
-	// 		udisp_str("ids.in_use: ");
-	// 		udisp_int(c);
-
-	// 		shmdt(pp);
-
-	// 		shmctl(shmidB, DELETE, NULL);
-	// 	}
-	// }
-
-	// while (1)
-	// {
-	// }
-    exit(0);
-	return;
+	msgctl(q1, IPC_RMID, NULL);
+	msgctl(q2, IPC_RMID, NULL);	
+	exit(0);
+	return 0;
 }
