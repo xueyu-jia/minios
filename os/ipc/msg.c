@@ -54,7 +54,7 @@ int  sys_ftok(void *args)
 
 int do_msgget(key_t key, int msgflg )
 {
-	kern_msgget(key, msgflg);
+	return kern_msgget(key, msgflg);
 }
 
 int sys_msgget(void *args)
@@ -332,7 +332,7 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 		}
 
 		//删除取出的节点
-		rm_msg_node(msqid, q_list[msqid].head);
+		rm_msg_node(msqid, q_list[msqid].head->type_list_nxt->type_list_pre);
 		//更新消息数量
 		q_list[msqid].num--;
 		return get_length;
