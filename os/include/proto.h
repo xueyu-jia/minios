@@ -175,7 +175,7 @@ PUBLIC int sys_msgget(void* args);
 PUBLIC int sys_msgsnd(void* args);
 PUBLIC int sys_msgrcv(void* args);
 PUBLIC int sys_msgctl(void* args);
-
+void init_msgq();
 /***************************************************************
 * 以上是系统调用相关函数的声明
 ****************************************************************/

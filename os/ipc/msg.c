@@ -14,10 +14,10 @@
 msg_queue q_list[MAX_MSQ_NUM];
 
 // declarations of do functions:
-int do_sys_msgget(key_t key, int msgflg);
-int do_sys_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg);
-int do_sys_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg);
-int do_sys_msgctl(int msgqid, int cmd, msqid_ds *buf);
+int kern_msgget(key_t key, int msgflg);
+int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg);
+int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg);
+int kern_msgctl(int msgqid, int cmd, msqid_ds *buf);
 
 // utils
 void rm_msg_node(int msqid, list_item *head);
@@ -25,8 +25,19 @@ void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type
 int newque(int id, key_t key);
 int ipc_findkey(key_t key);
 
-// functions in system call table:
-int sys_ftok(void *args)
+/*************************************************************************
+*	初始化消息队列 		added by yinchi 2021.12.24
+***************************************************************************/
+void init_msgq(){
+	int i;
+	for(i=0;i<MAX_MSQ_NUM;i++){
+		q_list[i].key = 0;
+		q_list[i].use = 0;//set queue unuesd
+		q_list[i].head = NULL;//set head pointer NULL
+	}
+	disp_str("Message queue initialization done.\n");
+}
+int  sys_ftok(void *args)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 {
 	char *f = (char *)get_arg(args, 1);
 	int flag = (int)get_arg(args, 2);
@@ -41,24 +52,47 @@ int sys_ftok(void *args)
 	return (int)key;
 }
 
+int do_msgget(key_t key, int msgflg )
+{
+	kern_msgget(key, msgflg);
+}
+
 int sys_msgget(void *args)
 {
-	return do_sys_msgget(get_arg(args, 1), get_arg(args, 2));
+	return do_msgget(get_arg(args, 1), get_arg(args, 2));
+}
+
+
+int do_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
+{
+	return kern_msgsnd(msqid, msgp, msgsz, msgflg);
 }
 
 int sys_msgsnd(void *args)
 {
-	return do_sys_msgsnd(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4));
+	return do_msgsnd(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4));
+}
+
+
+int do_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
+{
+	return kern_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
 }
 
 int sys_msgrcv(void *args)
 {
-	return do_sys_msgrcv(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4), get_arg(args, 5));
+	return do_msgrcv(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4), get_arg(args, 5));
+}
+
+
+int do_msgctl(int msqid, int cmd, msqid_ds *buf)
+{
+	return kern_msgctl(msqid, cmd, buf);
 }
 
 int sys_msgctl(void *args)
 {
-	return do_sys_msgctl(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3));
+	return do_msgctl(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3));
 }
 
 // real functions
@@ -69,7 +103,7 @@ int sys_msgctl(void *args)
  * @param msgflg 
  * @return int 
  */
-int do_sys_msgget(key_t key, int msgflg)
+int kern_msgget(key_t key, int msgflg)
 {
 	int i;
 	int id = ipc_findkey(key);
@@ -114,7 +148,7 @@ int do_sys_msgget(key_t key, int msgflg)
  * 					0：与IPC_NOWAIT相反
  * @return int 		成功返回0，否则返回-1
  */
-int do_sys_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
+int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 {
 	if (msqid >= MAX_MSQ_NUM) //检查长度
 		return -1;
@@ -259,7 +293,7 @@ int do_sys_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
  * 					MSG_NOERROR：msgsz小于消息长度时截断消息，也算成功获取，返回获取消息的长度，否则返回-1，获取失败
  * @return int 		获取成功返回实际获取到消息的长度（当然不包括type的长度），获取失败返回-1
  */
-int do_sys_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
+int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 {
 	int i, get_length = 0;
 	//检查id
@@ -363,7 +397,7 @@ int do_sys_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
  * @param buf 		存放队列信息结构的指针，buf应该是msqid_ds类型，这个类型还没有定义
  * @return int 		对前三个cmd值，操作成功返回0，出错返回-1
  */
-int do_sys_msgctl(int msqid, int cmd, msqid_ds *buf)
+int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 {
 	int ret = -1;
 	if (msqid < 0 || msqid > MAX_DRIVES || !q_list[msqid].use) //检查队列是否存在
