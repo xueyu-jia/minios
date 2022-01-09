@@ -3,11 +3,11 @@
 ###############################################################
 
 # how much memory the emulated machine will have
-megs: 2048
+megs: 32
 
 # filename of ROM images
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
-vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+vgaromimage: file=/usr/share/vgabios/vgabios.bin
 
 #romimage: file=/home/liu/bochs-2.6.9/bios/BIOS-bochs-latest
 #vgaromimage: file=/home/liu/bochs-2.6.9/bios/VGABIOS-lgpl-latest
@@ -20,8 +20,8 @@ ata0:enabled=1,ioaddr1=0x1f0,ioaddr2=0x3f0,irq=14   # added by mingxuan 2020-10-
 ata0-master: type=disk, mode=flat, path="b.img"     # added by mingxuan 2020-10-5
 
 # choose the boot disk.
-boot: floppy # deleted by mingxuan 2020-10-5
-#boot: disk  # modified by mingxuan 2020-10-5
+# boot: floppy # deleted by mingxuan 2020-10-5
+boot: disk  # modified by mingxuan 2020-10-5
 
 # where do we send log messages?
 # log: bochsout.txt

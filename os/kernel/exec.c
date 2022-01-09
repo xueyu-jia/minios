@@ -176,17 +176,16 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 
 	//堆    用户还没有申请，所以没有分配，只在PCB表里标示了线性起始位置
 
-	//real_close(fd);	//added by mingxuan 2019-5-23
+	real_close(fd);	//added by mingxuan 2019-5-23
 	//do_vclose(fd); //modified by mingxuan 2020-12-18
-	kern_vclose(fd); //modified by mingxuan 2021-8-19
+	//kern_vclose(fd); //modified by mingxuan 2021-8-19
 
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
 	//disp_color_str("]",0x72);//灰底绿字
 	//disp_free();	//for test, added by mingxuan 2021-1-7
-
+	
 	//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
 	return 0;
 }
 

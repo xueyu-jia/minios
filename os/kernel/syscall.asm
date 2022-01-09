@@ -60,6 +60,12 @@ _NR_shmdt           equ  33		;added by xiaofeng 2021-9-8
 _NR_shmctl          equ  34  	;added by xiaofeng 2021-9-8
 _NR_shmmemcpy       equ  35  	;added by xiaofeng 2021-9-8
 
+_NR_ftok			equ 36 ;		//added by yingchi	2021.12.20
+_NR_msgget			equ 37 ;		//added by yingchi	2021.12.20
+_NR_msgsnd			equ 38 ;		//added by yingchi	2021.12.20
+_NR_msgrcv			equ 39 ;		//added by yingchi	2021.12.20
+_NR_msgctl			equ 40 ;		//added by yingchi	2021.12.20
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -113,6 +119,12 @@ global _shmat ;added by Ding Leilei 2021-1-7
 global _shmdt ;added by Ding Leilei 2021-1-7
 global shmctl ;added by Ding Leilei 2021-1-7
 global shmmemcpy
+
+global	ftok		;		//added by yingchi	2021.12.20
+global	msgget		;		//added by yingchi	2021.12.20
+global	msgsnd		;		//added by yingchi	2021.12.20
+global	msgrcv		;		//added by yingchi	2021.12.20
+global	msgctl		;		//added by yingchi	2021.12.20
 
 bits 32
 [section .text]
@@ -592,6 +604,61 @@ shmmemcpy:
 	push 3			;the number of parameters
 	mov ebx, esp
 	mov	eax, _NR_shmmemcpy
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;					ftok	added by yingchi yuanxiang 2021.12.22
+; ====================================================================
+ftok:
+	push 2
+	mov ebx, esp
+	mov	eax, _NR_ftok
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;					msgget	added by yingchi yuanxiang 2021.12.22
+; ====================================================================
+msgget:
+	push 2
+	mov ebx, esp
+	mov	eax, _NR_msgget
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;					msgsnd	added by yingchi yuanxiang 2021.12.22
+; ====================================================================
+msgsnd:
+	push 4
+	mov ebx, esp
+	mov	eax, _NR_msgsnd
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;					msgrcv	added by yingchi yuanxiang 2021.12.22
+; ====================================================================
+msgrcv:
+	push 5
+	mov ebx, esp
+	mov	eax, _NR_msgrcv
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;					msgctl	added by yingchi yuanxiang 2021.12.22
+; ====================================================================
+msgctl:
+	push 3
+	mov ebx, esp
+	mov	eax, _NR_msgctl
 	int	INT_VECTOR_SYS_CALL
 	add esp, 4
 	ret

@@ -51,6 +51,7 @@ PUBLIC int vsprintf(char *buf, const char *fmt, va_list args)
 
 	va_list	p_next_arg = args;
 	unsigned int	m;
+	int d;
 
 	char	inner_buf[256];
 	char	cs;
@@ -98,12 +99,12 @@ PUBLIC int vsprintf(char *buf, const char *fmt, va_list args)
 			p_next_arg += 4;
 			break;
 		case 'd':
-			m = *((int*)p_next_arg);
-			if (m < 0) {
-				m = m * (-1);
+			d = *((int*)p_next_arg);
+			if (d < 0) {
+				d = d * (-1);
 				*q++ = '-';
 			}
-			i2a(m, 10, &q);
+			i2a((unsigned int)d, 10, &q);
 			p_next_arg += 4;
 			break;
 		case 's':
