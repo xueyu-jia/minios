@@ -92,7 +92,7 @@ typedef struct block_proc
 typedef struct msg_queue{
     int key;
     list_item* head;
-	int use;//是否占用
+	int used;//是否占用
     int num;//队列中消息数量
     msqid_ds info; //队列信息
     //block queue

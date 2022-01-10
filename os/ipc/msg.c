@@ -19,11 +19,14 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg);
 int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg);
 int kern_msgctl(int msgqid, int cmd, msqid_ds *buf);
 
-// utils
+// other
 void rm_msg_node(int msqid, list_item *head);
 void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type_new);
 int newque(int id, key_t key);
 int ipc_findkey(key_t key);
+list_item *insert_head_node(int msqid, long type_new);
+int insert_type_list(int msqid, list_item *new_msg);
+int insert_full_list(int msqid, list_item *new_msg);
 
 /*************************************************************************
 *	初始化消息队列 		added by yinchi 2021.12.24
@@ -32,12 +35,13 @@ void init_msgq(){
 	int i;
 	for(i=0;i<MAX_MSQ_NUM;i++){
 		q_list[i].key = 0;
-		q_list[i].use = 0;//set queue unuesd
+		q_list[i].used = 0;//set queue unuesd
 		q_list[i].head = NULL;//set head pointer NULL
 	}
 	disp_str("Message queue initialization done.\n");
 }
-int  sys_ftok(void *args)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+// functions in system call table:
+int sys_ftok(void *args)
 {
 	char *f = (char *)get_arg(args, 1);
 	int flag = (int)get_arg(args, 2);
@@ -46,10 +50,8 @@ int  sys_ftok(void *args)
 	{
 		key += ((int)*f) * base;
 		base *= 233;
-		key <<= 1;
-		key >>= 1;
 	}
-	return (int)key;
+	return (int)(key & 0xEFFFFFFF);
 }
 
 int do_msgget(key_t key, int msgflg )
@@ -97,11 +99,14 @@ int sys_msgctl(void *args)
 
 // real functions
 /**
- * @brief 			get a key baesd
- * 
- * @param key 
- * @param msgflg 
- * @return int 
+ * @brief 			根据key创建一个消息队列，或找到已存在的某个消息队列
+ *
+ * @param key 		键值key，应该是ftok()的返回值
+ * @param msgflg 	可用值：
+ * 					0：必须返回已存在的队列或错误码
+ * 					IPC_CREAT：允许新建队列
+ * 					IPC_EXCL：返回的队列必须是新建的，需要与IPC_CREAT连用
+ * @return int 		消息队列ID
  */
 int kern_msgget(key_t key, int msgflg)
 {
@@ -113,7 +118,7 @@ int kern_msgget(key_t key, int msgflg)
 		{
 			for (i = 0; i < MAX_MSQ_NUM; i++) //寻找空闲队列
 			{
-				if (!q_list[i].use)
+				if (!q_list[i].used)
 				{
 					newque(i, key);
 					return i;
@@ -152,7 +157,7 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 {
 	if (msqid >= MAX_MSQ_NUM) //检查长度
 		return -1;
-	if (q_list[msqid].use == 0) //队列不存在，返回-1
+	if (q_list[msqid].used == 0) //队列不存在，返回-1
 		return -1;
 	if (q_list[msqid].info.__msg_cbytes + msgsz > q_list[msqid].info.msg_qbytes) //当前队列已满
 	{
@@ -167,116 +172,19 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 	if (msgp == NULL) //检查缓冲区指针合法性
 		return -1;
 
-	//加入
-	list_item *ph = q_list[msqid].head;				   //头结点
-	list_item *pt = q_list[msqid].head->type_list_nxt; //总队列节点
-	int i;
-
-	//找到总队列最后一个
-	while (pt && pt->nxt.full_list_nxt)
-		pt = pt->nxt.full_list_nxt;
-
 	long type_new = *(long *)msgp; //新消息类型
-	if (type_new == 0)
+	list_item *new_msg = (list_item *)kern_kmalloc(sizeof(list_item));
+	write_msg_node(msqid, new_msg, msgsz, (char *)msgp, type_new);
+	insert_head_node(msqid, type_new);
+	int rt_t = insert_type_list(msqid, new_msg);
+	int rt_f = insert_full_list(msqid, new_msg);
+	if (rt_t < 0 || rt_f < 0)
+	{
+		kern_kfree(new_msg->msg.buf);
+		kern_kfree(new_msg);
 		return -1;
-
-	//寻找目标type头结点
-	while (ph->nxt.head_nxt && ph->msg.type < type_new)
-		ph = ph->nxt.head_nxt;
-
-	if (ph->msg.type == type_new)
-	{ //队列中已有type_new类型的子队列
-		while (ph->type_list_nxt)
-			ph = ph->type_list_nxt;
-		//操作type队列指针
-		ph->type_list_nxt = (list_item *)kern_kmalloc(sizeof(list_item));
-		ph->type_list_nxt->type_list_pre = ph;
-		ph = ph->type_list_nxt; //移动到新节点
-		ph->type_list_nxt = NULL;
-		//操作总队列指针
-		ph->pre.full_list_pre = pt;
-		pt->nxt.full_list_nxt = ph;
-		ph->nxt.full_list_nxt = NULL;
-		//写入内容
-		write_msg_node(msqid, ph, msgsz, msgp, type_new);
-		return 0;
 	}
-
-	if (ph->msg.type > type_new)
-	{ //在头结点队列中间
-		list_item *new_head = (list_item *)kern_kmalloc(sizeof(list_item));
-		list_item *new_msg = (list_item *)kern_kmalloc(sizeof(list_item));
-		list_item *pre_head = ph->pre.head_pre;
-		list_item *nxt_head = ph;
-		//将新的头结点插入，并修改type
-		pre_head->nxt.head_nxt = new_head;
-		nxt_head->pre.head_pre = new_head;
-		new_head->nxt.head_nxt = nxt_head;
-		new_head->pre.head_pre = pre_head;
-		new_head->msg.type = type_new;
-		new_head->msg.buf = NULL;
-		//将新的消息结点插入
-		new_head->type_list_pre = NULL;
-		new_head->type_list_nxt = new_msg;
-		new_msg->type_list_pre = new_head;
-		new_msg->type_list_nxt = NULL;
-		//修改总指针
-		if (q_list[msqid].num == 0)
-		{
-			q_list[msqid].head->type_list_nxt = new_msg;
-			new_msg->pre.full_list_pre = q_list[msqid].head;
-			new_msg->nxt.full_list_nxt = NULL;
-		}
-		else
-		{
-			new_msg->pre.full_list_pre = pt;
-			pt->nxt.full_list_nxt = new_msg;
-			new_msg->nxt.full_list_nxt = NULL;
-		}
-		//写入内容
-		write_msg_node(msqid, new_msg, msgsz, msgp, type_new);
-		return 0;
-	}
-
-	if (ph->nxt.head_nxt == NULL)
-	{ //找到了头结点的最后，只需要在最后加入一个新的头结点
-		//检查是否是空队列
-		int init_flag = 0;
-		if (q_list[msqid].num == 0)
-			init_flag = 1;
-		//建立新的头结点和消息结点
-		list_item *new_head = (list_item *)kern_kmalloc(sizeof(list_item));
-		list_item *new_msg = (list_item *)kern_kmalloc(sizeof(list_item));
-		//设置新头结点指针
-		new_head->msg.type = type_new;
-		new_head->msg.buf = NULL;
-		new_head->pre.head_pre = ph;
-		new_head->nxt.head_nxt = NULL;
-		new_head->type_list_pre = NULL;
-		new_head->type_list_nxt = new_msg;
-		//设置ph指针
-		ph->nxt.head_nxt = new_head;
-		//设置新消息结点指针
-		new_msg->pre.full_list_pre = pt;
-		new_msg->nxt.full_list_nxt = NULL;
-		new_msg->type_list_pre = new_head;
-		new_msg->type_list_nxt = NULL;
-		//写入内容
-		write_msg_node(msqid, new_msg, msgsz, msgp, type_new);
-		//设置头结点指针（只有在加入第一个消息时）和总指针
-		if (init_flag)
-		{
-			q_list[msqid].head->type_list_nxt = new_msg;
-			new_msg->pre.full_list_pre = q_list[msqid].head;
-		}
-		else
-		{
-			pt->nxt.full_list_nxt = new_msg;
-			new_msg->pre.full_list_pre = pt;
-		}
-		return 0;
-	}
-	return -1; //未知错误
+	return 0;
 }
 
 /**
@@ -297,7 +205,7 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 {
 	int i, get_length = 0;
 	//检查id
-	if (q_list[msqid].use == 0)
+	if (q_list[msqid].used == 0)
 		return -1; //队列不存在，返回-1
 	//检查type
 	if (msgtyp == 0)
@@ -400,14 +308,15 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 {
 	int ret = -1;
-	if (msqid < 0 || msqid > MAX_DRIVES || !q_list[msqid].use) //检查队列是否存在
+	if (msqid < 0 || msqid > MAX_MSQ_NUM || !q_list[msqid].used) //检查队列是否存在
 		return ret;
 	switch (cmd)
 	{
 	case IPC_RMID:
 	{
 		list_item *i_head = q_list[msqid].head->nxt.head_nxt;
-		if(q_list[msqid].info.msg_qnum > 0){
+		if (q_list[msqid].info.msg_qnum > 0)
+		{
 			while (i_head)
 			{
 				while (i_head->type_list_nxt)
@@ -422,7 +331,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 			kern_kfree(i_head);
 			i_head = temp_nxt;
 		}
-		q_list[msqid].use = 0;
+		q_list[msqid].used = 0;
 		q_list[msqid].head = NULL;
 		ret = 0;
 		break;
@@ -448,10 +357,10 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 
 // utils:
 /**
- * @brief 		从队列中取出删除一个消息，同时修改队列的信息
+ * @brief 			从队列中取出删除一个消息，同时修改队列的信息
  *
- * @param msqid 队列ID
- * @param head 	头结点指针
+ * @param msqid 	队列ID
+ * @param head 		头结点指针
  */
 void rm_msg_node(int msqid, list_item *head)
 {
@@ -516,36 +425,16 @@ void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type
  * @param key 		键值，初始化的队列键值会被设为key
  * @return int 		成功返回0，否则返回-1
  */
-int newque(int id, int key)
+int newque(int id, key_t key)
 {
 	if (id < 0 || id >= MAX_MSQ_NUM)
 		return -1;
-	q_list[id].num = 0;
-	q_list[id].use = 1;
+	memset(&q_list[id], 0, sizeof(msg_queue));
 	list_item *ph = (list_item *)kern_kmalloc(sizeof(list_item));
+	memset(ph, 0, sizeof(list_item));
+	q_list[id].used = 1;
 	q_list[id].head = ph;
-	ph->msg.buf = NULL;
-	ph->msg.type = 0;
-	ph->nxt.full_list_nxt = NULL;
-	ph->pre.full_list_pre = NULL;
-	ph->type_list_nxt = NULL;
-	ph->type_list_pre = NULL;
-	ph->msgsz = 0;
-	q_list[id].info.msg_qnum = 0;
-	q_list[id].info.__msg_cbytes = 0;
-	if (key == 0)
-	{
-		q_list[id].info.msg_qbytes = 0;
-	}
-	else
-	{
-		q_list[id].info.msg_qbytes = MAX_MSGBYTES;
-	}
-	q_list[id].info.msg_ctime = 0;
-	q_list[id].info.msg_stime = 0;
-	q_list[id].info.msg_rtime = 0;
-	q_list[id].info.msg_lrpid = 0;
-	q_list[id].info.msg_lspid = 0;
+	q_list[id].info.msg_qbytes = MAX_MSGBYTES;
 	q_list[id].key = key;
 	return 0;
 }
@@ -561,8 +450,134 @@ int ipc_findkey(key_t key)
 	int id;
 	for (id = 0; id < MAX_MSQ_NUM; id++)
 	{
-		if (q_list[id].key == key && q_list[id].use)
+		if (q_list[id].key == key && q_list[id].used)
 			return id;
 	}
 	return -1;
 }
+
+/**
+ * @brief 				插入一个指定类型的头结点，可能分配内存
+ *
+ * @param msqid 		消息队列ID，向哪个队列插入
+ * @param type_new 		新的头结点类型
+ * @return list_item* 	返回新插入的头结点指针，如果该类型头结点已存在，返回NULL
+ */
+list_item *insert_head_node(int msqid, long type_new)
+{
+	//创建新的空头结点
+	list_item *new_head = (list_item *)kern_kmalloc(sizeof(list_item));
+	memset(new_head, 0, sizeof(list_item));
+	new_head->msg.type = type_new;
+	//检查该类型是否存在
+	list_item *i = NULL;
+	for (i = q_list[msqid].head; i && i->msg.type <= type_new; i = i->nxt.head_nxt)
+	{
+		if (i->msg.type == type_new)
+		{
+			kern_kfree(new_head);
+			return NULL;
+		}
+	}
+	if (i)
+	{
+		list_item *pre = i->pre.head_pre;
+		pre->nxt.head_nxt = new_head;
+		new_head->pre.head_pre = pre;
+		new_head->nxt.head_nxt = i;
+		i->pre.head_pre = new_head;
+	}
+	else
+	{
+		for (i = q_list[msqid].head; i->nxt.head_nxt; i = i->nxt.head_nxt)
+			;
+		i->nxt.head_nxt = new_head;
+		new_head->pre.head_pre = i;
+	}
+	return new_head;
+}
+
+/**
+ * @brief 			将一个消息结点插入类型链，必须保证已经初始化
+ *
+ * @param msqid 	消息队列ID
+ * @param new_msg 	待插入消息结点指针
+ * @return int		成功返回0，否则返回-1
+ */
+int insert_type_list(int msqid, list_item *new_msg)
+{
+	if (new_msg->msg.type <= 0)
+		return -1;
+	list_item *head = NULL;
+	for (head = q_list[msqid].head; head; head = head->nxt.head_nxt)
+	{
+		if (head->msg.type == new_msg->msg.type)
+			break;
+	}
+	if (head)
+	{
+		list_item *t = head;
+		while (t->type_list_nxt)
+			t = t->type_list_nxt;
+		t->type_list_nxt = new_msg;
+		new_msg->type_list_pre = t;
+		new_msg->type_list_nxt = NULL;
+	}
+	return 0;
+}
+
+/**
+ * @brief 			将一个消息结点插入总链，必须保证已经初始化
+ *
+ * @param msqid 	消息队列ID
+ * @param new_msg 	待插入消息结点指针
+ * @return int		成功返回0，否则返回-1
+ */
+int insert_full_list(int msqid, list_item *new_msg)
+{
+	if (new_msg->msg.type <= 0)
+		return -1;
+	list_item *i = NULL;
+	for (i = q_list[msqid].head->type_list_nxt; i && i->nxt.full_list_nxt; i = i->nxt.full_list_nxt)
+		;
+	if (!i)
+	{
+		q_list[msqid].head->type_list_nxt = new_msg;
+		new_msg->pre.full_list_pre = q_list[msqid].head;
+	}
+	else
+	{
+		i->nxt.full_list_nxt = new_msg;
+		new_msg->pre.full_list_pre = i;
+	}
+	new_msg->nxt.full_list_nxt = NULL;
+	return 0;
+}
+
+// void display_queue(int msqid)
+// {
+// 	list_item *head = q_list[msqid].head->nxt.head_nxt;
+// 	printf("by type:\n");
+// 	while (head)
+// 	{
+// 		printf("type:[%d] ", head->msg.type);
+// 		list_item *i = head->type_list_nxt;
+// 		while (i)
+// 		{
+// 			printf("%d ", i->msg.type);
+// 			i = i->type_list_nxt;
+// 		}
+// 		printf("\n");
+// 		head = head->nxt.head_nxt;
+// 	}
+
+// 	printf("by full:\n");
+// 	list_item *it = q_list[msqid].head->type_list_nxt;
+// 	while (it)
+// 	{
+// 		printf("%d ", it->msg.type);
+// 		it = it->nxt.full_list_nxt;
+// 	}
+// 	printf("\n");
+// 	return;
+// }
