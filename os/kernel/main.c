@@ -88,6 +88,9 @@ PUBLIC int kernel_main()
 	/* initialize hd-irq and hd rdwt queue */
 	init_hd();
 
+	/* initialize message queue */
+	init_msgq(); //added by yingchi 2021.12.24
+
 	/* enable interrupt, we should read information of some devices by interrupt.
 	 * Note that you must have initialized all devices ready before you enable
 	 * interrupt. added by xw
@@ -541,3 +544,4 @@ PRIVATE int initialize_processes()
 
 	return 0;
 }
+

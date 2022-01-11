@@ -110,7 +110,13 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_shmat,	//added by xiaofeng 2021-9-8
 														sys_shmdt,	//added by xiaofeng 2021-9-8
 														sys_shmctl, //added by xiaofeng 2021-9-8
-														sys_shmmemcpy
+														sys_shmmemcpy,
+
+														sys_ftok,			//added by yingchi 2021.12.22
+														sys_msgget,			//added by yingchi 2021.12.22
+														sys_msgsnd,			//added by yingchi 2021.12.22
+														sys_msgrcv,			//added by yingchi 2021.12.22
+														sys_msgctl			//added by yingchi 2021.12.22
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

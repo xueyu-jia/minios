@@ -1,89 +1,145 @@
+// #include "../include/stdio.h"
+// #include "../include/msg.h"
+
+// typedef struct my_msg{
+// 	long t;
+// 	char m[20];
+// }my_msg;
+
+// void clear_msg(my_msg* m){
+// 	int i;
+// 	for(i=0;i<20;i++){
+// 		m->m[i] = '\0';
+// 	}
+// }
+
+// int main(int arg, char *argv[])
+// {
+// 	printf("%d\n", -1);
+// 	key_t key_0 = ftok("string bvhew", 999);
+// 	key_t key_1 = ftok("string wettyu", 100);
+// 	int q1 = msgget(key_0, IPC_CREAT|IPC_EXCL);
+// 	int q2 = msgget(key_1, IPC_CREAT|IPC_EXCL);
+// 	if(q1<0 || q2<0){
+// 		printf("queue exist.\n");
+// 		exit(1);
+// 	}
+
+// 	my_msg M = {1, "MESSAGE"}, recv;
+// 	clear_msg(&recv);
+// 	msgsnd(q1, &M, 3, IPC_NOWAIT);
+// 	msgsnd(q2, &M, 7, IPC_NOWAIT);
+
+// 	int l;
+// 	l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+// 	printf("from q1 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
+// 	clear_msg(&recv);
+// 	l = msgrcv(q2, &recv, 2, 0, IPC_NOWAIT|MSG_NOERROR);
+// 	printf("from q2 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
+
+// 	l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+// 	printf("rt:%d\n", l);
+
+// 	printf("read done\n");
+
+// 	int p_child = fork();
+// 	if(p_child == 0){
+// 		//child
+// 		printf("child\n");
+// 		int q1_c = msgget(key_0, IPC_CREAT);
+// 		M.t = 999;
+// 		msgsnd(q1_c, &M, 1, IPC_NOWAIT);
+// 		exit(0);
+// 	}else{
+// 		printf("parent\n");
+// 		wait_();
+// 		clear_msg(&recv);
+// 		l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
+// 		printf("(parent)from q1 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);
+// 	}
+
+// 	msgctl(q1, IPC_RMID, NULL);
+// 	msgctl(q2, IPC_RMID, NULL);
+	
+// 	exit(0);
+// 	return 0;
+// }
+
 #include "../include/stdio.h"
-#include "../include/ushm.h"
+#include "../include/msg.h"
 
-#define key 123456
-void main(int arg, char *argv[])
+typedef struct my_msg{
+	long t;
+	char m[20];
+}my_msg;
+
+void clear_msg(my_msg* m){
+	int i;
+	for(i=0;i<20;i++){
+		m->m[i] = '\0';
+	}
+}
+
+int main(int arg, char *argv[])
 {
+	printf(" *** multi-queue *** \n");
+	int q1,q2,q3;
+	my_msg m1 = {1,"send from parent"}, m2 = {2, "send from child 1"}, m3 = {3, "sned from child 2"};
 
-	//udisp_int(shmid);
-	// int q = fork();
-    
+	key_t key1 = ftok("qwer", 1);
+	key_t key2 = ftok("asdf", 2);
+	key_t key3 = ftok("zxcv", 3);
 
-	// if (q == 0)
-	
-		int shmidA = -1;
-		udisp_str("\nchirldA: ");
-		shmidA = shmget(key, 4, IPC_CREAT);
-		int *p = NULL;
+	q1 = msgget(key1, IPC_CREAT|IPC_EXCL);
+	if(q1<0){
+		printf("q1 create error\n");
+		exit(0);
+	}
+	msgsnd(q1, &m1, 16, IPC_NOWAIT);
 
-		p = shmat(shmidA, NULL, 0);
-
-		/********int***********/
-		/*
-        *p = 1024;
-        udisp_int(*p);
-*/
-
-		/***********buf***********/
-
-		int i = 0;
-		int q[15] = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7};
-		memcpy(p, q, sizeof(q));
-		for (i = 0; i < 14; i++)
-		{
-			udisp_int(*(p + i));
+	int pid1 = fork();
+	if(pid1 == 0){//child 1
+		q2 = msgget(key2, IPC_CREAT|IPC_EXCL);
+		if(q2<0){
+			printf("q2 create error\n");
+		}else{
+			msgsnd(q2, &m2, 17, IPC_NOWAIT);
 		}
-
-		shmdt(p);
+		exit(0);
+	}else{
+		wait_();
+	}
 	
-    // shmctl(shmidA, DELETE, NULL);
-	// else
-	// {
-	// 	int t;
+	int pid2 = fork();
+	if(pid2 == 0){//child 2
+		q3 = msgget(key3, IPC_CREAT|IPC_EXCL);
+		if(q3<0){
+			printf("q3 create error\n");
+		}else{
+			msgsnd(q3, &m3, 17, IPC_NOWAIT);
+			//receive from q1
+			my_msg recv;
+			memset(recv.m, 0, 20);
+			msgrcv(q1, &recv, 20, 0, IPC_NOWAIT|MSG_NOERROR);
+			printf("(child2)type:%d, message:%s\n", recv.t, recv.m);
+		}
+		exit(0);
+	}else{
+		wait_();
+	}
 
-	// 	t = fork();
-	// 	if (t == 0)
-	// 	{
-	// 		int shmidB = -1;
-	// 		sleep(500);
-	// 		udisp_str("\nchirldB: ");
-	// 		shmidB = shmget(key, 4, IPC_CREAT);
-	// 		int *pp = NULL;
-	// 		pp = shmat(shmidB, NULL, 0);
+	q2 = msgget(key2, 0);
+	q3 = msgget(key3, 0);
 
-	// 		/********int***********/
-	// 		/*
-	// 	int a = *pp;
-	// 	udisp_int(a);
-	// */
-	// 		/**********buf*******/
-	// 		int i = 0;
-	// 		for (i = 0; i < 14; i++)
-	// 		{
-	// 			udisp_int(*(pp + i));
-	// 		}
+	my_msg recv;
+	memset(recv.m, 0, 20);
+	msgrcv(q2, &recv, 20, 0, IPC_NOWAIT|MSG_NOERROR);
+	printf("(parent)q2: type:%d, message:%s\n", recv.t, recv.m);
 
-	// 		*pp = 5;
-	// 		/*********打印内核信息************/
-
-	// 		shmdt(pp);
-	// 		struct ipc_shm *buf;
-	// 		buf = shmctl(shmidB, INFO, buf);
-	// 		int c = buf->in_use;
-
-	// 		udisp_str("\nINFO_in_Pro: ");
-	// 		udisp_str("ids.in_use: ");
-	// 		udisp_int(c);
-
-	// 		shmdt(pp);
-
-	// 		shmctl(shmidB, DELETE, NULL);
-	// 	}
-	// }
-
-	// while (1)
-	// {
-	// }
-    exit(0);
-	return;
+	memset(recv.m, 0, 20);
+	msgrcv(q3, &recv, 20, 0, IPC_NOWAIT|MSG_NOERROR);
+	printf("(parent)q3: type:%d, message:%s\n", recv.t, recv.m);
+	
+	exit(0);
+	return 0;
 }

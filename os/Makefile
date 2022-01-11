@@ -66,8 +66,9 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/signal.o \
 			os/kernel/buddy.o os/kernel/kmalloc.o \
 			os/kernel/syscallc.o \
-			os/ipc/shm.o \
-			os/klib/klib.a #added by mingxuan 2021-2-28
+			os/ipc/shm.o os/ipc/msg.o \
+			os/klib/klib.a
+#added by mingxuan 2021-2-28
 
 OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/stringc.o os/klib/stringasm.o os/klib/string.o
 
@@ -353,3 +354,5 @@ os/kernel/signal.o: os/kernel/signal.c
 os/ipc/shm.o: os/ipc/shm.c os/include/shm.h os/include/proto.h
 	$(CC) $(CFLAGS) -o $@ $<
 
+os/ipc/msg.o: os/ipc/msg.c os/include/msg.h os/include/proto.h
+	$(CC) $(CFLAGS) -o $@ $<

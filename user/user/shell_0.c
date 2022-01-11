@@ -601,6 +601,10 @@ void main(int arg,char *argv[])
                 	continue;
             	}
 			}	
+            // if(exec(buf)!=0){
+            //     printf("exec failed: file not found!");
+            //     continue;
+            // }
    		}
 	}
 

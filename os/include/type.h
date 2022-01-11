@@ -101,6 +101,8 @@ enum msgtype {
 };
 //~xw
 
+// typedef int key_t;
+
 #define NULL 0
 
 #endif /* _ORANGES_TYPE_H_ */

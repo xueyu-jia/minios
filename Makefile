@@ -95,10 +95,14 @@ buildimg_mbr:
 	sudo cp -fv user/user/test_3.bin iso/
 	sudo cp -fv user/user/test_4.bin iso/
 	sudo cp -fv user/user/test_5.bin iso/
+
+	# added by yingchi 2022.01.05
+	# sudo cp -fv user/user/myTest.bin iso/
 	
 	# added by mingxuan 2021-2-28
 	sudo cp -fv user/user/sig_0.bin iso/
 	sudo cp -fv user/user/sig_1.bin iso/
+
 
 	sudo umount iso/
 
@@ -109,7 +113,7 @@ build_fs:
 	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
 
 	sudo losetup -P /dev/loop0 b.img
-	sudo mkfs.vfat -F32 /dev/loop0p6
+	sudo mkfs.vfat -F 32 /dev/loop0p6
 	sudo losetup -d /dev/loop0
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
