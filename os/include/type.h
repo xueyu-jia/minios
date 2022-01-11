@@ -25,6 +25,8 @@ typedef unsigned long*  PDWORD;//四字节指针
 typedef unsigned int*   PUINT;//无符号整型指针
 typedef char*           PCHAR;//字符指针
 
+typedef int	pthread_t;
+
 typedef struct super_block SUPER_BLOCK;
 
 typedef	void	(*int_handler)	();

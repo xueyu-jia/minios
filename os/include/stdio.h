@@ -19,7 +19,7 @@ void* malloc_4k();
 // int free(void *arg);				
 int free_4k(void* AdddrLin);	
 int fork();			
-int pthread(void *arg);	
+int pthread_create(void *arg);	
 void udisp_int(int arg);
 void udisp_str(char* arg);
 

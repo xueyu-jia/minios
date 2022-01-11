@@ -72,7 +72,7 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_free_4k,		//add by visual 2016.4.7 
 
 														sys_fork,			//add by visual 2016.4.8 	//5th
-														sys_pthread,		//add by visual 2016.4.11	
+														sys_pthread_create,		//add by visual 2016.4.11	
 														sys_udisp_int,		//add by visual 2016.5.16 
 														sys_udisp_str,		//add by visual 2016.5.16
 														sys_exec,			//add by visual 2016.5.16

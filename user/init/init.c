@@ -38,7 +38,7 @@ void pthread_test2()
 	*(str3+1) = 'z';
 	*(str3+2) = '\0';
 	
-	pthread(pthread_test3);	
+	// pthread_create(pthread_test3);	
 	while(1)
 	{
 		if(str2!=0)
@@ -57,7 +57,7 @@ void pthread_test2()
 void pthread_test1()
 {
 	int i;
-	pthread(pthread_test2);
+	// pthread_create(pthread_test2);
 	while(1)
 	{
 		udisp_str("pth1");
