@@ -18,22 +18,23 @@
 #include "../include/proc.h"
 #include "../include/global.h"
 #include "../include/proto.h"
+#include "../include/pthread.h"
 
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);
-PRIVATE int pthread_stack_init(PROCESS *p_child,PROCESS *p_parent);
+PRIVATE int pthread_stack_init(PROCESS *p_child,PROCESS *p_parent, pthread_attr_t *attr);
 PRIVATE int pthread_heap_init(PROCESS *p_child,PROCESS *p_parent);
 
 //added by mingxuan 2021-8-11
-PUBLIC int sys_pthread(void *uesp)
+PUBLIC int sys_pthread_create(void *uesp)
 {
-    return do_pthread(get_arg(uesp, 1));
+    return do_pthread_create(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3), get_arg(uesp, 4));
 }
 
 //added by mingxuan 2021-8-14
-PUBLIC int do_pthread(void *entry)
+PUBLIC int do_pthread_create(int *thread, void *attr, void *entry, void *arg)
 {
-	return kern_pthread(entry);
+	return kern_pthread_create(thread, attr, entry, arg);
 }
 
 /**********************************************************
@@ -42,7 +43,7 @@ PUBLIC int do_pthread(void *entry)
 *************************************************************/
 //PUBLIC int sys_pthread(void *entry)
 //PUBLIC int do_pthread(void *entry)	//modified by mingxuan 2021-8-11
-PUBLIC int kern_pthread(void *entry)	//modified by mingxuan 2021-8-14
+PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *entry, void *arg)	//modified by mingxuan 2021-8-14
 {
 	PROCESS* p_child;
 	
@@ -55,6 +56,38 @@ PUBLIC int kern_pthread(void *entry)	//modified by mingxuan 2021-8-14
 		disp_color_str("]",0x74);
 		return -1;
 	}*/
+
+	PROCESS *p_parent;
+	if( p_proc_current->task.info.type == TYPE_THREAD )
+	{//线程
+		p_parent = &(proc_table[p_proc_current->task.info.ppid]);//父进程
+	}
+	else
+	{//进程
+		p_parent = p_proc_current;//父进程就是父线程
+	}
+
+	/*****************如若attr为null，新建一默认attr**********************/
+
+	pthread_attr_t true_attr;
+	if(attr == NULL)
+	{
+		true_attr.detachstate		= PTHREAD_CREATE_DETACHED;
+		true_attr.schedpolicy		= SCHED_FIFO;
+		true_attr.inheritsched		= PTHREAD_INHERIT_SCHED;
+		true_attr.scope			= PTHREAD_SCOPE_PROCESS;
+		true_attr.guardsize		= 0;
+		true_attr.stackaddr_set		= 0;
+		true_attr.stackaddr		= p_parent->task.memmap.stack_child_limit + 0x4000 - num_4B;
+		true_attr.stacksize		= 0x4000;
+	}
+	else 
+	{
+		true_attr = *attr;
+	}
+
+
+
 	/*****************申请空白PCB表**********************/
 	p_child = alloc_PCB();
 	if( 0==p_child )
@@ -77,7 +110,7 @@ PUBLIC int kern_pthread(void *entry)	//modified by mingxuan 2021-8-14
 		pthread_pcb_cpy(p_child,p_parent);
 		
 		/************在父进程的栈中分配子线程的栈（从进程栈的低地址分配8M,注意方向）**********************/
-		pthread_stack_init(p_child,p_parent);
+		pthread_stack_init(p_child,p_parent, &true_attr);
 		
 		/**************初始化子线程的堆（此时的这两个变量已经变成了指针）***********************/
 		pthread_heap_init(p_child,p_parent);
@@ -98,6 +131,12 @@ PUBLIC int kern_pthread(void *entry)	//modified by mingxuan 2021-8-14
 		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11
 		
+		/*************子进程参数***************/
+		p_child->task.regs.esp -= num_4B;
+		*((u32*)(p_child->task.regs.esp)) = (u32*)arg;
+		p_child->task.regs.esp -= num_4B;
+		*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;
+
 		/****************用户进程数+1****************************/
 		u_proc_sum += 1;
 		
@@ -108,7 +147,9 @@ PUBLIC int kern_pthread(void *entry)	//modified by mingxuan 2021-8-14
 		//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
 		p_child->task.stat = READY;	
 	}
-	return p_child->task.pid;	
+	*thread = p_child->task.pid;
+	
+	return 0;
 }
 
 
@@ -206,14 +247,14 @@ PRIVATE int pthread_update_info(PROCESS* p_child,PROCESS *p_parent)
 *		pthread_stack_init			//add by visual 2016.5.26
 *申请子线程的栈，并重置其esp
 *************************************************************/
-PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent)
+PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_t *attr)
 {
 	int addr_lin;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
 	
-	p_child->task.memmap.stack_lin_limit = p_parent->task.memmap.stack_child_limit;//子线程的栈界
-	p_parent->task.memmap.stack_child_limit += 0x4000; //分配16K
-	p_child->task.memmap.stack_lin_base = p_parent->task.memmap.stack_child_limit - num_4B;	//子线程的基址
+	p_child->task.memmap.stack_lin_limit = attr->stackaddr - attr->stacksize + num_4B;//子线程的栈界
+	p_parent->task.memmap.stack_child_limit += attr->stacksize; //分配16K
+	p_child->task.memmap.stack_lin_base = attr->stackaddr;	//子线程的基址
 	
 	for( addr_lin=p_child->task.memmap.stack_lin_base ; addr_lin>p_child->task.memmap.stack_lin_limit ; addr_lin-=num_4K)//申请物理地址
 	{
@@ -226,6 +267,10 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent)
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added by xw, 17/12/11
 	
+	p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整esp
+	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added by xw, 17/12/11
+
 	return 0;
 }
 /**********************************************************

@@ -94,7 +94,7 @@ PUBLIC void* malloc_4k();				//edit by visual 2016.5.9
 // PUBLIC int free(void *arg);				//edit by visual 2016.5.9
 PUBLIC int free_4k(void* AdddrLin);		//edit by visual 2016.5.9
 PUBLIC int fork();						//add by visual 2016.4.8
-PUBLIC int pthread(void *arg);			//add by visual 2016.4.11
+PUBLIC int pthread_create(void *arg);			//add by visual 2016.4.11
 PUBLIC void udisp_int(int arg);		//add by visual 2016.5.16
 PUBLIC void udisp_str(char* arg);	//add by visual 2016.5.16
 PUBLIC u32 exec(char* path);		//add by visual 2016.5.16
@@ -123,7 +123,7 @@ PUBLIC u32 sys_malloc_4k();                 //modified by mingxuan 2021-8-13
 PUBLIC int sys_free(void *arg);				//edit by visual 2016.5.9
 PUBLIC int sys_free_4k(void* AdddrLin);		//edit by visual 2016.5.9
 
-PUBLIC int sys_pthread(void *arg);		//add by visual 2016.4.11
+PUBLIC int sys_pthread_create(void *arg);		//add by visual 2016.4.11
 
 //PUBLIC void sys_udisp_int(int arg);		//add by visual 2016.5.16
 PUBLIC void sys_udisp_int(void *uesp);       //modified by mingxuan 2021-8-13

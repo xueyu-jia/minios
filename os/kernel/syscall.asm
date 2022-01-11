@@ -21,7 +21,7 @@ _NR_malloc_4k      	equ 2 ;		//add by visual 2016.4.7
 _NR_free_4k      	equ 3 ;		//add by visual 2016.4.7
 
 _NR_fork     		equ 4 ;		//add by visual 2016.4.8
-_NR_pthread     	equ 5 ;		//add by visual 2016.4.11
+_NR_pthread_create     	equ 5 ;		//add by visual 2016.4.11
 _NR_udisp_int     	equ 6 ;		//add by visual 2016.5.16
 _NR_udisp_str     	equ 7 ;		//add by visual 2016.5.16
 _NR_exec     		equ 8 ;		//add by visual 2016.5.16
@@ -80,7 +80,7 @@ global	malloc_4k	;		//add by visual 2016.4.7
 global	free_4k		;		//add by visual 2016.4.7
 
 global	fork		;		//add by visual 2016.4.8
-global	pthread		;		//add by visual 2016.4.11
+global	pthread_create		;		//add by visual 2016.4.11
 global	udisp_int	;		//add by visual 2016.5.16
 global	udisp_str	;		//add by visual 2016.5.16
 global	exec		;		//add by visual 2016.5.16
@@ -235,12 +235,12 @@ fork:
 ;	pop ebx
 ;	ret
 ;modified by mingxuan 2021-8-14
-pthread:
-	push 1			;the number of parameters
+pthread_create:
+	push 4			;the number of parameters
 	push ebx		;protect ebx
 	mov ebx, esp
 	add ebx, 4
-	mov	eax, _NR_pthread
+	mov	eax, _NR_pthread_create
 	int	INT_VECTOR_SYS_CALL
 	pop ebx			;restore ebx
 	add esp, 4
