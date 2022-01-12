@@ -22,6 +22,7 @@
 int ksem_init(struct Semaphore *sem, int max)
 {
   sem->value=max;
+  sem->maxValue = max;
   sem->active=1;
   initlock(&sem->lock,"semaphore");
   return 0;
@@ -56,6 +57,11 @@ int ksem_wait(struct Semaphore *sem, int count)
     release(&(sem->lock));
     return -1;
   }
+  if((*sem).maxValue <count)
+  {
+    release(&(sem->lock));
+    return -1;
+  }
   // if there is no enough lock, sleep
   while(((*sem).value) <= count - 1)
   {
@@ -73,6 +79,12 @@ int ksem_trywait(struct Semaphore *sem,int count)
   acquire(&(sem->lock));
   // check if the entry is actived
   if((*sem).active == 0) 
+  {
+    release(&(sem->lock));
+    return -1;
+  }
+  // check if count < maxValue
+  if((*sem).maxValue <count)
   {
     release(&(sem->lock));
     return -1;

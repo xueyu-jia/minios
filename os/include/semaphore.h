@@ -13,6 +13,7 @@
 struct Semaphore
 {
    int value;
+   int maxValue;
    int active;
    struct spinlock lock;
 };
