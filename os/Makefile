@@ -67,7 +67,7 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/buddy.o os/kernel/kmalloc.o \
 			os/kernel/syscallc.o \
 			os/ipc/shm.o os/ipc/msg.o \
-			os/klib/klib.a
+			os/klib/klib.a os/kernel/semaphore.o 
 #added by mingxuan 2021-2-28
 
 OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/stringc.o os/klib/stringasm.o os/klib/string.o
@@ -184,7 +184,7 @@ os/klib/string.o : os/klib/stringasm.o os/klib/stringc.o
 	$(LD) -m elf_i386 -r -o $@ $<
 
 os/kernel/syscallc.o: os/kernel/syscallc.c os/include/type.h os/include/const.h os/include/protect.h os/include/proto.h \
-			os/include/string.h os/include/proc.h os/include/global.h
+			os/include/string.h os/include/proc.h os/include/global.h  os/include/semaphore.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 # printf.o	added by mingxuan 2019-5-19
@@ -356,3 +356,7 @@ os/ipc/shm.o: os/ipc/shm.c os/include/shm.h os/include/proto.h
 
 os/ipc/msg.o: os/ipc/msg.c os/include/msg.h os/include/proto.h
 	$(CC) $(CFLAGS) -o $@ $<
+
+# semaphore.o	added by mingxuan 2019-1-5
+os/kernel/semaphore.o: os/kernel/semaphore.c os/include/semaphore.h os/include/spinlock.h
+	$(CC) -masm=intel $(CFLAGS) -o $@ $<

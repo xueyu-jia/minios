@@ -46,6 +46,8 @@ extern	int			current_console;
 EXTERN	u32 cr3_ready;		//当前进程的页目录		add by visual 2016.4.5
 
 
+extern 	struct  Semaphore	proc_table_sem; 
+
 struct memfree{
 	u32	addr;
 	u32	size;

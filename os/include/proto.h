@@ -7,7 +7,7 @@
 //#include <signal/signal.h>  //added by mingxuan 2021-2-28
 #include "signal.h"  //modified by mingxuan 2021-8-7
 #include "msg.h" //added by yingchi 2022.01.07
-
+#include "spinlock.h"
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
@@ -131,6 +131,7 @@ PUBLIC void sys_udisp_int(void *uesp);       //modified by mingxuan 2021-8-13
 PUBLIC void sys_udisp_str(void *uesp);       //modified by mingxuan 2021-8-13
 
 PUBLIC u32 sys_total_mem_size();            //modified by wang 2021.8.26
+PUBLIC void sys_test(int no);//added by cjj 2021-12-25
 
 /* proc.c */
 PUBLIC PROCESS* alloc_PCB();
@@ -141,6 +142,9 @@ PUBLIC void sys_sleep(void *uesp); //modified by mingxuan 2021-8-13
 PUBLIC void sys_wakeup(void *channel);
 PUBLIC int ldt_seg_linear(PROCESS *p, int idx);
 PUBLIC void* va2la(int pid, void* va);
+
+PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
+PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
 
 /* testfunc.c */
 /*  //deleted by mingxuan 2021-8-13

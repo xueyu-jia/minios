@@ -23,6 +23,7 @@
 #include "../include/proto.h"
 #include "../include/buddy.h"
 #include "../include/kmalloc.h"
+#include "../include/semaphore.h"
 
 struct memfree *memarg = 0;
 
@@ -384,3 +385,221 @@ PUBLIC u32 sys_total_mem_size()
 	total_mem_size = kbud->current_mem_size + ubud->current_mem_size + kmem.current_mem_size;
 	return total_mem_size;
 }
+
+#define TEST_FOR_SEMAPHORE
+#ifdef TEST_FOR_SEMAPHORE
+// #define TEST1
+#define TEST2
+// struct memfree *memarg = 0;
+static int i = 0;
+static int tmp = 0;
+static int acc=0;
+struct Semaphore print_sem,full,empty;
+#define first_adder 1
+#define second_adder 2
+#define producer 3
+#define consumer 4
+#define MAXSIZE 5
+#define EMPTY 0
+int sum=0;
+/*
+*This function is used to ensure that 
+*the first addition operation 
+*can be completed completely
+*without being interrupted by another
+*added by cjj 2021-12-25
+*/
+int test1(void)
+{
+	int i=10;
+	int tmp;
+	while(i)
+	{
+		ksem_wait(&print_sem,1);//ensure add and print won't be intereupted
+		tmp=sum;
+		int j=1000000;
+		while (j)
+		{
+			j--;
+		}
+		sum=tmp+1;
+		i--;
+	
+	disp_str("sum1=");
+	disp_int(sum);
+
+	
+		ksem_post(&print_sem,1);//Release lock and Exit conflict domain
+	}
+
+    return 0;
+}
+ /*
+*This function is used to ensure that 
+*the second addition operation 
+*can be completed completely
+*without being interrupted by another
+*added by cjj 2021-12-25
+*/
+int test2(void)
+{
+	
+    int i=10;
+	int tmp;
+    while(i)
+    {
+		ksem_wait(&print_sem,1);//ensure add and print won't be intereupted
+		tmp=sum;
+		int j=1000000;
+		while (j)
+		{
+			j--;
+		}
+		sum=tmp+1;
+		i--;
+    // printf("sum2=%d\n",sum);
+	disp_str("sum2=");
+	disp_int(sum);
+
+		ksem_post(&print_sem,1);//Release lock and Exit conflict domain
+    }
+
+
+    return 0;
+}
+/*
+*This function is used to represent producers. 
+*There are three producers in total
+*/
+int test_produce(int x)
+{
+	
+    while(1)
+    {
+		int j =70000000;
+		while (j)
+		{
+			j--;
+		}
+		
+		ksem_wait(&full,1);
+		ksem_wait(&print_sem,1);
+		// printf("pth%d ",x);
+		disp_str("pth");
+		disp_int(x);
+		disp_str("one product has been stored by");
+		disp_int(x);
+		disp_str("\n");
+		// printf("one product has been stored by %d     \n",x);
+		ksem_post(&print_sem,1);
+		ksem_post(&empty,1);
+    }
+	while (1)
+	{
+		/* code */
+	}
+	
+    return 0;
+}
+/*
+*This function is used to represent consumer. 
+*/
+int test_consume(int x)
+{
+
+    while(1)
+    {
+		int j =10000000;
+		while (j)
+		{
+			j--;
+		}
+		
+#ifdef TEST1	
+		int num=ksem_getvalue(&empty);
+
+		if (ksem_trywait(&empty,num) !=-1)
+		{
+			ksem_wait(&print_sem,1);
+			// printf("pth%d ",x);
+			// printf("someone has bought %d product       \n",num);
+			disp_str("pth");
+			disp_int(x);
+			disp_str("someone has bought ");
+			disp_int(num);
+			disp_str(" product\n");
+			ksem_post(&print_sem,1);
+			ksem_post(&full,num);
+		}
+#endif
+#ifdef TEST2	
+			ksem_wait(&empty,1);
+			ksem_wait(&print_sem,1);
+			disp_str("pth");
+			disp_int(x);
+			disp_str("someone has bought ");
+			disp_int(1);
+			disp_str(" product\n");
+			ksem_post(&print_sem,1);
+			ksem_post(&full,1);
+
+#endif
+    }
+
+	
+    return 0;
+}
+/*======================================================================*
+*                          sys_test					added by cjj 2021.12.25	modified by Juan 2021.12.26
+用于测试内核信号量的功能
+*======================================================================*/
+
+PUBLIC void sys_test(int function)
+{
+	do_test(function);
+	return;
+}
+PUBLIC void do_test(int function)
+{
+	kern_test(function);
+	return;
+}
+
+PUBLIC void kern_test(int function)
+{
+	
+	if (!tmp)
+	{
+		tmp=1;
+		ksem_init(&print_sem,1);					//Semaphore to ensure atomic operation
+		ksem_init(&full,MAXSIZE);	//Semaphore used to judge whether the warehouse is full
+		ksem_init(&empty,EMPTY);		//Semaphore used to judge whether the warehouse is empty
+		// printf("1");
+	}
+
+	switch(function)
+	{
+		case	first_adder:    test1();
+								break;
+
+		case	second_adder:	test2();
+								break;
+
+		case 	producer:	  //	ksem_wait(print_sem,1);
+								i++;
+								test_produce(i);
+								// ksem_post(print_sem,1);
+								break;
+
+		case 	consumer:	   //	ksem_wait(print_sem,1);
+								i++; 
+								test_consume(i);
+								//ksem_post(print_sem,1);
+								break;	
+
+		default	: break;					
+	}
+	return ;
+
+}
+#endif /*TEST_FOR_SEMAPHORE*/

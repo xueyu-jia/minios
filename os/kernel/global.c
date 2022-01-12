@@ -42,12 +42,15 @@
 #include "../include/vfs.h"	//added by mingxuan 2019-5-17
 #include "../include/ksignal.h"	//added by mingxuan 2021-2-28
 
+#include "../include/semaphore.h"
 /* save the execution environment of each cpu, which doesn't belong to any process.
  * added by xw, 18/6/1
  */
 PUBLIC	PROCESS			cpu_table[NR_CPUS];
 
 PUBLIC	PROCESS			proc_table[NR_PCBS];										//edit by visual 2016.4.5	
+
+PUBLIC	struct 	Semaphore	proc_table_sem;
 
 //PUBLIC	char			task_stack[STACK_SIZE_TOTAL]; //delete  by viusal 2016.4.28
 
@@ -116,7 +119,8 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_msgget,			//added by yingchi 2021.12.22
 														sys_msgsnd,			//added by yingchi 2021.12.22
 														sys_msgrcv,			//added by yingchi 2021.12.22
-														sys_msgctl			//added by yingchi 2021.12.22
+														sys_msgctl,			//added by yingchi 2021.12.22
+														sys_test
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

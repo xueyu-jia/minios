@@ -27,6 +27,7 @@
 #include "../include/hd.h"
 #include "../include/fs.h"
 #include "../include/buddy.h"
+#include "../include/semaphore.h"
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -111,6 +112,8 @@ PUBLIC int kernel_main()
 	init_all_fat(PRIMARY_MASTER);
 	//init_fs_fat();	//added by mingxuan 2019-5-17
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30
+
+	// ksem_init(&proc_table_sem,1); 	//init PCB sem
 
 	/*************************************************************************
 	*第一个进程开始启动执行
