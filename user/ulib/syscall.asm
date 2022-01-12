@@ -66,6 +66,8 @@ _NR_msgsnd			equ 38 ;		//added by yingchi	2021.12.20
 _NR_msgrcv			equ 39 ;		//added by yingchi	2021.12.20
 _NR_msgctl			equ 40 ;		//added by yingchi	2021.12.20
 
+_NR_test			equ 41 ;
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -125,6 +127,8 @@ global	msgget		;		//added by yingchi	2021.12.20
 global	msgsnd		;		//added by yingchi	2021.12.20
 global	msgrcv		;		//added by yingchi	2021.12.20
 global	msgctl		;		//added by yingchi	2021.12.20
+
+global test
 
 bits 32
 [section .text]
@@ -236,7 +240,7 @@ fork:
 ;	ret
 ;modified by mingxuan 2021-8-14
 pthread_create:
-	push 1			;the number of parameters
+	push 4			;the number of parameters
 	push ebx		;protect ebx
 	mov ebx, esp
 	add ebx, 4
@@ -663,6 +667,16 @@ msgctl:
 	add esp, 4
 	ret
 
+; ====================================================================
+;                   test			//added by cjjx, 2021-12-26
+;用于测试内核信号量是否有效
+; ====================================================================
+test:
+	mov ebx,[esp+4]
+	mov eax,_NR_test
+	int INT_VECTOR_SYS_CALL
+	ret
+	
 %macro	SYS_CALL 1
 	push ebx
 	mov ebx, esp

@@ -46,6 +46,8 @@ int deletedir(const char *);
 int readdir(const char *, unsigned int [3], char *);
 //~xw
 
+void test(int no);
+
 /*string.asm*/
 void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
 void memset(void* p_dst, char ch, int size);

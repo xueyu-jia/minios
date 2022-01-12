@@ -168,6 +168,49 @@ PUBLIC void sys_wakeup(void *channel)
 		}
 	}
 }
+/*
+	added by cjjx 2021-12-25
+*/
+// Atomically release lock and sleep on chan.
+// Reacquires lock when awakened.
+void wait_for_sem(void *chan, struct spinlock *lk)
+{
+	if(0 == p_proc_current)
+		// printf("p_proc_current is unknow!");
+		return 0; 
+	if(0 == lk)
+		// printf("lk is unknow!");
+		return 0; 
+  // Must acquire ptable.lock in order to
+  // change p->state and then call sched.
+  // Once we hold ptable.lock, we can be
+  // guaranteed that we won't miss any wakeup
+  // (wakeup runs with ptable.lock locked),
+  // so it's okay to release lk.
+
+  // Go to sleep.
+  p_proc_current->task.channel = chan;
+  p_proc_current->task.stat = SLEEPING;
+  release(lk);
+  
+  sched();
+  
+  acquire(lk);
+  // Tidy up.
+  p_proc_current->task.channel = 0;
+
+}
+
+/*
+	added by cjjx 2021-12-25
+*/
+void wakeup_for_sem(void *chan)
+{
+
+  sys_wakeup(chan);
+
+}
+
 
 //added by zcr
 PUBLIC int ldt_seg_linear(PROCESS *p, int idx)
