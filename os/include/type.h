@@ -35,6 +35,11 @@ typedef	void	(*irq_handler)	(int irq);
 
 typedef	char *	va_list;	//added by mingxuan 2019-5-19
 
+#define FILE_ATTR 0//added by xyx&&wjh 2021-12-31
+#define PATH_ATTR 1//added by xyx&&wjh 2021-12-31
+//#define DEFAULT_PATH "orange/"//added by xyx&&wjh 2021-12-31
+#define DEFAULT_PATH "fat0/"//added by xyx&&wjh 2021-12-31
+
 typedef void*	system_call;
 
 //mainly used in filesystem. added by xw, 18/8/27

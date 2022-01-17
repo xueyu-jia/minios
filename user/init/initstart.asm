@@ -12,7 +12,8 @@ bits 32
 global _start
 
 _start:
-	push 	eax
+	;push 	eax
+	push 	edx
 	push	ecx
 	call	main
 	

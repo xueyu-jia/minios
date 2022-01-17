@@ -120,7 +120,9 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_msgsnd,			//added by yingchi 2021.12.22
 														sys_msgrcv,			//added by yingchi 2021.12.22
 														sys_msgctl,			//added by yingchi 2021.12.22
-														sys_test
+														sys_test,
+														sys_execvp,			//added by xyx&&wjh 2021.12.31
+														sys_execv			//added by xyx&&wjh 2021.12.31
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

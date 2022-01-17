@@ -610,7 +610,8 @@ void initial()
 
 	//get_pid();
 
-	exec("fat0/init.bin");
+	// exec("fat0/init.bin");
+	exec("fat0/init.bin",NULL,NULL);
 	//exec("fat0/test_0.bin");
 	//sys_exec("fat0/init.bin");	//modified by mingxuan 2021-4-6
 

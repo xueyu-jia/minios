@@ -595,7 +595,7 @@ void main(int arg,char *argv[])
 			}
 			else
 			{	//child
-				if(exec(buf)!=0)
+				if(exec(buf, NULL, NULL)!=0)
 				{
 					printf("exec failed: file not found!");
                 	continue;

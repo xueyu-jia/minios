@@ -22,6 +22,7 @@
 #include "../include/proto.h"
 #include "../include/elf.h"
 #include "../include/fs.h" //added by mingxuan 2019-5-19
+#include "../include/vfs.h"//added by xyx && wjh 2021-12-31
 
 #include "../include/buddy.h"// added by wang 2021.8.27
 
@@ -29,19 +30,57 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo_Phdr[]);
 PRIVATE int exec_pcb_init(char *path);
 
-PUBLIC u32 do_exec(char *path);
-PUBLIC u32 kern_exec(char *path);
+//PUBLIC u32 do_exec(char *path);  deleted by xyx&&wjh 2021-12-31
+//PUBLIC u32 kern_exec(char *path); deleted by xyx&&wjh 2021-12-31
 
+PRIVATE char *exec_path(char* path);//added by xyx&&wjh 2021.12.31
+PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
+PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
+
+/*  deleted by xyx&&wjh 2021-12-31   */
 //added by mingxuan 2021-8-11
+//PUBLIC u32 sys_exec(void *uesp)
+//{
+//	return do_exec(get_arg(uesp, 1));
+//}
+
+//PUBLIC u32 do_exec(char *path)
+//{
+	//return kern_exec(path);
+//}
+/*   end deleted  */
+
+
+/*    added by xyx&&wjh 2021.12.31  */
+/*======================================================================*
+*                          sys_execv		
+*execv系统调用功能实现部分
+*======================================================================*/
+PUBLIC u32 sys_execv(void *uesp)
+{
+	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), NULL);
+}
+
+/*======================================================================*
+*                          sys_execvp		
+*execvp系统调用功能实现部分
+*======================================================================*/
+PUBLIC u32 sys_execvp(void *uesp)
+{
+	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), NULL);
+}
+
 PUBLIC u32 sys_exec(void *uesp)
 {
-	return do_exec(get_arg(uesp, 1));
+	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
 }
 
-PUBLIC u32 do_exec(char *path)
+PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ])
 {
-	return kern_exec(path);
+	return kern_exec(path, argv, envp);
 }
+/*   end added   */
+
 
 /*======================================================================*
 *                          sys_exec		add by visual 2016.5.23
@@ -49,7 +88,7 @@ PUBLIC u32 do_exec(char *path)
 *======================================================================*/
 //PUBLIC u32 sys_exec(char *path)
 //PUBLIC u32 do_exec(char *path)	//modified by mingxuan 2021-8-11
-PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
+PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by mingxuan 2021-8-11
 {
 	//disable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
@@ -77,6 +116,9 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 		return -1;
 	}
 
+
+    path = exec_path(path);//added by xyx&&wjh 2021.12.31
+
 	/*******************打开文件************************/
 	// u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19
 	//u32 fd = do_vopen(path, O_RDWR);	//deleted by mingxuan 2019-5-19
@@ -103,6 +145,49 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 	/*************获取elf信息**************/
 	read_elf(fd, &Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
 
+    /*    added by xyx&&wjh   2021-12-31  */
+    char **p = argv;
+	
+	char arg_stack[num_4B];
+	int stack_len = 0;
+
+	while(*p++) {
+		stack_len += sizeof(char*);
+	}
+	//disp_int(stack_len,0x71);
+
+	*((int*)(&arg_stack[stack_len])) = 0;
+	stack_len += sizeof(char*);
+	//disp_int(stack_len,0x74);
+	
+	int tmp;
+	char **q = (char**)arg_stack;
+	for (p = argv; *p != 0; p++) {
+		*q++ = &arg_stack[stack_len];
+		strcpy(&arg_stack[stack_len], *p);
+		tmp = strlen(*p);
+		//disp_int(tmp,0x74);
+		stack_len += tmp;
+
+		arg_stack[stack_len] = 0;
+		stack_len++;
+		//disp_int(stack_len,0x74);
+	}
+
+	u8* orig_stack = (u8*)(ArgLinBase);
+
+	//disp_int(orig_stack);
+
+	int delta = (int)(void*)arg_stack - (int)orig_stack;
+	//disp_int(delta, 0x71);
+	int argc = 0;
+	if (stack_len) {	// has args
+		char **q = (char**)arg_stack;
+		for (; *q != 0; q++,argc++)
+			*q -= delta;
+	}
+     /*   end added   */
+
 	/*************释放进程内存****************/
 	//目前还没有实现 思路是：数据、代码根据text_info和data_info属性决定释放深度，其余内存段可以完全释放
 
@@ -127,6 +212,30 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 
 	/*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
 	exec_pcb_init(path);
+	addr_lin = p_proc_current->task.memmap.arg_lin_base ;
+	memcpy(addr_lin, arg_stack, num_4K);
+
+	/*    added by xyx&&wjh 2021-12-31  */
+	for( addr_lin = p_proc_current->task.memmap.arg_lin_base ; addr_lin < p_proc_current->task.memmap.arg_lin_limit ; addr_lin+=num_4K )
+	{
+		err_temp = ker_umalloc_4k(addr_lin, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+		
+		if( err_temp!=0 )
+		{
+			disp_color_str("kernel_main Error:lin_mapping_phy",0x74);
+			//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
+			//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
+			p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+
+			//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
+			p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+
+			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
+			return -1;
+		}
+		memcpy((void*)addr_lin, (void*)arg_stack, num_4K);
+	}
+   /*   end added   */
 
 	/***********************代码、数据、堆、栈***************************/
 	//代码、数据已经处理，将eip重置即可
@@ -139,6 +248,14 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 	//栈
 	p_proc_current->task.regs.esp = (u32)p_proc_current->task.memmap.stack_lin_base; //栈地址最高处
 	*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;		 //added by xw, 17/12/11
+
+/*    added by xyx&&wjh  2021-12-31  */
+	p_proc_current->task.regs.ecx = argc; /* argc */
+	*((u32*)(p_reg + ECXREG - P_STACKTOP)) = p_proc_current->task.regs.ecx;
+	p_proc_current->task.regs.edx = (u32)orig_stack; /* argv */
+	*((u32*)(p_reg + EDXREG - P_STACKTOP)) = p_proc_current->task.regs.edx;
+/*   end added   */
+
 
 	//u32 stack_lin_base = addr_lin=p_proc_current->task.memmap.stack_lin_base - num_4K;	//added vy mingxuan 2021-8-24
 	for (addr_lin = p_proc_current->task.memmap.stack_lin_base; addr_lin > p_proc_current->task.memmap.stack_lin_limit; addr_lin -= num_4K)
@@ -176,18 +293,50 @@ PUBLIC u32 kern_exec(char *path) //modified by mingxuan 2021-8-11
 
 	//堆    用户还没有申请，所以没有分配，只在PCB表里标示了线性起始位置
 
-	real_close(fd);	//added by mingxuan 2019-5-23
+	//real_close(fd);	//added by mingxuan 2019-5-23
 	//do_vclose(fd); //modified by mingxuan 2020-12-18
-	//kern_vclose(fd); //modified by mingxuan 2021-8-19
+	kern_vclose(fd); //modified by mingxuan 2021-8-19
 
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
 	//disp_color_str("]",0x72);//灰底绿字
 	//disp_free();	//for test, added by mingxuan 2021-1-7
-	
+
 	//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
+
 	return 0;
 }
+
+/*    added by xyx&&wjh  2021-12-31  */
+
+PRIVATE char *exec_path(char* path) 
+{
+	u32 arg_type = FILE_ATTR;
+	char default_fs_name[DEV_NAME_LEN] = DEFAULT_PATH;
+	int fsname_len = strlen(default_fs_name);
+	
+	int pathlen = strlen(path);
+	int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
+	//disp_int(len);
+	int i;
+    for(i=0;i<len;i++){
+        if( path[i] == '/'){
+            arg_type = PATH_ATTR;
+            break;
+        }
+    }
+
+	if(arg_type == FILE_ATTR)
+	{
+		for(i=len - 1; i>=0; i--)
+        	path[i + fsname_len] = path[i];
+		for(i=0; i<fsname_len; i++)
+        	path[i] = default_fs_name[i];
+    	path[len + fsname_len] = '\0';
+	}
+	return path;
+}
+/*   end added   */
 
 /*======================================================================*
 *                          exec_elfcpy		add by visual 2016.5.23
@@ -424,7 +573,8 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.memmap.stack_lin_base = StackLinBase;				   //栈基址
 	p_proc_current->task.memmap.stack_lin_limit = StackLinBase - 0x4000;	   //栈界限（使用时注意栈的生长方向）
 	p_proc_current->task.memmap.arg_lin_base = ArgLinBase;					   //参数内存基址
-	p_proc_current->task.memmap.arg_lin_limit = ArgLinBase;					   //参数内存界限
+	//p_proc_current->task.memmap.arg_lin_limit = ArgLinBase;	deleted byxyx&&wjh  2021-12-31				   //参数内存界限
+	p_proc_current->task.memmap.arg_lin_limit =  ArgLinLimitMAX;//added byxyx&&wjh  2021-12-31		
 	p_proc_current->task.memmap.kernel_lin_base = KernelLinBase;			   //内核基址
 	p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size; //内核大小初始化为8M
 

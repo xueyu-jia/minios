@@ -96,6 +96,7 @@ buildimg_mbr:
 	sudo cp -fv user/user/test_4.bin iso/
 	sudo cp -fv user/user/test_5.bin iso/
 	sudo cp -fv user/user/test_6.bin iso/
+	sudo cp -fv user/user/test_7.bin iso/
 
 	# added by yingchi 2022.01.05
 	# sudo cp -fv user/user/myTest.bin iso/

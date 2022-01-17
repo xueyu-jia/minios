@@ -89,8 +89,9 @@
 //#define NR_SYS_CALL     33    //modified by mingxuan 2021-2-7
 //#define NR_SYS_CALL     36	//modified by mingxuan 2021-2-28
 // #define NR_SYS_CALL       31	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
-#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API 
-#define NR_SYS_CALL       42	//modified by xiaofeng 2021-9-8     增加了1个关于内核锁测试的接口
+//#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API 
+//#define NR_SYS_CALL       42	//modified by xiaofeng 2022-1-10     增加了1个关于内核锁测试的接口
+#define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 /* TTY */
 //added by mingxuan 2019-5-19
 #define NR_CONSOLES	3	/* consoles */
