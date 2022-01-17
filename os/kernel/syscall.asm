@@ -68,6 +68,9 @@ _NR_msgctl			equ 40 ;		//added by yingchi	2021.12.20
 
 _NR_test			equ 41 ;
 
+_NR_execvp			equ 42 ;	//added by xyx&&wjh 2021.12.31
+_NR_execv			equ 43 ;	//added by xyx&&wjh 2021.12.31
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -86,6 +89,8 @@ global	pthread_create		;		//add by visual 2016.4.11
 global	udisp_int	;		//add by visual 2016.5.16
 global	udisp_str	;		//add by visual 2016.5.16
 global	exec		;		//add by visual 2016.5.16
+global	execvp		;		//added by xyx&&wjh 2021.12.31
+global	execv		;		//added by xyx&&wjh 2021.12.31
 global  yield		;		//added by xw
 global  sleep		;		//added by xw
 global	print_E		;		//added by xw
@@ -293,6 +298,36 @@ udisp_str:
 	ret
 
 ; ====================================================================
+;                              execvp	added by xyx&&wjh  2021-12-31
+; ====================================================================	
+execvp:
+	push 2			;the number of parameters
+	push ebx		;protect ebx
+	mov ebx, esp
+	add ebx, 4
+	mov	eax, _NR_execvp
+	int	INT_VECTOR_SYS_CALL
+	pop ebx			;restore ebx
+	add esp, 4
+	ret
+
+; ====================================================================
+;                              execv	
+; ====================================================================	
+execv:
+	push 2			;the number of parameters
+	push ebx		;protect ebx
+	mov ebx, esp
+	add ebx, 4
+	mov	eax, _NR_execv
+	int	INT_VECTOR_SYS_CALL
+	pop ebx			;restore ebx
+	add esp, 4
+	ret
+
+;end added   
+
+; ====================================================================
 ;                              exec		//add by visual 2016.5.16
 ; ====================================================================	
 ;exec:
@@ -302,7 +337,7 @@ udisp_str:
 ;	ret
 ;modified by mingxuan 2021-8-11
 exec:
-	push 1			;the number of parameters
+	push 3			;the number of parameters
 	push ebx		;protect ebx
 	mov ebx, esp
 	add ebx, 4

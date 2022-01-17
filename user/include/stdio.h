@@ -50,6 +50,10 @@ int deletedir(const char *);
 int readdir(const char *, unsigned int [3], char *);
 //~xw
 
+u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
+u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
+u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
+
 void test(int no);
 
 /*string.asm*/

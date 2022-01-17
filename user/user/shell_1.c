@@ -1,15 +1,12 @@
-#include "stdio.h"
-
-int global=1;   //added by mingxuan 2020-12-21
+#include "../include/stdio.h"
 
 void main(int arg,char *argv[])
 {
-  
-    printf("%d", get_pid());
-    //udisp_int(get_pid());
-
-	while(1);
-
-	return ;
-
+    char* exec_argv[6] = {"echo","hello","world","xyx","wjh",NULL};
+	printf("execvp->test:\n");
+	if(execv("fat0/test_7.bin", exec_argv)==-1)
+    {
+        printf("execv error");
+    }
+    while(1);
 }

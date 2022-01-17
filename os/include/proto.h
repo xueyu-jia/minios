@@ -97,7 +97,10 @@ PUBLIC int fork();						//add by visual 2016.4.8
 PUBLIC int pthread_create(void *arg);			//add by visual 2016.4.11
 PUBLIC void udisp_int(int arg);		//add by visual 2016.5.16
 PUBLIC void udisp_str(char* arg);	//add by visual 2016.5.16
-PUBLIC u32 exec(char* path);		//add by visual 2016.5.16
+// PUBLIC u32 exec(char* path);		//add by visual 2016.5.16
+PUBLIC u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31
+PUBLIC u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
+PUBLIC u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
 PUBLIC void yield();				//added by xw, 18/4/19
 PUBLIC void sleep(int n);			//added by xw, 18/4/19
 PUBLIC void print_E();
@@ -154,6 +157,8 @@ PUBLIC void sys_print_F();
 
 /*exec.c*/
 //PUBLIC u32 sys_exec(char* path);		//add by visual 2016.5.23
+PUBLIC u32 sys_execvp(void *uesp);      //added by xyx&&wjh 2021.12.31
+PUBLIC u32 sys_execv(void *uesp);       //added by xyx&&wjh 2021.12.31
 PUBLIC u32 sys_exec(void *uesp);    //modified by mingxuan 2021-8-11
 //PUBLIC u32 do_exec(char *path);     //added by mingxuan 2021-8-11
 

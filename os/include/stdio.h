@@ -23,6 +23,10 @@ int pthread_create(void *arg);
 void udisp_int(int arg);
 void udisp_str(char* arg);
 
+u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
+u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
+u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
+
 //added by xw
 /* file system */
 #define	MAX_FILENAME_LEN	12
