@@ -66,8 +66,10 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/signal.o \
 			os/kernel/buddy.o os/kernel/kmalloc.o \
 			os/kernel/syscallc.o \
+			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
 			os/ipc/shm.o os/ipc/msg.o \
-			os/klib/klib.a os/kernel/semaphore.o 
+			os/klib/klib.a os/kernel/semaphore.o \
+			
 #added by mingxuan 2021-2-28
 
 OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/stringc.o os/klib/stringasm.o os/klib/string.o
@@ -296,6 +298,13 @@ os/kernel/fs.o: os/kernel/fs.c os/include/type.h os/include/const.h os/include/p
 # spinlock.o	added by mingxuan 2019-1-5
 os/kernel/spinlock.o: os/kernel/spinlock.c os/include/spinlock.h
 	$(CC) -masm=intel $(CFLAGS) -o $@ $<
+
+# pthread_mutex.o	#added by ZengHao & MaLinhan 2021-12-23
+os/kernel/pthread_mutex.o: os/kernel/pthread_mutex.c os/include/spinlock.h
+	$(CC)  $(CFLAGS) -o $@ $<
+# pthread_cond.o	#added by ZengHao & MaLinhan 2021-12-23
+os/kernel/pthread_cond.o: os/kernel/pthread_cond.c os/include/spinlock.h
+	$(CC)  $(CFLAGS) -o $@ $<
 
 # fat32.o	added by mingxuan 2019-5-17
 os/kernel/fat32.o: os/kernel/fat32.c os/include/type.h os/include/const.h os/include/protect.h os/include/string.h os/include/proc.h \

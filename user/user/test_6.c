@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include "../include/stdio.h"
 #include "../include/pthread.h"
 int global=0;
 

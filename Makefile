@@ -98,6 +98,21 @@ buildimg_mbr:
 	sudo cp -fv user/user/test_6.bin iso/
 	sudo cp -fv user/user/test_7.bin iso/
 
+	sudo cp -fv user/user/ptest1.bin iso/
+	sudo cp -fv user/user/ptest2.bin iso/
+	sudo cp -fv user/user/ptest3.bin iso/
+	sudo cp -fv user/user/ptest4.bin iso/
+	sudo cp -fv user/user/ptest5.bin iso/
+	sudo cp -fv user/user/ptest6.bin iso/
+	sudo cp -fv user/user/ptest7.bin iso/
+	sudo cp -fv user/user/ptest8.bin iso/
+	sudo cp -fv user/user/ptest9.bin iso/
+	sudo cp -fv user/user/ptest10.bin iso/
+	sudo cp -fv user/user/ptest11.bin iso/
+	sudo cp -fv user/user/ptest12.bin iso/
+	sudo cp -fv user/user/ptest13.bin iso/
+
+
 	# added by yingchi 2022.01.05
 	# sudo cp -fv user/user/myTest.bin iso/
 	

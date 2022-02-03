@@ -64,7 +64,7 @@
 												 * it is not freed yet.
 												 * added by xw, 18/12/19
 												 */
-enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE};	//add FREE state which means this PCB is free, added by mingxuan 2021-9-21
+enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE};	//add FREE state which means this PCB is free, added by mingxuan 2021-9-21
 
 enum wait_exit_flag	{NORMAL,WAITING,ZOMBY};    		//used for exit and wait //added by mingxuan 2021-1-6
 
@@ -153,6 +153,8 @@ typedef struct s_proc {
     int priority;
 
 	u32 pid;                   /* process id passed in from MM */
+	pthread_t pthread_id;		//线程id Add By ZengHao & MaLinhan 21.12.22
+
 	char p_name[16];           /* name of the process */
 
 	enum proc_stat stat;			//add by visual 2016.4.5
@@ -161,6 +163,7 @@ typedef struct s_proc {
 
 	char cwd[MAX_PATH];                //added by ran
 
+	int suspended; 				//线程id Add By ZengHao & MaLinhan 21.12.22
 	//added by zcr
 	struct file_desc * filp[NR_FILES];
 	//~zcr

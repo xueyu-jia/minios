@@ -12,6 +12,7 @@ extern int tty;
 /*syscall.asm*/
 int get_ticks();
 int get_pid();	
+pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 
 /*  //deleted by mingxuan 2021-8-7
 void* kmalloc(int size);			
@@ -23,7 +24,7 @@ int free_4k(void* AdddrLin);
 */
 
 int fork();			
-int pthread_create(void *arg);	
+int pthread_create(int *thread, void *attr, void *entry, void *arg);	
 void udisp_int(int arg);
 void udisp_str(char* arg);
 

@@ -87,6 +87,7 @@ PUBLIC void clock_handler(int irq);
 PUBLIC void  sys_call();                /* int_handler */
 PUBLIC int   get_ticks();
 PUBLIC int   get_pid();					//add by visual 2016.4.6
+PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 PUBLIC void* kmalloc(int size);			//edit by visual 2016.5.9
 PUBLIC void* kmalloc_4k();				//edit by visual 2016.5.9
 // PUBLIC void* malloc(int size);			//edit by visual 2016.5.9
@@ -111,6 +112,18 @@ PUBLIC void *_shmat(void *uesp);             //added by xiaofeng 2021-9-8
 PUBLIC void _shmdt(void *uesp);               //added by xiaofeng 2021-9-8
 PUBLIC struct ipc_shm *shmctl(void *uesp);  //added by xiaofeng 2021-9-8
 PUBLIC void *shmmemcpy(void *uesp);         //added by xiaofeng 2021-9-8
+PUBLIC int pthread_mutex_init (pthread_mutex_t *mutex, pthread_mutexattr_t *mutexattr);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_mutex_destroy(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_mutex_lock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_mutex_unlock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_mutex_trylock(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_init(pthread_cond_t *cond,const pthread_condattr_t *cond_attr);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_timewait(pthread_cond_t *cond,pthread_mutex_t *mutex,int timeout);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_signal(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_broadcast(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+
 
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */
@@ -126,7 +139,6 @@ PUBLIC u32 sys_malloc_4k();                 //modified by mingxuan 2021-8-13
 PUBLIC int sys_free(void *arg);				//edit by visual 2016.5.9
 PUBLIC int sys_free_4k(void* AdddrLin);		//edit by visual 2016.5.9
 
-PUBLIC int sys_pthread_create(void *arg);		//add by visual 2016.4.11
 
 //PUBLIC void sys_udisp_int(int arg);		//add by visual 2016.5.16
 PUBLIC void sys_udisp_int(void *uesp);       //modified by mingxuan 2021-8-13
@@ -135,6 +147,24 @@ PUBLIC void sys_udisp_str(void *uesp);       //modified by mingxuan 2021-8-13
 
 PUBLIC u32 sys_total_mem_size();            //modified by wang 2021.8.26
 PUBLIC void sys_test(int no);//added by cjj 2021-12-25
+
+/*pthread.c*/
+
+PUBLIC int sys_pthread_create(void *arg);		//add by visual 2016.4.11
+PUBLIC pthread_t  sys_pthread_self();		//added by ZengHao & MaLinhan 21.12.23
+
+/* pthread_mutex.c pthread_cond.c */
+PUBLIC int sys_pthread_mutex_init (void* uesp);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_mutex_destroy(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_mutex_lock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_mutex_unlock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_mutex_trylock(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_init(void* uesp);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_wait(void* uesp);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_timewait(void* uesp);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_signal(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_broadcast(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+PUBLIC int sys_pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
 
 /* proc.c */
 PUBLIC PROCESS* alloc_PCB();
