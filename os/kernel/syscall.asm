@@ -71,6 +71,21 @@ _NR_test			equ 41 ;
 _NR_execvp			equ 42 ;	//added by xyx&&wjh 2021.12.31
 _NR_execv			equ 43 ;	//added by xyx&&wjh 2021.12.31
 
+_NR_pthread_self	equ 44 ;	//added by ZengHao & MaLinhan 2021.12.23
+
+_NR_pthread_mutex_init    		equ 45;     //added by ZengHao & MaLinhan 2021.12.23
+_NR_pthread_mutex_destroy 		equ 46;     //added by ZengHao & MaLinhan 2021.12.23
+_NR_pthread_mutex_lock    		equ 47;	  	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_mutex_unlock  		equ 48;	  	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_mutex_trylock 		equ 49; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_init 	  		equ 50; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_wait 	  		equ 51; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_signal 	  	equ 52; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_timewait 	  	equ 53; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_broadcast 	  	equ 54; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_pthread_cond_destroy	  	equ 55; 	//added by ZengHao & MaLinhan 2021.12.23	
+
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -135,6 +150,19 @@ global	msgctl		;		//added by yingchi	2021.12.20
 
 global test
 
+global  pthread_mutex_init			;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_mutex_destroy		;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_mutex_lock			;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_mutex_unlock		;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_mutex_trylock		;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_init			;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_wait			;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_signal			;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_timewait		;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_broadcast		;//added by ZengHao & MaLinhan 2021.12.23
+global  pthread_cond_destroy		;//added by ZengHao & MaLinhan 2021.12.23
+global	pthread_self				;//added by ZengHao & MaLinhan 2021.12.23
+
 bits 32
 [section .text]
 ; ====================================================================
@@ -153,6 +181,15 @@ get_pid:
 	int	INT_VECTOR_SYS_CALL
 	ret
 	
+; ====================================================================
+;                        pthread_self	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_self :
+	mov	eax, _NR_pthread_self
+	int	INT_VECTOR_SYS_CALL
+	ret
+
+
 ; ====================================================================
 ;                              kmalloc		//add by visual 2016.4.6
 ; ====================================================================
@@ -711,6 +748,111 @@ test:
 	mov eax,_NR_test
 	int INT_VECTOR_SYS_CALL
 	ret
+
+
+
+; ====================================================================
+;                        pthread_mutex_init	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_mutex_init:
+	push 2
+	mov ebx, esp
+	mov	eax, _NR_pthread_mutex_init
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                        pthread_mutex_destroy	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_mutex_destroy:
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_mutex_destroy
+	int	INT_VECTOR_SYS_CALL
+	ret
+; ====================================================================
+;                        pthread_mutex_lock	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_mutex_lock:
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_mutex_lock
+	int	INT_VECTOR_SYS_CALL
+	ret
+; ====================================================================
+;                        pthread_mutex_unlock	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_mutex_unlock :
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_mutex_unlock 
+	int	INT_VECTOR_SYS_CALL
+	ret
+
+; ====================================================================
+;                        pthread_mutex_trylock	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_mutex_trylock :
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_mutex_trylock
+	int	INT_VECTOR_SYS_CALL
+	ret
+
+
+; ====================================================================
+;                        pthread_cond_init	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_init:
+	push 2
+	mov ebx, esp
+	mov	eax, _NR_pthread_cond_init
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;                        pthread_cond_wait	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_wait:
+	push 2
+	mov ebx, esp
+	mov	eax, _NR_pthread_cond_wait
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+; ====================================================================
+;                        pthread_cond_timewait	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_timewait:
+	push 3
+	mov ebx, esp
+	mov	eax, _NR_pthread_cond_timewait
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+; ====================================================================
+;                        pthread_cond_signal	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_signal :
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_cond_signal
+	int	INT_VECTOR_SYS_CALL
+	ret
+; ====================================================================
+;                        pthread_cond_broadcast	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_broadcast :
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_cond_broadcast
+	int	INT_VECTOR_SYS_CALL
+	ret
+; ====================================================================
+;                        pthread_cond_destroy	//added by ZengHao & MaLinhan 2021.12.23
+; ====================================================================	
+pthread_cond_destroy :
+	mov ebx,[esp+4]
+	mov	eax, _NR_pthread_cond_destroy
+	int	INT_VECTOR_SYS_CALL
+	ret
+
 	
 %macro	SYS_CALL 1
 	push ebx

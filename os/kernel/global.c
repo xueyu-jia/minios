@@ -122,7 +122,21 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_msgctl,			//added by yingchi 2021.12.22
 														sys_test,
 														sys_execvp,			//added by xyx&&wjh 2021.12.31
-														sys_execv			//added by xyx&&wjh 2021.12.31
+														sys_execv,			//added by xyx&&wjh 2021.12.31
+														
+														sys_pthread_self,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_mutex_init,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_mutex_destroy,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_mutex_lock,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_mutex_unlock,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_mutex_trylock,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_cond_init,//add by ZengHao & MaLinhan 21.12.230
+														sys_pthread_cond_wait,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_cond_signal,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_cond_timewait,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_cond_broadcast,//add by ZengHao & MaLinhan 21.12.23
+														sys_pthread_cond_destroy//add by ZengHao & MaLinhan 21.12.23
+																											
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

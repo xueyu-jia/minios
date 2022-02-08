@@ -23,11 +23,17 @@ ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
 OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
 		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o user/user/test_4.o\
-		user/user/test_5.o user/user/test_6.o user/user/test_7.o user/user/sig_0.o user/user/sig_1.o user/user/userstart.o user/user/myTest.o
+		user/user/test_5.o user/user/test_6.o user/user/test_7.o user/user/sig_0.o user/user/sig_1.o user/user/userstart.o user/user/myTest.o\
+		user/user/fortest1.o user/user/fortest2.o user/user/fortest3.o user/user/fortest4.o user/user/fortest5.o \
+		user/user/fortest6.o user/user/fortest7.o user/user/fortest8.o user/user/fortest9.o user/user/fortest10.o \
+		user/user/fortest11.o user/user/fortest12.o user/user/fortest13.o
 
 ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
 			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
-			user/user/test_5.bin user/user/test_6.bin user/user/test_7.bin user/user/sig_0.bin user/user/sig_1.bin user/user/myTest.bin # modified by mingxuan 2021-2-28
+			user/user/test_5.bin user/user/test_6.bin user/user/test_7.bin user/user/sig_0.bin user/user/sig_1.bin user/user/myTest.bin \
+			user/user/ptest1.bin user/user/ptest2.bin user/user/ptest3.bin user/user/ptest4.bin user/user/ptest5.bin \
+			user/user/ptest6.bin user/user/ptest7.bin user/user/ptest8.bin user/user/ptest9.bin user/user/ptest10.bin \
+			user/user/ptest11.bin user/user/ptest12.bin user/user/ptest13.bin user/user/ptest13.gdb.bin
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
@@ -224,6 +230,87 @@ user/user/myTest.o: user/user/myTest.c user/include/stdio.h
 user/user/myTest.bin : user/user/myTest.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
+	
+user/user/fortest1.o: user/user/fortest1.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest1.bin : user/user/fortest1.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest2.o: user/user/fortest2.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest2.bin : user/user/fortest2.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest3.o: user/user/fortest3.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest3.bin : user/user/fortest3.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest4.o: user/user/fortest4.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest4.bin : user/user/fortest4.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest5.o: user/user/fortest5.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest5.bin : user/user/fortest5.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest6.o: user/user/fortest6.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest6.bin : user/user/fortest6.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest7.o: user/user/fortest7.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest7.bin : user/user/fortest7.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest8.o: user/user/fortest8.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest8.bin : user/user/fortest8.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest9.o: user/user/fortest9.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest9.bin : user/user/fortest9.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest10.o: user/user/fortest10.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest10.bin : user/user/fortest10.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest11.o: user/user/fortest11.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest11.bin : user/user/fortest11.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest12.o: user/user/fortest12.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest12.bin : user/user/fortest12.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/fortest13.o: user/user/fortest13.c user/include/stdio.h 
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/ptest13.bin : user/user/fortest13.o  user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/user/ptest13.gdb.bin : user/user/fortest13.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS_user_gdb) -o $@ $^
 
 
 

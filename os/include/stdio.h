@@ -11,7 +11,8 @@ extern int tty;
 
 /*syscall.asm*/
 int get_ticks();
-int get_pid();					
+int get_pid();				
+PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 void* kmalloc(int size);			
 void* kmalloc_4k();			
 void* malloc(int size);			

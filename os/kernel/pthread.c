@@ -146,6 +146,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		
 		//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
 		p_child->task.stat = READY;	
+		p_child->task.pthread_id=p_parent->task.info.child_t_num+1;//Add By ZengHao & MaLinhan 21.12.22
 	}
 	*thread = p_child->task.pid;
 	
@@ -283,3 +284,10 @@ PRIVATE int pthread_heap_init(PROCESS* p_child,PROCESS *p_parent)
 	p_child->task.memmap.heap_lin_limit = (u32)&(p_parent->task.memmap.heap_lin_limit);
 	return 0;
 }
+
+/* added by ZengHao & MaLinhan 2021.12.23  */
+PUBLIC pthread_t  sys_pthread_self()
+{
+	return p_proc_current->task.pthread_id;
+}
+/* 				end added  				   */
