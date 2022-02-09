@@ -7,8 +7,10 @@
 #define uint unsigned
 
 #define uint unsigned
-#define PTHREAD_MUTEX_INITIALIZER {{0},0,0,{0},0,0,"test"}
-#define PTHREAD_COND_INITIALIZER {{0},0,0,{0},"test"}
+// #define PTHREAD_MUTEX_INITIALIZER {{0},0,0,{0},0,0,"test"}
+// #define PTHREAD_COND_INITIALIZER {{0},0,0,{0},"test"}
+#define PTHREAD_MUTEX_INITIALIZER {{0,0,0,{0}},0,0,{0},0,0,"test"}
+#define PTHREAD_COND_INITIALIZER {{0,0,0,{0}},0,0,{0},"test"}
 #define queue_size 20
 
 typedef struct spinlock {
