@@ -57,6 +57,8 @@ void test1()
 		printf("mutex destroyed success\n");
 	else
 		printf("mutex destroyed fail\n");
+	
+	exit(0);
 	while (1)
 	{
 		/* code */
@@ -69,7 +71,7 @@ int main(int arg, char *argv[])
 	printf("mutex name is %s.\n", mutex.name);
 	printf("Init over!\n");
 	pthread_create(&ntid, NULL, test1, NULL);
-	sleep(0);
+	sleep(100);
 	exit(0);
 	return 0;
 }
