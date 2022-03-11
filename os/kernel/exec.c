@@ -449,10 +449,10 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部�
 	}
 
 	//added by mingxuan 2021-3-16
-	// if (lin_limit - lin_file_limit > 0)
-	// {
-	// 	memset(lin_addr, 0, lin_limit - lin_file_limit);
-	// }
+	if (lin_limit - lin_file_limit > 0)
+	{
+		memset(lin_file_limit, 0, lin_limit - lin_file_limit);
+	}
 
 	return 0;
 }
