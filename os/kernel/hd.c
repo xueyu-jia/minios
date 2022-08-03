@@ -475,7 +475,8 @@ PRIVATE void partition(int device, int style)
 			hdi->primary[dev_nr].size = part_tbl[i].nr_sects;
 
 			// added by mingxuan 2020-10-27
-			struct fs_flags *fs_flags_buf;
+			struct fs_flags fs_flags_real;
+			struct fs_flags *fs_flags_buf = &fs_flags_real;
 			get_fs_flags(drive, hdi->primary[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
 			if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
 				hdi->primary[dev_nr].fs_type = ORANGE_TYPE;
