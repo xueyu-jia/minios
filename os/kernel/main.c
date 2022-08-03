@@ -28,6 +28,7 @@
 #include "../include/fs.h"
 #include "../include/buddy.h"
 #include "../include/semaphore.h"
+#include "../include/ahci.h"
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -85,6 +86,8 @@ PUBLIC int kernel_main()
 	enable_irq(CLOCK_IRQ);					   /* 让8259A可以接收时钟中断 */
 
 	init_kb(); //added by mingxuan 2019-5-19
+
+	AHCI_init();
 
 	/* initialize hd-irq and hd rdwt queue */
 	init_hd();

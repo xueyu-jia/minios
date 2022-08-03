@@ -68,7 +68,7 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/syscallc.o \
 			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
 			os/ipc/shm.o os/ipc/msg.o \
-			os/klib/klib.a os/kernel/semaphore.o \
+			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
 			
 #added by mingxuan 2021-2-28
 
@@ -369,3 +369,6 @@ os/ipc/msg.o: os/ipc/msg.c os/include/msg.h os/include/proto.h
 # semaphore.o	added by mingxuan 2019-1-5
 os/kernel/semaphore.o: os/kernel/semaphore.c os/include/semaphore.h os/include/spinlock.h
 	$(CC) -masm=intel $(CFLAGS) -o $@ $<
+
+os/kernel/ahci.o: os/kernel/ahci.c os/include/ahci.h
+	$(CC) $(CFLAGS) -o $@ $<

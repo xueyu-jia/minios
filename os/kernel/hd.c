@@ -33,12 +33,14 @@
 #include "../include/hd.h"
 #include "../include/fs.h"
 #include "../include/fs_misc.h"
+#include "../include/ahci.h"
 
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
 PRIVATE volatile int hd_int_waiting_flag;
 PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
+PRIVATE u8 hd_LBA48_sup[4]={0,0,0,0};
 //PRIVATE	struct hd_info hd_info[1];
 PUBLIC	struct hd_info hd_info[4];		//modified by mingxuan 2020-10-27
 
@@ -52,7 +54,7 @@ PRIVATE void partition(int device, int style);
 PRIVATE void print_hdinfo(struct hd_info *hdi);
 PRIVATE void hd_identify(int drive);
 PRIVATE void print_identify_info(u16 *hdinfo);
-PRIVATE void hd_cmd_out(struct hd_cmd *cmd);
+PRIVATE void hd_cmd_out(struct hd_cmd *cmd,int drive);
 
 PRIVATE void inform_int();
 PRIVATE void interrupt_wait();
@@ -108,7 +110,33 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 	//disp_str("\n");			//deleted by mingxuan 2019-5-20
 	
 	//int drive = DRV_OF_DEV(device); //deleted by mingxuan 2020-10-27
-	hd_identify(drive);
+
+	if (ahci_info[0].is_AHCI_MODE)//SATA
+	{
+		u32 buffer=K_PHY2LIN(do_kmalloc(513));
+		memset(buffer,0,513);
+		u8* buf=buffer/2*2;
+		u32 port_num=ahci_info[0].satadrv_atport[drive];
+		identity_SATA(&(HBA->ports[port_num]),buf);
+
+		// print_identify_info((u16*)buf);
+		u16* hdinfo = (u16*)buf;
+		int cmd_set_supported = hdinfo[83];
+		// disp_str("LBA48 supported:");
+		if((cmd_set_supported & 0x0400)){
+			hd_LBA48_sup[drive]=1;
+			// disp_str("YES  ");
+		}//by zql 2022.4.26
+		hd_info[drive].primary[0].base = 0;
+		/* Total Nr of User Addressable Sectors */
+		hd_info[drive].primary[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+		do_kfree(K_LIN2PHY(buf));
+	}
+	else
+	{
+		hd_identify(drive);
+	}
+	
 
 	if (hd_info[drive].open_cnt++ == 0) {
 		partition(drive << 4, P_PRIMARY);
@@ -142,6 +170,20 @@ PUBLIC void hd_close(int device)
  *****************************************************************************/
 PUBLIC void hd_rdwt(MESSAGE * p)
 {
+	u32 n=(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
+	if (ahci_info[0].is_AHCI_MODE)
+	{	u8* buffer=do_kmalloc(n*512+1);
+		memset(K_PHY2LIN(buffer),0,n*512+1);
+		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		SATA_rdwt(p,buffer_aligned);
+		void * la = (void*)va2la(p->PROC_NR, p->BUF);
+		memcpy(la,
+	       	   K_PHY2LIN(buffer_aligned) ,
+	           SECTOR_SIZE);
+		do_kfree(buffer);
+		return 1;
+	}
+
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 	u64 pos = p->POSITION;
@@ -164,7 +206,9 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 
 	//We only allow to R/W from a SECTOR boundary:
 
-	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
+	// u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
+	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+
 	// int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
 	// sect_nr += p->DEVICE < MAX_PRIM ?
 	// 	hd_info[drive].primary[p->DEVICE].base :
@@ -178,9 +222,22 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 	cmd.lba_low	= sect_nr & 0xFF;
 	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-	cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
-	cmd.command	= (p->type == DEV_READ) ? ATA_READ : ATA_WRITE;
-	hd_cmd_out(&cmd);
+
+	if(hd_LBA48_sup==1){//LBA48
+		cmd.count_LBA48		= (n>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;
+		cmd.device	= 0x40|((drive<<4)&0xFF);//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	= (p->type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
+		cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
+		cmd.command	= (p->type == DEV_READ) ? ATA_READ : ATA_WRITE;
+	}
+
+	// hd_cmd_out(&cmd);
+	hd_cmd_out(&cmd,drive);
 
 	int bytes_left = p->CNT;
 	void * la = (void*)va2la(p->PROC_NR, p->BUF);
@@ -254,7 +311,22 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 
 	//We only allow to R/W from a SECTOR boundary:
 
-	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
+	// u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
+	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+
+	if (ahci_info[0].is_AHCI_MODE)//SATA read or write
+	{	u8* buffer=do_kmalloc(n*512+1);
+		memset(K_PHY2LIN(buffer),0,n*512+1);
+		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		SATA_rdwt(p->msg,buffer_aligned);
+		void * la = p->kbuf;
+		memcpy(la,
+	       	   K_PHY2LIN(buffer_aligned) ,
+	           SECTOR_SIZE);
+		do_kfree(buffer);
+		return 1;
+	}
+
 	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
 	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
 	// 	hd_info[drive].primary[p->msg->DEVICE].base :
@@ -264,13 +336,25 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
-	cmd.count	= (p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	// cmd.count	= (p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	cmd.count = n & 0xFF;
 	cmd.lba_low	= sect_nr & 0xFF;
 	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-	cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
-	cmd.command	= (p->msg->type == DEV_READ) ? ATA_READ : ATA_WRITE;
-	hd_cmd_out(&cmd);
+
+	if(hd_LBA48_sup[drive]==1){//LBA48
+		cmd.count_LBA48		= (n>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;
+		cmd.device	= 0x40|((drive<<4)&0xFF);//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	= (p->msg->type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
+		cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
+		cmd.command	= (p->msg->type == DEV_READ) ? ATA_READ : ATA_WRITE;
+	}
+	hd_cmd_out(&cmd,drive);
 
 	int bytes_left = p->msg->CNT;
 	void *la = p->kbuf;	//attention here!
@@ -413,17 +497,41 @@ PRIVATE void get_part_table(int drive, int sect_nr, struct part_ent * entry)
 	cmd.lba_low	= sect_nr & 0xFF;
 	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
+
+	if(hd_LBA48_sup[drive]==1){//LBA48
+		cmd.count_LBA48		= (1>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
+		cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	=ATA_READ_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
 	cmd.device	= MAKE_DEVICE_REG(1, /* LBA mode*/
 					  drive,
 					  (sect_nr >> 24) & 0xF);
 	cmd.command	= ATA_READ;
-	hd_cmd_out(&cmd);
+	}
+
+	if (ahci_info[0].is_AHCI_MODE)//SATA
+	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
+		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		sata_fs_rd(&cmd,drive,buffer_aligned);
+		memcpy(entry,
+	       K_PHY2LIN(buffer_aligned) + PARTITION_TABLE_OFFSET,
+	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
+		do_kfree(buffer);
+	}
+	else{//IDE
+	hd_cmd_out(&cmd,drive);
 	interrupt_wait();
 
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 	memcpy(entry,
 	       hdbuf + PARTITION_TABLE_OFFSET,
 	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
+	}
 }
 
 // added by mingxuan 2020-10-27
@@ -435,17 +543,41 @@ PRIVATE void get_fs_flags(int drive, int sect_nr, struct fs_flags * fs_flags_buf
 	cmd.lba_low		= sect_nr & 0xFF;
 	cmd.lba_mid		= (sect_nr >>  8) & 0xFF;
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-	cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
-					  drive,
-					  (sect_nr >> 24) & 0xF);
-	cmd.command	= ATA_READ;
-	hd_cmd_out(&cmd);
-	interrupt_wait();
 
-	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-	memcpy(fs_flags_buf,
-	       hdbuf,
-	       sizeof(struct fs_flags));
+	if(hd_LBA48_sup[drive]==1){//LBA48
+		cmd.count_LBA48		= (1>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
+		cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	=ATA_READ_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
+		cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
+						drive,
+						(sect_nr >> 24) & 0xF);
+		cmd.command	= ATA_READ;
+	}
+
+	if (ahci_info[0].is_AHCI_MODE)//SATA
+	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
+		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		sata_fs_rd(&cmd,drive,buffer_aligned);
+		memcpy(fs_flags_buf,
+	       	   K_PHY2LIN(buffer_aligned) ,
+	           sizeof(struct fs_flags));
+		do_kfree(buffer);
+	}
+	else{//IDE
+		hd_cmd_out(&cmd,drive);
+		interrupt_wait();
+
+		port_read(REG_DATA, hdbuf, SECTOR_SIZE);
+		memcpy(fs_flags_buf,
+			hdbuf,
+			sizeof(struct fs_flags));
+	}
 }
 
 // added by ran
@@ -458,12 +590,35 @@ PRIVATE int is_fat32_part(int drive, int sect_nr)
 	cmd.lba_low		= sect_nr & 0xFF;
 	cmd.lba_mid		= (sect_nr >>  8) & 0xFF;
 	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-	cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
-					  drive,
-					  (sect_nr >> 24) & 0xF);
-	cmd.command	= ATA_READ;
-	hd_cmd_out(&cmd);
-	interrupt_wait();
+
+	if(hd_LBA48_sup[drive]==1){//LBA48
+		cmd.count_LBA48		= (1>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
+		cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	=ATA_READ_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
+		cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
+						drive,
+						(sect_nr >> 24) & 0xF);
+		cmd.command	= ATA_READ;
+	}
+	if (ahci_info[0].is_AHCI_MODE)//SATA
+	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
+		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		sata_fs_rd(&cmd,drive,buffer_aligned);
+		memcpy(hdbuf,
+	       	   K_PHY2LIN(buffer_aligned) ,
+	           SECTOR_SIZE);
+		do_kfree(buffer);
+	}
+	else{//IDE
+		hd_cmd_out(&cmd,drive);
+		interrupt_wait();
+	}
 
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 
@@ -672,13 +827,21 @@ PRIVATE void hd_identify(int drive)
 	struct hd_cmd cmd;
 	cmd.device  = MAKE_DEVICE_REG(0, drive, 0);
 	cmd.command = ATA_IDENTIFY;
-	hd_cmd_out(&cmd);
+	hd_cmd_out(&cmd,drive	);
 	interrupt_wait();
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 
 	//print_identify_info((u16*)hdbuf);	//deleted by mingxuan 2021-2-7
 
 	u16* hdinfo = (u16*)hdbuf;
+
+	int cmd_set_supported = hdinfo[83];
+
+	// disp_str("LBA48 supported:");
+	if((cmd_set_supported & 0x0400)){
+		hd_LBA48_sup[drive]=1;
+		// disp_str("YES  ");
+	}//by zql 2022.4.26
 
 	hd_info[drive].part[0].base = 0;
 	/* Total Nr of User Addressable Sectors */
@@ -750,7 +913,7 @@ PRIVATE void print_identify_info(u16* hdinfo)
  * 
  * @param cmd  The command struct ptr.
  *****************************************************************************/
-PRIVATE void hd_cmd_out(struct hd_cmd* cmd)
+PRIVATE void hd_cmd_out(struct hd_cmd* cmd,int drive)
 {
 	/**
 	 * For all commands, the host must first check if BSY=1,
@@ -762,6 +925,16 @@ PRIVATE void hd_cmd_out(struct hd_cmd* cmd)
 
 	/* Activate the Interrupt Enable (nIEN) bit */
 	out_byte(REG_DEV_CTRL, 0);
+
+
+	if(hd_LBA48_sup[drive]==1){//若是大硬盘，则LBA48第一次写
+		out_byte(REG_FEATURES, cmd->features);
+		out_byte(REG_NSECTOR,  cmd->count_LBA48);
+		out_byte(REG_LBA_LOW,  cmd->lba_low_LBA48);
+		out_byte(REG_LBA_MID,  cmd->lba_mid_LBA48);
+		out_byte(REG_LBA_HIGH, cmd->lba_high_LBA48);
+	}//by qianglong 2022.4.26
+
 	/* Load required parameters in the Command Block Registers */
 	out_byte(REG_FEATURES, cmd->features);
 	out_byte(REG_NSECTOR,  cmd->count);
@@ -888,4 +1061,221 @@ PRIVATE void inform_int()
 {
 	hd_int_waiting_flag = 0;
 	return;
+}
+
+
+
+PUBLIC void sata_fs_rd(struct hd_cmd* cmd,int drive,void* buf){
+	// void buffer=do_kmalloc(cmd->count*512+1);
+	// void buffer_aligned=buffer&0xfffffffe;//aligned to word
+	int port_num=ahci_info[0].satadrv_atport[drive];
+	HBA_PORT *port=&(HBA->ports[port_num]);
+	port->is = (u32) -1;		// Clear pending interrupt bits
+
+	
+	int slot = find_cmdslot(port);
+	if (slot == -1)
+		return 0;
+
+	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
+
+	cmdheader += slot;
+	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
+	cmdheader->w = 0;		// 0:device to host,read ;1:host to device,write
+	cmdheader->c = 1;               
+    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+	cmdheader->prdbc = 0;
+	cmdheader->prdtl =  1;	// PRDT entries count
+ 
+	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
+	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
+ 		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
+ 
+	int i=0;
+	cmdtbl->prdt_entry[i].dba = (u32)(buf);;
+	cmdtbl->prdt_entry[i].dbc = 512-1;	// 512 bytes per sector
+	cmdtbl->prdt_entry[i].i = 0;
+
+ 
+	// Setup command
+	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+ 
+	cmdfis->fis_type = FIS_TYPE_REG_H2D;
+	cmdfis->c = 1;	// Command
+
+	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+ 	cmdfis->command = ATA_CMD_READ_DMA_EX ;
+
+	cmdfis->lba0 = cmd->lba_low;
+	cmdfis->lba1 = cmd->lba_mid;
+	cmdfis->lba2 = cmd->lba_high;
+	cmdfis->device = 1<<6;	// LBA mode
+ 
+	cmdfis->lba3 = cmd->lba_low_LBA48;
+	cmdfis->lba4 = cmd->lba_mid_LBA48;
+	cmdfis->lba5 = cmd->lba_high_LBA48;
+ 
+	cmdfis->countl = cmd->count & 0xFF;
+	cmdfis->counth = (cmd->count >> 8) & 0xFF;
+ 
+	// The below loop waits until the port is no longer busy before issuing a new command
+	int spin = 0; // Spin lock timeout counter
+	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
+	{
+		spin++;
+	}
+	if (spin == 1000000)
+	{
+		disp_str("\nPort is hung");
+		return FALSE;
+	}
+
+	// Issue command
+	port->ci = 1<<slot;	
+	
+	// Wait for completion
+	while (1)
+	{
+
+		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == 512)*/){
+			disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+			disp_str("\nport_is:");disp_int(port->is);
+			// disp_str("\nport_ie:");disp_int(port->ie);
+			break;
+		}
+	}
+		// Check again
+	if (port->is & HBA_PxIS_TFES)
+	{
+		// disp_str("Read disk error,restart port\n");
+	
+		tf_err_rec(port);
+		return FALSE;
+	}
+
+
+	return 1;
+}
+PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
+{	
+
+	int drive = DRV_OF_DEV(p->DEVICE);
+
+	int port_num=ahci_info[0].satadrv_atport[drive];
+	HBA_PORT *port=&(HBA->ports[port_num]);
+	port->is = (u32) -1;		// Clear pending interrupt bits
+
+
+	int slot = find_cmdslot(port);
+	if (slot == -1)
+		return 0;
+	u64 pos = p->POSITION;
+	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
+
+	int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+	sect_nr += p->DEVICE < MAX_PRIM ?
+		hd_info[drive].primary[p->DEVICE].base :
+		hd_info[drive].logical[logidx].base;
+
+	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+
+	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
+
+	cmdheader += slot;
+	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
+	cmdheader->w = (p->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
+	cmdheader->c = 1;               
+    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+	cmdheader->prdbc = 0;
+	cmdheader->prdtl =  1;	// PRDT entries count
+ 
+	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
+	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
+ 		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
+ 
+	int i=0;
+	for ( i=0; i<cmdheader->prdtl-1; i++)
+	{
+		cmdtbl->prdt_entry[i].dba = (u32)(buf);
+		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
+		cmdtbl->prdt_entry[i].i = 0 ;
+		buf += 8*1024;	// 8k bytes
+		count -= 16;	// 16 sectors
+	}
+	// Last entry202.117.249.6
+	cmdtbl->prdt_entry[i].dba = (u32)(buf);
+	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
+	cmdtbl->prdt_entry[i].i = 0;
+
+	// Setup command
+	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+ 
+	cmdfis->fis_type = FIS_TYPE_REG_H2D;
+	cmdfis->c = 1;	// Command
+
+	// cmdfis->command = (p->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+ 	cmdfis->command = (p->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+	
+	cmdfis->lba0 = sect_nr & 0xFF;
+	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
+	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
+	cmdfis->device = 1<<6;	// LBA mode
+ 
+	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
+	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
+	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
+ 
+	cmdfis->countl = count & 0xFF;
+	cmdfis->counth = (count >> 8) & 0xFF;
+ 
+	// The below loop waits until the port is no longer busy before issuing a new command
+	int spin = 0; // Spin lock timeout counter
+	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
+	{
+		spin++;
+	}
+	if (spin == 1000000)
+	{
+		disp_str("\nPort is hung");
+		return FALSE;
+	}
+
+	// Issue command
+	port->ci = 1<<slot;	
+	// Wait for completion
+	while (1)
+	{
+		// In some longer duration reads, it may be helpful to spin on the DPS bit 
+		// in the PxIS port field as well (1 << 5)
+		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
+			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+			disp_str("\nport_is:");disp_int(port->is);
+			break;}
+	}
+ 
+	// Check again
+	if (port->is & HBA_PxIS_TFES)
+	{
+		// disp_str("Read disk error\n");
+		tf_err_rec(port);
+		return FALSE;
+	}
+	//  if(rw==0){
+	// // 	memcpy(rbuf,buf,512);
+	// 	disp_str("\nread:");
+	// 	 for (int i = 0; i < 16; i++)
+	// 	 {	if(i%16==0)disp_str("\n");
+	// 		disp_int(buf[i]);
+			
+	// 	 }
+		
+		
+		// }
+	// else	disp_str("\nwrite success");
+	// do_kfree(K_LIN2PHY(buf));
+	return 1;
 }
