@@ -262,8 +262,9 @@ struct part_info {
 struct hd_info
 {
 	int					open_cnt;
-	struct part_info	primary[NR_PRIM_PER_DRIVE];	// NR_PRIM_PER_DRIVE = 5
-	struct part_info	logical[NR_SUB_PER_DRIVE];	// NR_SUB_PER_DRIVE = 16 *4 =64
+	struct part_info	part[NR_PRIM_PER_DRIVE + NR_SUB_PER_PART];
+	// struct part_info	primary[NR_PRIM_PER_DRIVE];	// NR_PRIM_PER_DRIVE = 5
+	// struct part_info	logical[NR_SUB_PER_DRIVE];	// NR_SUB_PER_DRIVE = 16 *4 =64
 };
 
 

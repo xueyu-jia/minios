@@ -40,7 +40,7 @@ PRIVATE volatile int hd_int_waiting_flag;
 PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
 //PRIVATE	struct hd_info hd_info[1];
-PUBLIC	struct hd_info hd_info[1];		//modified by mingxuan 2020-10-27
+PUBLIC	struct hd_info hd_info[4];		//modified by mingxuan 2020-10-27
 
 PRIVATE void init_hd_queue(HDQueue *hdq);
 PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p);
@@ -60,9 +60,7 @@ PRIVATE void hd_handler(int irq);
 PRIVATE int  waitfor(int mask, int val, int timeout);
 //~xw
 
-#define	DRV_OF_DEV(dev) (dev <= MAX_PRIM ? \
-			 dev / NR_PRIM_PER_DRIVE : \
-			 (dev - MINOR_hd1a) / NR_SUB_PER_DRIVE)
+#define	DRV_OF_DEV(dev) ((dev&0xF0)>>4)
 
 /*****************************************************************************
  *                                init_hd
@@ -113,7 +111,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 	hd_identify(drive);
 
 	if (hd_info[drive].open_cnt++ == 0) {
-		partition(drive * (NR_PART_PER_DRIVE + 1), P_PRIMARY);
+		partition(drive << 4, P_PRIMARY);
 		//print_hdinfo(&hd_info[drive]);	//deleted by mingxuan 2021-2-7
 	}
 }
@@ -148,13 +146,31 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 
 	u64 pos = p->POSITION;
 
+	int device_type = (p->DEVICE & 0x0F00)>>8;
+
+	switch (device_type)
+	{
+	case DEV_HD:
+		/* code */
+		break;
+
+	case DEV_SATA:
+		return;
+		break;
+
+	default:
+		break;
+	}
+
 	//We only allow to R/W from a SECTOR boundary:
 
 	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
-	int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	sect_nr += p->DEVICE < MAX_PRIM ?
-		hd_info[drive].primary[p->DEVICE].base :
-		hd_info[drive].logical[logidx].base;
+	// int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+	// sect_nr += p->DEVICE < MAX_PRIM ?
+	// 	hd_info[drive].primary[p->DEVICE].base :
+	// 	hd_info[drive].logical[logidx].base;
+
+	sect_nr += hd_info[drive].part[p->DEVICE & 0x0F].base;
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
@@ -218,15 +234,33 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 {
 	int drive = DRV_OF_DEV(p->msg->DEVICE);
 
+	int device_type = (p->msg->DEVICE & 0x0F00)>>8;
+
+	switch (device_type)
+	{
+	case DEV_HD:
+		/* code */
+		break;
+
+	case DEV_SATA:
+		return;
+		break;
+
+	default:
+		break;
+	}
+
 	u64 pos = p->msg->POSITION;
 
 	//We only allow to R/W from a SECTOR boundary:
 
 	u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
-	int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	sect_nr += p->msg->DEVICE < MAX_PRIM ?
-		hd_info[drive].primary[p->msg->DEVICE].base :
-		hd_info[drive].logical[logidx].base;
+	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
+	// 	hd_info[drive].primary[p->msg->DEVICE].base :
+	// 	hd_info[drive].logical[logidx].base;
+
+	sect_nr += hd_info[drive].part[p->msg->DEVICE & 0x0F].base;
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
@@ -338,18 +372,21 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
  *****************************************************************************/
 PUBLIC void hd_ioctl(MESSAGE * p)
 {
-	int device = p->DEVICE;
-	int drive = DRV_OF_DEV(device);
+	int device = p->DEVICE & 0xF;
+	int drive = DRV_OF_DEV(p->DEVICE);
+
 
 	struct hd_info * hdi = &hd_info[drive];
 
 	if (p->REQUEST == DIOCTL_GET_GEO) {
 		void * dst = va2la(p->PROC_NR, p->BUF);
-		void * src = va2la(proc2pid(p_proc_current),
-				   device < MAX_PRIM ?
-				   &hdi->primary[device] :
-				   &hdi->logical[(device - MINOR_hd1a) %
-						NR_SUB_PER_DRIVE]);
+		// void * src = va2la(proc2pid(p_proc_current),
+		// 		   device < MAX_PRIM ?
+		// 		   &hdi->primary[device] :
+		// 		   &hdi->logical[(device - MINOR_hd1a) %
+		// 				NR_SUB_PER_DRIVE]);
+
+		void *src = va2la(proc2pid(p_proc_current), &hdi->part[device]);
 
 		phys_copy(dst, src, sizeof(struct part_info));
 	}
@@ -457,7 +494,7 @@ PRIVATE void partition(int device, int style)
 	struct hd_info * hdi = &hd_info[drive];
 
 	// added by ran
-	struct part_info *logical = hdi->logical;
+	struct part_info *logical = hdi->part;
 
 	struct part_ent part_tbl[NR_SUB_PER_DRIVE];
 
@@ -471,15 +508,15 @@ PRIVATE void partition(int device, int style)
 
 			nr_prim_parts++;
 			int dev_nr = i + 1;		  /* 1~4 */
-			hdi->primary[dev_nr].base = part_tbl[i].start_sect;
-			hdi->primary[dev_nr].size = part_tbl[i].nr_sects;
+			hdi->part[dev_nr].base = part_tbl[i].start_sect;
+			hdi->part[dev_nr].size = part_tbl[i].nr_sects;
 
 			// added by mingxuan 2020-10-27
 			struct fs_flags fs_flags_real;
 			struct fs_flags *fs_flags_buf = &fs_flags_real;
-			get_fs_flags(drive, hdi->primary[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
+			get_fs_flags(drive, hdi->part[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
 			if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-				hdi->primary[dev_nr].fs_type = ORANGE_TYPE;
+				hdi->part[dev_nr].fs_type = ORANGE_TYPE;
 
 			// comment added by ran 2021-01-15
 			// 这里的逻辑是判断分区的1号扇区是否有FAT32文件系统的标记，
@@ -499,9 +536,9 @@ PRIVATE void partition(int device, int style)
 			// added end, mingxuan 2020-10-27
 
 			// added by ran
-			else if (is_fat32_part(drive, hdi->primary[dev_nr].base))
+			else if (is_fat32_part(drive, hdi->part[dev_nr].base))
 			{
-				hdi->primary[dev_nr].fs_type = FAT32_TYPE;
+				hdi->part[dev_nr].fs_type = FAT32_TYPE;
 			}
 
 
@@ -510,13 +547,13 @@ PRIVATE void partition(int device, int style)
 		}
 	}
 	else if (style == P_EXTENDED) {
-		int j = device % NR_PRIM_PER_DRIVE; /* 1~4 */
-		int ext_start_sect = hdi->primary[j].base;
+		int j = (device & 0x0F); /* 1~4 */
+		int ext_start_sect = hdi->part[j].base;
 		int s = ext_start_sect;
-		int nr_1st_sub = (j - 1) * NR_SUB_PER_PART; /* 0/16/32/48 */
+		int nr_1st_sub = 5; /* 扩展分区第一个分区号是5 */
 
 		for (i = 0; i < NR_SUB_PER_PART; i++) {
-			int dev_nr = nr_1st_sub + i;/* 0~15/16~31/32~47/48~63 */
+			int dev_nr = nr_1st_sub + i;/* 5~*/
 
 			get_part_table(drive, s, part_tbl);
 
@@ -527,7 +564,7 @@ PRIVATE void partition(int device, int style)
 			logical[dev_nr].size = part_tbl[0].nr_sects;
 
 			// added by ran
-			int boot_sec = hdi->logical[dev_nr].base;
+			int boot_sec = hdi->part[dev_nr].base;
 
 			// added by mingxuan 2020-10-29
 			struct fs_flags fs_flags_real;
@@ -595,13 +632,13 @@ PRIVATE void print_hdinfo(struct hd_info * hdi)
 		disp_str("PART_");
 		disp_int(i);
 		disp_str(": base ");
-		disp_int(hdi->primary[i].base);
+		disp_int(hdi->part[i].base);
 		disp_str("), size");
-		disp_int(hdi->primary[i].size);
+		disp_int(hdi->part[i].size);
 		disp_str(" (in sector)\n");
 	}
-	for (i = 0; i < NR_SUB_PER_DRIVE; i++) {
-		if (hdi->logical[i].size == 0)
+	for (i = NR_PRIM_PER_DRIVE; i < NR_SUB_PER_PART+NR_PRIM_PER_DRIVE; i++) {
+		if (hdi->part[i].size == 0)
 			continue;
 		// printl("         "
 		//        "%d: base %d(0x%x), size %d(0x%x) (in sector)\n",
@@ -610,15 +647,15 @@ PRIVATE void print_hdinfo(struct hd_info * hdi)
 		//        hdi->logical[i].base,
 		//        hdi->logical[i].size,
 		//        hdi->logical[i].size);
-		/* //deleted by mingxuan 2021-2-7
+		//deleted by mingxuan 2021-2-7
 		disp_str("         ");
 		disp_int(i);
 		disp_str(": base ");
-		disp_int(hdi->logical[i].base);
+		disp_int(hdi->part[i].base);
 		disp_str(", size ");
-		disp_int(hdi->logical[i].size);
+		disp_int(hdi->part[i].size);
 		disp_str(" (in sector)\n");
-		*/
+		
 	}
 }
 
@@ -643,9 +680,9 @@ PRIVATE void hd_identify(int drive)
 
 	u16* hdinfo = (u16*)hdbuf;
 
-	hd_info[drive].primary[0].base = 0;
+	hd_info[drive].part[0].base = 0;
 	/* Total Nr of User Addressable Sectors */
-	hd_info[drive].primary[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+	hd_info[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
 }
 
 /*****************************************************************************

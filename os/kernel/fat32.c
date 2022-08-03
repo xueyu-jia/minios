@@ -766,14 +766,14 @@ PUBLIC void init_all_fat(int drive)
 	int i;
 	for(i = 0; i < NR_PRIM_PER_DRIVE; i++)
 	{
-		if(hd_info[drive].primary[i].fs_type == FAT32_TYPE)
+		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
 		init_fs_fat((DEV_HD << MAJOR_SHIFT) | i);
 	}
 
-	for(i = 0; i < NR_SUB_PER_DRIVE; i++)
+	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
-		if(hd_info[drive].logical[i].fs_type == FAT32_TYPE)
-		init_fs_fat((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
+		init_fs_fat((DEV_HD << MAJOR_SHIFT) | i);
 	}
 
 	for (i = 0; i < NR_FILE_DESC; ++i) {
@@ -1042,6 +1042,7 @@ PUBLIC int rw_sector_fat(int io_type, int dev, u64 pos, int bytes, int proc_nr, 
 
 	driver_msg.type		= io_type;
 	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
 	driver_msg.PROC_NR	= proc_nr;
@@ -1056,7 +1057,8 @@ PUBLIC int rw_sector_sched_fat(int io_type, int dev, int pos, int bytes, int pro
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
 	driver_msg.PROC_NR	= proc_nr;

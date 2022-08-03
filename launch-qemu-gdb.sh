@@ -7,6 +7,6 @@
 # -gdb tcp::1234 -S -monitor stdio
 
 # modified by mingxuan 2021-8-8
-gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
+# gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
 qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
 -gdb tcp::1234 -S -monitor stdio

@@ -45,6 +45,7 @@
 #define	DEV_HD			3
 #define	DEV_CHAR_TTY	4
 #define	DEV_SCSI		5
+#define	DEV_SATA		6
 
 /* make device number from major and minor numbers */
 #define	MAJOR_SHIFT		8
@@ -60,7 +61,7 @@
 
 #define	MAX_DRIVES			2
 #define	NR_PART_PER_DRIVE	4	// 每块硬盘(驱动器)只能有4个主分区, mingxuan
-#define	NR_SUB_PER_PART		16	// 每个扩展分区最多有16个逻辑分区, mingxuan
+#define	NR_SUB_PER_PART		11	// 扩展分区最多有11个逻辑分区, mingxuan
 #define	NR_SUB_PER_DRIVE	(NR_SUB_PER_PART * NR_PART_PER_DRIVE) //每块硬盘(驱动器)最多有16 * 4 = 64个逻辑分区, mingxuan
 #define	NR_PRIM_PER_DRIVE	(NR_PART_PER_DRIVE + 1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待, mingxuan
 

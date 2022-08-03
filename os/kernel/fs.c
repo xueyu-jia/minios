@@ -109,39 +109,39 @@ PRIVATE int strcmp(const char *s1, const char *s2);
 
 
 // added by mingxuan 2020-10-27
-/*
-int get_fs_dev(int drive, int fs_type)
-{
-	int i=0;
-	for(i=0; i < NR_PRIM_PER_DRIVE; i++)
-	{
-		if(hd_info[drive].primary[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | i);
-	}
 
-	//added by mingxuan 2020-10-29
-	for(i=0; i < NR_SUB_PER_DRIVE; i++)
-	{
-		if(hd_info[drive].logical[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
-	}
-}
-*/
+// int get_fs_dev(int drive, int fs_type)
+// {
+// 	int i=0;
+// 	for(i=0; i < NR_PRIM_PER_DRIVE; i++)
+// 	{
+// 		if(hd_info[drive].primary[i].fs_type == fs_type)
+// 		return ((DEV_HD << MAJOR_SHIFT) | i);
+// 	}
+
+// 	//added by mingxuan 2020-10-29
+// 	for(i=0; i < NR_SUB_PER_DRIVE; i++)
+// 	{
+// 		if(hd_info[drive].logical[i].fs_type == fs_type)
+// 		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+// 	}
+// }
+
 // modified by ran
 int get_fs_dev(int drive, int fs_type)
 {
 	int i;
 	for(i = 2; i < NR_PRIM_PER_DRIVE; i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
 	{
-		if(hd_info[drive].primary[i].fs_type == fs_type)
+		if(hd_info[drive].part[i].fs_type == fs_type)
 		return ((DEV_HD << MAJOR_SHIFT) | i);
 	}
 
 	//added by mingxuan 2020-10-29
-	for(i = 0; i < NR_SUB_PER_DRIVE; i++)
+	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
-		if(hd_info[drive].logical[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+		if(hd_info[drive].part[i].fs_type == fs_type)
+		return ((DEV_HD << MAJOR_SHIFT) | i); 
 	}
 }
 
@@ -468,7 +468,8 @@ PRIVATE int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, voi
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	//attention
 	// driver_msg.POSITION	= (unsigned long long)pos;
 	driver_msg.POSITION	= pos;
@@ -490,7 +491,8 @@ PRIVATE int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_n
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
