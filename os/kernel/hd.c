@@ -113,7 +113,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 
 	if (ahci_info[0].is_AHCI_MODE)//SATA
 	{
-		u32 buffer=K_PHY2LIN(do_kmalloc(513));
+		u32 buffer=kern_kmalloc(513);
 		memset(buffer,0,513);
 		u8* buf=buffer/2*2;
 		u32 port_num=ahci_info[0].satadrv_atport[drive];
@@ -127,10 +127,10 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 			hd_LBA48_sup[drive]=1;
 			// disp_str("YES  ");
 		}//by zql 2022.4.26
-		hd_info[drive].primary[0].base = 0;
+		hd_info[drive].part[0].base = 0;
 		/* Total Nr of User Addressable Sectors */
-		hd_info[drive].primary[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
-		do_kfree(K_LIN2PHY(buf));
+		hd_info[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+		kern_kfree(buf);
 	}
 	else
 	{
@@ -172,7 +172,7 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 {
 	u32 n=(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
 	if (ahci_info[0].is_AHCI_MODE)
-	{	u8* buffer=do_kmalloc(n*512+1);
+	{	u8* buffer=phy_kmalloc(n*512+1);
 		memset(K_PHY2LIN(buffer),0,n*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
 		SATA_rdwt(p,buffer_aligned);
@@ -180,7 +180,7 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 		memcpy(la,
 	       	   K_PHY2LIN(buffer_aligned) ,
 	           SECTOR_SIZE);
-		do_kfree(buffer);
+		phy_kfree(buffer);
 		return 1;
 	}
 
@@ -313,9 +313,10 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 
 	// u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
 	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+	u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
 	if (ahci_info[0].is_AHCI_MODE)//SATA read or write
-	{	u8* buffer=do_kmalloc(n*512+1);
+	{	u8* buffer=phy_kmalloc(n*512+1);
 		memset(K_PHY2LIN(buffer),0,n*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
 		SATA_rdwt(p->msg,buffer_aligned);
@@ -323,7 +324,7 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 		memcpy(la,
 	       	   K_PHY2LIN(buffer_aligned) ,
 	           SECTOR_SIZE);
-		do_kfree(buffer);
+		phy_kfree(buffer);
 		return 1;
 	}
 
@@ -514,14 +515,14 @@ PRIVATE void get_part_table(int drive, int sect_nr, struct part_ent * entry)
 	}
 
 	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
 		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
 		sata_fs_rd(&cmd,drive,buffer_aligned);
 		memcpy(entry,
 	       K_PHY2LIN(buffer_aligned) + PARTITION_TABLE_OFFSET,
 	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
-		do_kfree(buffer);
+		phy_kfree(buffer);
 	}
 	else{//IDE
 	hd_cmd_out(&cmd,drive);
@@ -560,14 +561,14 @@ PRIVATE void get_fs_flags(int drive, int sect_nr, struct fs_flags * fs_flags_buf
 	}
 
 	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
 		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
 		sata_fs_rd(&cmd,drive,buffer_aligned);
 		memcpy(fs_flags_buf,
 	       	   K_PHY2LIN(buffer_aligned) ,
 	           sizeof(struct fs_flags));
-		do_kfree(buffer);
+		phy_kfree(buffer);
 	}
 	else{//IDE
 		hd_cmd_out(&cmd,drive);
@@ -606,14 +607,14 @@ PRIVATE int is_fat32_part(int drive, int sect_nr)
 		cmd.command	= ATA_READ;
 	}
 	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=do_kmalloc(cmd.count*512+1);
+	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
 		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
 		sata_fs_rd(&cmd,drive,buffer_aligned);
 		memcpy(hdbuf,
 	       	   K_PHY2LIN(buffer_aligned) ,
 	           SECTOR_SIZE);
-		do_kfree(buffer);
+		phy_kfree(buffer);
 	}
 	else{//IDE
 		hd_cmd_out(&cmd,drive);
@@ -1174,10 +1175,12 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
 	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
 
-	int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	sect_nr += p->DEVICE < MAX_PRIM ?
-		hd_info[drive].primary[p->DEVICE].base :
-		hd_info[drive].logical[logidx].base;
+	// int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+	// sect_nr += p->DEVICE < MAX_PRIM ?
+	// 	hd_info[drive].primary[p->DEVICE].base :
+	// 	hd_info[drive].logical[logidx].base;
+
+	sect_nr += hd_info[drive].part[p->DEVICE & 0x0F].base;
 
 	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 

@@ -311,5 +311,4 @@ PUBLIC void hd_rdwt(MESSAGE *p);
 PUBLIC void hd_rdwt_sched(MESSAGE *p);
 PUBLIC void hd_ioctl(MESSAGE *p);
 //~xw
-PUBLIC void print_identify_info(u16* hdinfo);
 #endif /* _ORANGES_HD_H_ */

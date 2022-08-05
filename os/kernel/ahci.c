@@ -1,16 +1,15 @@
 #include "../include/type.h"
 #include "../include/const.h"
+#include "../include/protect.h"
+#include "../include/proc.h"
+#include "../include/global.h"
+#include "../include/proto.h"
 #include "../include/ahci.h"
 
 PUBLIC HBA_MEM* HBA;
 #define MAX_AHCI_NUM 2
 PUBLIC	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
 
-
-PRIVATE int lin_mapping_phy_ahci(u32 AddrLin,  
-								 u32 phy_addr, 
-								 u32 pde_Attribute, 
-								 u32 pte_Attribute);
 PRIVATE int check_type(HBA_PORT *port);
 PRIVATE	void probe_port(HBA_MEM *abar);
 
@@ -63,8 +62,9 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		return FALSE;
 	}
 	//将AHCI基地址映射到线性地址
-	err_temp = lin_mapping_phy_ahci(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	err_temp = lin_mapping_phy_nopid(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
+										read_cr3(),
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
 	if (err_temp != 0)
@@ -121,77 +121,6 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	// SATA_rdwt_test(0,n);
 	while(1);
 	return TRUE;
-}
-
-PRIVATE int lin_mapping_phy_ahci(u32 AddrLin,  //线性地址
-								 u32 phy_addr, //物理地址,若为MAX_UNSIGNED_INT(0xFFFFFFFF)，则表示需要由该函数判断是否分配物理地址，否则将phy_addr直接和AddrLin建立映射
-								 u32 pde_Attribute, //页目录中的属性位
-								 u32 pte_Attribute) //页表中的属性位
-{
-
-	u32 pte_addr_phy,cr3;
-	cr3=read_cr3();//当前页目录地址
-	u32 pde_addr_phy = cr3; //add by visual 2016.5.19
-
-	if (0 == pte_exist(pde_addr_phy, AddrLin))
-	{ //页表不存在，创建一个，并填进页目录中
-		pte_addr_phy = (u32)do_kmalloc_4k(); //为页表申请一页
-		disp_str(" creat pte ");
-		// pte_addr_phy = (u32)phy_kmalloc_4k(); //为页表申请一页	//modified by mingxuan 2021-8-16
-
-		memset((void *)K_PHY2LIN(pte_addr_phy), 0, num_4K); //add by visual 2016.5.26
-
-
-		if (pte_addr_phy < 0 || (pte_addr_phy & 0x3FF) != 0) //add by visual 2016.5.9
-		{
-			disp_color_str("lin_mapping_phy Error:pte_addr_phy", 0x74);
-			return -1;
-		}
-
-		write_page_pde(pde_addr_phy,   //页目录物理地址
-					   AddrLin,		   //线性地址
-					   pte_addr_phy,   //页表物理地址
-					   pde_Attribute); //属性
-	}
-	else
-	{ //页表存在，获取该页表物理地址
-		disp_str(" pte exist ");
-		pte_addr_phy = (*((u32 *)K_PHY2LIN(pde_addr_phy) + get_pde_index(AddrLin))) & 0xFFFFF000;
-		// disp_int(pte_addr_phy);
-	}
-
-	if (MAX_UNSIGNED_INT == phy_addr) //add by visual 2016.5.19
-	{								  //由函数申请内存
-		if (0 == phy_exist(pte_addr_phy, AddrLin))
-		{ //无物理页，申请物理页并修改phy_addr
-			if (AddrLin >= K_PHY2LIN(0))
-				phy_addr = do_kmalloc_4k();//从内核物理地址申请一页
-				// phy_addr = phy_kmalloc_4k(); //从内核物理地址申请一页	//modified by mingxuan 2021-8-16
-			else
-			{
-				//disp_str("%");
-				phy_addr = do_malloc_4k();//从用户物理地址空间申请一页
-				// phy_addr = phy_malloc_4k(); //从用户物理地址空间申请一页	//modified by mingxuan 2021-8-14
-			}
-		}
-		else
-		{	
-			//有物理页，什么也不做,直接返回，必须返回
-			return 0;
-		}
-	}
-	else
-	{	//指定填写phy_addr
-		//不用修改phy_addr
-	}
-
-	write_page_pte(pte_addr_phy,   //页表物理地址
-				   AddrLin,		   //线性地址
-				   phy_addr,	   //物理页物理地址
-				   pte_Attribute); //属性
-	refresh_page_cache();
-
-	return 0;
 }
 
 
@@ -311,7 +240,7 @@ void port_rebase(HBA_PORT *port)
 	// Command header entry size = 32 bytes
 	// Command list entry maxim count = 32 Command header
 	// Command list maxim size = 32*32 = 1K per port
-	u32	CL_BASE=do_kmalloc(sizeof(HBA_CMD_HEADER)*32);//phy_add
+	u32	CL_BASE=phy_kmalloc(sizeof(HBA_CMD_HEADER)*32);//phy_add
 	// disp_str("\nCL_BASE:");disp_int(CL_BASE);
 	memset((void*)K_PHY2LIN(CL_BASE), 0, 1024);
 	port->clb = CL_BASE;
@@ -319,7 +248,7 @@ void port_rebase(HBA_PORT *port)
 	
  
 	// FIS entry size = 256 bytes per port
-	u32	FIS_BASE=do_kmalloc(256);
+	u32	FIS_BASE=phy_kmalloc(256);
 	// disp_str("\nFIS_BASE:");disp_int(FIS_BASE);
 	memset((void*) K_PHY2LIN(FIS_BASE), 0, 256);
 	port->fb = FIS_BASE;
@@ -334,7 +263,7 @@ void port_rebase(HBA_PORT *port)
 	{
 		cmdheader[i].prdtl = 8;	// 8 prdt entries per command table
 					// 256 bytes per command table, 64+16+48+16*8
-		CT_BASE[i]=do_kmalloc(sizeof(HBA_CMD_TBL));
+		CT_BASE[i]=phy_kmalloc(sizeof(HBA_CMD_TBL));
 		// disp_str("\nCT_BASE:");disp_int(CT_BASE[i]);			
 		cmdheader[i].ctba = CT_BASE[i];
 		cmdheader[i].ctbau = 0;
@@ -504,7 +433,7 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 
 PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 {	
-	u8* buf=K_PHY2LIN(do_kmalloc(512));
+	u8* buf=kern_kmalloc(512);
 	char wbuf[512]="1111111111111111111111111111111111";
 	// disp_str(wbuf);
 	memset(buf,0,512);
@@ -537,7 +466,7 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// cmdheader->w = (p->msg->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
 	cmdheader->w = rw ;
 	// disp_int(cmdheader->w);
-	cmdheader->c = 1;               
+	cmdheader->c = 0;               
     cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
 	cmdheader->prdbc = 0;
 	cmdheader->prdtl =  1;	// PRDT entries count
@@ -643,7 +572,7 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 		
 		}
 	else	disp_str("\nwrite success");
-	do_kfree(K_LIN2PHY(buf));
+	kern_kfree(buf);
 	return 1;
 }
  
