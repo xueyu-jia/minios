@@ -134,5 +134,8 @@
 
 
 #define	IDE_BASE		0
+#define	IDE_LIMIT		4
 #define	SATA_BASE		4
+#define SATA_LIMIT		8
 #define	SCSI_BASE		8
+#define	SCSI_LIMIT		8

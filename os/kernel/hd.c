@@ -40,9 +40,9 @@ PRIVATE HDQueue hdque;
 PRIVATE volatile int hd_int_waiting_flag;
 PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
-PRIVATE u8 hd_LBA48_sup[4]={0,0,0,0};
-//PRIVATE	struct hd_info hd_info[1];
-PUBLIC	struct hd_info hd_info[4];		//modified by mingxuan 2020-10-27
+PRIVATE u8 *satabuf=NULL;
+PRIVATE u8 hd_LBA48_sup[4]={0};
+PUBLIC	struct hd_info hd_info[12];		//modified by xiaofeng 2022-8-6
 
 PRIVATE void init_hd_queue(HDQueue *hdq);
 PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p);
@@ -62,7 +62,7 @@ PRIVATE void hd_handler(int irq);
 PRIVATE int  waitfor(int mask, int val, int timeout);
 //~xw
 
-#define	DRV_OF_DEV(dev) ((dev&0xF0)>>4)
+#define	DRV_OF_DEV(dev) ((dev>>20)&0x0FFF)
 
 /*****************************************************************************
  *                                init_hd
@@ -101,7 +101,7 @@ PUBLIC void init_hd()
 PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 {
 	//disp_str("Read hd information...  ");	//deleted by mingxuan 2021-2-7
-	
+	if(satabuf == NULL)satabuf = (u8*)kern_kmalloc(SECTOR_SIZE*2);
 	/* Get the number of drives from the BIOS data area */
 	u8 * pNrDrives = (u8*)(0x475);
 	// printf("NrDrives:%d.\n", *pNrDrives);
@@ -111,12 +111,10 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 	
 	//int drive = DRV_OF_DEV(device); //deleted by mingxuan 2020-10-27
 
-	if (ahci_info[0].is_AHCI_MODE)//SATA
+	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
 	{
-		u32 buffer=kern_kmalloc(513);
-		memset(buffer,0,513);
-		u8* buf=buffer/2*2;
-		u32 port_num=ahci_info[0].satadrv_atport[drive];
+		u8* buf=(u8*)kern_kmalloc(512);
+		u32 port_num=ahci_info[0].satadrv_atport[drive-SATA_BASE];
 		identity_SATA(&(HBA->ports[port_num]),buf);
 
 		// print_identify_info((u16*)buf);
@@ -132,16 +130,18 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 		hd_info[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
 		kern_kfree(buf);
 	}
-	else
+	else if(drive < SATA_BASE)
 	{
 		hd_identify(drive);
 	}
-	
+
 
 	if (hd_info[drive].open_cnt++ == 0) {
-		partition(drive << 4, P_PRIMARY);
+		partition(drive << 20, P_PRIMARY);
 		//print_hdinfo(&hd_info[drive]);	//deleted by mingxuan 2021-2-7
 	}
+
+	
 }
 
 /*****************************************************************************
@@ -171,46 +171,21 @@ PUBLIC void hd_close(int device)
 PUBLIC void hd_rdwt(MESSAGE * p)
 {
 	u32 n=(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
-	if (ahci_info[0].is_AHCI_MODE)
-	{	u8* buffer=phy_kmalloc(n*512+1);
-		memset(K_PHY2LIN(buffer),0,n*512+1);
-		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		void * la = (void*)va2la(p->PROC_NR, p->BUF);
-
-		if(p->type == DEV_WRITE)
-		{
-			memcpy(K_PHY2LIN(buffer_aligned),
-				   la,
-				   SECTOR_SIZE);
-		}
-		SATA_rdwt(p,buffer_aligned);
-		
-		if(p->type == DEV_READ)
-			memcpy(la,
-				K_PHY2LIN(buffer_aligned) ,
-				SECTOR_SIZE);
-		phy_kfree(buffer);
-		return 1;
-	}
+	
 
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 	u64 pos = p->POSITION;
 
-	int device_type = (p->DEVICE & 0x0F00)>>8;
 
-	switch (device_type)
+	if (drive >= SATA_BASE && drive < SATA_LIMIT)
 	{
-	case DEV_HD:
-		/* code */
-		break;
 
-	case DEV_SATA:
-		return;
-		break;
+		void *la = (void *)va2la(p->PROC_NR, p->BUF);
 
-	default:
-		break;
+		SATA_rdwt(p, la);
+
+		return 1;
 	}
 
 	//We only allow to R/W from a SECTOR boundary:
@@ -300,21 +275,6 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 {
 	int drive = DRV_OF_DEV(p->msg->DEVICE);
 
-	int device_type = (p->msg->DEVICE & 0x0F00)>>8;
-
-	switch (device_type)
-	{
-	case DEV_HD:
-		/* code */
-		break;
-
-	case DEV_SATA:
-		return;
-		break;
-
-	default:
-		break;
-	}
 
 	u64 pos = p->msg->POSITION;
 
@@ -324,27 +284,9 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
 	u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
-	if (ahci_info[0].is_AHCI_MODE)//SATA read or write
-	{	u8* buffer=phy_kmalloc(n*512+1);
-		memset(K_PHY2LIN(buffer),0,n*512+1);
-		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		if(p->msg->type == DEV_WRITE)
-		{
-			memcpy(K_PHY2LIN(buffer_aligned),
-				   p->kbuf,
-				   SECTOR_SIZE);
-		}
-		SATA_rdwt(p->msg,buffer_aligned);
-		void * la = p->kbuf;
-
-		if(p->msg->type == DEV_READ)
-		{
-			memcpy(la,
-				   K_PHY2LIN(buffer_aligned),
-				   SECTOR_SIZE);
-		}
-		
-		phy_kfree(buffer);
+	if (drive >=SATA_BASE && drive < SATA_LIMIT)//SATA read or write
+	{	
+		SATA_rdwt(p->msg,p->kbuf);
 		return 1;
 	}
 
@@ -477,7 +419,7 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
  *****************************************************************************/
 PUBLIC void hd_ioctl(MESSAGE * p)
 {
-	int device = p->DEVICE & 0xF;
+	int device = p->DEVICE & 0x0FFFFF;
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 
@@ -529,21 +471,18 @@ PRIVATE void get_part_table(int drive, int _sect_nr, struct part_ent * entry)
 		cmd.command	=ATA_READ_EXT;
 	}//by qianglong 2022.4.26
 	else{//LBA28
-	cmd.device	= MAKE_DEVICE_REG(1, /* LBA mode*/
-					  drive,
-					  (sect_nr >> 24) & 0xF);
-	cmd.command	= ATA_READ;
+		cmd.device	= MAKE_DEVICE_REG(1, /* LBA mode*/
+						drive,
+						(sect_nr >> 24) & 0xF);
+		cmd.command	= ATA_READ;
 	}
 
-	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
-		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
-		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		sata_fs_rd(&cmd,drive,buffer_aligned);
-		memcpy(entry,
-	       K_PHY2LIN(buffer_aligned) + PARTITION_TABLE_OFFSET,
-	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
-		phy_kfree(buffer);
+	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
+	{	
+
+		SATA_rdwt_sects(drive-SATA_BASE, DEV_READ, sect_nr, cmd.count);
+		phys_copy(entry, satabuf + PARTITION_TABLE_OFFSET, sizeof(struct part_ent) * NR_PART_PER_DRIVE);
+
 	}
 	else{//IDE
 	hd_cmd_out(&cmd,drive);
@@ -582,15 +521,12 @@ PRIVATE void get_fs_flags(int drive, int _sect_nr, struct fs_flags * fs_flags_bu
 		cmd.command	= ATA_READ;
 	}
 
-	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
-		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
-		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		sata_fs_rd(&cmd,drive,buffer_aligned);
-		memcpy(fs_flags_buf,
-	       	   K_PHY2LIN(buffer_aligned) ,
-	           sizeof(struct fs_flags));
-		phy_kfree(buffer);
+	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
+	{	
+
+		SATA_rdwt_sects(drive-SATA_BASE, DEV_READ, sect_nr, cmd.count);
+		phys_copy(fs_flags_buf, satabuf, sizeof(struct fs_flags));
+
 	}
 	else{//IDE
 		hd_cmd_out(&cmd,drive);
@@ -629,15 +565,12 @@ PRIVATE int is_fat32_part(int drive, int _sect_nr)
 						(sect_nr >> 24) & 0xF);
 		cmd.command	= ATA_READ;
 	}
-	if (ahci_info[0].is_AHCI_MODE)//SATA
-	{	u8* buffer=phy_kmalloc(cmd.count*512+1);
-		memset(K_PHY2LIN(buffer),0,cmd.count*512+1);
-		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		sata_fs_rd(&cmd,drive,buffer_aligned);
-		memcpy(hdbuf,
-	       	   K_PHY2LIN(buffer_aligned) ,
-	           SECTOR_SIZE);
-		phy_kfree(buffer);
+	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
+	{	
+
+		SATA_rdwt_sects(drive-SATA_BASE, DEV_READ, sect_nr, cmd.count);
+		phys_copy(hdbuf, satabuf, SECTOR_SIZE);
+
 	}
 	else{//IDE
 		hd_cmd_out(&cmd,drive);
@@ -678,7 +611,7 @@ PRIVATE void partition(int device, int style)
 	struct part_ent part_tbl[NR_SUB_PER_DRIVE];
 
 	if (style == P_PRIMARY) {
-		get_part_table(drive, drive, part_tbl);
+		get_part_table(drive, 0, part_tbl);
 
 		int nr_prim_parts = 0;
 		for (i = 0; i < NR_PART_PER_DRIVE; i++) { /* 0~3 */
@@ -726,7 +659,7 @@ PRIVATE void partition(int device, int style)
 		}
 	}
 	else if (style == P_EXTENDED) {
-		int j = (device & 0x0F); /* 1~4 */
+		int j = (device & 0x0FFFFF); /* 1~4 */
 		int ext_start_sect = hdi->part[j].base;
 		int s = ext_start_sect;
 		int nr_1st_sub = 5; /* 扩展分区第一个分区号是5 */
@@ -1087,105 +1020,38 @@ PRIVATE void inform_int()
 	return;
 }
 
-
-
-PUBLIC void sata_fs_rd(struct hd_cmd* cmd,int drive,void* buf){
-	// void buffer=do_kmalloc(cmd->count*512+1);
-	// void buffer_aligned=buffer&0xfffffffe;//aligned to word
-	int port_num=ahci_info[0].satadrv_atport[drive];
-	HBA_PORT *port=&(HBA->ports[port_num]);
-	port->is = (u32) -1;		// Clear pending interrupt bits
-
-	
-	int slot = find_cmdslot(port);
-	if (slot == -1)
-		return 0;
-
-	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
-
-	cmdheader += slot;
-	// memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
-	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
-	cmdheader->w = 0;		// 0:device to host,read ;1:host to device,write
-	cmdheader->c = 0;               
-    cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
-	cmdheader->prdbc = 0;
-	cmdheader->prdtl =  1;	// PRDT entries count
- 
-	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
-	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
- 		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
- 
-	int i=0;
-	cmdtbl->prdt_entry[i].dba = (u32)(buf);;
-	cmdtbl->prdt_entry[i].dbc = 512-1;	// 512 bytes per sector
-	cmdtbl->prdt_entry[i].i = 0;
-
- 
-	// Setup command
-	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
- 
-	cmdfis->fis_type = FIS_TYPE_REG_H2D;
-	cmdfis->c = 1;	// Command
-
-	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
- 	cmdfis->command = ATA_CMD_READ_DMA_EX ;
-
-	cmdfis->lba0 = cmd->lba_low;
-	cmdfis->lba1 = cmd->lba_mid;
-	cmdfis->lba2 = cmd->lba_high;
-	cmdfis->device = 1<<6;	// LBA mode
- 
-	cmdfis->lba3 = cmd->lba_low_LBA48;
-	cmdfis->lba4 = cmd->lba_mid_LBA48;
-	cmdfis->lba5 = cmd->lba_high_LBA48;
- 
-	cmdfis->countl = cmd->count & 0xFF;
-	cmdfis->counth = (cmd->count >> 8) & 0xFF;
- 
-	// The below loop waits until the port is no longer busy before issuing a new command
-	int spin = 0; // Spin lock timeout counter
-	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
-	{
-		spin++;
-	}
-	if (spin == 1000000)
-	{
-		disp_str("\nPort is hung");
-		return FALSE;
-	}
-
-	// Issue command
-	port->ci = 1<<slot;	
-	
-	// Wait for completion
-	while (1)
-	{
-
-		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == 512)*/){
-			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("\nport_is:");disp_int(port->is);
-			// disp_str("\nport_ie:");disp_int(port->ie);
-			break;
-		}
-	}
-		// Check again
-	if (port->is & HBA_PxIS_TFES)
-	{
-		// disp_str("Read disk error,restart port\n");
-	
-		tf_err_rec(port);
-		return FALSE;
-	}
-
-
-	return 1;
-}
 PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 {	
 
 	int drive = DRV_OF_DEV(p->DEVICE);
 
+	u64 pos = p->POSITION;
+	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+
+	sect_nr += hd_info[drive].part[p->DEVICE & 0x0FFFFF].base;
+
+	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+ 
+
+	if(p->type == DEV_WRITE)
+	{
+		phys_copy(satabuf, buf, SECTOR_SIZE);
+	}
+
+	SATA_rdwt_sects(drive-SATA_BASE, p->type, sect_nr, count);
+
+	if(p->type == DEV_READ)
+	{
+		phys_copy(buf, satabuf, SECTOR_SIZE);
+	}
+
+	return 1;
+}
+
+
+PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
+{
+
 	int port_num=ahci_info[0].satadrv_atport[drive];
 	HBA_PORT *port=&(HBA->ports[port_num]);
 	port->is = (u32) -1;		// Clear pending interrupt bits
@@ -1194,25 +1060,13 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	int slot = find_cmdslot(port);
 	if (slot == -1)
 		return 0;
-	u64 pos = p->POSITION;
-	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
-
-	// int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	// sect_nr += p->DEVICE < MAX_PRIM ?
-	// 	hd_info[drive].primary[p->DEVICE].base :
-	// 	hd_info[drive].logical[logidx].base;
-
-	sect_nr += hd_info[drive].part[p->DEVICE & 0x0F].base;
-
-	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
 
 	cmdheader += slot;
 	// memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
-	cmdheader->w = (p->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
+	cmdheader->w = (type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
 	cmdheader->c = 0;               
     cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
 	cmdheader->prdbc = 0;
@@ -1225,14 +1079,14 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	int i=0;
 	for ( i=0; i<cmdheader->prdtl-1; i++)
 	{
-		cmdtbl->prdt_entry[i].dba = (u32)(buf);
+		cmdtbl->prdt_entry[i].dba = (u32)(K_LIN2PHY(satabuf));
 		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
 		cmdtbl->prdt_entry[i].i = 0 ;
-		buf += 8*1024;	// 8k bytes
+		satabuf += 8*1024;	// 8k bytes
 		count -= 16;	// 16 sectors
 	}
 	// Last entry202.117.249.6
-	cmdtbl->prdt_entry[i].dba = (u32)(buf);
+	cmdtbl->prdt_entry[i].dba = (u32)(K_LIN2PHY(satabuf));
 	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
 	cmdtbl->prdt_entry[i].i = 0;
 
@@ -1243,7 +1097,7 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	cmdfis->c = 1;	// Command
 
 	// cmdfis->command = (p->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
- 	cmdfis->command = (p->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+ 	cmdfis->command = (type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
 	
 	cmdfis->lba0 = sect_nr & 0xFF;
 	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
@@ -1290,18 +1144,6 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 		tf_err_rec(port);
 		return FALSE;
 	}
-	//  if(rw==0){
-	// // 	memcpy(rbuf,buf,512);
-	// 	disp_str("\nread:");
-	// 	 for (int i = 0; i < 16; i++)
-	// 	 {	if(i%16==0)disp_str("\n");
-	// 		disp_int(buf[i]);
-			
-	// 	 }
-		
-		
-		// }
-	// else	disp_str("\nwrite success");
-	// do_kfree(K_LIN2PHY(buf));
+
 	return 1;
 }
