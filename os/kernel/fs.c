@@ -54,7 +54,7 @@ PRIVATE struct inode inode_table[NR_INODE];
 extern struct super_block super_block[NR_SUPER_BLOCK];	//modified by mingxuan 2020-10-30
 
 /* functions */
-PRIVATE void mkfs();
+PRIVATE void mkfs(int device);
 //PRIVATE void read_super_block(int dev);
 PUBLIC void read_super_block(int dev);	// modified by mingxuan 2020-10-30
 //PRIVATE struct super_block* get_super_block(int dev);
@@ -134,19 +134,19 @@ int get_fs_dev(int drive, int fs_type)
 	for(i = 2; i < NR_PRIM_PER_DRIVE; i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
 	{
 		if(hd_info[drive].part[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | i);
+		return ((drive << MAJOR_SHIFT) | i);
 	}
 
 	//added by mingxuan 2020-10-29
 	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
 		if(hd_info[drive].part[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | i); 
+		return ((drive << MAJOR_SHIFT) | i); 
 	}
 }
 
 /// zcr added
-PUBLIC void init_fs()
+PUBLIC void init_fs(int device)
 {
 
 	disp_str("Initializing file system...  ");
@@ -165,7 +165,7 @@ PUBLIC void init_fs()
 	//for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)				//deleted by mingxuan 2020-10-30
 	//	sb->sb_dev = NO_DEV;										//deleted by mingxuan 2020-10-30
 
-	int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);	//added by mingxuan 2020-10-27
+	int orange_dev = get_fs_dev(device, ORANGE_TYPE);	//added by mingxuan 2020-10-27
 
 	/* load super block of ROOT */
 	//read_super_block(ROOT_DEV);		// deleted by mingxuan 2020-10-27
@@ -178,7 +178,7 @@ PUBLIC void init_fs()
 	disp_str(" \n");
 
 	if(sb->magic != MAGIC_V1) {	//deleted by mingxuan 2019-5-20
-		mkfs();
+		mkfs(device);
 		disp_str("Make file system Done.\n");
 
 		// deleted by mingxuan 2020-10-30
@@ -205,7 +205,7 @@ PUBLIC void init_fs()
  *          - Create the inodes of the files
  *          - Create `/', the root directory
  *****************************************************************************/
-PRIVATE void mkfs()
+PRIVATE void mkfs(int device)
 {
 	MESSAGE driver_msg;
 	int i, j;
@@ -215,13 +215,13 @@ PRIVATE void mkfs()
 	//local array, to substitute global fsbuf. added by xw, 18/12/27
 	char fsbuf[SECTOR_SIZE];
 
-	int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);	//added by mingxuan 2020-10-27
+	int orange_dev = get_fs_dev(device, ORANGE_TYPE);	//added by mingxuan 2020-10-27
 
 	/* get the geometry of ROOTDEV */
 	struct part_info geo;
 	driver_msg.type		= DEV_IOCTL;
 	//driver_msg.DEVICE	= MINOR(ROOT_DEV);		// deleted by mingxuan 2020-10-27
-	driver_msg.DEVICE	= MINOR(orange_dev);	// modified by mingxuan 2020-10-27
+	driver_msg.DEVICE	= orange_dev;	// modified by mingxuan 2020-10-27
 	driver_msg.REQUEST	= DIOCTL_GET_GEO;
 	driver_msg.BUF		= &geo;
 	driver_msg.PROC_NR	= proc2pid(p_proc_current);
@@ -938,7 +938,7 @@ PUBLIC void read_super_block(int dev)	//modified by mingxuan 2020-10-30
 	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
 
 	driver_msg.type		= DEV_READ;
-	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= SECTOR_SIZE * 1;
 	driver_msg.BUF		= fsbuf;
 	driver_msg.CNT		= SECTOR_SIZE;
@@ -1574,8 +1574,8 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg)	//modified by mingxuan 2021-8-20
 		//added by mingxuan 2019-5-19
 		int dev = pin->i_start_sect;
 		int nr_tty = MINOR(dev);
-		if(MAJOR(dev) != 4) {
-			disp_str("Error: MAJOR(dev) == 4\n");
+		if(MAJOR(dev) != DEV_CHAR_TTY) {
+			disp_str("Error: MAJOR(dev) == DEV_CHAR_TTY\n");
 		}
 
 		if(fs_msg->type == DEV_READ){

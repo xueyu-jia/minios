@@ -67,6 +67,23 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										read_cr3(),
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+	
+	int hd_service_pid = sys_get_pid_byname("hd_service");
+
+	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+										ahci_info[0].ABAR, //物理地址
+										hd_service_pid,
+										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+
+	int initial_pid = sys_get_pid_byname("initial");
+
+	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+										ahci_info[0].ABAR, //物理地址
+										initial_pid,
+										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+
 	if (err_temp != 0)
 	{
 		disp_color_str("kernel page Error:lin_mapping_phy_ahci", 0x74);
@@ -74,7 +91,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	}
 
 	
-	disp_str("\nlin_mapping_phy_ahci");
+	// disp_str("\nlin_mapping_phy_ahci");
 	HBA=(HBA_MEM *)(ahci_info[0].ABAR);
 	ahci_info[0].is_AHCI_MODE = (HBA->ghc)>>31;
 
@@ -88,7 +105,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	// disp_int(HBA->ghc);
 	
 	probe_port(HBA);
-	disp_str("\nprobe_port");
+	// disp_str("\nprobe_port");
 	// disp_int(HBA->pi);
 	int i=0;
 	for(i=0;i<ahci_info[0].satadrv_num;i++){
@@ -98,15 +115,15 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	
 	// disp_str("\nread write test:");
 	// // u64 n=0x800;
-	u64 n=3000;
-	SATA_rdwt_test(1,n);
-	SATA_rdwt_test(0,n);
-	n+=1;
-	SATA_rdwt_test(1,n);
-	SATA_rdwt_test(0,n);
-	n+=1;
-	SATA_rdwt_test(1,n);
-	SATA_rdwt_test(0,n);
+	// u64 n=3000;
+	// SATA_rdwt_test(1,n);
+	// SATA_rdwt_test(0,n);
+	// n+=1;
+	// SATA_rdwt_test(1,n);
+	// SATA_rdwt_test(0,n);
+	// n+=1;
+	// SATA_rdwt_test(1,n);
+	// SATA_rdwt_test(0,n);
 	// n=0x12bffffc;
 	// // SATA_rdwt_test(1,n);
 	// SATA_rdwt_test(0,n);
@@ -119,7 +136,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	// n=0x1000;
 	// SATA_rdwt_test(1,n);
 	// SATA_rdwt_test(0,n);
-	while(1);
+	// while(1);
 	return TRUE;
 }
 
@@ -542,8 +559,8 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 		// in the PxIS port field as well (1 << 5)
 		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
 		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-			disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			disp_str("port_is:");disp_int(port->is);
+			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+			// disp_str("port_is:");disp_int(port->is);
 			break;}
 		
 		// disp_int((port->ci)>>slot);
@@ -562,16 +579,16 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// }
 	 if(rw==0){
 	// 	memcpy(rbuf,buf,512);
-		disp_str("\nread,success:");
-		 for (int i = 0; i < 16; i++)
-		 {	
-			disp_int(buf[i]);
+		// // disp_str("\nread,success:");
+		//  for (int i = 0; i < 16; i++)
+		//  {	
+		// 	disp_int(buf[i]);
 			
-		 }
+		//  }
 		
 		
 		}
-	else	disp_str("\nwrite success");
+	// else	disp_str("\nwrite success");
 	kern_kfree(buf);
 	return 1;
 }

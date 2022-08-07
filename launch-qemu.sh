@@ -6,5 +6,8 @@
 # -monitor stdio
 
 # modified by mingxuan 2019-5-17
-qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
--monitor stdio -usbdevice tablet
+# qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
+# -monitor stdio -usbdevice tablet
+
+qemu-system-i386 -drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci \
+-device ide-hd,drive=disk,bus=ahci.0 -monitor stdio

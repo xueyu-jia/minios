@@ -175,11 +175,20 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 	{	u8* buffer=phy_kmalloc(n*512+1);
 		memset(K_PHY2LIN(buffer),0,n*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
-		SATA_rdwt(p,buffer_aligned);
 		void * la = (void*)va2la(p->PROC_NR, p->BUF);
-		memcpy(la,
-	       	   K_PHY2LIN(buffer_aligned) ,
-	           SECTOR_SIZE);
+
+		if(p->type == DEV_WRITE)
+		{
+			memcpy(K_PHY2LIN(buffer_aligned),
+				   la,
+				   SECTOR_SIZE);
+		}
+		SATA_rdwt(p,buffer_aligned);
+		
+		if(p->type == DEV_READ)
+			memcpy(la,
+				K_PHY2LIN(buffer_aligned) ,
+				SECTOR_SIZE);
 		phy_kfree(buffer);
 		return 1;
 	}
@@ -319,11 +328,22 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 	{	u8* buffer=phy_kmalloc(n*512+1);
 		memset(K_PHY2LIN(buffer),0,n*512+1);
 		u8* buffer_aligned=(u32)buffer/2*2;//aligned to word
+		if(p->msg->type == DEV_WRITE)
+		{
+			memcpy(K_PHY2LIN(buffer_aligned),
+				   p->kbuf,
+				   SECTOR_SIZE);
+		}
 		SATA_rdwt(p->msg,buffer_aligned);
 		void * la = p->kbuf;
-		memcpy(la,
-	       	   K_PHY2LIN(buffer_aligned) ,
-	           SECTOR_SIZE);
+
+		if(p->msg->type == DEV_READ)
+		{
+			memcpy(la,
+				   K_PHY2LIN(buffer_aligned),
+				   SECTOR_SIZE);
+		}
+		
 		phy_kfree(buffer);
 		return 1;
 	}
@@ -490,8 +510,9 @@ PUBLIC void hd_ioctl(MESSAGE * p)
  * @param sect_nr The sector at which the partition table is located.
  * @param entry   Ptr to part_ent struct.
  *****************************************************************************/
-PRIVATE void get_part_table(int drive, int sect_nr, struct part_ent * entry)
+PRIVATE void get_part_table(int drive, int _sect_nr, struct part_ent * entry)
 {
+	u64 sect_nr = (u64)_sect_nr;
 	struct hd_cmd cmd;
 	cmd.features	= 0;
 	cmd.count	= 1;
@@ -536,8 +557,9 @@ PRIVATE void get_part_table(int drive, int sect_nr, struct part_ent * entry)
 }
 
 // added by mingxuan 2020-10-27
-PRIVATE void get_fs_flags(int drive, int sect_nr, struct fs_flags * fs_flags_buf)
+PRIVATE void get_fs_flags(int drive, int _sect_nr, struct fs_flags * fs_flags_buf)
 {
+	u64 sect_nr = (u64)_sect_nr;
 	struct hd_cmd cmd;
 	cmd.features	= 0;
 	cmd.count		= 1;
@@ -583,8 +605,9 @@ PRIVATE void get_fs_flags(int drive, int sect_nr, struct fs_flags * fs_flags_buf
 
 // added by ran
 // is_fat32_part函数的功能是判断分区是否为FAT32文件系统
-PRIVATE int is_fat32_part(int drive, int sect_nr)
+PRIVATE int is_fat32_part(int drive, int _sect_nr)
 {
+	u64 sect_nr = (u64)_sect_nr;
 	struct hd_cmd cmd;
 	cmd.features	= 0;
 	cmd.count		= 1;
@@ -619,9 +642,9 @@ PRIVATE int is_fat32_part(int drive, int sect_nr)
 	else{//IDE
 		hd_cmd_out(&cmd,drive);
 		interrupt_wait();
+		port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 	}
 
-	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 
 	int fs_name;
 	fs_name = *(int*)(hdbuf + 0x52);
@@ -1081,11 +1104,11 @@ PUBLIC void sata_fs_rd(struct hd_cmd* cmd,int drive,void* buf){
 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
 
 	cmdheader += slot;
-	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+	// memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
 	cmdheader->w = 0;		// 0:device to host,read ;1:host to device,write
-	cmdheader->c = 1;               
-    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+	cmdheader->c = 0;               
+    cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
 	cmdheader->prdbc = 0;
 	cmdheader->prdtl =  1;	// PRDT entries count
  
@@ -1140,8 +1163,8 @@ PUBLIC void sata_fs_rd(struct hd_cmd* cmd,int drive,void* buf){
 	{
 
 		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == 512)*/){
-			disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			disp_str("\nport_is:");disp_int(port->is);
+			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+			// disp_str("\nport_is:");disp_int(port->is);
 			// disp_str("\nport_ie:");disp_int(port->ie);
 			break;
 		}
@@ -1187,11 +1210,11 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
 
 	cmdheader += slot;
-	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+	// memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
 	cmdheader->w = (p->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
-	cmdheader->c = 1;               
-    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+	cmdheader->c = 0;               
+    cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
 	cmdheader->prdbc = 0;
 	cmdheader->prdtl =  1;	// PRDT entries count
  
@@ -1256,7 +1279,7 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
 		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
 			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			disp_str("\nport_is:");disp_int(port->is);
+			// disp_str("\nport_is:");disp_int(port->is);
 			break;}
 	}
  

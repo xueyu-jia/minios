@@ -767,13 +767,13 @@ PUBLIC void init_all_fat(int drive)
 	for(i = 0; i < NR_PRIM_PER_DRIVE; i++)
 	{
 		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
-		init_fs_fat((DEV_HD << MAJOR_SHIFT) | i);
+		init_fs_fat((drive << MAJOR_SHIFT) | i);
 	}
 
 	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
 		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
-		init_fs_fat((DEV_HD << MAJOR_SHIFT) | i);
+		init_fs_fat((drive << MAJOR_SHIFT) | i);
 	}
 
 	for (i = 0; i < NR_FILE_DESC; ++i) {
@@ -795,7 +795,7 @@ PRIVATE void init_super_block(SUPER_BLOCK *psb, int dev) {
 	PCHAR cur="V:\\";
 
 	driver_msg.type		= DEV_READ;
-	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	//driver_msg.POSITION	= SECTOR_SIZE * 1;
 	driver_msg.POSITION	= 0;
 	driver_msg.BUF		= buf;

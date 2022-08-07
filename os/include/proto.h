@@ -93,6 +93,7 @@ PUBLIC void clock_handler(int irq);
 PUBLIC void  sys_call();                /* int_handler */
 PUBLIC int   get_ticks();
 PUBLIC int   get_pid();					//add by visual 2016.4.6
+PUBLIC int   get_pid_byname(char *);
 PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 PUBLIC void* kmalloc(int size);			//edit by visual 2016.5.9
 PUBLIC void* kmalloc_4k();				//edit by visual 2016.5.9
@@ -134,6 +135,7 @@ PUBLIC int pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLin
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */
 PUBLIC int   sys_get_pid();				//add by visual 2016.4.6
+PUBLIC int   sys_get_pid_byname(char*);
 //PUBLIC void* sys_kmalloc(int size);			//edit by visual 2016.5.9   //deleted by mingxuan 2021-8-21
 //PUBLIC void* sys_kmalloc_4k();				//edit by visual 2016.5.9   //deleted by mingxuan 2021-8-21
 PUBLIC void* sys_malloc(int size);			//edit by visual 2016.5.9

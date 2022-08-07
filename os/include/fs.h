@@ -38,7 +38,7 @@ PUBLIC int sys_lseek(void *uesp);	//~xw
 PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
 */
 
-PUBLIC void init_fs();
+PUBLIC void init_fs(int device);
 
 //added by mingxuan 2019-5-17
 PUBLIC int real_open(const char *pathname, int flags);
