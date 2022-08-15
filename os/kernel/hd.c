@@ -419,7 +419,7 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
  *****************************************************************************/
 PUBLIC void hd_ioctl(MESSAGE * p)
 {
-	int device = p->DEVICE & 0x0FFFFF;
+	int part_num = p->DEVICE & 0x0FFFFF;
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 
@@ -433,7 +433,7 @@ PUBLIC void hd_ioctl(MESSAGE * p)
 		// 		   &hdi->logical[(device - MINOR_hd1a) %
 		// 				NR_SUB_PER_DRIVE]);
 
-		void *src = va2la(proc2pid(p_proc_current), &hdi->part[device]);
+		void *src = va2la(proc2pid(p_proc_current), &hdi->part[part_num]);
 
 		phys_copy(dst, src, sizeof(struct part_info));
 	}
@@ -726,6 +726,8 @@ PRIVATE void partition(int device, int style)
  *****************************************************************************/
 PRIVATE void print_hdinfo(struct hd_info * hdi)
 {
+	disp_str("Drive num : ");
+	disp_int(hdi - hd_info);
 	int i;
 	for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
 		// printl("%sPART_%d: base %d(0x%x), size %d(0x%x) (in sector)\n",

@@ -107,8 +107,8 @@ PUBLIC int kernel_main()
 	************************************************************************/
 	init_fileop_table(); //added by mingxuan 2019-5-17
 
-	//hd_open(MINOR(ROOT_DEV));
-	hd_open(0); //modified by mingxuan 2020-10-27
+	hd_open(0);
+	hd_open(1); //modified by mingxuan 2020-10-27
 
 	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
 	{

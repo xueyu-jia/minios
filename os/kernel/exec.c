@@ -303,7 +303,7 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by ming
 
 	//real_close(fd);	//added by mingxuan 2019-5-23
 	//do_vclose(fd); //modified by mingxuan 2020-12-18
-	// kern_vclose(fd); //modified by mingxuan 2021-8-19
+	kern_vclose(fd); //modified by mingxuan 2021-8-19
 
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
