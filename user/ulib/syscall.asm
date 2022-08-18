@@ -86,6 +86,9 @@ _NR_pthread_cond_broadcast 	  	equ 54; 	//added by ZengHao & MaLinhan 2021.12.23
 _NR_pthread_cond_destroy	  	equ 55; 	//added by ZengHao & MaLinhan 2021.12.23	
 _NR_get_pid_byname				equ 56;
 
+_NR_mount						equ 57;
+_NR_umount						equ 58;
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -162,6 +165,9 @@ global  pthread_cond_timewait		;//added by ZengHao & MaLinhan 2021.12.23
 global  pthread_cond_broadcast		;//added by ZengHao & MaLinhan 2021.12.23
 global  pthread_cond_destroy		;//added by ZengHao & MaLinhan 2021.12.23
 global	pthread_self				;//added by ZengHao & MaLinhan 2021.12.23
+
+global	mount
+global	umount
 
 bits 32
 [section .text]
@@ -863,6 +869,26 @@ pthread_cond_destroy :
 	mov ebx,[esp+4]
 	mov	eax, _NR_pthread_cond_destroy
 	int	INT_VECTOR_SYS_CALL
+	ret
+
+; ====================================================================
+;                        mount & umount	//added by xiaofeng
+; ====================================================================	
+mount:
+	push 5			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_mount
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+	
+umount:
+	push 1			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_umount
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
 	ret
 
 	

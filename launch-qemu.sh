@@ -9,5 +9,11 @@
 # qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
 # -monitor stdio -usbdevice tablet
 
-qemu-system-i386 -drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci \
--device ide-hd,drive=disk,bus=ahci.0 -monitor stdio
+# qemu-system-i386 -drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci \
+# -device ide-hd,drive=disk,bus=ahci.0 -monitor stdio
+
+qemu-system-i386 \
+-drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 \
+-drive id=disk1,file=c.img,if=none -device ich9-ahci,id=ahci1 -device ide-hd,drive=disk1,bus=ahci.1 \
+-drive id=disk2,file=d.img,if=none -device ich9-ahci,id=ahci2 -device ide-hd,drive=disk2,bus=ahci.2 \
+-hda a.img -hdb e.img

@@ -245,3 +245,7 @@ PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
 /*memman.c*/
 PUBLIC u32 phy_free_4k(u32 phy_addr);
+
+/*mount.c */
+PUBLIC int sys_mount(void *uesp);
+PUBLIC int sys_umount(void *uesp);

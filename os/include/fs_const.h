@@ -123,6 +123,8 @@
 #define I_CHAR_SPECIAL  0020000
 #define I_NAMED_PIPE	0010000
 
+#define I_MOUNTPOINT	0110000		//add by xiaofeng
+
 #define	is_special(m)	((((m) & I_TYPE_MASK) == I_BLOCK_SPECIAL) ||	\
 			 (((m) & I_TYPE_MASK) == I_CHAR_SPECIAL))
 
