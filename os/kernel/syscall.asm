@@ -89,6 +89,8 @@ _NR_get_pid_byname				equ 56;
 _NR_mount						equ 57;
 _NR_umount						equ 58;
 
+_NR_init_block_dev				equ 59;
+
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
@@ -169,6 +171,8 @@ global	pthread_self				;//added by ZengHao & MaLinhan 2021.12.23
 
 global	mount
 global	umount
+
+global init_block_dev
 
 bits 32
 [section .text]
@@ -892,7 +896,14 @@ umount:
 	add esp, 4
 	ret
 
-	
+init_block_dev:
+	push 1			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_init_block_dev
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
 %macro	SYS_CALL 1
 	push ebx
 	mov ebx, esp

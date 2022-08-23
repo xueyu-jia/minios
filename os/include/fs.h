@@ -38,7 +38,10 @@ PUBLIC int sys_lseek(void *uesp);	//~xw
 PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
 */
 
-PUBLIC void init_fs(int device);
+PUBLIC void init_rootfs(int device);
+PUBLIC int init_orangefs(int device);
+PUBLIC void create_mountpoint(const char *pathname, u32 dev);
+PUBLIC void free_mountpoint(const char *pathname, u32 dev);
 
 //added by mingxuan 2019-5-17
 PUBLIC int real_open(const char *pathname, int flags);

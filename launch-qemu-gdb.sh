@@ -22,7 +22,7 @@
 
 #多个SATA设备 2个IDE设备
 cp b.img a.img
-cp b.img c.img
+# cp b.img c.img
 cp b.img d.img
 cp b.img e.img
 

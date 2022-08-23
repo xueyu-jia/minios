@@ -249,3 +249,6 @@ PUBLIC u32 phy_free_4k(u32 phy_addr);
 /*mount.c */
 PUBLIC int sys_mount(void *uesp);
 PUBLIC int sys_umount(void *uesp);
+
+/*fs.c*/
+PUBLIC int sys_init_block_dev(void *uesp);

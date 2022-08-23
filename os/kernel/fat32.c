@@ -760,6 +760,24 @@ STATE IsFile(SUPER_BLOCK *psb, PCHAR path,PUINT tag)
 	return OK;
 }
 
+PRIVATE int get_free_superblock()
+{
+	int sb_index =0;
+	for(sb_index=0;sb_index<NR_SUPER_BLOCK;sb_index++)
+	{
+		if(super_block[sb_index].used == 0)
+		{
+			break;
+		}
+	}
+	if(sb_index == NR_SUPER_BLOCK)
+	{
+		disp_str("there is no free superblock in array\n");
+		return -1;
+	}
+	return sb_index;
+}
+
 //added by ran
 PUBLIC void init_all_fat(int drive)
 {
@@ -779,6 +797,20 @@ PUBLIC void init_all_fat(int drive)
 	for (i = 0; i < NR_FILE_DESC; ++i) {
 		f_desc_table_fat[i].flag = 0;
 	}
+}
+
+PUBLIC int init_fat32fs(int dev)
+{
+	int sb_index = get_free_superblock();
+
+	if(sb_index == -1)
+	{
+		return -1;
+	}
+
+	init_super_block(&super_block[sb_index], dev);
+
+	return sb_index;
 }
 
 PUBLIC void init_fs_fat(int fat32_dev) {
@@ -802,7 +834,14 @@ PRIVATE void init_super_block(SUPER_BLOCK *psb, int dev) {
 	driver_msg.CNT		= SECTOR_SIZE;
 	driver_msg.PROC_NR	= proc2pid(p_proc_current);///TASK_A
 
-	hd_rdwt(&driver_msg);
+	if(p_proc_current->task.pid <=4)
+	{
+		hd_rdwt(&driver_msg);
+	}
+	else
+	{
+		hd_rdwt_sched(&driver_msg);
+	}
 
 	DWORD TotalSectors;
 	WORD  Bytes_Per_Sector;
