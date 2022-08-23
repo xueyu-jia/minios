@@ -57,6 +57,10 @@ u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.1
 
 void test(int no);
 
+int mount(const char *source, const char *target,
+   const char *filesystemtype, unsigned long mountflags, const void *data);
+int umount(const char *target);
+
 /*string.asm*/
 void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
 void memset(void* p_dst, char ch, int size);
