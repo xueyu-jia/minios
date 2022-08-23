@@ -239,10 +239,10 @@ typedef	struct tagahci_info
 	u32	portnum;//支持的端口数0~31,0表示支持1一个端口
 	u32 satadrv_num;
 	u32 satadrv_atport[4];//连接了SATADRIVE的端口号0~31，考虑到实际情况，这里只支持4个硬盘,默认第一个为minios系统盘
-	
+	u16 irq_info;
 }AHCI_INFO;
 #define HBA_PxIS_TFES 0x40000000
-#define MAX_AHCI_NUM 2
+#define MAX_AHCI_NUM 4
 PUBLIC int AHCI_init();
 PUBLIC u32 identity_SATA(HBA_PORT *port,u8 *buf );
 PUBLIC int find_cmdslot(HBA_PORT *port);

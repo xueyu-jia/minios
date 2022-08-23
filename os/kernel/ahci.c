@@ -7,16 +7,16 @@
 #include "../include/ahci.h"
 
 PUBLIC HBA_MEM* HBA;
-#define MAX_AHCI_NUM 2
+
 PUBLIC	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
 
 PRIVATE int check_type(HBA_PORT *port);
 PRIVATE	void probe_port(HBA_MEM *abar);
-
+PRIVATE void sata_handler(int irq);
 
 PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 {
-	u32 bus,dev,fun,err_temp;
+	u32 bus,dev,fun,err_temp,sata_irq;
 	memset(ahci_info,0,sizeof(AHCI_INFO));
 	u32 AHCI_cnt=0;
 	for(bus=0;bus<=MAXBUS;bus++){
@@ -43,10 +43,12 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 						ahci_info[AHCI_cnt-1].ABAR=in_dword(PCI_CONFIG_DATA);
 						disp_int(ahci_info[AHCI_cnt-1].ABAR);
 						
-						// out_dword(PCI_CONFIG_ADD,mk_pci_add(bus,dev,fun,1));
-						// disp_str("  STA_CMD: ");
+						out_dword(PCI_CONFIG_ADD,mk_pci_add(bus,dev,fun,15));
+						disp_str("  interrupt: ");
 						
-						// disp_int(in_dword(PCI_CONFIG_DATA));
+						disp_int(in_dword(PCI_CONFIG_DATA));
+						ahci_info[AHCI_cnt-1].irq_info=in_dword(PCI_CONFIG_DATA)&0xffff;
+
 					}	
 					// if ((in_dword(PCI_CONFIG_DATA)>>16)==0x0101)
 					// {
@@ -112,7 +114,15 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}
 	
-	
+	HBA->ghc |=(1<<1);//enable interrupt
+	sata_irq=ahci_info[0].irq_info&0xff;
+	if(sata_irq<=16){
+		put_irq_handler(sata_irq, sata_handler);
+		enable_irq(sata_irq);
+	}
+	else{
+		disp_str("sata_irq is large than 16");
+	}
 	// disp_str("\nread write test:");
 	// // u64 n=0x800;
 	// u64 n=3000;
@@ -140,6 +150,32 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	return TRUE;
 }
 
+PRIVATE void sata_handler(int irq)
+{
+	// disp_str(" S ");
+	// disp_int(ticks);
+	// disp_int(HBA->ports[0].is);
+
+	int is = HBA->is;
+	int index = 0;
+
+
+	HBA->is=0xffffffff;
+
+	while (index <32 && is)
+	{
+		if(is&1)
+		{
+			HBA->ports[index].is=0xffffffff;
+		}
+		index++;
+		is >>= 1;
+	}
+	
+	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
+
+	return;
+}
 
 //Detect attached SATA devices
 PRIVATE	void probe_port(HBA_MEM *abar)
@@ -251,7 +287,7 @@ void port_rebase(HBA_PORT *port)
     // HBA->ghc=(u32)(1<<1);
 
 	stop_cmd(port);	// Stop command engine
-	port->serr = 1;
+	port->serr = (u32)-1;
 	port->is = 0;   
     port->ie = 0;
 	// Command header entry size = 32 bytes
@@ -286,8 +322,8 @@ void port_rebase(HBA_PORT *port)
 		cmdheader[i].ctbau = 0;
 		memset((void*)K_PHY2LIN(cmdheader[i].ctba), 0, sizeof(HBA_CMD_TBL));
 	}
-	port->is = 0;   
-    port->ie = 0xffffffff;
+	port->is = (u32)-1;   
+    port->ie = (u32)-1;
 	start_cmd(port);	// Start command engine
 }
  
