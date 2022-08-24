@@ -64,7 +64,7 @@ void main(int arg,char *argv[])
 {
 
 	int fd;
-	char filename[] = "fat0/test33.txt";
+	char filename[] = "fat1/test33.txt";
 
 	//char bufw[4096];	//the largest size is 16KB, beacause the stack size is 16KB
 	//char bufr[4096];
@@ -86,7 +86,7 @@ void main(int arg,char *argv[])
 
 	//测试读文件的大小
 	//先读
-	fd = open(filename, O_RDWR);
+	fd = open("fat1/test33.txt", O_RDWR);
 	if(fd != -1)
 	{
 		read(fd, bufr, BUF_SIZE);
@@ -94,7 +94,7 @@ void main(int arg,char *argv[])
 		close(fd);
 	}
 	//把读到的内容写到新文件中，验证是否读正确
-	fd = open("fat0/test44.txt", O_CREAT | O_RDWR);
+	fd = open("fat1/test44.txt", O_CREAT | O_RDWR);
 	if(fd != -1)
 	{
 		write(fd, bufr, strlen(bufr));
