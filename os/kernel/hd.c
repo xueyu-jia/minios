@@ -604,6 +604,7 @@ PRIVATE void partition(int device, int style)
 	int i;
 	int drive = DRV_OF_DEV(device);
 	struct hd_info * hdi = &hd_info[drive];
+	int no_part_count = 0;
 
 	// added by ran
 	struct part_info *logical = hdi->part;
@@ -615,8 +616,11 @@ PRIVATE void partition(int device, int style)
 
 		int nr_prim_parts = 0;
 		for (i = 0; i < NR_PART_PER_DRIVE; i++) { /* 0~3 */
-			if (part_tbl[i].sys_id == NO_PART) 
+			if (part_tbl[i].sys_id == NO_PART)
+			{
+				no_part_count ++;
 				continue;
+			}
 
 			nr_prim_parts++;
 			int dev_nr = i + 1;		  /* 1~4 */
@@ -711,7 +715,26 @@ PRIVATE void partition(int device, int style)
 				break;
 		}
 	}
-	else {
+	if(no_part_count == 4)
+	{	//没有分区
+		int dev_nr = 0;
+
+		int boot_sec = hdi->part[dev_nr].base;
+
+		struct fs_flags fs_flags_real;
+		struct fs_flags *fs_flags_buf = &fs_flags_real;
+
+		get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
+
+		if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
+		{
+			logical[dev_nr].fs_type = ORANGE_TYPE;
+		}
+		else if (is_fat32_part(drive, boot_sec))
+		{
+			logical[dev_nr].fs_type = FAT32_TYPE;
+		}
+
 		// assert(0);
 	}
 }
@@ -1138,6 +1161,8 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 			// disp_str("\nport_is:");disp_int(port->is);
 			break;}
 	}
+
+	sata_wait_flag = 1;
  
 	// Check again
 	if (port->is & HBA_PxIS_TFES)
