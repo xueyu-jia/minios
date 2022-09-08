@@ -14,9 +14,9 @@ void main(int arg,char *argv[])
 	
 	//malloc(1024);
 
-	if(0==mount("dev_sdb1", "fat1", NULL, NULL, NULL))
+	if(0==mount("dev_sdb", "fat1", NULL, NULL, NULL))
 	{
-		printf("mount sdb1 to fat1\n");
+		printf("mount sdb to fat1\n");
 	}
 
 	printf(" %d ",get_pid());
