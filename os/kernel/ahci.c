@@ -6,6 +6,8 @@
 #include "../include/proto.h"
 #include "../include/ahci.h"
 
+PUBLIC volatile int sata_wait_flag = 1;
+
 PUBLIC HBA_MEM* HBA;
 
 PUBLIC	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
@@ -34,7 +36,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 						// disp_int(fun);
 						// disp_str("\n");
 						AHCI_cnt+=1;
-						if(AHCI_cnt>MAX_AHCI_NUM)break;
+						// if(AHCI_cnt>MAX_AHCI_NUM)break;
 						ahci_info[AHCI_cnt-1].achi_pos_pci.bus = bus;
 						ahci_info[AHCI_cnt-1].achi_pos_pci.dev = dev;
 						ahci_info[AHCI_cnt-1].achi_pos_pci.fun = fun;
@@ -63,6 +65,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		disp_str("no AHCI HBA!");
 		return FALSE;
 	}
+
 	//将AHCI基地址映射到线性地址
 	err_temp = lin_mapping_phy_nopid(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
@@ -95,6 +98,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	
 	// disp_str("\nlin_mapping_phy_ahci");
 	HBA=(HBA_MEM *)(ahci_info[0].ABAR);
+
 	ahci_info[0].is_AHCI_MODE = (HBA->ghc)>>31;
 
 	if (ahci_info[0].is_AHCI_MODE==0)
@@ -114,7 +118,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}
 	
-	HBA->ghc |=(1<<1);//enable interrupt
+	// HBA->ghc |=(1<<1);//enable interrupt
 	sata_irq=ahci_info[0].irq_info&0xff;
 	if(sata_irq<=16){
 		put_irq_handler(sata_irq, sata_handler);
@@ -166,12 +170,19 @@ PRIVATE void sata_handler(int irq)
 	{
 		if(is&1)
 		{
+			// Check again
+		if (HBA->ports[index].is & HBA_PxIS_TFES)
+		{
+			// disp_str("Read disk error\n");
+			tf_err_rec(&(HBA->ports[index]));
+		}
 			HBA->ports[index].is=0xffffffff;
 		}
 		index++;
 		is >>= 1;
 	}
 	
+	sata_wait_flag = 0;
 	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
 
 	return;
@@ -589,15 +600,15 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// disp_str("\nWait for completion");
 	// disp_str("\nslot:");
 	// disp_int(slot);
-	while (1)
+	while (sata_wait_flag)
 	{
 		// In some longer duration reads, it may be helpful to spin on the DPS bit 
 		// in the PxIS port field as well (1 << 5)
 		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("port_is:");disp_int(port->is);
-			break;}
+		// if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+		// 	// disp_str("port_is:");disp_int(port->is);
+		// 	break;}
 		
 		// disp_int((port->ci)>>slot);
 		// if (port->is & HBA_PxIS_TFES)	// Task file error
@@ -606,6 +617,7 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 		// 	return FALSE;
 		// }
 	}
+	sata_wait_flag = 1;
  
 	// Check again
 	// if (port->is & HBA_PxIS_TFES)

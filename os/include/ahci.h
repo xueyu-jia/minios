@@ -251,4 +251,5 @@ PUBLIC void tf_err_rec(HBA_PORT* port);
 extern HBA_MEM* HBA;
 
 extern	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+extern volatile int sata_wait_flag;
 #endif /* ACHI_H */
