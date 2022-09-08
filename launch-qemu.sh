@@ -11,11 +11,23 @@
 
 # qemu-system-i386 -drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci \
 # -device ide-hd,drive=disk,bus=ahci.0 -monitor stdio
-cp b.img a.img
+# cp b.img a.img
 # cp b.img c.img
-cp b.img d.img
-cp b.img e.img
+# cp b.img d.img
+# cp b.img e.img
+
+# qemu-system-i386 \
+# -drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 \
+# -drive id=disk1,file=c.img,if=none -device ide-hd,drive=disk1,bus=ahci.1 \
+# -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=ahci.2 \
+# -hda a.img -hdb e.img
+
 qemu-system-i386 \
--drive id=disk,file=b.img,if=none -device ich9-ahci,id=ahci -device ide-hd,drive=disk,bus=ahci.0 -hda a.img -hdb e.img
-# -drive id=disk1,file=c.img,if=none -device ich9-ahci,id=ahci1 -device ide-hd,drive=disk1,bus=ahci.1 \
-# -drive id=disk2,file=d.img,if=none -device ich9-ahci,id=ahci2 -device ide-hd,drive=disk2,bus=ahci.2 \
+-device ich9-ahci,id=xiaofeng \
+-drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
+-drive id=disk1,file=c.img,if=none -device ide-hd,drive=disk1,bus=xiaofeng.1  \
+-drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=xiaofeng.2  \
+-drive id=disk3,file=f.img,if=none -device ide-hd,drive=disk3,bus=xiaofeng.3  \
+-hda a.img -hdb e.img \
+-boot menu=on \
+-monitor stdio
