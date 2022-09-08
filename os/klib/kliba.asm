@@ -36,6 +36,8 @@ global  write_char	; added by mingxuan 2019-5-19
 disp_str:
 	push	ebp
 	mov	ebp, esp
+	push 	ebx
+
 
 	mov	esi, [ebp + 8]	; pszInfo
 	mov	edi, [disp_pos]
@@ -72,7 +74,8 @@ disp_str:
 .2:
 	mov	[disp_pos], edi
 
-	pop	ebp
+	mov ebx, [ebp - 4]
+	leave
 	ret
 
 ; ========================================================================
@@ -81,6 +84,7 @@ disp_str:
 disp_color_str:
 	push	ebp
 	mov	ebp, esp
+	push 	ebx
 
 	mov	esi, [ebp + 8]	; pszInfo
 	mov	edi, [disp_pos]
@@ -110,7 +114,8 @@ disp_color_str:
 .2:
 	mov	[disp_pos], edi
 
-	pop	ebp
+	mov ebx, [ebp - 4]
+	leave
 	ret
 
 ; ========================================================================
