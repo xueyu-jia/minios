@@ -111,6 +111,8 @@ PRIVATE int get_dev_from_name(char* devname)
 
     int minor = num - '0';
 
+    if(num == '\0') minor = 0;
+
     int dev_num = MAKE_DEV(major, minor);
 
     return dev_num;
@@ -162,11 +164,11 @@ PUBLIC int mount_open(char *pathname, int flags)
     }
     orange_pathname[i] = 0;
 
-    for(i = j + 1; i < strlen(pathname); i++)
-    {
-        mount_pathname[i - j - 1] = pathname[i];
-    }
-    mount_pathname[i - j - 1] = 0;
+    // for(i = j + 1; i < strlen(pathname); i++)
+    // {
+    //     mount_pathname[i - j - 1] = pathname[i];
+    // }
+    // mount_pathname[i - j - 1] = 0;
 
     int index;
     for(i = 0; i < MAX_mnt_table_length; i++)
