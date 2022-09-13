@@ -151,41 +151,49 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by ming
 	char arg_stack[num_4B];
 	int stack_len = 0;
 
-	while(*p++) {
+	if (p != NULL)
+	{
+		while (*p++)
+		{
+			stack_len += sizeof(char *);
+		}
+
+		//disp_int(stack_len,0x71);
+
+		*((int*)(&arg_stack[stack_len])) = 0;
 		stack_len += sizeof(char*);
-	}
-	//disp_int(stack_len,0x71);
-
-	*((int*)(&arg_stack[stack_len])) = 0;
-	stack_len += sizeof(char*);
-	//disp_int(stack_len,0x74);
-	
-	int tmp;
-	char **q = (char**)arg_stack;
-	for (p = argv; *p != 0; p++) {
-		*q++ = &arg_stack[stack_len];
-		strcpy(&arg_stack[stack_len], *p);
-		tmp = strlen(*p);
-		//disp_int(tmp,0x74);
-		stack_len += tmp;
-
-		arg_stack[stack_len] = 0;
-		stack_len++;
 		//disp_int(stack_len,0x74);
-	}
-
-	u8* orig_stack = (u8*)(ArgLinBase);
-
-	//disp_int(orig_stack);
-
-	int delta = (int)(void*)arg_stack - (int)orig_stack;
-	//disp_int(delta, 0x71);
-	int argc = 0;
-	if (stack_len) {	// has args
+		
+		int tmp;
 		char **q = (char**)arg_stack;
-		for (; *q != 0; q++,argc++)
-			*q -= delta;
+		for (p = argv; *p != 0; p++) {
+			*q++ = &arg_stack[stack_len];
+			strcpy(&arg_stack[stack_len], *p);
+			tmp = strlen(*p);
+			//disp_int(tmp,0x74);
+			stack_len += tmp;
+
+			arg_stack[stack_len] = 0;
+			stack_len++;
+			//disp_int(stack_len,0x74);
+		}
+		u8* orig_stack = (u8*)(ArgLinBase);
+
+		//disp_int(orig_stack);
+
+		int delta = (int)(void*)arg_stack - (int)orig_stack;
+		//disp_int(delta, 0x71);
+		int argc = 0;
+		if (stack_len) {	// has args
+			char **q = (char**)arg_stack;
+			for (; *q != 0; q++,argc++)
+				*q -= delta;
+		}
 	}
+
+	
+
+	
      /*   end added   */
 
 	/*************释放进程内存****************/
@@ -212,29 +220,29 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by ming
 
 	/*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
 	exec_pcb_init(path);
-	addr_lin = p_proc_current->task.memmap.arg_lin_base ;
-	memcpy(addr_lin, arg_stack, num_4K);
+	// addr_lin = p_proc_current->task.memmap.arg_lin_base ;
+	// memcpy(addr_lin, arg_stack, num_4K);
 
-	/*    added by xyx&&wjh 2021-12-31  */
-	for( addr_lin = p_proc_current->task.memmap.arg_lin_base ; addr_lin < p_proc_current->task.memmap.arg_lin_limit ; addr_lin+=num_4K )
-	{
-		err_temp = ker_umalloc_4k(addr_lin, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+	// /*    added by xyx&&wjh 2021-12-31  */
+	// for( addr_lin = p_proc_current->task.memmap.arg_lin_base ; addr_lin < p_proc_current->task.memmap.arg_lin_limit ; addr_lin+=num_4K )
+	// {
+	// 	err_temp = ker_umalloc_4k(addr_lin, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
 		
-		if( err_temp!=0 )
-		{
-			disp_color_str("kernel_main Error:lin_mapping_phy",0x74);
-			//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
-			//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-			p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+	// 	if( err_temp!=0 )
+	// 	{
+	// 		disp_color_str("kernel_main Error:lin_mapping_phy",0x74);
+	// 		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
+	// 		//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
+	// 		p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 
-			//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-			p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+	// 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
+	// 		p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
 
-			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-			return -1;
-		}
-		memcpy((void*)addr_lin, (void*)arg_stack, num_4K);
-	}
+	// 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
+	// 		return -1;
+	// 	}
+	// 	memcpy((void*)addr_lin, (void*)arg_stack, num_4K);
+	// }
    /*   end added   */
 
 	/***********************代码、数据、堆、栈***************************/
@@ -250,10 +258,10 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by ming
 	*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;		 //added by xw, 17/12/11
 
 /*    added by xyx&&wjh  2021-12-31  */
-	p_proc_current->task.regs.ecx = argc; /* argc */
-	*((u32*)(p_reg + ECXREG - P_STACKTOP)) = p_proc_current->task.regs.ecx;
-	p_proc_current->task.regs.edx = (u32)orig_stack; /* argv */
-	*((u32*)(p_reg + EDXREG - P_STACKTOP)) = p_proc_current->task.regs.edx;
+	// p_proc_current->task.regs.ecx = argc; /* argc */
+	// *((u32*)(p_reg + ECXREG - P_STACKTOP)) = p_proc_current->task.regs.ecx;
+	// p_proc_current->task.regs.edx = (u32)orig_stack; /* argv */
+	// *((u32*)(p_reg + EDXREG - P_STACKTOP)) = p_proc_current->task.regs.edx;
 /*   end added   */
 
 

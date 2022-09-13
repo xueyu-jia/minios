@@ -239,9 +239,13 @@ struct fs_flags
 struct hd_cmd {
 	u8	features;
 	u8	count;
+	u8	count_LBA48;//LBA48,要读写的扇区数的高8位,LBA48模式下写两次端口寄存器，先写高位,地址也是先写高位 by qianglong 2022.4.25
 	u8	lba_low;
+	u8	lba_low_LBA48;//LBA48,24~31位
 	u8	lba_mid;
+	u8	lba_mid_LBA48;//LBA48,32~39位
 	u8	lba_high;
+	u8 	lba_high_LBA48;//LBA48,40~47位
 	u8	device;
 	u8	command;
 };
@@ -262,8 +266,9 @@ struct part_info {
 struct hd_info
 {
 	int					open_cnt;
-	struct part_info	primary[NR_PRIM_PER_DRIVE];	// NR_PRIM_PER_DRIVE = 5
-	struct part_info	logical[NR_SUB_PER_DRIVE];	// NR_SUB_PER_DRIVE = 16 *4 =64
+	struct part_info	part[NR_PRIM_PER_DRIVE + NR_SUB_PER_PART];
+	// struct part_info	primary[NR_PRIM_PER_DRIVE];	// NR_PRIM_PER_DRIVE = 5
+	// struct part_info	logical[NR_SUB_PER_DRIVE];	// NR_SUB_PER_DRIVE = 16 *4 =64
 };
 
 
@@ -273,8 +278,10 @@ struct hd_info
 #define	HD_TIMEOUT		10000	/* in millisec */
 #define	PARTITION_TABLE_OFFSET	0x1BE
 #define ATA_IDENTIFY		0xEC
-#define ATA_READ		0x20
+#define ATA_READ		0x20	//LBA24
+#define ATA_READ_EXT			0x24//LBA48,by qianglong 2022.4.25
 #define ATA_WRITE		0x30
+#define ATA_WRITE_EXT			0x34//LBA48,by qianglong 2022.4.25
 /* for DEVICE register. */
 #define	MAKE_DEVICE_REG(lba,drv,lba_highest) (((lba) << 6) |		\
 					      ((drv) << 4) |		\
@@ -304,5 +311,4 @@ PUBLIC void hd_rdwt(MESSAGE *p);
 PUBLIC void hd_rdwt_sched(MESSAGE *p);
 PUBLIC void hd_ioctl(MESSAGE *p);
 //~xw
-
 #endif /* _ORANGES_HD_H_ */

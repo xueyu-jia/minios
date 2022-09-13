@@ -28,7 +28,23 @@
 struct memfree *memarg = 0;
 
 
+PRIVATE int strcmp(const char * s1, const char *s2)
+{
+	if ((s1 == 0) || (s2 == 0)) { /* for robustness */
+		return (s1 - s2);
+	}
 
+	const char * p1 = s1;
+	const char * p2 = s2;
+
+	for (; *p1 && *p2; p1++,p2++) {
+		if (*p1 != *p2) {
+			break;
+		}
+	}
+
+	return (*p1 - *p2);
+}
 /*======================================================================*
                            sys_get_ticks		add by visual 2016.4.6
  *======================================================================*/
@@ -78,6 +94,28 @@ PUBLIC int do_get_pid()
 PUBLIC int kern_get_pid()
 {
 	return p_proc_current->task.pid;
+}
+
+PUBLIC int sys_get_pid_byname(char *name)
+{
+	return do_get_pid_byname(name);
+}
+
+PUBLIC int do_get_pid_byname(char *name)
+{
+	return kern_get_pid_byname(name);
+}
+
+PUBLIC int kern_get_pid_byname(char *name)
+{
+	for(PROCESS *proc = proc_table; proc < proc_table+NR_PCBS;proc++)
+	{
+		if(strcmp(proc->task.p_name, name)==0)
+		{
+			return proc->task.pid;
+		}
+	}
+	return -1;
 }
 
 /*======================================================================*

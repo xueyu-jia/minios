@@ -760,25 +760,57 @@ STATE IsFile(SUPER_BLOCK *psb, PCHAR path,PUINT tag)
 	return OK;
 }
 
+PRIVATE int get_free_superblock()
+{
+	int sb_index =0;
+	for(sb_index=0;sb_index<NR_SUPER_BLOCK;sb_index++)
+	{
+		if(super_block[sb_index].used == 0)
+		{
+			break;
+		}
+	}
+	if(sb_index == NR_SUPER_BLOCK)
+	{
+		disp_str("there is no free superblock in array\n");
+		return -1;
+	}
+	return sb_index;
+}
+
 //added by ran
 PUBLIC void init_all_fat(int drive)
 {
 	int i;
 	for(i = 0; i < NR_PRIM_PER_DRIVE; i++)
 	{
-		if(hd_info[drive].primary[i].fs_type == FAT32_TYPE)
-		init_fs_fat((DEV_HD << MAJOR_SHIFT) | i);
+		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
+		init_fs_fat((drive << MAJOR_SHIFT) | i);
 	}
 
-	for(i = 0; i < NR_SUB_PER_DRIVE; i++)
+	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
-		if(hd_info[drive].logical[i].fs_type == FAT32_TYPE)
-		init_fs_fat((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+		if(hd_info[drive].part[i].fs_type == FAT32_TYPE)
+		init_fs_fat((drive << MAJOR_SHIFT) | i);
 	}
 
 	for (i = 0; i < NR_FILE_DESC; ++i) {
 		f_desc_table_fat[i].flag = 0;
 	}
+}
+
+PUBLIC int init_fat32fs(int dev)
+{
+	int sb_index = get_free_superblock();
+
+	if(sb_index == -1)
+	{
+		return -1;
+	}
+
+	init_super_block(&super_block[sb_index], dev);
+
+	return sb_index;
 }
 
 PUBLIC void init_fs_fat(int fat32_dev) {
@@ -795,14 +827,21 @@ PRIVATE void init_super_block(SUPER_BLOCK *psb, int dev) {
 	PCHAR cur="V:\\";
 
 	driver_msg.type		= DEV_READ;
-	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	//driver_msg.POSITION	= SECTOR_SIZE * 1;
 	driver_msg.POSITION	= 0;
 	driver_msg.BUF		= buf;
 	driver_msg.CNT		= SECTOR_SIZE;
 	driver_msg.PROC_NR	= proc2pid(p_proc_current);///TASK_A
 
-	hd_rdwt(&driver_msg);
+	if(p_proc_current->task.pid <=4)
+	{
+		hd_rdwt(&driver_msg);
+	}
+	else
+	{
+		hd_rdwt_sched(&driver_msg);
+	}
 
 	DWORD TotalSectors;
 	WORD  Bytes_Per_Sector;
@@ -1042,6 +1081,7 @@ PUBLIC int rw_sector_fat(int io_type, int dev, u64 pos, int bytes, int proc_nr, 
 
 	driver_msg.type		= io_type;
 	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
 	driver_msg.PROC_NR	= proc_nr;
@@ -1056,7 +1096,8 @@ PUBLIC int rw_sector_sched_fat(int io_type, int dev, int pos, int bytes, int pro
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
 	driver_msg.PROC_NR	= proc_nr;

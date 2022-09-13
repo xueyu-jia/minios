@@ -43,16 +43,17 @@
 #define	DEV_FLOPPY		1
 #define	DEV_CDROM		2
 #define	DEV_HD			3
-#define	DEV_CHAR_TTY	4
+#define	DEV_CHAR_TTY	13
 #define	DEV_SCSI		5
+#define	DEV_SATA		6
 
 /* make device number from major and minor numbers */
-#define	MAJOR_SHIFT		8
+#define	MAJOR_SHIFT		20
 #define	MAKE_DEV(a,b)		((a << MAJOR_SHIFT) | b)
 
 /* separate major and minor numbers from device number */
-#define	MAJOR(x)		((x >> MAJOR_SHIFT) & 0xFF)
-#define	MINOR(x)		(x & 0xFF)
+#define	MAJOR(x)		((x >> MAJOR_SHIFT) & 0x0FFF)
+#define	MINOR(x)		(x & 0x0FFFFF)
 
 #define	INVALID_INODE		0
 #define	ROOT_INODE			1
@@ -60,7 +61,7 @@
 
 #define	MAX_DRIVES			2
 #define	NR_PART_PER_DRIVE	4	// 每块硬盘(驱动器)只能有4个主分区, mingxuan
-#define	NR_SUB_PER_PART		16	// 每个扩展分区最多有16个逻辑分区, mingxuan
+#define	NR_SUB_PER_PART		11	// 扩展分区最多有11个逻辑分区, mingxuan
 #define	NR_SUB_PER_DRIVE	(NR_SUB_PER_PART * NR_PART_PER_DRIVE) //每块硬盘(驱动器)最多有16 * 4 = 64个逻辑分区, mingxuan
 #define	NR_PRIM_PER_DRIVE	(NR_PART_PER_DRIVE + 1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待, mingxuan
 
@@ -83,22 +84,22 @@
 #define SECONDARY_MASTER	0x2
 #define SECONDARY_SLAVE		0x3
 
-/* device numbers of hard disk */
-#define MINOR_hd0		0x0	// added by mingxuan 2020-10-9
-#define MINOR_hd1		0x1	// added by mingxuan 2020-10-12
-#define MINOR_hd2		0x2	// added by mingxuan 2020-10-12
+// /* device numbers of hard disk */
+// #define MINOR_hd0		0x0	// added by mingxuan 2020-10-9
+// #define MINOR_hd1		0x1	// added by mingxuan 2020-10-12
+// #define MINOR_hd2		0x2	// added by mingxuan 2020-10-12
 
-#define	MINOR_hd1a		0x10
-#define	MINOR_hd2a		(MINOR_hd1a + NR_SUB_PER_PART) // MINOR_hd2a = 16 + 16
+// #define	MINOR_hd1a		0x10
+// #define	MINOR_hd2a		(MINOR_hd1a + NR_SUB_PER_PART) // MINOR_hd2a = 16 + 16
 
-//#define MAJOR_FAT		0x3		//added by mingxuan 2019-5-17
-#define MAJOR_FAT		0x4		//modified by mingxuan 2020-10-22	
+// //#define MAJOR_FAT		0x3		//added by mingxuan 2019-5-17
+// #define MAJOR_FAT		0x4		//modified by mingxuan 2020-10-22	
 
-//#define	MINOR_BOOT		MINOR_hd2a	/// added by zcr
-#define	MINOR_BOOT		MINOR_hd2		//modified by mingxuan 2020-10-12
+// //#define	MINOR_BOOT		MINOR_hd2a	/// added by zcr
+// #define	MINOR_BOOT		MINOR_hd2		//modified by mingxuan 2020-10-12
 
-//#define	ROOT_DEV		MAKE_DEV(DEV_HD, MINOR_BOOT)	//deleted by mingxuan 2020-10-27
-//#define FAT_DEV			MAKE_DEV(DEV_HD, MAJOR_FAT)	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-27
+// //#define	ROOT_DEV		MAKE_DEV(DEV_HD, MINOR_BOOT)	//deleted by mingxuan 2020-10-27
+// //#define FAT_DEV			MAKE_DEV(DEV_HD, MAJOR_FAT)	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-27
 
 #define	P_PRIMARY	0
 #define	P_EXTENDED	1
@@ -111,7 +112,7 @@
 //#define	NR_FILE_DESC	64	/* FIXME */	//deleted by mingxuan 2019-5-19
 #define	NR_FILE_DESC	128	/* FIXME */	//modified by mingxuan 2019-5-19
 #define	NR_INODE	64	/* FIXME */
-#define	NR_SUPER_BLOCK	8
+#define	NR_SUPER_BLOCK	16
 
 
 /* INODE::i_mode (octal, lower 32 bits reserved) */
@@ -122,6 +123,8 @@
 #define I_CHAR_SPECIAL  0020000
 #define I_NAMED_PIPE	0010000
 
+#define I_MOUNTPOINT	0110000		//add by xiaofeng
+
 #define	is_special(m)	((((m) & I_TYPE_MASK) == I_BLOCK_SPECIAL) ||	\
 			 (((m) & I_TYPE_MASK) == I_CHAR_SPECIAL))
 
@@ -130,3 +133,11 @@
 //deleted by xw, 18/12/27
 //#define FSBUF_SIZE	0x100000	//added by xw, 18/6/17
 #define FSBUF_SIZE	0x100000		//added by mingxuan 2019-5-17
+
+
+#define	IDE_BASE		0
+#define	IDE_LIMIT		4
+#define	SATA_BASE		4
+#define SATA_LIMIT		8
+#define	SCSI_BASE		8
+#define	SCSI_LIMIT		8

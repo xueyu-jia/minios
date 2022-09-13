@@ -17,7 +17,11 @@ extern	disp_pos
 global	disp_str
 global	disp_color_str
 global	out_byte
+global	out_dword
+global	out_mem_32
 global	in_byte
+global	in_dword
+global	in_mem_32
 global  enable_irq
 global  disable_irq
 global	port_read
@@ -32,6 +36,8 @@ global  write_char	; added by mingxuan 2019-5-19
 disp_str:
 	push	ebp
 	mov	ebp, esp
+	push 	ebx
+
 
 	mov	esi, [ebp + 8]	; pszInfo
 	mov	edi, [disp_pos]
@@ -68,7 +74,8 @@ disp_str:
 .2:
 	mov	[disp_pos], edi
 
-	pop	ebp
+	mov ebx, [ebp - 4]
+	leave
 	ret
 
 ; ========================================================================
@@ -77,6 +84,7 @@ disp_str:
 disp_color_str:
 	push	ebp
 	mov	ebp, esp
+	push 	ebx
 
 	mov	esi, [ebp + 8]	; pszInfo
 	mov	edi, [disp_pos]
@@ -106,7 +114,8 @@ disp_color_str:
 .2:
 	mov	[disp_pos], edi
 
-	pop	ebp
+	mov ebx, [ebp - 4]
+	leave
 	ret
 
 ; ========================================================================
@@ -116,6 +125,24 @@ out_byte:
 	mov	edx, [esp + 4]		; port
 	mov	al, [esp + 4 + 4]	; value
 	out	dx, al
+	nop	; 一点延迟
+	nop
+	ret
+
+
+out_dword:
+	mov	edx, [esp + 4]		; port
+	mov	al, [esp + 4 + 4]	; value
+	out	dx, eax
+	nop	; 一点延迟
+	nop
+	ret
+
+
+out_mem_32:
+	mov	edx, [esp + 4]		; port
+	mov	al, [esp + 4 + 4]	; value
+	mov	[edx], eax
 	nop	; 一点延迟
 	nop
 	ret
@@ -130,6 +157,29 @@ in_byte:
 	nop	; 一点延迟
 	nop
 	ret
+
+; ========================================================================
+;                  u32 in_byte(u16 port);
+; ========================================================================
+in_dword:
+	mov	edx, [esp + 4]		; port
+	xor	eax, eax
+	in	eax, dx
+	nop	; 一点延迟
+	nop
+	ret
+
+; ========================================================================
+;                  u32 in_byte(u16 port);
+; ========================================================================
+in_mem_32:
+	mov	edx, [esp + 4]		; port
+	xor	eax, eax
+	mov	eax, [edx]
+	nop	; 一点延迟
+	nop
+	ret
+
 
 ; ========================================================================
 ;                  void disable_irq(int irq);

@@ -11,6 +11,11 @@
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
+PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
+PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglong
+PUBLIC u32	in_mem_32(u32 phy_addr); 
+PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
+
 PUBLIC void	disp_str(char* info);
 PUBLIC void	disp_color_str(char* info, int color);
 PUBLIC void write_char(char ch);    //added by mingxuan 2019-5-19
@@ -33,6 +38,7 @@ PUBLIC void	delay(int time);
 
 /* kernel.asm */
 u32  read_cr2();			//add by visual 2016.5.9
+u32  read_cr3();
 void refresh_page_cache();  //add by visual 2016.5.12
 //void restart_int();
 //void save_context();
@@ -87,6 +93,7 @@ PUBLIC void clock_handler(int irq);
 PUBLIC void  sys_call();                /* int_handler */
 PUBLIC int   get_ticks();
 PUBLIC int   get_pid();					//add by visual 2016.4.6
+PUBLIC int   get_pid_byname(char *);
 PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 PUBLIC void* kmalloc(int size);			//edit by visual 2016.5.9
 PUBLIC void* kmalloc_4k();				//edit by visual 2016.5.9
@@ -128,6 +135,7 @@ PUBLIC int pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLin
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */
 PUBLIC int   sys_get_pid();				//add by visual 2016.4.6
+PUBLIC int   sys_get_pid_byname(char*);
 //PUBLIC void* sys_kmalloc(int size);			//edit by visual 2016.5.9   //deleted by mingxuan 2021-8-21
 //PUBLIC void* sys_kmalloc_4k();				//edit by visual 2016.5.9   //deleted by mingxuan 2021-8-21
 PUBLIC void* sys_malloc(int size);			//edit by visual 2016.5.9
@@ -237,3 +245,10 @@ PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
 /*memman.c*/
 PUBLIC u32 phy_free_4k(u32 phy_addr);
+
+/*mount.c */
+PUBLIC int sys_mount(void *uesp);
+PUBLIC int sys_umount(void *uesp);
+
+/*fs.c*/
+PUBLIC int sys_init_block_dev(void *uesp);

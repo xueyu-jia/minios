@@ -23,6 +23,7 @@
 #include "../include/hd.h"
 #include "../include/fs.h"
 #include "../include/fs_misc.h"
+#include "../include/mount.h"
 
 /* FSBUF_SIZE is defined as macro in fs_const.h.
  * The physical address space 6MB~7MB is used as fs buffer in Orange's, but we can't use this
@@ -54,7 +55,7 @@ PRIVATE struct inode inode_table[NR_INODE];
 extern struct super_block super_block[NR_SUPER_BLOCK];	//modified by mingxuan 2020-10-30
 
 /* functions */
-PRIVATE void mkfs();
+PRIVATE void mkfs(int device);
 //PRIVATE void read_super_block(int dev);
 PUBLIC void read_super_block(int dev);	// modified by mingxuan 2020-10-30
 //PRIVATE struct super_block* get_super_block(int dev);
@@ -107,49 +108,300 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc);
 PRIVATE int memcmp(const void *s1, const void *s2, int n);
 PRIVATE int strcmp(const char *s1, const char *s2);
 
+PRIVATE int create_devfile(int drive, int major, int minor);
+// PUBLIC int sys_init_block_dev(int);
 
 // added by mingxuan 2020-10-27
-/*
-int get_fs_dev(int drive, int fs_type)
+
+// int get_fs_dev(int drive, int fs_type)
+// {
+// 	int i=0;
+// 	for(i=0; i < NR_PRIM_PER_DRIVE; i++)
+// 	{
+// 		if(hd_info[drive].primary[i].fs_type == fs_type)
+// 		return ((DEV_HD << MAJOR_SHIFT) | i);
+// 	}
+
+// 	//added by mingxuan 2020-10-29
+// 	for(i=0; i < NR_SUB_PER_DRIVE; i++)
+// 	{
+// 		if(hd_info[drive].logical[i].fs_type == fs_type)
+// 		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+// 	}
+// }
+
+//整型转字符串
+PRIVATE char *itoa(int num, char *str, int radix)
 {
-	int i=0;
-	for(i=0; i < NR_PRIM_PER_DRIVE; i++)
+    char index[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; //索引表
+    unsigned unum;                                         //存放要转换的整数的绝对值,转换的整数可能是负数
+    int i = 0, j, k;                                       // i用来指示设置字符串相应位，转换之后i其实就是字符串的长度；转换后顺序是逆序的，有正负的情况，k用来指示调整顺序的开始位置;j用来指示调整顺序时的交换。
+
+    //获取要转换的整数的绝对值
+    if (radix == 10 && num < 0) //要转换成十进制数并且是负数
+    {
+        unum = (unsigned)-num; //将num的绝对值赋给unum
+        str[i++] = '-';        //在字符串最前面设置为'-'号，并且索引加1
+    }
+    else
+        unum = (unsigned)num; //若是num为正，直接赋值给unum
+
+    //转换部分，注意转换后是逆序的
+    do
+    {
+        str[i++] = index[unum % (unsigned)radix]; //取unum的最后一位，并设置为str对应位，指示索引加1
+        unum /= radix;                            // unum去掉最后一位
+
+    } while (unum); //直至unum为0退出循环
+
+    str[i] = '\0'; //在字符串最后添加'\0'字符，c语言字符串以'\0'结束。
+
+    //将顺序调整过来
+    if (str[0] == '-')
+        k = 1; //如果是负数，符号不用调整，从符号后面开始调整
+    else
+        k = 0; //不是负数，全部都要调整
+
+    char temp;                         //临时变量，交换两个值时用到
+    for (j = k; j <= (i - 1) / 2; j++) //头尾一一对称交换，i其实就是字符串的长度，索引最大值比长度少1
+    {
+        temp = str[j];               //头部赋值给临时变量
+        str[j] = str[i - 1 + k - j]; //尾部赋值给头部
+        str[i - 1 + k - j] = temp;   //将临时变量的值(其实就是之前的头部值)赋给尾部
+    }
+
+    return str; //返回转换后的字符串
+}
+
+int create_devfile(int drive, int major, int minor)
+{
+	char devname[10];
+	memset(devname, 0, sizeof(devname));
+
+	if(major<SATA_BASE)
 	{
-		if(hd_info[drive].primary[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | i);
+		strcpy(devname, "dev_hd");
+		devname[strlen(devname)] = 'a'+major-IDE_BASE;
+	}
+	else if(major<SCSI_BASE)
+	{
+		strcpy(devname, "dev_sd");
+		devname[strlen(devname)] = 'a'+major-SATA_BASE;
+	}
+	else if(major<12)
+	{
+		disp_str("SCSI devices are temporarily not supported\n");
+		return -1;
+	}
+	else
+	{
+		disp_str("major num out of limit\n");
+		return-1;
 	}
 
-	//added by mingxuan 2020-10-29
-	for(i=0; i < NR_SUB_PER_DRIVE; i++)
+	if(minor != 0)
 	{
-		if(hd_info[drive].logical[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+		itoa(minor, devname+strlen(devname), 10);
 	}
+
+	// int fd = real_open(devname, O_CREAT);
+	// real_close(fd);
+
+	int inode_nr = search_file(devname);
+
+	if(inode_nr != 0)
+	{
+		int orange_dev = get_fs_dev(drive, ORANGE_TYPE);
+		struct inode* dev_inode = get_inode_sched(orange_dev, inode_nr);
+
+		if(dev_inode->i_mode == I_BLOCK_SPECIAL)
+		{
+			return 0;
+		}
+		else
+		{
+			disp_str("Conflicting file name with dev name");
+			return -1;
+		}
+	}
+
+	create_file(devname, O_CREAT);
+
+	inode_nr = search_file(devname);
+	int orange_dev = get_fs_dev(drive, ORANGE_TYPE);
+	struct inode* dev_inode = get_inode_sched(orange_dev, inode_nr);
+
+	dev_inode->i_mode = I_BLOCK_SPECIAL;
+	sync_inode(dev_inode);
+	return 0;
+	
 }
-*/
+
+
+int sys_init_block_dev(void *uesp)
+{
+	int drive = get_arg(uesp, 1);
+
+	for(int i=0;i<12;i++)
+	{
+		if(hd_info[i].open_cnt > 0)
+		{
+			for(int j=0;j<16;j++)
+			{
+				if(hd_info[i].part[j].size > 0)
+				{
+					create_devfile(drive, i,j);
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+
+PUBLIC void create_mountpoint(const char *pathname, u32 dev)
+{
+    int reval_orange;
+
+    int inode_nr = search_file(pathname);
+
+
+	if(inode_nr == 0)
+	{
+		create_file(pathname, O_CREAT);
+		inode_nr = search_file(pathname);
+	}
+	
+	int orange_dev = dev;
+	struct inode* dev_inode = get_inode_sched(orange_dev, inode_nr);
+
+	dev_inode->i_mode = I_MOUNTPOINT;    
+
+    return;
+}
+
+PUBLIC void free_mountpoint(const char *pathname, u32 dev)
+{
+    int inode_nr = search_file(pathname);
+	if(inode_nr == 0)
+	{
+		return;
+	}
+	
+	int orange_dev = dev;
+	struct inode* dev_inode = get_inode_sched(orange_dev, inode_nr);
+
+	dev_inode->i_mode = I_DIRECTORY;    
+
+    return;
+}
+
 // modified by ran
 int get_fs_dev(int drive, int fs_type)
 {
 	int i;
 	for(i = 2; i < NR_PRIM_PER_DRIVE; i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
 	{
-		if(hd_info[drive].primary[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | i);
+		if(hd_info[drive].part[i].fs_type == fs_type)
+		return ((drive << MAJOR_SHIFT) | i);
 	}
 
 	//added by mingxuan 2020-10-29
-	for(i = 0; i < NR_SUB_PER_DRIVE; i++)
+	for(i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
 	{
-		if(hd_info[drive].logical[i].fs_type == fs_type)
-		return ((DEV_HD << MAJOR_SHIFT) | (i + MINOR_hd1a)); // logic的下标i加上hd1a才是该逻辑分区的次设备号
+		if(hd_info[drive].part[i].fs_type == fs_type)
+		return ((drive << MAJOR_SHIFT) | i); 
 	}
 }
 
+PRIVATE int get_free_superblock()
+{
+	int sb_index =0;
+	for(sb_index=0;sb_index<NR_SUPER_BLOCK;sb_index++)
+	{
+		if(super_block[sb_index].used == 0)
+		{
+			break;
+		}
+	}
+	if(sb_index == NR_SUPER_BLOCK)
+	{
+		disp_str("there is no free superblock in array\n");
+		return -1;
+	}
+	return sb_index;
+}
+
+
+PUBLIC void read_super_block_to_target(int dev, struct super_block* target_sb)
+{
+	MESSAGE driver_msg;
+	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
+
+	driver_msg.type		= DEV_READ;
+	driver_msg.DEVICE	= dev;
+	driver_msg.POSITION	= SECTOR_SIZE * 1;
+	driver_msg.BUF		= fsbuf;
+	driver_msg.CNT		= SECTOR_SIZE;
+	driver_msg.PROC_NR	= proc2pid(p_proc_current);///TASK_A
+
+	hd_rdwt(&driver_msg);
+
+	struct super_block * psb = (struct super_block *)fsbuf;
+
+	*target_sb = *psb;
+
+	target_sb->sb_dev = dev;
+	
+}
+
+PUBLIC int read_super_block_to_empty(int dev)
+{
+	int sb_index =0;
+	
+	sb_index = get_free_superblock();
+
+	if(sb_index == -1)
+	{
+		return -1;
+	}
+
+	read_super_block_to_target(dev, &super_block[sb_index]);
+
+	return 0;
+}
+
+PUBLIC int init_orangefs(int device)
+{
+	disp_str("Initializing orange file system in device:");
+	disp_int(device);
+
+	if(read_super_block_to_empty(device) != 0)
+	{
+		return -1;
+	}
+
+	struct super_block *sb;
+
+	sb = get_super_block(device);
+
+	if(sb->magic != MAGIC_V1 )
+	{
+		mkfs(device);
+
+		read_super_block_to_target(device, sb);
+		sb->fs_type = ORANGE_TYPE;
+	}
+
+	return sb-super_block;
+}
+
+
 /// zcr added
-PUBLIC void init_fs()
+PUBLIC void init_rootfs(int device)
 {
 
-	disp_str("Initializing file system...  ");
+	disp_str("Initializing root file system...  ");
 
 	//allocate fs buffer. added by xw, 18/6/15
 	//fsbuf = (u8*)K_PHY2LIN(sys_kmalloc(FSBUF_SIZE)); //deleted by xw, 18/12/27
@@ -165,7 +417,7 @@ PUBLIC void init_fs()
 	//for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)				//deleted by mingxuan 2020-10-30
 	//	sb->sb_dev = NO_DEV;										//deleted by mingxuan 2020-10-30
 
-	int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);	//added by mingxuan 2020-10-27
+	int orange_dev = get_fs_dev(device, ORANGE_TYPE);	//added by mingxuan 2020-10-27
 
 	/* load super block of ROOT */
 	//read_super_block(ROOT_DEV);		// deleted by mingxuan 2020-10-27
@@ -178,7 +430,7 @@ PUBLIC void init_fs()
 	disp_str(" \n");
 
 	if(sb->magic != MAGIC_V1) {	//deleted by mingxuan 2019-5-20
-		mkfs();
+		mkfs(orange_dev);
 		disp_str("Make file system Done.\n");
 
 		// deleted by mingxuan 2020-10-30
@@ -190,7 +442,7 @@ PUBLIC void init_fs()
 	}
 
 	//root_inode = get_inode(ROOT_DEV, ROOT_INODE);	// deleted by mingxuan 2020-10-27
-	root_inode = get_inode(orange_dev, ROOT_INODE);	// modified by mingxuan 2020-10-27
+	root_inode = get_inode(orange_dev, ROOT_INODE);	// modified by xiaofeng 2020-10-27
 }
 
 /*****************************************************************************
@@ -205,7 +457,7 @@ PUBLIC void init_fs()
  *          - Create the inodes of the files
  *          - Create `/', the root directory
  *****************************************************************************/
-PRIVATE void mkfs()
+PRIVATE void mkfs(int device)
 {
 	MESSAGE driver_msg;
 	int i, j;
@@ -215,13 +467,13 @@ PRIVATE void mkfs()
 	//local array, to substitute global fsbuf. added by xw, 18/12/27
 	char fsbuf[SECTOR_SIZE];
 
-	int orange_dev = get_fs_dev(PRIMARY_MASTER, ORANGE_TYPE);	//added by mingxuan 2020-10-27
+	int orange_dev = device;	//added by mingxuan 2020-10-27
 
 	/* get the geometry of ROOTDEV */
 	struct part_info geo;
 	driver_msg.type		= DEV_IOCTL;
 	//driver_msg.DEVICE	= MINOR(ROOT_DEV);		// deleted by mingxuan 2020-10-27
-	driver_msg.DEVICE	= MINOR(orange_dev);	// modified by mingxuan 2020-10-27
+	driver_msg.DEVICE	= orange_dev;	// modified by mingxuan 2020-10-27
 	driver_msg.REQUEST	= DIOCTL_GET_GEO;
 	driver_msg.BUF		= &geo;
 	driver_msg.PROC_NR	= proc2pid(p_proc_current);
@@ -468,7 +720,8 @@ PRIVATE int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, voi
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	//attention
 	// driver_msg.POSITION	= (unsigned long long)pos;
 	driver_msg.POSITION	= pos;
@@ -490,7 +743,8 @@ PRIVATE int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_n
 	MESSAGE driver_msg;
 
 	driver_msg.type		= io_type;
-	driver_msg.DEVICE	= MINOR(dev);
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 
 	driver_msg.POSITION	= pos;
 	driver_msg.CNT		= bytes;	/// hu is: 512
@@ -520,6 +774,41 @@ PRIVATE int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_n
 // PRIVATE int real_open(const char *pathname, int flags)	//deleted by mingxuan 2019-5-17
 PUBLIC int real_open(const char *pathname, int flags)	//modified by mingxuan 2019-5-17
 {
+	char orange_pathname[20];
+	int i, j;
+	int inode_nr=0;
+
+	for(i = 0; i <strlen(pathname); i++)
+    {
+        if(pathname[i] == '/')
+        {
+            j = i;
+			for(j = 0; j < i; j++)
+    		{
+        		orange_pathname[j] = pathname[j];
+    		}
+			orange_pathname[i] = '\0';
+
+			inode_nr = search_file(orange_pathname);
+			if(inode_nr == 0)break;
+			
+    		int orange_dev = root_inode->i_dev;
+    		struct inode* mnt_node = get_inode_sched(orange_dev, inode_nr);
+	
+			if(mnt_node -> i_mode == I_MOUNTPOINT)
+			{
+				int fd = mount_open(pathname, flags);
+				return fd;
+			}
+			else
+			{
+				return -1;
+			}
+        }
+    }
+
+	
+
 	//added by xw, 18/8/27
 	MESSAGE fs_msg;
 
@@ -532,6 +821,8 @@ PUBLIC int real_open(const char *pathname, int flags)	//modified by mingxuan 201
 	//int fd = do_open();	//modified by xw, 18/8/27
 	//int fd = do_open(&fs_msg);
 	int fd = ora_open(&fs_msg);	//modified by mingxuan 2021-8-20
+
+	p_proc_current -> task.filp[fd] -> dev_index = root_inode->i_dev;
 
 	// send_recv(BOTH, TASK_FS, &msg);
 	// assert(msg.type == SYSCALL_RET);
@@ -633,8 +924,8 @@ PRIVATE int ora_open(MESSAGE *fs_msg)	//modified by mingxuan 2021-8-20
 		struct inode * dir_inode;
 		if (strip_path(filename, pathname, &dir_inode) != 0)
 			return -1;
-		//pin = get_inode_sched(dir_inode->i_dev, inode_nr);	//modified by xw, 18/8/28
-		pin = get_inode(dir_inode->i_dev, inode_nr); //modified by mingxuan 2019-5-20
+		pin = get_inode_sched(dir_inode->i_dev, inode_nr);	//modified by xw, 18/8/28
+		// pin = get_inode(dir_inode->i_dev, inode_nr); //modified by mingxuan 2019-5-20
 		/// zcr
 		//disp_str("get the i-node of a file already exists.\n");	//deleted by mingxuan 2019-5-22
 	}
@@ -847,8 +1138,8 @@ PRIVATE int search_file(char * path)
 	struct dir_entry * pde;
 	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
 	for (i = 0; i < nr_dir_blks; i++) {
-		//RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
+		RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		// RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
 			if (memcmp(filename, pde->name, MAX_FILENAME_LEN) == 0)
@@ -864,6 +1155,50 @@ PRIVATE int search_file(char * path)
 	return 0;
 }
 
+PRIVATE int search_file_sync(char * path)
+{
+	int i, j;
+
+	char filename[MAX_PATH];
+	memset(filename, 0, MAX_FILENAME_LEN);
+	struct inode * dir_inode;
+	if (strip_path(filename, path, &dir_inode) != 0)
+		return 0;
+
+	if (filename[0] == 0)	/* path: "/" */
+		return dir_inode->i_num;
+
+	/**
+	 * Search the dir for the file.
+	 */
+	int dir_blk0_nr = dir_inode->i_start_sect;
+	int nr_dir_blks = (dir_inode->i_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	int nr_dir_entries =
+	  dir_inode->i_size / DIR_ENTRY_SIZE; /**
+					       * including unused slots
+					       * (the file has been deleted
+					       * but the slot is still there)
+					       */
+	int m = 0;
+	struct dir_entry * pde;
+	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
+	for (i = 0; i < nr_dir_blks; i++) {
+		// RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
+		pde = (struct dir_entry *)fsbuf;
+		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
+			if (memcmp(filename, pde->name, MAX_FILENAME_LEN) == 0)
+				return pde->inode_nr;
+			if (++m > nr_dir_entries)
+				break;
+		}
+		if (m > nr_dir_entries) /* all entries have been iterated */
+			break;
+	}
+
+	/* file not found */
+	return 0;
+}
 /*****************************************************************************
  *                                strip_path
  *****************************************************************************/
@@ -936,7 +1271,7 @@ PUBLIC void read_super_block(int dev)	//modified by mingxuan 2020-10-30
 	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
 
 	driver_msg.type		= DEV_READ;
-	driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE	= dev;
 	driver_msg.POSITION	= SECTOR_SIZE * 1;
 	driver_msg.BUF		= fsbuf;
 	driver_msg.CNT		= SECTOR_SIZE;
@@ -1145,8 +1480,8 @@ PRIVATE void sync_inode(struct inode * p)
 	struct super_block * sb = get_super_block(p->i_dev);
 	int blk_nr = 1 + 1 + sb->nr_imap_sects + sb->nr_smap_sects + ((p->i_num - 1) / (SECTOR_SIZE / INODE_SIZE));
 	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
-	//RD_SECT_SCHED(p->i_dev, blk_nr, fsbuf);		//modified by xw, 18/12/27
-	RD_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
+	RD_SECT_SCHED(p->i_dev, blk_nr, fsbuf);		//modified by xw, 18/12/27
+	// RD_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
 	pinode = (struct inode*)((u8*)fsbuf +
 				 (((p->i_num - 1) % (SECTOR_SIZE / INODE_SIZE))
 				  * INODE_SIZE));
@@ -1154,8 +1489,8 @@ PRIVATE void sync_inode(struct inode * p)
 	pinode->i_size = p->i_size;
 	pinode->i_start_sect = p->i_start_sect;
 	pinode->i_nr_sects = p->i_nr_sects;
-	//WR_SECT_SCHED(p->i_dev, blk_nr, fsbuf);		//modified by xw, 18/12/27
-	WR_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
+	WR_SECT_SCHED(p->i_dev, blk_nr, fsbuf);		//modified by xw, 18/12/27
+	// WR_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
 }
 
 /// added by zcr (from ch9/e/fs/open.c)
@@ -1173,8 +1508,8 @@ PRIVATE void sync_inode(struct inode * p)
  *****************************************************************************/
 PRIVATE struct inode * new_inode(int dev, int inode_nr, int start_sect)
 {
-	//struct inode * new_inode = get_inode_sched(dev, inode_nr);	//modified by xw, 18/8/28
-	struct inode * new_inode = get_inode(dev, inode_nr); //modified by mingxuan 2019-5-20
+	struct inode * new_inode = get_inode_sched(dev, inode_nr);	//modified by xw, 18/8/28
+	// struct inode * new_inode = get_inode(dev, inode_nr); //modified by mingxuan 2019-5-20
 
 	new_inode->i_mode = I_REGULAR;
 	new_inode->i_size = 0;
@@ -1220,8 +1555,8 @@ PRIVATE void new_dir_entry(struct inode *dir_inode,int inode_nr,char *filename)
 	int i, j;
 	char fsbuf[SECTOR_SIZE];	//local array, to substitute global fsbuf. added by xw, 18/12/27
 	for (i = 0; i < nr_dir_blks; i++) {
-		//RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
+		RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		// RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < SECTOR_SIZE / DIR_ENTRY_SIZE; j++,pde++) {
@@ -1245,8 +1580,8 @@ PRIVATE void new_dir_entry(struct inode *dir_inode,int inode_nr,char *filename)
 	strcpy(new_de->name, filename);
 
 	/* write dir block -- ROOT dir block */
-	//WR_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);		//modified by xw, 18/12/27
-	WR_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
+	WR_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);		//modified by xw, 18/12/27
+	// WR_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
 
 	/* update dir inode */
 	sync_inode(dir_inode);
@@ -1285,8 +1620,8 @@ PRIVATE int alloc_imap_bit(int dev)
 
 	for (i = 0; i < sb->nr_imap_sects; i++) {
 		// RD_SECT(dev, imap_blk0_nr + i);		/// zcr: place the result in fsbuf?
-		// RD_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_SECT(dev, imap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
+		RD_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		// RD_SECT(dev, imap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 		/// zcr debug(output is 0x2, right.)
 		// disp_str("imap_blk0_nr + i: ");
 		// disp_int(imap_blk0_nr + i);
@@ -1322,8 +1657,8 @@ PRIVATE int alloc_imap_bit(int dev)
 			fsbuf[j] |= (1 << k);
 
 			/* write the bit to imap */
-			//WR_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-			WR_SECT(dev, imap_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
+			WR_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+			// WR_SECT(dev, imap_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
 			break;
 		}
 
@@ -1363,8 +1698,8 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc)
 
 	for (i = 0; i < sb->nr_smap_sects; i++) { /* smap_blk0_nr + i :
 						     current sect nr. */
-		//RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_SECT(dev, smap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
+		RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		// RD_SECT(dev, smap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 
 		/* byte offset in current sect */
 		for (j = 0; j < SECTOR_SIZE && nr_sects_to_alloc > 0; j++) {
@@ -1387,8 +1722,8 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc)
 		}
 
 		if (free_sect_nr) /* free bit found, write the bits to smap */
-			//WR_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-			WR_SECT(dev, smap_blk0_nr + i, fsbuf); //added by mingxuan 2019-5-20
+			WR_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+			// WR_SECT(dev, smap_blk0_nr + i, fsbuf); //added by mingxuan 2019-5-20
 
 		if (nr_sects_to_alloc == 0)
 			break;
@@ -1572,8 +1907,8 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg)	//modified by mingxuan 2021-8-20
 		//added by mingxuan 2019-5-19
 		int dev = pin->i_start_sect;
 		int nr_tty = MINOR(dev);
-		if(MAJOR(dev) != 4) {
-			disp_str("Error: MAJOR(dev) == 4\n");
+		if(MAJOR(dev) != DEV_CHAR_TTY) {
+			disp_str("Error: MAJOR(dev) == DEV_CHAR_TTY\n");
 		}
 
 		if(fs_msg->type == DEV_READ){
@@ -1613,8 +1948,8 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg)	//modified by mingxuan 2021-8-20
 		for (i = rw_sect_min; i <= rw_sect_max; i += chunk) {
 			/* read/write this amount of bytes every time */
 			int bytes = min(bytes_left, chunk * SECTOR_SIZE - off);
-			//rw_sector_sched(DEV_READ,		//modified by xw, 18/8/27
-			rw_sector(DEV_READ,	//modified by mingxuan 2019-5-21
+			rw_sector_sched(DEV_READ,		//modified by xw, 18/8/27
+			// rw_sector(DEV_READ,	//modified by mingxuan 2019-5-21
 				  pin->i_dev,
 				  i * SECTOR_SIZE,
 				  chunk * SECTOR_SIZE,
@@ -1634,8 +1969,8 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg)	//modified by mingxuan 2021-8-20
 					  (void*)va2la(src, buf + bytes_rw),
 					  bytes);
 
-				//rw_sector_sched(DEV_WRITE,		//modified by xw, 18/8/27
-				rw_sector(DEV_WRITE,	//modified by mingxuan 2019-5-21
+				rw_sector_sched(DEV_WRITE,		//modified by xw, 18/8/27
+				// rw_sector(DEV_WRITE,	//modified by mingxuan 2019-5-21
 					  pin->i_dev,
 					  i * SECTOR_SIZE,
 					  chunk * SECTOR_SIZE,

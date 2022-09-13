@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include "../include/stdio.h"
 
 int global = 1;
 //char *str = "abcd";
@@ -13,6 +13,11 @@ void main(int arg,char *argv[])
 	printf("%d\n", global);	//deleted by mingxuan 2021-3-17
 	
 	//malloc(1024);
+
+	if(0==mount("dev_sdb", "fat1", NULL, NULL, NULL))
+	{
+		printf("mount sdb to fat1\n");
+	}
 
 	printf(" %d ",get_pid());
 	exit(get_pid());

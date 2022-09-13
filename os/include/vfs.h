@@ -3,7 +3,7 @@
 ***********************************************************/
 
 //#define NR_DEV 10
-#define NR_FS 10		//modified by mingxuan 2020-10-18
+#define NR_FS 16		//modified by mingxuan 2020-10-18
 #define DEV_NAME_LEN 15
 //#define NR_fs 3
 #define NR_FS_OP 3		//modified by mingxuan 2020-10-18
@@ -61,7 +61,7 @@ PUBLIC int do_vchdir(const char *path); //added by ran
 //PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
 PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
 
-
+PUBLIC int set_vfstable(u32 device, char *target);
 PUBLIC struct vfs* vfs_alloc_vfs_entity();
 PUBLIC int get_index(char path[]);
 PUBLIC void init_vfs();

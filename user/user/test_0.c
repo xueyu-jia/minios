@@ -20,6 +20,8 @@ void main(int arg,char *argv[])
 
         //get_pid();
 
+        umount("fat1");
+
         printf("total_mem_size:%x\n",total_mem_size());
 
        

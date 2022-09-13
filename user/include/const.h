@@ -88,7 +88,7 @@
 //#define NR_SYS_CALL     32    //modified by ran
 //#define NR_SYS_CALL     33    //modified by mingxuan 2021-2-7
 //#define NR_SYS_CALL     36	//modified by mingxuan 2021-2-28
-#define NR_SYS_CALL       56	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
+#define NR_SYS_CALL       59	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
 
 /* TTY */
 //added by mingxuan 2019-5-19

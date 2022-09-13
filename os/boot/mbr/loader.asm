@@ -838,14 +838,14 @@ DispMemInfo:
 ; ---------------------------------------------------------------------------
 
 ; 启动分页机制 --------------------------------------------------------------
-SetupPaging:
+SetupPaging:	;0x90752
 	; 根据内存大小计算应初始化多少PDE以及多少页表
 	xor	edx, edx
 	mov	eax, [dwMemSize]
 
     mov     ecx, 0x10000000          ;added by wang  2021.5.25 ;the size of kernel is 32M, mingxuan 2021-8-25
     cmp     eax, ecx
-    jg      .BigMem
+    ja      .BigMem
     mov		eax, 0x00800000          ;build 8M memory PTE for kernel added by wang  2021.5.25
     jmp     .next
 
@@ -953,7 +953,7 @@ SetupPaging:
 ; InitKernel ---------------------------------------------------------------------------------
 ; 将 KERNEL.BIN 的内容经过整理对齐后放到新的位置
 ; --------------------------------------------------------------------------------------------
-InitKernel:	; 遍历每一个 Program Header，根据 Program Header 中的信息来确定把什么放进内存，放到什么位置，以及放多少。
+InitKernel:	;0x9082c 遍历每一个 Program Header，根据 Program Header 中的信息来确定把什么放进内存，放到什么位置，以及放多少。
 	xor	esi, esi
 	mov	cx, word [BaseOfKernelFilePhyAddr + 2Ch]; ┓ ecx <- pELFHdr->e_phnum
 	movzx	ecx, cx								; ┛

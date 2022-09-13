@@ -135,8 +135,11 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_pthread_cond_signal,//add by ZengHao & MaLinhan 21.12.23
 														sys_pthread_cond_timewait,//add by ZengHao & MaLinhan 21.12.23
 														sys_pthread_cond_broadcast,//add by ZengHao & MaLinhan 21.12.23
-														sys_pthread_cond_destroy//add by ZengHao & MaLinhan 21.12.23
-																											
+														sys_pthread_cond_destroy,//add by ZengHao & MaLinhan 21.12.23
+														sys_get_pid_byname,
+														sys_mount,
+														sys_umount,
+														sys_init_block_dev
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

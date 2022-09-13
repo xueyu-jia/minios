@@ -84,14 +84,17 @@ _NR_pthread_cond_signal 	  	equ 52; 	//added by ZengHao & MaLinhan 2021.12.23
 _NR_pthread_cond_timewait 	  	equ 53; 	//added by ZengHao & MaLinhan 2021.12.23	
 _NR_pthread_cond_broadcast 	  	equ 54; 	//added by ZengHao & MaLinhan 2021.12.23	
 _NR_pthread_cond_destroy	  	equ 55; 	//added by ZengHao & MaLinhan 2021.12.23	
+_NR_get_pid_byname				equ 56;
 
+_NR_mount						equ 57;
+_NR_umount						equ 58;
 
 INT_VECTOR_SYS_CALL equ 0x90
 
 ; 导出符号
 global	get_ticks
 global	get_pid		;		//add by visual 2016.4.6
-
+global 	get_pid_byname;
 ;global	kmalloc		;		//add by visual 2016.4.6	//deleted by mingxuan 2021-3-25
 ;global	kmalloc_4k	;		//add by visual 2016.4.7	//deleted by mingxuan 2021-3-25
 ;global	malloc		;		//add by visual 2016.4.7	//deleted by mingxuan 2021-3-25
@@ -163,6 +166,9 @@ global  pthread_cond_broadcast		;//added by ZengHao & MaLinhan 2021.12.23
 global  pthread_cond_destroy		;//added by ZengHao & MaLinhan 2021.12.23
 global	pthread_self				;//added by ZengHao & MaLinhan 2021.12.23
 
+global	mount
+global	umount
+
 bits 32
 [section .text]
 ; ====================================================================
@@ -181,6 +187,18 @@ get_pid:
 	int	INT_VECTOR_SYS_CALL
 	ret
 	
+; ====================================================================
+;                              get_pid_byname		//add by visual 2016.4.6
+; ====================================================================
+get_pid_byname:
+	push 1			;the number of parameters
+	push ebx		;protect ebx
+	mov ebx, esp
+	add ebx, 4
+	mov	eax, _NR_get_pid_byname
+	int	INT_VECTOR_SYS_CALL
+	ret
+
 ; ====================================================================
 ;                        pthread_self	//added by ZengHao & MaLinhan 2021.12.23
 ; ====================================================================	
@@ -851,6 +869,26 @@ pthread_cond_destroy :
 	mov ebx,[esp+4]
 	mov	eax, _NR_pthread_cond_destroy
 	int	INT_VECTOR_SYS_CALL
+	ret
+
+; ====================================================================
+;                        mount & umount	//added by xiaofeng
+; ====================================================================	
+mount:
+	push 5			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_mount
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
+	ret
+
+	
+umount:
+	push 1			;the number of parameters
+	mov ebx, esp
+	mov	eax, _NR_umount
+	int	INT_VECTOR_SYS_CALL
+	add esp, 4
 	ret
 
 	

@@ -28,6 +28,7 @@
 #include "../include/fs.h"
 #include "../include/buddy.h"
 #include "../include/semaphore.h"
+#include "../include/ahci.h"
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -86,6 +87,8 @@ PUBLIC int kernel_main()
 
 	init_kb(); //added by mingxuan 2019-5-19
 
+	AHCI_init();
+
 	/* initialize hd-irq and hd rdwt queue */
 	init_hd();
 
@@ -102,14 +105,23 @@ PUBLIC int kernel_main()
 	open hard disk and initialize file system
 	coded by zcr on 2017.6.10. added by xw, 18/5/31
 	************************************************************************/
-	init_fileop_table(); //added by mingxuan 2019-5-17
+	// init_fileop_table(); //delete by xiaofeng 2022-8-17
 
-	//hd_open(MINOR(ROOT_DEV));
-	hd_open(PRIMARY_MASTER); //modified by mingxuan 2020-10-27
+	hd_open(0);
+	hd_open(1); //modified by mingxuan 2020-10-27
+
+	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
+	{
+		hd_open(SATA_BASE+dev_index);
+	}
+	//modified by mingxuan 2020-10-27
+	// hd_open(PRIMARY_SLAVE);
+	// hd_open(SECONDARY_MASTER);
+	// hd_open(SECONDARY_SLAVE);
 
 	init_vfs(); //added by mingxuan 2020-10-30
-	init_fs();
-	init_all_fat(PRIMARY_MASTER);
+	init_rootfs(SATA_BASE);
+	// init_all_fat(SATA_BASE);
 	//init_fs_fat();	//added by mingxuan 2019-5-17
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30
 

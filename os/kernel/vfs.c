@@ -230,19 +230,84 @@ PRIVATE void init_vfs_table(){  // modified by mingxuan 2020-10-30
     vfs_table[3].used = 1;
 
     // fat32 //added by ran
-    vfs_table[4].fs_name = "fat0";
-    vfs_table[4].op = &f_op_table[2];
-    vfs_table[4].sb = &super_block[4];
-    vfs_table[4].s_op = &sb_op_table[1];
-    vfs_table[4].used = 0; //动态绑定
+    // vfs_table[4].fs_name = "fat0";
+    // vfs_table[4].op = &f_op_table[2];
+    // vfs_table[4].sb = &super_block[4];
+    // vfs_table[4].s_op = &sb_op_table[1];
+    // vfs_table[4].used = 0; //动态绑定
 
     // fat32 //added by ran
-    vfs_table[5].fs_name = "fat1";
-    vfs_table[5].op = &f_op_table[2];
-    vfs_table[5].sb = &super_block[5];
-    vfs_table[5].s_op = &sb_op_table[1];
-    vfs_table[5].used = 0; //动态绑定
+    // vfs_table[5].fs_name = "fat1";
+    // vfs_table[5].op = &f_op_table[2];
+    // vfs_table[5].sb = &super_block[5];
+    // vfs_table[5].s_op = &sb_op_table[1];
+    // vfs_table[5].used = 0; //动态绑定
+
+    for(int i=4;i<NR_FS;i++)
+    {
+        vfs_table[i].fs_name = "";
+        vfs_table[i].op = &f_op_table[0];
+        vfs_table[i].sb = &super_block[i];
+        vfs_table[i].s_op = &sb_op_table[0];
+        vfs_table[5].used = 0; //动态绑定
+    }
 }
+
+PUBLIC int set_vfstable(u32 device, char *target)
+{
+    int fs_type = hd_info[MAJOR(device)].part[MINOR(device)].fs_type;
+
+    int vfs_index;
+    struct vfs *pvfs = vfs_table;
+
+    for(vfs_index = 0; vfs_index<NR_FS;vfs_index++,pvfs++)
+    {
+        if(pvfs->used == 1 && pvfs->sb->sb_dev == device)
+        {
+            break;
+        }
+    }
+
+    if(pvfs == vfs_table+NR_FS)
+    {
+        pvfs = vfs_alloc_vfs_entity();
+    }
+    
+    
+    pvfs->fs_name = (char*)kmalloc(12);
+    strcpy(pvfs->fs_name, target);
+
+    int sb_index;
+
+    if( fs_type== ORANGE_TYPE)
+    {
+        sb_index = init_orangefs(device);
+        pvfs->op = &f_op_table[1];
+        pvfs->s_op = &sb_op_table[0];
+    }
+    else if(fs_type== FAT32_TYPE)
+    {
+        sb_index = init_fat32fs(device);
+        pvfs->op = &f_op_table[2];
+        pvfs->s_op = &sb_op_table[1];
+    }
+    else 
+    {
+        disp_color_str("not support this fs foramt\n", 0x74);
+        return -1;
+    }
+
+    if(pvfs-vfs_table != sb_index)
+    {
+        disp_str("Warning!!!, vfstable index not equal with sb_index\n");
+    }
+
+    pvfs->sb = &super_block[sb_index];
+    pvfs->used = 1;
+
+    return pvfs - vfs_table;
+}
+
 
 PRIVATE int get_fs_len(const char *path) {
   int pathlen = strlen(path);
@@ -389,12 +454,14 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     int index,i;
     int fd = -1;
-    index = get_index(pathname);
-    if(index == -1){
-        disp_str("pathname error!\n");
-        disp_str(path);
-        return -1;
-    }
+    // index = get_index(pathname);
+    // if(index == -1){
+    //     disp_str("pathname error!\n");
+    //     disp_str(path);
+    //     return -1;
+    // }
+
+    index = 3;  //Orange
     struct vfs *pvfs = &vfs_table[index];
     if (pvfs->op->tag)
     {
@@ -412,7 +479,11 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     if(fd != -1)
     {
-        p_proc_current -> task.filp[fd] -> dev_index = index;
+        index = get_index(path);
+        if(index<3)
+        {
+            p_proc_current -> task.filp[fd] -> dev_index = index;
+        }
         //disp_str("          open file success!\n");   //deleted by mingxuan 2019-5-22
     }
     else {
