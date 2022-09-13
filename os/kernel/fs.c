@@ -282,11 +282,7 @@ PUBLIC void create_mountpoint(const char *pathname, u32 dev)
 
 PUBLIC void free_mountpoint(const char *pathname, u32 dev)
 {
-    int reval_orange;
-
     int inode_nr = search_file(pathname);
-
-
 	if(inode_nr == 0)
 	{
 		return;
@@ -380,7 +376,6 @@ PUBLIC int init_orangefs(int device)
 	disp_str("Initializing orange file system in device:");
 	disp_int(device);
 
-	
 	if(read_super_block_to_empty(device) != 0)
 	{
 		return -1;

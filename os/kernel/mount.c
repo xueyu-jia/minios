@@ -164,11 +164,11 @@ PUBLIC int mount_open(char *pathname, int flags)
     }
     orange_pathname[i] = 0;
 
-    // for(i = j + 1; i < strlen(pathname); i++)
-    // {
-    //     mount_pathname[i - j - 1] = pathname[i];
-    // }
-    // mount_pathname[i - j - 1] = 0;
+    for(i = j + 1; i < strlen(pathname); i++)
+    {
+        mount_pathname[i - j - 1] = pathname[i];
+    }
+    mount_pathname[i - j - 1] = 0;
 
     int index;
     for(i = 0; i < MAX_mnt_table_length; i++)
@@ -179,11 +179,16 @@ PUBLIC int mount_open(char *pathname, int flags)
             break;
         }
     }
-
-    // STATE (*popen) (const char * ,int) = f_op_table[index].open;
-    // int reval = popen(fat32_pathname, O_RDWR);
+    
     int fd;
-    fd = vfs_table[index].op -> open(pathname, flags);
+    if(vfs_table[index].op->open == real_open)  //orange
+    {
+        fd = vfs_table[index].op -> open(mount_pathname, flags);
+    }
+    else    //fat32
+    {
+        fd = vfs_table[index].op -> open(pathname, flags);
+    }
     p_proc_current -> task.filp[fd] -> dev_index = index;
     
     return fd;
