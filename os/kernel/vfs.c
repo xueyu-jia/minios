@@ -448,9 +448,12 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
+    char pathnamebackup[MAX_PATH];
 
     strcpy(pathname,path);
     pathname[pathlen] = 0;
+    strcpy(pathnamebackup,path);
+    pathnamebackup[pathlen] = 0;
 
     int index,i;
     int fd = -1;
@@ -479,8 +482,8 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     if(fd != -1)
     {
-        index = get_index(path);
-        if(index<3)
+        index = get_index(pathnamebackup);
+        if(index<=3)
         {
             p_proc_current -> task.filp[fd] -> dev_index = index;
         }
