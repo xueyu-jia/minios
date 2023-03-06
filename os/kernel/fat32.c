@@ -1117,9 +1117,9 @@ void deint(int t) {
     disp_str("\n");
 }
 
-int sys_CreateFile(void *uesp)
+int sys_CreateFile()
 {
-	// state=CreateFile(get_arg(uesp, 1));
+	// state=CreateFile(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	//debug("create file success");
@@ -1132,9 +1132,9 @@ int sys_CreateFile(void *uesp)
 	// return state;
 }
 
-int sys_DeleteFile(void *uesp)
+int sys_DeleteFile()
 {
-	// state=DeleteFile(get_arg(uesp, 1));
+	// state=DeleteFile(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	//debug("delete file success");
@@ -1146,10 +1146,10 @@ int sys_DeleteFile(void *uesp)
 	// return state;
 }
 
-int sys_OpenFile(void *uesp)
+int sys_OpenFile()
 {
-/*	// state=OpenFile(get_arg(uesp, 1),
-	// 				get_arg(uesp, 2));
+/*	// state=OpenFile(get_arg(1),
+	// 				get_arg(2));
 	// if(state==OK)
 	// {
 	// 	debug("open file success");
@@ -1158,16 +1158,16 @@ int sys_OpenFile(void *uesp)
 	// 	DisErrorInfo(state);
 	// }
 	// return state;
-	state=OpenFile(get_arg(uesp, 1),
-					get_arg(uesp, 2));
+	state=OpenFile(get_arg(1),
+					get_arg(2));
 	//debug("open file success");
 	debug("           open file success");
 	return state;	*/
 }
 
-int sys_CloseFile(void *uesp)
+int sys_CloseFile()
 {
-	// state=CloseFile(get_arg(uesp, 1));
+	// state=CloseFile(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	//debug("close file success");
@@ -1179,11 +1179,11 @@ int sys_CloseFile(void *uesp)
 	// return state;
 }
 
-int sys_WriteFile(void *uesp)
+int sys_WriteFile()
 {
-	// state=WriteFile(get_arg(uesp, 1),
-	// 				get_arg(uesp, 2),
-	// 				get_arg(uesp, 3));
+	// state=WriteFile(get_arg(1),
+	// 				get_arg(2),
+	// 				get_arg(3));
 	// if(state==OK)
 	// {
 	// 	//debug("write file success");
@@ -1195,12 +1195,12 @@ int sys_WriteFile(void *uesp)
 	// return state;
 }
 
-int sys_ReadFile(void *uesp)
+int sys_ReadFile()
 {
-	// state=ReadFile(get_arg(uesp, 1),
-	// 				get_arg(uesp, 2),
-	// 				get_arg(uesp, 3),
-	// 				get_arg(uesp, 4));
+	// state=ReadFile(get_arg(1),
+	// 				get_arg(2),
+	// 				get_arg(3),
+	// 				get_arg(4));
 	// if(state==OK)
 	// {
 	// 	//debug("read file success");
@@ -1212,9 +1212,9 @@ int sys_ReadFile(void *uesp)
 	// return state;
 }
 
-int sys_OpenDir(void *uesp)
+int sys_OpenDir()
 {
-	// state=OpenDir(get_arg(uesp, 1));
+	// state=OpenDir(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	//debug("open dir success");
@@ -1226,9 +1226,9 @@ int sys_OpenDir(void *uesp)
 	// return state;
 }
 
-int sys_CreateDir(void *uesp)
+int sys_CreateDir()
 {
-	// state=CreateDir(get_arg(uesp, 1));
+	// state=CreateDir(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	//debug("create dir success");
@@ -1240,9 +1240,9 @@ int sys_CreateDir(void *uesp)
 	// return state;
 }
 
-int sys_DeleteDir(void *uesp)
+int sys_DeleteDir()
 {
-	// state=DeleteDir(get_arg(uesp, 1));
+	// state=DeleteDir(get_arg(1));
 	// if(state==OK)
 	// {
 	// 	debug("delete dir success");
@@ -1254,10 +1254,10 @@ int sys_DeleteDir(void *uesp)
 	// return state;
 }
 
-int sys_ListDir(void *uesp) {
+int sys_ListDir() {
 
 	// DArray *array=NULL;
-	// char *s = get_arg(uesp, 1);
+	// char *s = get_arg(1);
 	// CHAR temp[256]={0};
 	// UINT tag=0;
 

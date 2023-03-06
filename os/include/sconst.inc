@@ -35,6 +35,7 @@ ESP_SAVE_SYSCALL  equ  ESP_SAVE_INT + 4
 ESP_SAVE_CONTEXT  equ  ESP_SAVE_SYSCALL + 4
 ;SAVE_TYPE		  equ  ESP_SAVE_CONTEXT + 4		;Deleted by xw, 18/4/19
 ;end
+ESP_SAVE_SYSCALL_ARG  equ  ESP_SAVE_CONTEXT + 4 ;added by zhenhao 2023.3.5
 
 TSS3_S_SP0	equ	4
 

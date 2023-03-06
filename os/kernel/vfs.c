@@ -371,68 +371,68 @@ int get_index(char path[]){
                               sys_* 系列函数
  *======================================================================*/
 
-PUBLIC int sys_open(void *uesp)
+PUBLIC int sys_open()
 {
-    return do_vopen(get_arg(uesp, 1), get_arg(uesp, 2));
+    return do_vopen(get_arg(1), get_arg(2));
 }
 
-PUBLIC int sys_close(void *uesp)
+PUBLIC int sys_close()
 {
-    return do_vclose(get_arg(uesp, 1));
+    return do_vclose(get_arg(1));
 }
 
-PUBLIC int sys_read(void *uesp)
+PUBLIC int sys_read()
 {
-    return do_vread(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return do_vread(get_arg(1), get_arg(2), get_arg(3));
 }
 
-PUBLIC int sys_write(void *uesp)
+PUBLIC int sys_write()
 {
-    return do_vwrite(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return do_vwrite(get_arg(1), get_arg(2), get_arg(3));
 }
 
-PUBLIC int sys_lseek(void *uesp)
+PUBLIC int sys_lseek()
 {
-    return do_vlseek(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return do_vlseek(get_arg(1), get_arg(2), get_arg(3));
 }
 
-PUBLIC int sys_unlink(void *uesp) {
-    return do_vunlink(get_arg(uesp, 1));
+PUBLIC int sys_unlink() {
+    return do_vunlink(get_arg(1));
 }
 
-PUBLIC int sys_create(void *uesp) {
-    return do_vcreate(get_arg(uesp, 1));
+PUBLIC int sys_create() {
+    return do_vcreate(get_arg(1));
 }
 
-PUBLIC int sys_delete(void *uesp) {
-    return do_vdelete(get_arg(uesp, 1));
+PUBLIC int sys_delete() {
+    return do_vdelete(get_arg(1));
 }
 
-PUBLIC int sys_opendir(void *uesp) {
-    return do_vopendir(get_arg(uesp, 1));
+PUBLIC int sys_opendir() {
+    return do_vopendir(get_arg(1));
 }
 
-PUBLIC int sys_createdir(void *uesp) {
-    return do_vcreatedir(get_arg(uesp, 1));
+PUBLIC int sys_createdir() {
+    return do_vcreatedir(get_arg(1));
 }
 
-PUBLIC int sys_deletedir(void *uesp) {
-    return do_vdeletedir(get_arg(uesp, 1));
+PUBLIC int sys_deletedir() {
+    return do_vdeletedir(get_arg(1));
 }
 
-PUBLIC int sys_readdir(void *uesp) {
-    return do_vreaddir(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
-    //return ReadDir((PCHAR)get_arg(uesp, 1), (PDWORD)get_arg(uesp, 2), (PCHAR)get_arg(uesp, 3));
+PUBLIC int sys_readdir() {
+    return do_vreaddir(get_arg(1), get_arg(2), get_arg(3));
+    //return ReadDir((PCHAR)get_arg(1), (PDWORD)get_arg(2), (PCHAR)get_arg(3));
 }
 
 //added by ran
-PUBLIC int sys_chdir(void *uesp) {
-  return do_vchdir((PCHAR)get_arg(uesp, 1));
+PUBLIC int sys_chdir() {
+  return do_vchdir((PCHAR)get_arg(1));
 }
 
 //added by ran
-PUBLIC int sys_getcwd(void *uesp) {
-  return (int)do_vgetcwd((PCHAR)get_arg(uesp, 1), (PDWORD)get_arg(uesp, 2));
+PUBLIC int sys_getcwd() {
+  return (int)do_vgetcwd((PCHAR)get_arg(1), (PDWORD)get_arg(2));
 }
 
 //added by mingxuan 2021-8-15
@@ -448,9 +448,12 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     int pathlen = strlen(path);
     char pathname[MAX_PATH];
+    char pathnamebackup[MAX_PATH];
 
     strcpy(pathname,path);
     pathname[pathlen] = 0;
+    strcpy(pathnamebackup,path);
+    pathnamebackup[pathlen] = 0;
 
     int index,i;
     int fd = -1;
@@ -479,8 +482,8 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
     if(fd != -1)
     {
-        index = get_index(path);
-        if(index<3)
+        index = get_index(pathnamebackup);
+        if(index<=3)
         {
             p_proc_current -> task.filp[fd] -> dev_index = index;
         }
@@ -709,7 +712,7 @@ PUBLIC int do_vcreate(char *filepath)
 //PUBLIC int do_vcreate(char *filepath) { //modified by mingxuan 2019-5-17
 PUBLIC int kern_vcreate(char *filepath) { //modified by mingxuan 2019-5-17
     // disp_str("hhh");
-    // const char *path = get_arg(uesp,1);
+    // const char *path = get_arg(1);
 
     // int pathlen = strlen(path);
     // char pathname[MAX_PATH];

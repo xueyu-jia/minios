@@ -6,9 +6,9 @@
 //#include <signal/signal.h>
 #include "signal.h" //modified by mingxuan 2021-4-2
 
-int sys_signal(void *user_esp);
-int sys_sigsend(void *user_esp);
-void sys_sigreturn(void *user_esp);
+int sys_signal();
+int sys_sigsend();
+void sys_sigreturn();
 
 int do_signal(int pid, void* handler, void* _Handler);
 int do_sigsend(int pid, Sigaction* sigaction) ;

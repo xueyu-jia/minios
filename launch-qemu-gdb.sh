@@ -36,12 +36,18 @@
 # cp b.img e.img
 # cp b.img f.img
 
+# qemu-system-x86_64 \
+# -device ich9-ahci,id=xiaofeng \
+# -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
+# -drive id=disk1,file=j.img,if=none -device ide-hd,drive=disk1,bus=xiaofeng.1  \
+# -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=xiaofeng.2  \
+# -drive id=disk3,file=f.img,if=none -device ide-hd,drive=disk3,bus=xiaofeng.3  \
+# -hda a.img -hdb e.img \
+# -boot menu=on \
+#  -gdb tcp::1234 -S -monitor stdio
+
+gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
--drive id=disk1,file=j.img,if=none -device ide-hd,drive=disk1,bus=xiaofeng.1  \
--drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=xiaofeng.2  \
--drive id=disk3,file=f.img,if=none -device ide-hd,drive=disk3,bus=xiaofeng.3  \
--hda a.img -hdb e.img \
--boot menu=on \
- -gdb tcp::1234 -S -monitor stdio
+-gdb tcp::1234 -S -monitor stdio

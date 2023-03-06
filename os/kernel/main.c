@@ -107,8 +107,8 @@ PUBLIC int kernel_main()
 	************************************************************************/
 	// init_fileop_table(); //delete by xiaofeng 2022-8-17
 
-	hd_open(0);
-	hd_open(1); //modified by mingxuan 2020-10-27
+	// hd_open(0);
+	// hd_open(1); //modified by mingxuan 2020-10-27
 
 	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
 	{
@@ -155,7 +155,7 @@ PUBLIC int kernel_main()
 	//test_kfree();
 
 	disp_str("main:total_mem_size=");
-	disp_int(sys_total_mem_size());
+	disp_int(kern_total_mem_size());
 	disp_str("\n");
 
 	//test_kbud_mem_size();

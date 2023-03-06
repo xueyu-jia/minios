@@ -81,9 +81,9 @@ int main(int arg, char *argv[])
 	pthread_cond_init(&cond, NULL);
 	printf("pthread_cond_init successful!      \n");
 	printf("Init over!      \n");
-	// pthread_create(&ntid, NULL, consumer, NULL);
+	pthread_create(&ntid, NULL, consumer, NULL);
 	sleep(50);//由于线程内部的操作比较多，为了保证该线程先运行并且进入等待挂起，需要让主线程sleep足够的时间
-	// pthread_create(&ntid, NULL, consumer2, NULL);
+	pthread_create(&ntid, NULL, consumer2, NULL);
 	sleep(50);
 	printf("mutex is locked by creator      \n");
 	pthread_mutex_lock(&mutex);
@@ -116,5 +116,6 @@ int main(int arg, char *argv[])
 		printf("mutex is destroyed fail!        \n");
 	}
 	printf("over!                                 \n");
+	exit(0);
 	return 0;
 }

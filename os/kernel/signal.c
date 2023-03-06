@@ -172,16 +172,16 @@ void do_sigreturn(int ebp)
     kern_sigreturn(ebp);
 }
 
-int sys_signal(void *user_esp) {
-    return do_signal(get_arg(user_esp, 1), get_arg(user_esp, 2), get_arg(user_esp, 3));
+int sys_signal() {
+    return do_signal(get_arg(1), get_arg(2), get_arg(3));
 }
 
-int sys_sigsend(void *user_esp){
-    return do_sigsend(get_arg(user_esp, 1), get_arg(user_esp, 2));
+int sys_sigsend(){
+    return do_sigsend(get_arg(1), get_arg(2));
 }
 
-void sys_sigreturn(void *user_esp) {
-    do_sigreturn(get_arg(user_esp, 1));
+void sys_sigreturn() {
+    do_sigreturn(get_arg(1));
 }
 
 void process_signal() {

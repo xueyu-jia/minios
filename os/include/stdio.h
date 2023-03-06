@@ -1,82 +1,84 @@
-﻿/********************************************
-*用户库函数声明		add by visual 2016.5.16
-*************************************************/
-#include "const.h"  //added by mingxuan 2019-5-19
-#include "type.h" //added by mingxuan 2019-5-19
+﻿// /********************************************
+// *用户库函数声明		add by visual 2016.5.16
+// *************************************************/
+// #include "const.h"  //added by mingxuan 2019-5-19
+// #include "type.h" //added by mingxuan 2019-5-19
 
-#ifndef _STDIO_H_  //added by mingxuan 2019-5-19
-#define _STDIO_H_  //added by mingxuan 2019-5-19
+// #ifndef _STDIO_H_  //added by mingxuan 2019-5-19
+// #define _STDIO_H_  //added by mingxuan 2019-5-19
 
-extern int tty;
+// extern int tty;
 
-/*syscall.asm*/
-int get_ticks();
-int get_pid();				
-PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
-void* kmalloc(int size);			
-void* kmalloc_4k();			
-void* malloc(int size);			
-void* malloc_4k();				
-// int free(void *arg);				
-int free_4k(void* AdddrLin);	
-int fork();			
-int pthread_create(void *arg);	
-void udisp_int(int arg);
-void udisp_str(char* arg);
+// /*syscall.asm*/
+// int get_ticks();
+// int get_pid();				
+// PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
+// void* kmalloc(int size);			
+// void* kmalloc_4k();			
+// void* malloc(int size);			
+// void* malloc_4k();				
+// // int free(void *arg);				
+// int free_4k(void* AdddrLin);	
+// int fork();			
+// int pthread_create(void *arg);	
+// void udisp_int(int arg);
+// void udisp_str(char* arg);
 
-u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
-u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
-u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
+// u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
+// u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
+// u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
 
-//added by xw
-/* file system */
-#define	MAX_FILENAME_LEN	12
-#define	MAX_PATH	128
-#define	O_CREAT		1
-#define	O_RDWR		2
-#define SEEK_SET	1
-#define SEEK_CUR	2
-#define SEEK_END	3
+// //added by xw
+// /* file system */
+// #define	MAX_FILENAME_LEN	12
+// #define	MAX_PATH	128
+// #define	O_CREAT		1
+// #define	O_RDWR		2
+// #define SEEK_SET	1
+// #define SEEK_CUR	2
+// #define SEEK_END	3
 
-int open(const char *pathname, int flags);		//added by xw, 18/6/19
-int close(int fd);								//added by xw, 18/6/19
-int read(int fd, void *buf, int count);			//added by xw, 18/6/19
-int write(int fd, const void *buf, int count);	//added by xw, 18/6/19
-int lseek(int fd, int offset, int whence);		//added by xw, 18/6/19
-int unlink(const char *pathname);				//added by xw, 18/6/19
-int delete(const char*);
-int opendir(const char *);
-int createdir(const char *);
-int deletedir(const char *);
-int readdir(const char *, unsigned int [3], char *);
-//~xw
+// int open(const char *pathname, int flags);		//added by xw, 18/6/19
+// int close(int fd);								//added by xw, 18/6/19
+// int read(int fd, void *buf, int count);			//added by xw, 18/6/19
+// int write(int fd, const void *buf, int count);	//added by xw, 18/6/19
+// int lseek(int fd, int offset, int whence);		//added by xw, 18/6/19
+// int unlink(const char *pathname);				//added by xw, 18/6/19
+// int delete(const char*);
+// int opendir(const char *);
+// int createdir(const char *);
+// int deletedir(const char *);
+// int readdir(const char *, unsigned int [3], char *);
+// //~xw
 
-void test(int no);
+// void test(int no);
 
-/*string.asm*/
-void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
-void memset(void* p_dst, char ch, int size);
-char* strcpy(char* p_dst, char* p_src);
-int strlen(char* p_str);	//added by xw, 18/6/19
+// /*string.asm*/
+// void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
+// void memset(void* p_dst, char ch, int size);
+// char* strcpy(char* p_dst, char* p_src);
+// int strlen(char* p_str);	//added by xw, 18/6/19
 
-/*printf.c*/
-//added by mingxuan 2019-5-19
-#define EOF -1
-#define _INTSIZEOF(n)   ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
-#define va_start(ap,v) ( ap = (va_list)&v + _INTSIZEOF(v) )
-#define va_arg(ap,t)    ( *(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)) )
-#define va_end(ap)      ( ap = (va_list)0 )
-#define isspace(s)  (s==' ')
+// /*printf.c*/
+// //added by mingxuan 2019-5-19
+// #define EOF -1
+// #define _INTSIZEOF(n)   ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
+// #define va_start(ap,v) ( ap = (va_list)&v + _INTSIZEOF(v) )
+// #define va_arg(ap,t)    ( *(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)) )
+// #define va_end(ap)      ( ap = (va_list)0 )
+// #define isspace(s)  (s==' ')
 
-#define TOLOWER(x) ((x) | 0x20)
-#define isxdigit(c)    (('0' <= (c) && (c) <= '9') || ('a' <= (c) && (c) <= 'f') || ('A' <= (c) && (c) <= 'F'))
-#define isdigit(c)    ('0' <= (c) && (c) <= '9')
+// #define TOLOWER(x) ((x) | 0x20)
+// #define isxdigit(c)    (('0' <= (c) && (c) <= '9') || ('a' <= (c) && (c) <= 'f') || ('A' <= (c) && (c) <= 'F'))
+// #define isdigit(c)    ('0' <= (c) && (c) <= '9')
 
-PUBLIC	int	vsprintf(char *buf, const char *fmt, va_list args);
-PUBLIC	int	sprintf(char *buf, const char *fmt, ...);
-PUBLIC	int	printf(const char *fmt, ...); 
-PUBLIC  int scanf(char *str, ...);
-char getchar();         //added by mingxuan 2019-5-23
-char* gets(char *str);  //added by mingxuan 2019-5-23
+// PUBLIC	int	vsprintf(char *buf, const char *fmt, va_list args);
+// PUBLIC	int	sprintf(char *buf, const char *fmt, ...);
+// PUBLIC	int	printf(const char *fmt, ...); 
+// PUBLIC  int scanf(char *str, ...);
+// char getchar();         //added by mingxuan 2019-5-23
+// char* gets(char *str);  //added by mingxuan 2019-5-23
 
-#endif  //added by mingxuan 2019-5-19
+// #endif  //added by mingxuan 2019-5-19
+
+// all deleted by zhenhao 2023.3.5
