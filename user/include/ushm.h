@@ -1,3 +1,5 @@
+#ifndef USHM_H
+#define USHM_H
 
 #define IPC_CREAT 0x200
 #define IPC_FIND 0x12
@@ -28,5 +30,7 @@ struct shm_mem
 };
 
 
-void *do_shmat(int shmid, char *shmaddr, int shmflg);
-void do_shmdt(char *shmaddr);
+void *shmat(int shmid, char *shmaddr, int shmflg);
+void shmdt(char *shmaddr);
+
+#endif

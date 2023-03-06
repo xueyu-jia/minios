@@ -34,10 +34,18 @@ int mutex_suspend_with_cancellation(PROCESS *self, pthread_mutex_t *mutex)
 //   return 0;
 // }
 
-PUBLIC int sys_pthread_mutex_init(void *uesp)
+PUBLIC int sys_pthread_mutex_init()
 {
-  pthread_mutex_t *mutex = get_arg(uesp, 1);
-  pthread_mutexattr_t *mutexattr = get_arg(uesp, 2);
+  return do_pthread_mutex_init(get_arg(1), get_arg(2));
+}
+
+PUBLIC int do_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr)
+{
+  return kern_pthread_mutex_init(mutex, mutexattr);
+}
+
+PUBLIC int kern_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr)
+{
   mutex->lock.locked = 0;//自旋锁置为0
   mutex->nusers = 0; //获取锁的线程数量为0
   mutex->owner = 0;  //当前持有该锁的线程不存在
@@ -52,7 +60,17 @@ PUBLIC int sys_pthread_mutex_init(void *uesp)
   return 0;
 }
 
-int sys_pthread_mutex_lock(pthread_mutex_t *mutex) //阻塞式获取互斥变量
+int sys_pthread_mutex_lock() //阻塞式获取互斥变量
+{
+  return do_pthread_mutex_lock(get_arg(1));
+}
+
+int do_pthread_mutex_lock(pthread_mutex_t* mutex)
+{
+  return kern_pthread_mutex_lock(mutex);
+}
+
+int kern_pthread_mutex_lock(pthread_mutex_t* mutex)
 {
 
   acquire(&mutex->lock);
@@ -60,7 +78,7 @@ int sys_pthread_mutex_lock(pthread_mutex_t *mutex) //阻塞式获取互斥变量
   if (mutex->owner == 0)
   {
     //所持有者为当前线程
-    mutex->owner = sys_pthread_self();
+    mutex->owner = kern_pthread_self();
     //需要锁的线程+1
     mutex->nusers++;
     // release(mutex);
@@ -76,7 +94,7 @@ int sys_pthread_mutex_lock(pthread_mutex_t *mutex) //阻塞式获取互斥变量
     release(&mutex->lock);
     return -1; //队列满了
   }
-  mutex->queue_wait[mutex->tail++] = sys_pthread_self();
+  mutex->queue_wait[mutex->tail++] = kern_pthread_self();
   mutex->tail %= queue_size;
 
 
@@ -92,13 +110,23 @@ int sys_pthread_mutex_lock(pthread_mutex_t *mutex) //阻塞式获取互斥变量
   return 0;
 }
 
-int sys_pthread_mutex_trylock(pthread_mutex_t *mutex) //非阻塞式获取互斥变量
+int sys_pthread_mutex_trylock() //非阻塞式获取互斥变量
+{
+  return do_pthread_mutex_trylock(get_arg(1));
+}
+
+int do_pthread_mutex_trylock(pthread_mutex_t *mutex)
+{
+  return kern_pthread_mutex_trylock(mutex);
+}
+
+int kern_pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
   acquire(&mutex->lock);
   if (mutex->nusers == 0)
   {
     //所持有者为当前线程
-    mutex->owner = sys_pthread_self();
+    mutex->owner = kern_pthread_self();
     //等待锁的线程+1
     mutex->nusers++;
 
@@ -110,7 +138,17 @@ int sys_pthread_mutex_trylock(pthread_mutex_t *mutex) //非阻塞式获取互斥
   return -1; //失败返回-1
 }
 
-int sys_pthread_mutex_unlock(pthread_mutex_t *mutex)
+int sys_pthread_mutex_unlock()
+{
+  return do_pthread_mutex_unlock(get_arg(1));
+}
+
+int do_pthread_mutex_unlock(pthread_mutex_t *mutex)
+{
+  return kern_pthread_mutex_unlock(mutex);
+}
+
+int kern_pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
   acquire(&mutex->lock);
   //当前锁被释放，不存在拥有者
@@ -137,7 +175,17 @@ int sys_pthread_mutex_unlock(pthread_mutex_t *mutex)
   return 0;
 }
 
-int sys_pthread_mutex_destroy(pthread_mutex_t *mutex)
+int sys_pthread_mutex_destroy()
+{
+  return do_pthread_mutex_destroy(get_arg(1));
+}
+
+int do_pthread_mutex_destroy(pthread_mutex_t* mutex)
+{
+  return kern_pthread_mutex_destroy(mutex);
+}
+
+int kern_pthread_mutex_destroy(pthread_mutex_t* mutex)
 {
   acquire(&mutex->lock);
 
@@ -150,7 +198,7 @@ int sys_pthread_mutex_destroy(pthread_mutex_t *mutex)
   { // 正在被使用
     return -1;
   }
-  sys_free_4k(mutex);
+  // kern_free_4k(mutex);   // deleted by zhenhao 2023.3.5
   return 0;
 }
 

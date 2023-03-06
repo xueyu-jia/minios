@@ -46,7 +46,8 @@
 # -boot menu=on \
 #  -gdb tcp::1234 -S -monitor stdio
 
+gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
- -gdb tcp::1234 -S -monitor stdio
+-gdb tcp::1234 -S -monitor stdio

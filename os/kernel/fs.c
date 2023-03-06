@@ -238,10 +238,8 @@ int create_devfile(int drive, int major, int minor)
 }
 
 
-int sys_init_block_dev(void *uesp)
+int kern_init_block_dev(int drive)
 {
-	int drive = get_arg(uesp, 1);
-
 	for(int i=0;i<12;i++)
 	{
 		if(hd_info[i].open_cnt > 0)
@@ -256,6 +254,16 @@ int sys_init_block_dev(void *uesp)
 		}
 	}
 	return 0;
+}
+
+int do_init_block_dev(int drive)
+{
+	return kern_init_block_dev(drive);
+}
+
+int sys_init_block_dev()
+{
+	return do_init_block_dev(get_arg(1));
 }
 
 

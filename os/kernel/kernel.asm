@@ -619,6 +619,7 @@ save_syscall:			;can't modify EAX, for it contains syscall number
         push    gs      ; /
 		mov		edx,  [p_proc_current]				;xw
 		mov		dword [edx + ESP_SAVE_SYSCALL], esp	;xw save esp position in the kernel-stack of the process
+		mov		dword [edx + ESP_SAVE_SYSCALL_ARG], esp	;added by zhenhao 2023.3.5
 ;		or		dword [edx + SAVE_TYPE], 4			;set 3rd-bit of save_type, added by xw, 17/12/04
         mov     dx, ss
         mov     ds, dx
@@ -711,9 +712,9 @@ sys_call:
 ;so we can't modify eax and ebx in save_syscall
 	call	save_syscall	;save registers and some other things. modified by xw, 17/12/11
 	sti
-	push 	ebx							;push the argument the syscall need
+	; push 	ebx							;push the argument the syscall need
 	call    [sys_call_table + eax * 4]	;将参数压入堆栈后再调用函数			add by visual 2016.4.6
-	add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
+	; add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
 	cli
 	mov		edx, [p_proc_current]
 	mov 	esi, [edx + ESP_SAVE_SYSCALL]
@@ -811,18 +812,18 @@ halt:
 ; @uesp: user space stack pointer
 ; @order: which argument you want to get
 ; @uesp+0: the number of args, @uesp+8: the first arg, @uesp+12: the second arg...
-get_arg:
-	push ebp
-	mov ebp, esp
-	push esi
-	push edi
-	mov esi, dword [ebp + 8]	;void *uesp
-	mov edi, dword [ebp + 12]	;int order
-	mov eax, dword [esi + edi * 4 + 4]
-	pop edi
-	pop esi
-	pop ebp
-	ret
+; get_arg:
+; 	push ebp
+; 	mov ebp, esp
+; 	push esi
+; 	push edi
+; 	mov esi, dword [ebp + 8]	;void *uesp
+; 	mov edi, dword [ebp + 12]	;int order
+; 	mov eax, dword [esi + edi * 4 + 4]
+; 	pop edi
+; 	pop esi
+; 	pop ebp
+; 	ret
 
 
 

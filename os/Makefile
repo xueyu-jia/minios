@@ -135,8 +135,10 @@ kernel.gdb.bin : $(OBJS)
 
 
 
-os/kernel/syscall.o : os/kernel/syscall.asm os/include/sconst.inc
-	$(ASM) $(ASMKFLAGS) -o $@ $<
+# os/kernel/syscall.o : os/kernel/syscall.asm os/include/sconst.inc
+# 	$(ASM) $(ASMKFLAGS) -o $@ $<		# deleted by zhenhao 2023.3.5
+os/kernel/syscall.o : os/kernel/syscall.c user/include/syscall.h
+	$(CC) $(CFLAGS) -o $@ $<			# added by zhenhao 2023.3.5
 
 os/kernel/start.o: os/kernel/start.c os/include/type.h os/include/const.h os/include/protect.h os/include/string.h os/include/proc.h os/include/proto.h \
 			os/include/global.h

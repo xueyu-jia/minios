@@ -73,7 +73,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
 	
-	int hd_service_pid = sys_get_pid_byname("hd_service");
+	int hd_service_pid = kern_get_pid_byname("hd_service");
 
 	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
@@ -81,7 +81,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
-	int initial_pid = sys_get_pid_byname("initial");
+	int initial_pid = kern_get_pid_byname("initial");
 
 	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址

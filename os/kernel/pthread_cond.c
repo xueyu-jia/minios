@@ -32,10 +32,18 @@ int suspend_with_cancellation(PROCESS *self, int timeout)
   return -1; //超时
 }
 
-int sys_pthread_cond_init(void *uesp)
+int sys_pthread_cond_init()
 {
-  pthread_cond_t *cond = get_arg(uesp, 1);
-  const pthread_condattr_t *cond_attr = get_arg(uesp, 2);
+  return do_pthread_cond_init(get_arg(1), get_arg(2));
+}
+
+int do_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr)
+{
+  return kern_pthread_cond_init(cond, cond_attr);
+}
+
+int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr)
+{
   cond->lock.locked=0;//自旋锁状态置0
   cond->head = 0;
   cond->tail = 0;//等待队列初始化
@@ -46,10 +54,18 @@ int sys_pthread_cond_init(void *uesp)
   return 0;
 }
 
-int sys_pthread_cond_wait(void *uesp)
+int sys_pthread_cond_wait()
 {
-  pthread_cond_t *cond = get_arg(uesp, 1);
-  pthread_mutex_t *mutex = get_arg(uesp, 2);
+  return do_pthread_cond_wait(get_arg(1), get_arg(2));
+}
+
+int do_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
+{
+  return kern_pthread_cond_wait(cond, mutex);
+}
+
+int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
+{
   //条件量 加锁操作
   // acquire(&cond->mutex);
   acquire(&cond->lock);
@@ -71,11 +87,11 @@ int sys_pthread_cond_wait(void *uesp)
   release(&cond->lock);
 
   // 释放互斥变量，否则别的线程无法操作资源，导致条件一直无法满足
-  sys_pthread_mutex_unlock(mutex);
+  kern_pthread_mutex_unlock(mutex);
   // 挂起等待条件满足后被唤醒
   int sign_timeout = suspend_with_cancellation(p_proc_current, MAX_INT);
   //线程唤醒之后就需要重新持有原来的锁
-  sys_pthread_mutex_lock(mutex);
+  kern_pthread_mutex_lock(mutex);
 
   // 取消点，等待期间被取消了
   if (p_proc_current->task.stat != SLEEPING)
@@ -86,7 +102,7 @@ int sys_pthread_cond_wait(void *uesp)
     int sign=0;
     for (int i = cond->head; i != cond->tail; i = (i + 1) % queue_size)
     {
-      if (cond->queue[i] == sys_pthread_self())
+      if (cond->queue[i] == kern_pthread_self())
       {
         for (int j = i; j != cond->tail; j = (j + 1) % queue_size)
         {
@@ -106,12 +122,18 @@ int sys_pthread_cond_wait(void *uesp)
   return sign_timeout;
 }
 
-int sys_pthread_cond_timewait(void *uesp)
+int sys_pthread_cond_timewait()
 {
-  pthread_cond_t *cond = get_arg(uesp, 1);
-  pthread_mutex_t *mutex = get_arg(uesp, 2);
-  int *timeout = get_arg(uesp, 3);
+  return do_pthread_cond_timewait(get_arg(1), get_arg(2), get_arg(3));
+}
 
+int do_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout)
+{
+  return kern_pthread_cond_timewait(cond, mutex, timeout);
+}
+
+int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout)
+{
   //条件量 加锁操作
   // acquire(&cond->mutex);
   acquire(&cond->lock);
@@ -133,11 +155,11 @@ int sys_pthread_cond_timewait(void *uesp)
   release(&cond->lock);
 
   // 释放互斥变量，否则别的线程无法操作资源，导致条件一直无法满足
-  sys_pthread_mutex_unlock(mutex);
+  kern_pthread_mutex_unlock(mutex);
   // 挂起等待条件满足后被唤醒
   int sign_timeout = suspend_with_cancellation(p_proc_current, *timeout);
   //线程唤醒之后就需要重新持有原来的锁
-  sys_pthread_mutex_lock(mutex);
+  kern_pthread_mutex_lock(mutex);
 
   // 取消点，等待期间被取消了
   if (p_proc_current->task.stat != SLEEPING)
@@ -148,7 +170,7 @@ int sys_pthread_cond_timewait(void *uesp)
     int sign=0;
     for (int i = cond->head; i != cond->tail; i = (i + 1) % queue_size)
     {
-      if (cond->queue[i] == sys_pthread_self())
+      if (cond->queue[i] == kern_pthread_self())
       {
         for (int j = i; j != cond->tail; j = (j + 1) % queue_size)
         {
@@ -167,7 +189,18 @@ int sys_pthread_cond_timewait(void *uesp)
   }
   return sign_timeout;
 }
-int sys_pthread_cond_signal(pthread_cond_t *cond)
+
+int sys_pthread_cond_signal()
+{
+  return do_pthread_cond_signal(get_arg(1));
+}
+
+int do_pthread_cond_signal(pthread_cond_t* cond)
+{
+  return kern_pthread_cond_signal(cond);
+}
+
+int kern_pthread_cond_signal(pthread_cond_t* cond)
 {
   //条件量 加锁操作
   acquire(&cond->lock);
@@ -191,7 +224,18 @@ int sys_pthread_cond_signal(pthread_cond_t *cond)
   release(&cond->lock);
   return 0;
 }
-int sys_pthread_cond_broadcast(pthread_cond_t *cond)
+
+int sys_pthread_cond_broadcast()
+{
+  return do_pthread_cond_broadcast(get_arg(1));
+}
+
+int do_pthread_cond_broadcast(pthread_cond_t* cond)
+{
+  return kern_pthread_cond_broadcast(cond);
+}
+
+int kern_pthread_cond_broadcast(pthread_cond_t* cond)
 {
   //条件量 加锁操作
   acquire(&cond->lock);
@@ -213,7 +257,18 @@ int sys_pthread_cond_broadcast(pthread_cond_t *cond)
   release(&cond->lock);
   return 0;
 }
-int sys_pthread_cond_destroy(pthread_cond_t *cond)
+
+int sys_pthread_cond_destroy()
+{
+  return do_pthread_cond_destroy(get_arg(1));
+}
+
+int do_pthread_cond_destroy(pthread_cond_t* cond)
+{
+  return kern_pthread_cond_destroy(cond);
+}
+
+int kern_pthread_cond_destroy(pthread_cond_t* cond)
 {
   acquire(&cond->lock);
   int num = (cond->tail - cond->head + queue_size) % queue_size;
@@ -225,7 +280,7 @@ int sys_pthread_cond_destroy(pthread_cond_t *cond)
   cond->head = 0;
   cond->tail = 0;
   cond->lock.locked=0;
-  sys_free_4k(cond);
+  // kern_free_4k(cond);      // deleted by zhenhao 2023.3.5
   return 0;
 }
 

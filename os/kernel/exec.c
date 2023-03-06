@@ -56,23 +56,23 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wj
 *                          sys_execv		
 *execv系统调用功能实现部分
 *======================================================================*/
-PUBLIC u32 sys_execv(void *uesp)
+PUBLIC u32 sys_execv()
 {
-	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), NULL);
+	return do_exec(get_arg(1), get_arg(2), NULL);
 }
 
 /*======================================================================*
 *                          sys_execvp		
 *execvp系统调用功能实现部分
 *======================================================================*/
-PUBLIC u32 sys_execvp(void *uesp)
+PUBLIC u32 sys_execvp()
 {
-	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), NULL);
+	return do_exec(get_arg(1), get_arg(2), NULL);
 }
 
-PUBLIC u32 sys_exec(void *uesp)
+PUBLIC u32 sys_exec()
 {
-	return do_exec(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+	return do_exec(get_arg(1), get_arg(2), get_arg(3));
 }
 
 PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ])

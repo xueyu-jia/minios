@@ -38,9 +38,9 @@ int main(int arg, char *argv[])
 {
 	printf("main pid = %d    \n",get_pid());
 	sleep(20);
-	// pthread_create(&ntid, NULL, test1, NULL);
+	pthread_create(&ntid, NULL, test1, NULL);
 	sleep(20);
-	// pthread_create(&ntid, NULL, test2, NULL);
+	pthread_create(&ntid, NULL, test2, NULL);
 	sleep(20);
 
 	// while (1)

@@ -4,6 +4,7 @@
 #include <stdarg.h>
 */
 #include "../include/signal.h"
+#include "../include/syscall.h"
 #include <stddef.h>
 #include <stdarg.h>
 
@@ -32,5 +33,5 @@ int kill(int pid, int sig, ...) {
 }
 
 int signal(int sig, void* handler) {
-    return __signal(sig, handler, HANDLER);
+    return _signal(sig, handler, HANDLER);
 }

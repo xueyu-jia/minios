@@ -155,7 +155,7 @@ PUBLIC int kernel_main()
 	//test_kfree();
 
 	disp_str("main:total_mem_size=");
-	disp_int(sys_total_mem_size());
+	disp_int(kern_total_mem_size());
 	disp_str("\n");
 
 	//test_kbud_mem_size();

@@ -11,6 +11,12 @@
 # qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
 # -gdb tcp::1234 -S -monitor stdio
 
-gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s test_1.gdb.bin" &
-qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
+# gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s test_1.gdb.bin" &
+# qemu-system-i386 -m 2048 -hda b.img -boot order=a -ctrl-grab \
+# -gdb tcp::1234 -S -monitor stdio
+
+gnome-terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s user/user/test_1.gdb.bin" &
+qemu-system-i386 \
+-device ich9-ahci,id=xiaofeng \
+-drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
 -gdb tcp::1234 -S -monitor stdio

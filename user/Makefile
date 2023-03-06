@@ -92,8 +92,10 @@ user/ulib/ulib.a:  $(OBJSULIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSULIB)
 
 #ulib/syscall.o : ulib/syscall.asm include/sconst.inc
-user/ulib/syscall.o : user/ulib/syscall.asm
-	$(ASM) $(ASMKFLAGS) -o $@ $<
+# user/ulib/syscall.o : user/ulib/syscall.asm
+# 	$(ASM) $(ASMKFLAGS) -o $@ $<		# deleted by zhenhao 2023.3.5
+user/ulib/syscall.o : user/ulib/syscall.c user/include/syscall.h
+	$(CC) $(CFLAGS) -o $@ $<			# added by zhenhao 2023.3.5
 
 # stringasm.o	added by mingxuan 2019-5-19
 user/ulib/stringasm.o: user/ulib/string.asm
