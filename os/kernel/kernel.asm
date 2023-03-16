@@ -65,6 +65,7 @@ global read_cr2   ;//add by visual 2016.5.9
 global read_cr3   ;//add by visual 2016.5.9
 
 global refresh_page_cache ; // add by visual 2016.5.12
+global refresh_gdt 		;add by sundong 2023.3.8
 global halt  			;added by xw, 18/6/11
 global get_arg			;added by xw, 18/6/18
 
@@ -798,7 +799,25 @@ refresh_page_cache:
 	mov eax,cr3
 	mov cr3,eax
 	ret
-
+; ====================================================================================
+;				    refresh_gdt					//added by sundong 2023.3.8
+; ====================================================================================
+ refresh_gdt:			;更新gdtr的值  更新gs、ds、ss、es、fs、ss隐藏部分
+	push 	ax
+	lgdt	[gdt_ptr]	; 使用新的GDT
+	xor		ax,	ax
+	;由于gdt的video相关的描述符发生更改，因此需要重置gs，以刷新gs隐藏部分的内容
+	mov 	ax,	SELECTOR_VIDEO 
+	mov 	gs,	ax
+	xor		ax,	ax
+	;尽管SELECTOR_FLAT_RW对应的描述符的内容没有发生改变，此处仍然更新了ds、ss、es、fs、ss
+	mov		ax, SELECTOR_FLAT_RW
+	mov		ds, ax
+	mov		es, ax
+	mov		fs, ax
+	mov		ss, ax
+	pop 	ax
+	ret
 ; ====================================================================================
 ;				    halt					//added by xw, 18/6/11
 ; ====================================================================================

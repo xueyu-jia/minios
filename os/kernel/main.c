@@ -142,8 +142,9 @@ PUBLIC int kernel_main()
 	/* linear address 0~8M will no longer be mapped to physical address 0~8M.
 	 * note that disp_xx can't work after this function is invoked until processes runs.
 	 * add by visual 2016.5.13; moved by xw, 18/5/30
+	 * 清掉低端页表后 disp_xx不运行这个问题已经修复  modified by sundong 2023.3.8
 	 */
-	clear_kernel_pagepte_low();
+	//clear_kernel_pagepte_low(); //delete by sundong 2023.3.8 因为kernel重新初始化页表的时候就删掉了低端页表
 
 	p_proc_current = proc_table;
 	kernel_initial = 0; //kernel initialization is done. added by xw, 18/5/31
