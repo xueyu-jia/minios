@@ -141,7 +141,7 @@ START:
 
 	;FAT_START_SECTOR  DD 	([fs:OffsetOfActiPartStartSec] + [fs:BPB_RsvdSecCnt]) 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
-	mov		eax, [ OffsetOfActiPartStartSec]
+	mov		eax, 2048;[ OffsetOfActiPartStartSec]
 	add		ax, [ BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
 
@@ -158,7 +158,7 @@ START:
 	;mov 	byte  [bp - DAP_RESERVED2   ], 	00h ;deleted by mingxuan 2020-9-17
 	mov 	byte  [bp - DAP_PACKET_SIZE ], 	10h
 	mov		byte  [bp - DAP_READ_SECTORS],  01h
-	mov		word  [bp - DAP_BUFFER_SEG  ],	01000h
+	mov		word  [bp - DAP_BUFFER_SEG  ],	00000h
 
 	;for test, added by mingxuan 2020-9-4
 	;call 	DispStr		; 
@@ -286,7 +286,7 @@ _NEXT_ROOT_ENTRY:
 	;mov	si, 0x7df1 			; for test, added by mingxuan 2020-9-16
 	
 	mov		cx, 10
-	repe	cmpsb
+	repe	cmpsb	;把si指向的数据与di指向的数据按byte比较，相同时继续比较 不同时就停止，比较一次cx-1
 	jcxz	_FOUND_LOADER
 
 	pop		di
@@ -591,6 +591,7 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	XOR  	ECX, ECX
 	mov	cx, word [BPB_BytesPerSec]	
 	DIV  	ECX  ; EAX = Sector EDX = OFFSET
+
 	pop ECX
 	; 设置缓冲区地址
 	ADD  	EAX, [FAT_START_SECTOR] 
@@ -598,7 +599,7 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	
 	cmp byte[esp+2], DATA
 	jne .L5
-	MOV  WORD [BP - DAP_BUFFER_SEG  ], 01000H 
+	MOV  WORD [BP - DAP_BUFFER_SEG  ], 0000H 
 	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
 .L5:
 	call  ReadSector

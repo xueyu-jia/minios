@@ -124,11 +124,11 @@ LABEL_START:			; <--- 从这里开始 *************
 	mov		ss, ax
 
 	;added by mingxuan 2020-9-16
-	mov		ax, BaseOfBoot
+	mov		ax, 0000h;BaseOfBoot
 	mov		fs, ax 			;fs存储BaseOfBoot，用于查找FAT32的配置信息
 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
-	mov		eax, [ fs:OffsetOfActiPartStartSec]
+	mov		eax, 2048;[ fs:OffsetOfActiPartStartSec]
 	add		ax, [ fs:BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
 
