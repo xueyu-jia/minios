@@ -118,17 +118,19 @@ dw 	0xaa55				; 结束标志
 LABEL_START:			; <--- 从这里开始 *************
 
 	cld
+	mov		ax,ds	;add by sundong 2023.3.16
+	mov		fs,ax	;fs与boot中ds值一致，fs存储boot的数据段地址，用于查找FAT32的配置信息
 	mov		ax, cs
 	mov		ds, ax
 	mov		es, ax	;deleted by mingxuan 2020-9-16
 	mov		ss, ax
 
 	;added by mingxuan 2020-9-16
-	mov		ax, 0000h;BaseOfBoot
-	mov		fs, ax 			;fs存储BaseOfBoot，用于查找FAT32的配置信息
+	;mov		ax, 0000h;BaseOfBoot
+	;mov		fs, ax 			;
 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
-	mov		eax, 2048;[ fs:OffsetOfActiPartStartSec]
+	mov		eax, [ fs:OffsetOfActiPartStartSec]
 	add		ax, [ fs:BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
 

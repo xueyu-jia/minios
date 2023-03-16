@@ -2,10 +2,11 @@
 BaseOfStack			equ		0x07c00		; Boot状态下堆栈基地址
 STACK_ADDR  		equ  	0x7bea 		; 堆栈栈顶
 
-BaseOfBoot 					equ	1000h 		; added by mingxuan 2020-9-12
+;BaseOfBoot 					equ	1000h 		; added by mingxuan 2020-9-12
 OffsetOfBoot				equ	7c00h		; load Boot sector to BaseOfBoot:OffsetOfBoot
 OffsetOfActiPartStartSec	equ 7e00h		; 活动分区的起始扇区号相对于BaseOfBoot的偏移量	;added by mingxuan 2020-9-12 
 											; 该变量来自分区表，保存在该内存地址，用于在os_boot和loader中查找FAT32文件
+OffsetOfStartSecInPET		equ 0x08		; 分区表表项中用于存储物理起始扇区变量的相对于分区表项的偏移量
 
 BOOT_FAT32_INFO		equ		0x5A		;位于boot中的FAT32配置信息的长度
 										;added by mingxuan 2020-9-16
@@ -89,6 +90,8 @@ BS_VolName			equ		(OffsetOfBoot + 0x47)	;卷标
 
 	FAT_START_SECTOR 	DD 	0 ;FAT表的起始扇区号 ;added by mingxuan 2020-9-17
 	DATA_START_SECTOR 	DD  0 ;数据区起始扇区号 ;added by mingxuan 2020-9-17
+	DATA_BUFF_SEG		DW	0 ;存储数据缓冲区的段地址;added by sundong 2023.3.16
+
 
 ;deleted by mingxuan 2020-9-12
 	;BS_OEM			DB	'mkfs.fat'	;文件系统标志
@@ -127,6 +130,8 @@ START:
 	mov		ds, ax
 	mov		es, ax ;deleted by mingxuan 2020-9-13
 	mov		ss, ax
+	mov		fs,	ax
+	mov	word[DATA_BUFF_SEG],ax ;数据缓冲区的段地址与DS一致 add by sundong 2023.3.16
 
 	; 清屏
 	; for test, added by mingxuan 2020-9-15
@@ -141,7 +146,10 @@ START:
 
 	;FAT_START_SECTOR  DD 	([fs:OffsetOfActiPartStartSec] + [fs:BPB_RsvdSecCnt]) 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
-	mov		eax, 2048;[ OffsetOfActiPartStartSec]
+	;grub 链式引导，将当前分区表表项的起始地址放在DS：SI处
+	add 	si,OffsetOfStartSecInPET		;si加上一个起始扇区在表项中的偏移量就是用于存储起始扇区的那段内存
+	mov		eax, [ds:si]
+	mov		[OffsetOfActiPartStartSec],eax	;将起始扇区的物理扇区号放入OffsetOfActiPartStartSec地址处 loader中会用到该值
 	add		ax, [ BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
 
@@ -158,7 +166,8 @@ START:
 	;mov 	byte  [bp - DAP_RESERVED2   ], 	00h ;deleted by mingxuan 2020-9-17
 	mov 	byte  [bp - DAP_PACKET_SIZE ], 	10h
 	mov		byte  [bp - DAP_READ_SECTORS],  01h
-	mov		word  [bp - DAP_BUFFER_SEG  ],	00000h
+	mov		ax,	[DATA_BUFF_SEG]
+	mov		word  [bp - DAP_BUFFER_SEG  ],	ax
 
 	;for test, added by mingxuan 2020-9-4
 	;call 	DispStr		; 
@@ -599,8 +608,9 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	
 	cmp byte[esp+2], DATA
 	jne .L5
-	MOV  WORD [BP - DAP_BUFFER_SEG  ], 0000H 
-	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
+	MOV		  AX,[DATA_BUFF_SEG]	;设置存储fat表的数据缓冲区的段地址
+	MOV  WORD [BP - DAP_BUFFER_SEG  ], AX
+	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF 
 .L5:
 	call  ReadSector
 	
