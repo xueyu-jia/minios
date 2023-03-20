@@ -16,7 +16,7 @@
 #define _NR_pthread_create  5
 #define _NR_udisp_int     	6
 #define _NR_udisp_str     	7
-#define _NR_exec     		8
+#define _NR_execve     		8
 #define _NR_yield			9
 #define _NR_sleep			10
 #define _NR_open			11
@@ -151,7 +151,7 @@ int fork();
 int pthread_create(int* thread, void* attr, void* entry, void* arg);
 void udisp_int(int arg);
 void udisp_str(char* arg);
-u32 exec(char* path, char* argv[], char* envp[]);
+u32 execve(char* path, char* argv[], char* envp[]);
 void yield();
 void sleep(int n);
 int open(const char* pathname, int flags);

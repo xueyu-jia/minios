@@ -21,7 +21,7 @@ void main(int arg,char *argv[])
 	{
         printf("\nminiOS:/ $ ");
         if(gets(buf) && strlen(buf)!=0 ){
-            if(exec(buf)!=0){
+            if(execve(buf)!=0){
                 printf("exec failed: file not found!\n");
                 continue;
             }
@@ -40,7 +40,7 @@ void main(int arg,char *argv[])
                 while(1);
 
 			}else{	//child
-				if(exec(buf)!=0){
+				if(execve(buf)!=0){
 				printf("exec failed: file not found!\n");
                 continue;
             }
@@ -62,7 +62,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -75,7 +75,7 @@ void main(int arg,char *argv[])
     else
     {//child
         udisp_str(" B ");
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -106,7 +106,7 @@ void main(int arg,char *argv[])
     else
     {//child
         udisp_str(" B ");
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
         while(1);
 	}
     */
@@ -119,7 +119,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -132,7 +132,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -146,7 +146,7 @@ void main(int arg,char *argv[])
     else
     {//child
         printf("Child ");
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -164,7 +164,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/forkTest.bin");     
+        execve("orange/forkTest.bin");     
 	}
     */
 
@@ -177,7 +177,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/execTest.bin");     
+        execve("orange/execTest.bin");     
 	}
     */
 
@@ -190,7 +190,7 @@ void main(int arg,char *argv[])
 	}
     else
     {//child
-        exec("orange/execTest.bin");     
+        execve("orange/execTest.bin");     
 	}
     */
 
@@ -209,7 +209,7 @@ void main(int arg,char *argv[])
 			}
 			else
 			{	//child
-				if(exec(buf)!=0)
+				if(execve(buf)!=0)
 				{
 					printf("exec failed: file not found!");
                 	continue;
@@ -300,8 +300,8 @@ void main(int arg,char *argv[])
 
                 printf(" %d ", get_pid());
 
-                //exec("orange/execTest.bin");
-                exec("fat0/test_0.bin"); 
+                //execve("orange/execTest.bin");
+                execve("fat0/test_0.bin"); 
                 //exit(12);
 			}	
    		}
@@ -384,9 +384,9 @@ void main(int arg,char *argv[])
 
                     printf(" child2:%d ", get_pid());
                     //exit(2);
-                    //exec("orange/forkTest.bin");
-                    //exec("orange/execTest.bin");
-                    exec("fat0/test_0.bin");  
+                    //execve("orange/forkTest.bin");
+                    //execve("orange/execTest.bin");
+                    execve("fat0/test_0.bin");  
 			    }
 		    }
 		    else
@@ -398,8 +398,8 @@ void main(int arg,char *argv[])
 
                 printf(" child1:%d ", get_pid());
                 //exit(1);
-                //exec("orange/execTest.bin");
-                exec("fat0/test_0.bin");
+                //execve("orange/execTest.bin");
+                execve("fat0/test_0.bin");
 		    }
    		}
 	}
@@ -548,8 +548,8 @@ void main(int arg,char *argv[])
 
                         printf(" child3:%d ", get_pid());
                         //exit(3);
-                        //exec("orange/execTest.bin");
-                        exec("fat0/test_2.bin"); 
+                        //execve("orange/execTest.bin");
+                        execve("fat0/test_2.bin"); 
 			        }
 			    }
 			    else
@@ -562,8 +562,8 @@ void main(int arg,char *argv[])
 
                     printf(" child2:%d ", get_pid());
                     //exit(2);
-                    //exec("orange/forkTest.bin");
-                    exec("fat0/test_2.bin");  
+                    //execve("orange/forkTest.bin");
+                    execve("fat0/test_2.bin");  
 			    }
 		    }
 		    else
@@ -575,7 +575,7 @@ void main(int arg,char *argv[])
 
                 printf(" child1:%d ", get_pid());
                 //exit(1);
-                exec("fat0/test_2.bin");
+                execve("fat0/test_2.bin");
 		    }
    		}
 	}
@@ -595,13 +595,13 @@ void main(int arg,char *argv[])
 			}
 			else
 			{	//child
-				if(exec(buf, NULL, NULL)!=0)
+				if(execve(buf, NULL, NULL)!=0)
 				{
 					printf("exec failed: file not found!");
                 	continue;
             	}
 			}	
-            // if(exec(buf)!=0){
+            // if(execve(buf)!=0){
             //     printf("exec failed: file not found!");
             //     continue;
             // }

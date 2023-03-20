@@ -13,8 +13,8 @@ PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
 PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
 PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglong
-PUBLIC u32	in_mem_32(u32 phy_addr); 
-PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
+// PUBLIC u32	in_mem_32(u32 phy_addr); 
+// PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
 
 PUBLIC void	disp_str(char* info);
 PUBLIC void	disp_color_str(char* info, int color);
@@ -108,8 +108,8 @@ PUBLIC int fork();						//add by visual 2016.4.8
 PUBLIC int pthread_create(void *arg);			//add by visual 2016.4.11
 PUBLIC void udisp_int(int arg);		//add by visual 2016.5.16
 PUBLIC void udisp_str(char* arg);	//add by visual 2016.5.16
-// PUBLIC u32 exec(char* path);		//add by visual 2016.5.16
-PUBLIC u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31
+// PUBLIC u32 execve(char* path);		//add by visual 2016.5.16
+PUBLIC u32 execve(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31
 PUBLIC u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
 PUBLIC u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
 PUBLIC void yield();				//added by xw, 18/4/19
@@ -145,7 +145,7 @@ int fork();
 int pthread_create(int* thread, void* attr, void* entry, void* arg);
 void udisp_int(int arg);
 void udisp_str(char* arg);
-u32 exec(char* path, char* argv[], char* envp[]);
+u32 execve(char* path, char* argv[], char* envp[]);
 void yield();
 void sleep(int n);
 int open(const char* pathname, int flags);
@@ -261,11 +261,11 @@ PUBLIC void sys_print_F();
 */
 
 /*exec.c*/
-//PUBLIC u32 sys_exec(char* path);		//add by visual 2016.5.23
+//PUBLIC u32 sys_execve(char* path);		//add by visual 2016.5.23
 PUBLIC u32 sys_execvp();      //added by xyx&&wjh 2021.12.31
 PUBLIC u32 sys_execv();       //added by xyx&&wjh 2021.12.31
-PUBLIC u32 sys_exec();    //modified by mingxuan 2021-8-11
-//PUBLIC u32 do_exec(char *path);     //added by mingxuan 2021-8-11
+PUBLIC u32 sys_execve();    //modified by mingxuan 2021-8-11
+//PUBLIC u32 do_execve(char *path);     //added by mingxuan 2021-8-11
 
 /*fork.c*/
 PUBLIC int sys_fork();					//add by visual 2016.5.25

@@ -26,7 +26,7 @@
 
 // u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
 // u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
-// u32 exec(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
+// u32 execve(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31	
 
 // //added by xw
 // /* file system */

@@ -796,8 +796,10 @@ read_cr3:
 ;				    refresh_page_cache		//add by visual 2016.5.12
 ; ====================================================================================
 refresh_page_cache:
+	push eax
 	mov eax,cr3
 	mov cr3,eax
+	pop eax
 	ret
 ; ====================================================================================
 ;				    refresh_gdt					//added by sundong 2023.3.8

@@ -31,8 +31,8 @@ void udisp_str(char* arg) {
 	_syscall1(_NR_udisp_str, arg);
 }
 
-u32 exec(char* path, char* argv[], char* envp[]) {
-	return _syscall3(_NR_exec, path, argv, envp);
+u32 execve(char* path, char* argv[], char* envp[]) {
+	return _syscall3(_NR_execve, path, argv, envp);
 }
 
 void yield() {

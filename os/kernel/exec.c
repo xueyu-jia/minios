@@ -30,23 +30,23 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo_Phdr[]);
 PRIVATE int exec_pcb_init(char *path);
 
-//PUBLIC u32 do_exec(char *path);  deleted by xyx&&wjh 2021-12-31
-//PUBLIC u32 kern_exec(char *path); deleted by xyx&&wjh 2021-12-31
+//PUBLIC u32 do_execve(char *path);  deleted by xyx&&wjh 2021-12-31
+//PUBLIC u32 kern_execve(char *path); deleted by xyx&&wjh 2021-12-31
 
 PRIVATE char *exec_path(char* path);//added by xyx&&wjh 2021.12.31
-PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
-PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
+PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
+PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 
 /*  deleted by xyx&&wjh 2021-12-31   */
 //added by mingxuan 2021-8-11
-//PUBLIC u32 sys_exec(void *uesp)
+//PUBLIC u32 sys_execve(void *uesp)
 //{
-//	return do_exec(get_arg(uesp, 1));
+//	return do_execve(get_arg(uesp, 1));
 //}
 
-//PUBLIC u32 do_exec(char *path)
+//PUBLIC u32 do_execve(char *path)
 //{
-	//return kern_exec(path);
+	//return kern_execve(path);
 //}
 /*   end deleted  */
 
@@ -58,7 +58,7 @@ PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]);//added by xyx&&wj
 *======================================================================*/
 PUBLIC u32 sys_execv()
 {
-	return do_exec(get_arg(1), get_arg(2), NULL);
+	return do_execve(get_arg(1), get_arg(2), NULL);
 }
 
 /*======================================================================*
@@ -67,17 +67,17 @@ PUBLIC u32 sys_execv()
 *======================================================================*/
 PUBLIC u32 sys_execvp()
 {
-	return do_exec(get_arg(1), get_arg(2), NULL);
+	return do_execve(get_arg(1), get_arg(2), NULL);
 }
 
-PUBLIC u32 sys_exec()
+PUBLIC u32 sys_execve()
 {
-	return do_exec(get_arg(1), get_arg(2), get_arg(3));
+	return do_execve(get_arg(1), get_arg(2), get_arg(3));
 }
 
-PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ])
+PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ])
 {
-	return kern_exec(path, argv, envp);
+	return kern_execve(path, argv, envp);
 }
 /*   end added   */
 
@@ -86,9 +86,9 @@ PUBLIC u32 do_exec(char *path, char *argv[], char *envp[ ])
 *                          sys_exec		add by visual 2016.5.23
 *exec系统调用功能实现部分
 *======================================================================*/
-//PUBLIC u32 sys_exec(char *path)
-//PUBLIC u32 do_exec(char *path)	//modified by mingxuan 2021-8-11
-PUBLIC u32 kern_exec(char *path, char *argv[], char *envp[ ]) //modified by mingxuan 2021-8-11
+//PUBLIC u32 sys_execve(char *path)
+//PUBLIC u32 do_execve(char *path)	//modified by mingxuan 2021-8-11
+PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mingxuan 2021-8-11
 {
 	//disable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
@@ -350,7 +350,7 @@ PRIVATE char *exec_path(char* path)
 *                          exec_elfcpy		add by visual 2016.5.23
 *复制elf中program到内存中
 *======================================================================*/
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面exec()中的一部分
+PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
 {
 	u32 lin_addr = Echo_Phdr.p_vaddr;
 	u32 lin_limit = Echo_Phdr.p_vaddr + Echo_Phdr.p_memsz;

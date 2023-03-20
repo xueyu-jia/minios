@@ -594,9 +594,9 @@ void initial()
 
 	/*	//deleted by mingxuan 2021-4-5
 	#ifdef INSTALL_FAT
-		exec("fat0/init.bin");
+		execve("fat0/init.bin");
 	#else
-		exec("orange/init.bin");
+		execve("orange/init.bin");
 	#endif
 	*/
 
@@ -612,9 +612,9 @@ void initial()
 
 	init_block_dev(SATA_BASE);		//added by xiaofeng
 	mount("dev_sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
-	exec("fat0/init.bin",NULL,NULL);
-	//exec("fat0/test_0.bin");
-	//sys_exec("fat0/init.bin");	//modified by mingxuan 2021-4-6
+	execve("fat0/init.bin",NULL,NULL);
+	//execve("fat0/test_0.bin");
+	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
 
 	while (1)
 		;
@@ -639,7 +639,7 @@ void initial()
 	do_vclose(stdout);
 	do_vclose(stderr);
 
-	exec("orange/shell_0.bin");
+	execve("orange/shell_0.bin");
 
 	while(1);
     */
@@ -656,19 +656,19 @@ void initial()
 		int i = fork();
 		if(i==0){
 			while(j--);
-			//exec("shell_1.bin");
-			exec("orange/shell_1.bin");
+			//execve("shell_1.bin");
+			execve("orange/shell_1.bin");
 			while(1);
 		}
 		else{
 			while(k--);
-			//exec("shell_0.bin");
-			exec("orange/shell_0.bin");
+			//execve("shell_0.bin");
+			execve("orange/shell_0.bin");
 			while(1);
 		}
 	}else{
-		//exec("shell_2.bin");
-		exec("orange/shell_2.bin");
+		//execve("shell_2.bin");
+		execve("orange/shell_2.bin");
 		while(1);
 	}
 	*/

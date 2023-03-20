@@ -16,7 +16,7 @@
 #define _NR_pthread_create  5
 #define _NR_udisp_int     	6
 #define _NR_udisp_str     	7
-#define _NR_exec     		8
+#define _NR_execve     		8
 #define _NR_yield			9
 #define _NR_sleep			10
 #define _NR_open			11

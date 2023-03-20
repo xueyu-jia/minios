@@ -93,6 +93,7 @@ memset:
 strcpy:
 	push    ebp
 	mov     ebp, esp
+	pushad
 
 	mov     esi, [ebp + 12] ; Source
 	mov     edi, [ebp + 8]  ; Destination
@@ -109,6 +110,7 @@ strcpy:
 
 	mov     eax, [ebp + 8]  ; 返回值
 
+	popad
 	pop     ebp
 	ret                     ; 函数结束，返回
 ; strcpy 结束-------------------------------------------------------------
@@ -120,6 +122,7 @@ strcpy:
 strlen:
         push    ebp
         mov     ebp, esp
+		push	esi
 
         mov     eax, 0                  ; 字符串长度开始是 0
         mov     esi, [ebp + 8]          ; esi 指向首地址
@@ -132,6 +135,7 @@ strlen:
         jmp     .1                      ; 如此循环
 
 .2:
+		pop		esi
         pop     ebp
         ret                             ; 函数结束，返回
 ; ~zcr -------------------------------------------------------------
