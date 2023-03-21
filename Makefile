@@ -1,7 +1,7 @@
 #########################
 # Makefile for Orange'S #
 #########################
-
+SHELL := /bin/bash
 # added by mingxuan 2020-9-12
 # Offset of os_boot in hd
 # 活动分区所在的扇区号
@@ -35,6 +35,9 @@ AR		= ar
 MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 #added by sundong 写镜像用,用losetup -f查看
 FREE_LOOP_ID = 15
+#added by sundong 2023.3.21
+#用于区分是使用grub chainloader
+USING_GRUB_CHAINLOADER = false
 
 include ./os/Makefile
 include	./user/Makefile
@@ -68,9 +71,9 @@ buildimg :
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
 	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
-
-	# dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc
-
+	if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
+		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
+	fi
 	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
 
 	sudo mkfs.vfat -F 32 -s8 /dev/loop$(FREE_LOOP_ID)p1	# modified by mingxuan 2021-2-28
@@ -131,9 +134,17 @@ buildimg_mbr:
 build_fs:
 	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
 
-#	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
-#	sudo mkfs.vfat -F 32 /dev/loop$(FREE_LOOP_ID)p6
-#	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
+	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
+	sudo mkfs.vfat -F 32 /dev/loop$(FREE_LOOP_ID)p6;
+
+	if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
+		sudo mount /dev/loop$(FREE_LOOP_ID)p6 iso && \
+		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  /dev/loop$(FREE_LOOP_ID) &&\
+		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
+		sudo umount iso ;\
+	fi
+
+	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 

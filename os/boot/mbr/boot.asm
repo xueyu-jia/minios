@@ -146,13 +146,21 @@ START:
 
 	;FAT_START_SECTOR  DD 	([fs:OffsetOfActiPartStartSec] + [fs:BPB_RsvdSecCnt]) 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
+
+	;added by sundong 2023.3.21
+	;判断加载boot使用的是不是grub chainloader，
+	;若使用的是grub chainloader则si寄存器存储的是分区表的地址
+	;否则si应该在mbr.bin中被置为0 
+	cmp 	si,0
+	jz	.Get_StartSector
 	;grub 链式引导，将当前分区表表项的起始地址放在DS：SI处
-	add 	si,OffsetOfStartSecInPET		;si加上一个起始扇区在表项中的偏移量就是用于存储起始扇区的那段内存
-	mov		eax, [ds:si]
+	;si加上一个起始扇区在表项中的偏移量就是用于存储起始扇区的那段内存
+	mov		eax, [ds:si+OffsetOfStartSecInPET]
 	mov		[OffsetOfActiPartStartSec],eax	;将起始扇区的物理扇区号放入OffsetOfActiPartStartSec地址处 loader中会用到该值
+.Get_StartSector:
+	mov		eax,[OffsetOfActiPartStartSec]
 	add		ax, [ BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
-
 	; 计算数据区起始扇区号 ; added by mingxuan 2020-9-17
 	add		eax, [BS_SecPerFAT]
 	add		eax, [BS_SecPerFAT]
@@ -197,7 +205,6 @@ _DISK_ERROR:      	 ; 显示磁盘错误信息
 	;mov		dx, 0184fh		; 右下角: (80, 50)
 	;int		10h				; int 10h
 	;popa
-
 	JMP  	$
 
 ReadSector:
@@ -226,8 +233,6 @@ ReadSector:
 	;mov		dx, 0184fh		; 右下角: (80, 50)
 	;int		10h				; int 10h
 	;popa
-
-
 	popa
 	ret
 
@@ -623,5 +628,5 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	;CMP  EAX,CLUSTER_LAST
 	ret 
 
-times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
+times 	420-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
 dw 	0xaa55				; 结束标志
