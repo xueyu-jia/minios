@@ -34,7 +34,7 @@ AR		= ar
 # added by mingxuan 2020-10-22
 MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 #added by sundong 写镜像用,用losetup -f查看
-FREE_LOOP_ID = 0
+FREE_LOOP_ID = 15
 
 include ./os/Makefile
 include	./user/Makefile
@@ -67,13 +67,13 @@ buildimg :
 # added by mingxuan 2019-5-17
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
-	cp ./hd/test.img ./b.img	# added by mingxuan 2020-10-5
+	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
 
 	# dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc
 
 	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
 
-	# sudo mkfs.vfat -F 32 -s8 /dev/loop14p1	# modified by mingxuan 2021-2-28
+	sudo mkfs.vfat -F 32 -s8 /dev/loop$(FREE_LOOP_ID)p1	# modified by mingxuan 2021-2-28
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	dd if=os/boot/mbr/boot.bin of=b.img bs=1 count=420 seek=$(OSBOOT_START_OFFSET) conv=notrunc
@@ -131,9 +131,9 @@ buildimg_mbr:
 build_fs:
 	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
 
-	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
-	sudo mkfs.vfat -F 32 /dev/loop$(FREE_LOOP_ID)p6
-	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
+#	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
+#	sudo mkfs.vfat -F 32 /dev/loop$(FREE_LOOP_ID)p6
+#	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 
@@ -147,7 +147,7 @@ fs_flags/fat32_flag.bin : fs_flags/fat32_flag.asm
 
 # generate tags file. added by xw, 19/1/2
 tags :
-	#ctags -R
+	# ctags -R
 
 archive :
 	git archive --prefix=

@@ -19,3 +19,5 @@ tags
 *.map
 *.tar
 .gdb_history
+*.mod
+*.lst

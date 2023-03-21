@@ -881,9 +881,12 @@ pthread_cond_destroy :
 ; ====================================================================	
 mount:
 	push 5			;the number of parameters
+	push ebx
 	mov ebx, esp
+	add ebx, 4
 	mov	eax, _NR_mount
 	int	INT_VECTOR_SYS_CALL
+	pop ebx
 	add esp, 4
 	ret
 
@@ -898,9 +901,12 @@ umount:
 
 init_block_dev:
 	push 1			;the number of parameters
+	push ebx
 	mov ebx, esp
-	mov	eax, _NR_init_block_dev
+	add ebx, 4
+ 	mov	eax, _NR_init_block_dev
 	int	INT_VECTOR_SYS_CALL
+	pop ebx
 	add esp, 4
 	ret
 
