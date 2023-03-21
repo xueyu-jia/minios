@@ -14,7 +14,7 @@
 */
 
 #include "../include/type.h"
-#include "../include/stdio.h"
+// #include "../include/stdio.h"
 #include "../include/const.h"
 #include "../include/protect.h"
 #include "../include/string.h"

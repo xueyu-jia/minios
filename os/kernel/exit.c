@@ -23,9 +23,9 @@
 #include "../include/spinlock.h"
 
 // added by mingxuan 2021-8-13
-PUBLIC void sys_exit(void *uesp)
+PUBLIC void sys_exit()
 {
-    do_exit(get_arg(uesp, 1));
+    do_exit(get_arg(1));
 }
 
 PUBLIC void do_exit(int status)

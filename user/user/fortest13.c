@@ -92,8 +92,8 @@ int main()
 	sleep(1000);
 	//销毁
 	int sign;
-	// sign = pthread_cond_destroy(&cond);
-	// printf("head=%d tail=%d           ",cond.head,cond.tail);
+	sign = pthread_cond_destroy(&cond);
+	printf("head=%d tail=%d           ",cond.head,cond.tail);
 	if (sign == 0)
 	{
 		printf("cond is destroyed success!        \n");
@@ -102,7 +102,7 @@ int main()
 	{
 		printf("cond is destroyed fail!        \n");
 	}
-	// sign = pthread_mutex_destroy(&mutex);
+	sign = pthread_mutex_destroy(&mutex);
 	if (sign == 0)
 	{
 		printf("mutex is destroyed success!        \n");
@@ -112,10 +112,11 @@ int main()
 		printf("mutex is destroyed fail!        \n");
 	}
 	printf("over!                                 \n");
-	while (1)
-	{
-		/* code */
-	}
+	exit(0);
+	// while (1)
+	// {
+	// 	/* code */
+	// }
 	
 	return 0;
 }

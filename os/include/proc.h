@@ -44,10 +44,10 @@
 //the memory space we put kernel is 0x30400~0x6ffff, so we should limit kernel size
 // #define NR_PCBS	32		//add by visual 2016.4.5
 // #define NR_K_PCBS 10		//add by visual 2016.4.5
-#define NR_PCBS		12
+#define NR_PCBS		64								//modified by zhenhao 2023.3.5
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
-#define NR_TASKS	2	//task_tty + hd_service	//modified by mingxuan 2019-5-19
-#define NR_K_PCBS	4	//no K_PCB is empty now
+#define NR_TASKS	2	//task_tty + hd_service		//modified by mingxuan 2019-5-19
+#define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 
 //~xw
 
@@ -130,6 +130,7 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
 }LIN_MEMMAP;
 
+/*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
 typedef struct s_proc {
 	STACK_FRAME regs;          /* process registers saved in stack frame */
 
@@ -142,6 +143,8 @@ typedef struct s_proc {
 	char* esp_save_context;	//to save the position of esp in the kernel stack of the process
 //	int   save_type;		//the cause of process losting CPU	//save_type is not needed any more, xw, 18/4/20
 							//1st-bit for interruption, 2nd-bit for context, 3rd-bit for syscall
+	char* esp_save_syscall_arg;	// to save the position of esp in the kernel stack of the process, used in save_syscall
+								//added by zhenhao, 2023.3.6
 	void* channel;			/*if non-zero, sleeping on channel, which is a pointer of the target field
 							for example, as for syscall sleep(int n), the target field is 'ticks',
 							and the channel is a pointer of 'ticks'.

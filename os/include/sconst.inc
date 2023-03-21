@@ -35,6 +35,7 @@ ESP_SAVE_SYSCALL  equ  ESP_SAVE_INT + 4
 ESP_SAVE_CONTEXT  equ  ESP_SAVE_SYSCALL + 4
 ;SAVE_TYPE		  equ  ESP_SAVE_CONTEXT + 4		;Deleted by xw, 18/4/19
 ;end
+ESP_SAVE_SYSCALL_ARG  equ  ESP_SAVE_CONTEXT + 4 ;added by zhenhao 2023.3.5
 
 TSS3_S_SP0	equ	4
 
@@ -47,6 +48,7 @@ EOI		equ	0x20
 
 ; 以下选择子值必须与 protect.h 中保持一致!!!
 SELECTOR_FLAT_C		equ		0x08		; LOADER 里面已经确定了的.
+SELECTOR_FLAT_RW	equ     0x10        ;added by sundong 2023.3.8
 SELECTOR_TSS		equ		0x20		; TSS. 从外层跳到内存时 SS 和 ESP 的值从里面获得.
 SELECTOR_KERNEL_CS	equ		SELECTOR_FLAT_C
 SELECTOR_VIDEO		equ		0x1b		; added by xw, 18/6/20

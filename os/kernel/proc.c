@@ -132,9 +132,9 @@ PUBLIC void sys_sleep(int n)
 }
 */
 //modified by mingxuan 2021-8-13
-PUBLIC void sys_sleep(void *uesp)
+PUBLIC void sys_sleep()
 {
-    return do_sleep(get_arg(uesp, 1));
+    return do_sleep(get_arg(1));
 }
 
 PUBLIC void do_sleep(int n)

@@ -26,9 +26,9 @@ PRIVATE int pthread_stack_init(PROCESS *p_child,PROCESS *p_parent, pthread_attr_
 PRIVATE int pthread_heap_init(PROCESS *p_child,PROCESS *p_parent);
 
 //added by mingxuan 2021-8-11
-PUBLIC int sys_pthread_create(void *uesp)
+PUBLIC int sys_pthread_create()
 {
-    return do_pthread_create(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3), get_arg(uesp, 4));
+    return do_pthread_create(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
 }
 
 //added by mingxuan 2021-8-14
@@ -287,6 +287,16 @@ PRIVATE int pthread_heap_init(PROCESS* p_child,PROCESS *p_parent)
 
 /* added by ZengHao & MaLinhan 2021.12.23  */
 PUBLIC pthread_t  sys_pthread_self()
+{
+	return do_pthread_self();
+}
+
+PUBLIC pthread_t  do_pthread_self()
+{
+	return kern_pthread_self();
+}
+
+PUBLIC pthread_t  kern_pthread_self()
 {
 	return p_proc_current->task.pthread_id;
 }

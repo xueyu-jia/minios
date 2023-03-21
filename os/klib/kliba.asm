@@ -18,10 +18,10 @@ global	disp_str
 global	disp_color_str
 global	out_byte
 global	out_dword
-global	out_mem_32
+; global	out_mem_32
 global	in_byte
 global	in_dword
-global	in_mem_32
+; global	in_mem_32
 global  enable_irq
 global  disable_irq
 global	port_read
@@ -36,7 +36,7 @@ global  write_char	; added by mingxuan 2019-5-19
 disp_str:
 	push	ebp
 	mov	ebp, esp
-	push 	ebx
+	pushad
 
 
 	mov	esi, [ebp + 8]	; pszInfo
@@ -74,8 +74,8 @@ disp_str:
 .2:
 	mov	[disp_pos], edi
 
-	mov ebx, [ebp - 4]
-	leave
+	popad
+	pop ebp
 	ret
 
 ; ========================================================================
@@ -84,7 +84,7 @@ disp_str:
 disp_color_str:
 	push	ebp
 	mov	ebp, esp
-	push 	ebx
+	pushad
 
 	mov	esi, [ebp + 8]	; pszInfo
 	mov	edi, [disp_pos]
@@ -114,71 +114,83 @@ disp_color_str:
 .2:
 	mov	[disp_pos], edi
 
-	mov ebx, [ebp - 4]
-	leave
+	popad
+	pop ebp
 	ret
 
 ; ========================================================================
 ;                  void out_byte(u16 port, u8 value);
 ; ========================================================================
 out_byte:
-	mov	edx, [esp + 4]		; port
-	mov	al, [esp + 4 + 4]	; value
+	push ebp
+	mov ebp, esp
+	push edx
+	mov	edx, [ebp + 8]		; port
+	mov	al, [ebp + 12]		; value
 	out	dx, al
-	nop	; 一点延迟
-	nop
+	pop edx
+	pop ebp
 	ret
 
 
 out_dword:
-	mov	edx, [esp + 4]		; port
-	mov	al, [esp + 4 + 4]	; value
+	push ebp
+	mov ebp, esp
+	push edx
+	mov	edx, [ebp + 8]		; port
+	mov	al, [ebp + 12]		; value
 	out	dx, eax
-	nop	; 一点延迟
-	nop
+	pop edx
+	pop ebp
 	ret
 
 
-out_mem_32:
-	mov	edx, [esp + 4]		; port
-	mov	al, [esp + 4 + 4]	; value
-	mov	[edx], eax
-	nop	; 一点延迟
-	nop
-	ret
+; out_mem_32:
+; 	mov	edx, [esp + 4]		; port
+; 	mov	al, [esp + 4 + 4]	; value
+; 	mov	[edx], eax
+; 	nop	; 一点延迟
+; 	nop
+; 	ret
 
 ; ========================================================================
 ;                  u8 in_byte(u16 port);
 ; ========================================================================
 in_byte:
-	mov	edx, [esp + 4]		; port
+	push ebp
+	mov ebp, esp
+	push edx
+	mov	edx, [ebp + 8]		; port
 	xor	eax, eax
 	in	al, dx
-	nop	; 一点延迟
-	nop
+	pop edx
+	pop ebp
 	ret
 
 ; ========================================================================
 ;                  u32 in_byte(u16 port);
 ; ========================================================================
 in_dword:
-	mov	edx, [esp + 4]		; port
+	push ebp
+	mov ebp, esp
+	push edx
+	mov	edx, [ebp + 8]		; port
 	xor	eax, eax
 	in	eax, dx
-	nop	; 一点延迟
-	nop
+	pop edx
+	pop ebp
 	ret
 
 ; ========================================================================
 ;                  u32 in_byte(u16 port);
 ; ========================================================================
-in_mem_32:
-	mov	edx, [esp + 4]		; port
-	xor	eax, eax
-	mov	eax, [edx]
-	nop	; 一点延迟
-	nop
-	ret
+; in_mem_32:
+; 	mov	edx, [esp + 4]		; port
+; 	xor	eax, eax
+; 	mov	eax, [edx]
+; 	nop	; 一点延迟
+; 	nop
+; 	ret
 
 
 ; ========================================================================
@@ -193,7 +205,10 @@ in_mem_32:
 ;		out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) | (1 << irq));
 ;	}
 disable_irq:
-        mov     ecx, [esp + 4]          ; irq
+		push	ebp
+		mov		ebp, esp
+		pushad
+        mov     ecx, [ebp + 8]          ; irq
         pushf
         cli
         mov     ah, 1
@@ -208,6 +223,8 @@ disable_0:
         out     INT_M_CTLMASK, al       ; set bit at master 8259
         popf
         mov     eax, 1                  ; disabled by this function
+		popad
+		pop		ebp
         ret
 disable_8:
         in      al, INT_S_CTLMASK
@@ -217,10 +234,14 @@ disable_8:
         out     INT_S_CTLMASK, al       ; set bit at slave 8259
         popf
         mov     eax, 1                  ; disabled by this function
+		popad
+		pop		ebp
         ret
 dis_already:
         popf
         xor     eax, eax                ; already disabled
+		popad
+		pop		ebp
         ret
 
 ; ========================================================================
@@ -236,7 +257,10 @@ dis_already:
 ;       }
 ;
 enable_irq:
-        mov     ecx, [esp + 4]          ; irq
+		push	ebp
+		mov		ebp, esp
+		pushad
+        mov     ecx, [ebp + 8]          ; irq
         pushf
         cli
         mov     ah, ~1
@@ -248,12 +272,16 @@ enable_0:
         and     al, ah
         out     INT_M_CTLMASK, al       ; clear bit at master 8259
         popf
+		popad
+		pop		ebp
         ret
 enable_8:
         in      al, INT_S_CTLMASK
         and     al, ah
         out     INT_S_CTLMASK, al       ; clear bit at slave 8259
         popf
+		popad
+		pop		ebp
         ret
 
 ; added by zcr begin
@@ -261,24 +289,34 @@ enable_8:
 ;                  void port_read(u16 port, void* buf, int n);
 ; ========================================================================
 port_read:
-	mov	edx, [esp + 4]		; port
-	mov	edi, [esp + 4 + 4]	; buf
-	mov	ecx, [esp + 4 + 4 + 4]	; n
+	push ebp
+	mov	ebp, esp
+	pushad
+	mov	edx, [ebp + 8]		; port
+	mov	edi, [ebp + 12]		; buf
+	mov	ecx, [ebp + 16]		; n
 	shr	ecx, 1
 	cld
 	rep	insw
+	popad
+	pop ebp
 	ret
 
 ; ========================================================================
 ;                  void port_write(u16 port, void* buf, int n);
 ; ========================================================================
 port_write:
-	mov	edx, [esp + 4]		; port
-	mov	esi, [esp + 4 + 4]	; buf
-	mov	ecx, [esp + 4 + 4 + 4]	; n
+	push ebp
+	mov	ebp, esp
+	pushad
+	mov	edx, [ebp + 8]		; port
+	mov	esi, [ebp + 12]		; buf
+	mov	ecx, [ebp + 16]		; n
 	shr	ecx, 1
 	cld
 	rep	outsw
+	popad
+	pop ebp
 	ret
 
 ; ========================================================================
@@ -302,14 +340,14 @@ enable_int:
 write_char:
 	push 	ebp
 	mov ebp,esp
+	pushad
 	
 	mov esi,[ebp+8] 
 	mov edi,[disp_pos]
 	
-	push eax
 	mov eax,esi
 	mov	ah, 0Fh
 	mov	[gs:edi], ax
-	pop eax
+	popad
 	pop ebp
 	ret

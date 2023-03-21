@@ -65,6 +65,7 @@ global read_cr2   ;//add by visual 2016.5.9
 global read_cr3   ;//add by visual 2016.5.9
 
 global refresh_page_cache ; // add by visual 2016.5.12
+global refresh_gdt 		;add by sundong 2023.3.8
 global halt  			;added by xw, 18/6/11
 global get_arg			;added by xw, 18/6/18
 
@@ -619,6 +620,7 @@ save_syscall:			;can't modify EAX, for it contains syscall number
         push    gs      ; /
 		mov		edx,  [p_proc_current]				;xw
 		mov		dword [edx + ESP_SAVE_SYSCALL], esp	;xw save esp position in the kernel-stack of the process
+		mov		dword [edx + ESP_SAVE_SYSCALL_ARG], esp	;added by zhenhao 2023.3.5
 ;		or		dword [edx + SAVE_TYPE], 4			;set 3rd-bit of save_type, added by xw, 17/12/04
         mov     dx, ss
         mov     ds, dx
@@ -711,9 +713,9 @@ sys_call:
 ;so we can't modify eax and ebx in save_syscall
 	call	save_syscall	;save registers and some other things. modified by xw, 17/12/11
 	sti
-	push 	ebx							;push the argument the syscall need
+	; push 	ebx							;push the argument the syscall need
 	call    [sys_call_table + eax * 4]	;将参数压入堆栈后再调用函数			add by visual 2016.4.6
-	add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
+	; add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
 	cli
 	mov		edx, [p_proc_current]
 	mov 	esi, [edx + ESP_SAVE_SYSCALL]
@@ -794,10 +796,30 @@ read_cr3:
 ;				    refresh_page_cache		//add by visual 2016.5.12
 ; ====================================================================================
 refresh_page_cache:
+	push eax
 	mov eax,cr3
 	mov cr3,eax
+	pop eax
 	ret
-
+; ====================================================================================
+;				    refresh_gdt					//added by sundong 2023.3.8
+; ====================================================================================
+ refresh_gdt:			;更新gdtr的值  更新gs、ds、ss、es、fs、ss隐藏部分
+	push 	ax
+	lgdt	[gdt_ptr]	; 使用新的GDT
+	xor		ax,	ax
+	;由于gdt的video相关的描述符发生更改，因此需要重置gs，以刷新gs隐藏部分的内容
+	mov 	ax,	SELECTOR_VIDEO 
+	mov 	gs,	ax
+	xor		ax,	ax
+	;尽管SELECTOR_FLAT_RW对应的描述符的内容没有发生改变，此处仍然更新了ds、ss、es、fs、ss
+	mov		ax, SELECTOR_FLAT_RW
+	mov		ds, ax
+	mov		es, ax
+	mov		fs, ax
+	mov		ss, ax
+	pop 	ax
+	ret
 ; ====================================================================================
 ;				    halt					//added by xw, 18/6/11
 ; ====================================================================================
@@ -811,18 +833,18 @@ halt:
 ; @uesp: user space stack pointer
 ; @order: which argument you want to get
 ; @uesp+0: the number of args, @uesp+8: the first arg, @uesp+12: the second arg...
-get_arg:
-	push ebp
-	mov ebp, esp
-	push esi
-	push edi
-	mov esi, dword [ebp + 8]	;void *uesp
-	mov edi, dword [ebp + 12]	;int order
-	mov eax, dword [esi + edi * 4 + 4]
-	pop edi
-	pop esi
-	pop ebp
-	ret
+; get_arg:
+; 	push ebp
+; 	mov ebp, esp
+; 	push esi
+; 	push edi
+; 	mov esi, dword [ebp + 8]	;void *uesp
+; 	mov edi, dword [ebp + 12]	;int order
+; 	mov eax, dword [esi + edi * 4 + 4]
+; 	pop edi
+; 	pop esi
+; 	pop ebp
+; 	ret
 
 
 

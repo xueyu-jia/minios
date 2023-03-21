@@ -41,10 +41,8 @@ void init_msgq(){
 	disp_str("Message queue initialization done.\n");
 }
 // functions in system call table:
-int sys_ftok(void *args)
+int kern_ftok(char* f, int flag)
 {
-	char *f = (char *)get_arg(args, 1);
-	int flag = (int)get_arg(args, 2);
 	unsigned int key = flag;
 	for (int base = 1; *f; f++)
 	{
@@ -54,14 +52,24 @@ int sys_ftok(void *args)
 	return (int)(key & 0xEFFFFFFF);
 }
 
+int do_ftok(char* f, int flag)
+{
+	return kern_ftok(f, flag);
+}
+
+int sys_ftok()
+{
+	return do_ftok(get_arg(1), get_arg(2));
+}
+
 int do_msgget(key_t key, int msgflg )
 {
 	return kern_msgget(key, msgflg);
 }
 
-int sys_msgget(void *args)
+int sys_msgget()
 {
-	return do_msgget(get_arg(args, 1), get_arg(args, 2));
+	return do_msgget(get_arg(1), get_arg(2));
 }
 
 
@@ -70,9 +78,9 @@ int do_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 	return kern_msgsnd(msqid, msgp, msgsz, msgflg);
 }
 
-int sys_msgsnd(void *args)
+int sys_msgsnd()
 {
-	return do_msgsnd(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4));
+	return do_msgsnd(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
 }
 
 
@@ -81,9 +89,9 @@ int do_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 	return kern_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
 }
 
-int sys_msgrcv(void *args)
+int sys_msgrcv()
 {
-	return do_msgrcv(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3), get_arg(args, 4), get_arg(args, 5));
+	return do_msgrcv(get_arg(1), get_arg(2), get_arg(3), get_arg(4), get_arg(5));
 }
 
 
@@ -92,9 +100,9 @@ int do_msgctl(int msqid, int cmd, msqid_ds *buf)
 	return kern_msgctl(msqid, cmd, buf);
 }
 
-int sys_msgctl(void *args)
+int sys_msgctl()
 {
-	return do_msgctl(get_arg(args, 1), get_arg(args, 2), get_arg(args, 3));
+	return do_msgctl(get_arg(1), get_arg(2), get_arg(3));
 }
 
 // real functions
@@ -345,7 +353,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 	case IPC_SET:
 		//复制信息
 		q_list[msqid].info.msg_qbytes = (*(msqid_ds *)buf).msg_qbytes;
-		q_list[msqid].info.msg_ctime = sys_get_ticks();
+		q_list[msqid].info.msg_ctime = kern_get_ticks();
 		ret = 0;
 		break;
 	default:
@@ -386,10 +394,10 @@ void rm_msg_node(int msqid, list_item *head)
 	kern_kfree(target->msg.buf);
 	kern_kfree(target);
 	//修改队列信息
-	q_list[msqid].info.msg_lrpid = sys_get_pid();
+	q_list[msqid].info.msg_lrpid = kern_get_pid();
 	q_list[msqid].info.msg_qnum--;
 	q_list[msqid].info.__msg_cbytes -= size;
-	q_list[msqid].info.msg_rtime = sys_get_ticks();
+	q_list[msqid].info.msg_rtime = kern_get_ticks();
 	return;
 }
 
@@ -408,8 +416,8 @@ void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type
 	q_list[msqid].num++;
 	q_list[msqid].info.msg_qnum++;
 	q_list[msqid].info.__msg_cbytes += msgsz;
-	q_list[msqid].info.msg_lspid = sys_get_pid();
-	q_list[msqid].info.msg_stime = sys_get_ticks();
+	q_list[msqid].info.msg_lspid = kern_get_pid();
+	q_list[msqid].info.msg_stime = kern_get_ticks();
 	node->msg.type = type_new;
 	node->msg.buf = (char *)kern_kmalloc(msgsz);
 	node->msgsz = msgsz;

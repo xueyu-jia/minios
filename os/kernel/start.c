@@ -30,8 +30,11 @@ PUBLIC int init_kernel_page()
 	//第一步: 生成一张内核用的页目录表
 	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
 
-	//第二步: 重建页表映射, 分为两步，先初始化低端0~kernel_size内核的映射，再初始化3G~3G+kernel_size的内核映射
+	//第二步: 初始化3G~3G+kernel_size的内核映射
 	u32 AddrLin = 0, phy_addr = 0;
+
+	//delete by sundong 2023.3.8 kernel中低端页表没有发挥作用，因此此处删掉对低端页表的映射
+	/*
 	//建立对低端0~kernel_size内核的映射
 	for (AddrLin = 0, phy_addr = 0; AddrLin < 0 + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
 	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
@@ -46,6 +49,7 @@ PUBLIC int init_kernel_page()
 			return -1;
 		}
 	}
+	*/
 
 	//建立3G~3G+kernel_size的内核映射
 	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
@@ -186,6 +190,7 @@ PUBLIC void cstart()
 	*/
 
 	init_gdt();
+	refresh_gdt();	//added by sundong 2023.3.8 更新gdtr的值，并且刷新gs、es、ds、cs的隐藏部分。
 
 	// idt_ptr[6] 共 6 个字节：0~15:Limit  16~47:Base。用作 sidt 以及 lidt 的参数。
 	/*

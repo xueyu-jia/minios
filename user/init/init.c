@@ -620,16 +620,16 @@ void fat32_test()
 	int buf[256];
 	int fd;
 	int i = 0;
-	chdir("fat1/V:\\");
+	chdir("fat0/V:\\");
 	if (!pid_child)
 	{
 		getcwd(buf, 256);
 		fprintf(tty, "child cwd is: %s\n", buf);
-		createdir("fat1/child");
-		chdir("fat1/child");
+		createdir("fat0/child");
+		chdir("fat0/child");
 		getcwd(buf, 256);
 		fprintf(tty, "child cwd changes to: %s\n", buf);
-		fd = open("fat1/path.txt", O_RDWR | O_CREAT);
+		fd = open("fat0/path.txt", O_RDWR | O_CREAT);
 		write(fd, buf, strlen(buf));
 		close(fd);
 		fprintf(tty, "child process exit\n");
@@ -637,11 +637,11 @@ void fat32_test()
 	}
 	getcwd(buf, 256);
 	fprintf(tty, "parent cwd is: %s\n", buf);
-	createdir("fat1/parent");
-	chdir("fat1/parent");
+	createdir("fat0/parent");
+	chdir("fat0/parent");
 	getcwd(buf, 256);
 	fprintf(tty, "parent cwd changes to: %s\n", buf);
-	fd = open("fat1/path.txt", O_RDWR | O_CREAT);
+	fd = open("fat0/path.txt", O_RDWR | O_CREAT);
 	write(fd, buf, strlen(buf));
 	close(fd);
 	fprintf(tty, "parent process exit\n");
@@ -772,10 +772,10 @@ void main(int arg,char *argv[])
 	}
 	else
 	{//child
-		// exec("fat0/shell_0.bin");
-		exec("fat0/shell_0.bin",NULL,NULL);
+		// execve("fat0/shell_0.bin");
+		execve("fat0/shell_0.bin",NULL,NULL);
 
-		//exec(filename);
+		//execve(filename);
 	}
 	
 	return;

@@ -238,10 +238,8 @@ int create_devfile(int drive, int major, int minor)
 }
 
 
-int sys_init_block_dev(void *uesp)
+int kern_init_block_dev(int drive)
 {
-	int drive = get_arg(uesp, 1);
-
 	for(int i=0;i<12;i++)
 	{
 		if(hd_info[i].open_cnt > 0)
@@ -256,6 +254,16 @@ int sys_init_block_dev(void *uesp)
 		}
 	}
 	return 0;
+}
+
+int do_init_block_dev(int drive)
+{
+	return kern_init_block_dev(drive);
+}
+
+int sys_init_block_dev()
+{
+	return do_init_block_dev(get_arg(1));
 }
 
 
@@ -810,19 +818,34 @@ PUBLIC int real_open(const char *pathname, int flags)	//modified by mingxuan 201
 	
 
 	//added by xw, 18/8/27
+	//root fs
+	for(i = 0; i <strlen(pathname); i++)
+    {
+		if(pathname[i] == '/'){
+			break;
+		}
+	}
+	if(i<strlen(pathname))
+	{
+		i=i+1;
+	}
+	else
+	{
+		i=0;
+	}
 	MESSAGE fs_msg;
 
 	fs_msg.type	= OPEN;
-	fs_msg.PATHNAME	= (void*)pathname;
+	fs_msg.PATHNAME	= (void*)(pathname+i);
 	fs_msg.FLAGS	= flags;
-	fs_msg.NAME_LEN	= strlen(pathname);
+	fs_msg.NAME_LEN	= strlen(pathname+i);
 	fs_msg.source = proc2pid(p_proc_current);
 
 	//int fd = do_open();	//modified by xw, 18/8/27
 	//int fd = do_open(&fs_msg);
 	int fd = ora_open(&fs_msg);	//modified by mingxuan 2021-8-20
 
-	p_proc_current -> task.filp[fd] -> dev_index = root_inode->i_dev;
+	// p_proc_current -> task.filp[fd] -> dev_index = root_inode->i_dev;
 
 	// send_recv(BOTH, TASK_FS, &msg);
 	// assert(msg.type == SYSCALL_RET);

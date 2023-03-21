@@ -2,7 +2,7 @@
 ********************** add by dingleilei*********************/
 
 #include "../include/shm.h"
-#include "../include/stdio.h"
+// #include "../include/stdio.h"
 #include "../include/type.h"
 #include "../include/const.h"
 #include "../include/protect.h"
@@ -114,7 +114,7 @@ PUBLIC int id_exist(int key)
     return id;
 }
 
-PUBLIC int do_shmget(int key, int size, int shmflg)
+PUBLIC int kern_shmget(int key, int size, int shmflg)
 {
     acquire(&lock_msg); //保证get操作的原子性
 
@@ -167,9 +167,14 @@ PUBLIC int do_shmget(int key, int size, int shmflg)
     return id;
 }
 
-PUBLIC int sys_shmget(void *uesp)
+PUBLIC int do_shmget(int key, int size, int shmflg)
+{
+    return kern_shmget(key, size, shmflg);
+}
+
+PUBLIC int sys_shmget()
 {  
-    return do_shmget(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return do_shmget(get_arg(1), get_arg(2), get_arg(3));
 }
 
 
@@ -192,7 +197,7 @@ PUBLIC int alignment(int vir_addr)
     return vir;
 }
 
-PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg)
+PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
 {
 
     int vir_addr;
@@ -213,30 +218,39 @@ PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg)
     return (void *)((vir_addr)&0xFFFFF000);
 }
 
-PUBLIC void *sys_shmat(void *uesp)
+PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg)
 {
-    return do_shmat(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return kern_shmat(shmid, shmaddr, shmflg);
+}
+
+PUBLIC void *sys_shmat()
+{
+    return do_shmat(get_arg(1), get_arg(2), get_arg(3));
 }
 
 /*======================================================================*
                             shmdt 
  *======================================================================*/
-PUBLIC void do_shmdt(char *shmaddr)
+PUBLIC void kern_shmdt(char *shmaddr)
 {
     clear_pte(p_proc_current->task.pid, shmaddr); //并不释放物理页
 
     return;
 }
 
-PUBLIC void sys_shmdt(void *uesp)
+PUBLIC void do_shmdt(char *shmaddr)
 {
-    return do_shmdt(get_arg(uesp, 1));
+    return kern_shmdt(shmaddr);
+}
+
+PUBLIC void sys_shmdt()
+{
+    return do_shmdt(get_arg(1));
 }
 /*======================================================================*
                               shmctl
  *======================================================================*/
-
-PUBLIC struct ipc_shm *do_shmctl(int shmid, int cmd, struct ipc_shm *buf)
+PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf)
 {
     if (cmd == DELETE)
     {
@@ -269,17 +283,17 @@ PUBLIC struct ipc_shm *do_shmctl(int shmid, int cmd, struct ipc_shm *buf)
     return (struct ipc_shm *)buf;
 }
 
-PUBLIC struct ipc_shm *sys_shmctl(void *uesp)
+PUBLIC struct ipc_shm *do_shmctl(int shmid, int cmd, struct ipc_shm *buf)
 {
-    return do_shmctl(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return kern_shmctl(shmid, cmd, buf);
 }
 
-PUBLIC void *sys_shmmemcpy(void *uesp)
+PUBLIC struct ipc_shm *sys_shmctl()
 {
-    return do_shmmemcpy(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3));
+    return do_shmctl(get_arg(1), get_arg(2), get_arg(3));
 }
 
-PUBLIC void *do_shmmemcpy(void *dst, const void *src, long unsigned int len)
+PUBLIC void *kern_shmmemcpy(void *dst, const void *src, long unsigned int len)
 {
     acquire(&lock_shmmemcpy);
     if (NULL == dst || NULL == src)
@@ -315,4 +329,14 @@ PUBLIC void *do_shmmemcpy(void *dst, const void *src, long unsigned int len)
     }
     release(&lock_shmmemcpy);
     return ret;
+}
+
+PUBLIC void *do_shmmemcpy(void *dst, const void *src, long unsigned int len)
+{
+    return kern_shmmemcpy(dst, src, len);
+}
+
+PUBLIC void *sys_shmmemcpy()
+{
+    return do_shmmemcpy(get_arg(1), get_arg(2), get_arg(3));
 }

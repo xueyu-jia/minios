@@ -31,20 +31,20 @@ struct vfs{
 	int used;                   //added by ran
 };
 
-PUBLIC int sys_open(void *uesp);
-PUBLIC int sys_close(void *uesp);
-PUBLIC int sys_read(void *uesp);
-PUBLIC int sys_write(void *uesp);
-PUBLIC int sys_lseek(void *uesp);
-PUBLIC int sys_unlink(void *uesp);
-PUBLIC int sys_create(void *uesp);
-PUBLIC int sys_delete(void *uesp);
-PUBLIC int sys_opendir(void *uesp);
-PUBLIC int sys_createdir(void *uesp);
-PUBLIC int sys_deletedir(void *uesp);
-PUBLIC int sys_readdir(void *uesp);
-PUBLIC int sys_chdir(void *uesp); //added by ran
-PUBLIC int sys_getcwd(void *uesp); //added by ran
+PUBLIC int sys_open();
+PUBLIC int sys_close();
+PUBLIC int sys_read();
+PUBLIC int sys_write();
+PUBLIC int sys_lseek();
+PUBLIC int sys_unlink();
+PUBLIC int sys_create();
+PUBLIC int sys_delete();
+PUBLIC int sys_opendir();
+PUBLIC int sys_createdir();
+PUBLIC int sys_deletedir();
+PUBLIC int sys_readdir();
+PUBLIC int sys_chdir(); //added by ran
+PUBLIC int sys_getcwd(); //added by ran
 
 PUBLIC int do_vopen(const char *path, int flags);
 PUBLIC int do_vclose(int fd);
@@ -65,16 +65,16 @@ PUBLIC int set_vfstable(u32 device, char *target);
 PUBLIC struct vfs* vfs_alloc_vfs_entity();
 PUBLIC int get_index(char path[]);
 PUBLIC void init_vfs();
-int sys_CreateFile(void *uesp);
-int sys_DeleteFile(void *uesp);
-int sys_OpenFile(void *uesp);
-int sys_CloseFile(void *uesp);
-int sys_WriteFile(void *uesp);
-int sys_ReadFile(void *uesp);
-int sys_OpenDir(void *uesp);
-int sys_CreateDir(void *uesp);
-int sys_DeleteDir(void *uesp);
-int sys_ListDir(void *uesp);
+int sys_CreateFile();
+int sys_DeleteFile();
+int sys_OpenFile();
+int sys_CloseFile();
+int sys_WriteFile();
+int sys_ReadFile();
+int sys_OpenDir();
+int sys_CreateDir();
+int sys_DeleteDir();
+int sys_ListDir();
 
 //文件系统的操作函数
 struct file_op{

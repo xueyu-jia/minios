@@ -96,9 +96,9 @@ PUBLIC int kern_get_pid()
 	return p_proc_current->task.pid;
 }
 
-PUBLIC int sys_get_pid_byname(char *name)
+PUBLIC int sys_get_pid_byname()
 {
-	return do_get_pid_byname(name);
+	return do_get_pid_byname(get_arg(1));
 }
 
 PUBLIC int do_get_pid_byname(char *name)
@@ -326,9 +326,9 @@ PUBLIC int sys_free_4k(void* AddrLin)
 */
 
 //modified by mingxuan 2021-8-14
-PUBLIC int sys_free_4k(void *uesp)
+PUBLIC int sys_free_4k()
 {
-	return do_free_4k(get_arg(uesp, 1));
+	return do_free_4k(get_arg(1));
 }
 
 PUBLIC int do_free_4k(void *AddrLin)
@@ -374,9 +374,9 @@ PUBLIC void sys_udisp_int(int arg)
 }
 */
 //modified by mingxuan 2021-8-13
-PUBLIC void sys_udisp_int(void *uesp)
+PUBLIC void sys_udisp_int()
 {
-	do_udisp_int(get_arg(uesp, 1));
+	do_udisp_int(get_arg(1));
 	return;
 }
 
@@ -398,9 +398,9 @@ PUBLIC void sys_udisp_str(char *arg)
 }
 */
 //modified by mingxuan 2021-8-13
-PUBLIC void sys_udisp_str(void *uesp)
+PUBLIC void sys_udisp_str()
 {
-	do_udisp_str(get_arg(uesp, 1));
+	do_udisp_str(get_arg(1));
 	return;
 }
 
@@ -416,12 +416,21 @@ PUBLIC void do_udisp_str(char *arg)
 /*======================================================================*
 *                          sys_total_mem_size		added by wang 2021.8.21
 *======================================================================*/
-
-PUBLIC u32 sys_total_mem_size()
+PUBLIC u32 kern_total_mem_size()
 {
 	u32 total_mem_size = 0;
 	total_mem_size = kbud->current_mem_size + ubud->current_mem_size + kmem.current_mem_size;
 	return total_mem_size;
+}
+
+PUBLIC u32 do_total_mem_size()
+{
+	return kern_total_mem_size();
+}
+
+PUBLIC u32 sys_total_mem_size()
+{
+	return do_total_mem_size();
 }
 
 #define TEST_FOR_SEMAPHORE
@@ -592,15 +601,13 @@ int test_consume(int x)
 用于测试内核信号量的功能
 *======================================================================*/
 
-PUBLIC void sys_test(int function)
+PUBLIC void sys_test()
 {
-	do_test(function);
-	return;
+	return do_test(get_arg(1));
 }
 PUBLIC void do_test(int function)
 {
-	kern_test(function);
-	return;
+	return kern_test(function);
 }
 
 PUBLIC void kern_test(int function)

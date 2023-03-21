@@ -258,12 +258,12 @@ PUBLIC int do_umount(const char *target)
                               sys_* 系列函数
  *======================================================================*/
 
-PUBLIC int sys_mount(void *uesp)
+PUBLIC int sys_mount()
 {
-    return do_mount(get_arg(uesp, 1), get_arg(uesp, 2), get_arg(uesp, 3), get_arg(uesp, 4), get_arg(uesp, 5));
+    return do_mount(get_arg(1), get_arg(2), get_arg(3), get_arg(4), get_arg(5));
 }
 
-PUBLIC int sys_umount(void *uesp)
+PUBLIC int sys_umount()
 {
-    return do_umount(get_arg(uesp, 1));
+    return do_umount(get_arg(1));
 }

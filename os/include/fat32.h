@@ -207,14 +207,14 @@ void debug(char * s);
 void deint(int t);
 void DisErrorInfo(STATE state);
 
-int sys_CreateFile(void *uesp);
-int sys_DeleteFile(void *uesp);
-int sys_OpenFile(void *uesp);
-int sys_CloseFile(void *uesp);
-int sys_WriteFile(void *uesp);
-int sys_ReadFile(void *uesp);
-int sys_OpenDir(void *uesp);
-int sys_CreateDir(void *uesp);
-int sys_DeleteDir(void *uesp);
-int sys_ListDir(void *uesp);
+int sys_CreateFile();
+int sys_DeleteFile();
+int sys_OpenFile();
+int sys_CloseFile();
+int sys_WriteFile();
+int sys_ReadFile();
+int sys_OpenDir();
+int sys_CreateDir();
+int sys_DeleteDir();
+int sys_ListDir();
 #endif
