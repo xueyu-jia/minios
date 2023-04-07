@@ -34,10 +34,10 @@ AR		= ar
 # added by mingxuan 2020-10-22
 MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 #added by sundong 写镜像用,用losetup -f查看
-FREE_LOOP =$(shell losetup -f)
+FREE_LOOP =$(shell sudo losetup -f)
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
-USING_GRUB_CHAINLOADER = true
+USING_GRUB_CHAINLOADER = false
 
 include ./os/Makefile
 include	./user/Makefile
@@ -143,6 +143,7 @@ build_fs:
 		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
 		sudo umount iso ;\
 	fi
+#	sudo ./o_copy ./kernel.bin $(FREE_LOOP)p5/kernel.bin
 
 	sudo losetup -d $(FREE_LOOP)
 

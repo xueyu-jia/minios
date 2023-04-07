@@ -1,6 +1,6 @@
 #add by sundong 2023.3.26
 #构建mbr boot和loader的makefile
-MBR_LOADER_DIR=os/boot/mbr
+MBR_LOADER_DIR = os/boot/mbr
 MBR_LOADER_INC_DIR=$(MBR_LOADER_DIR)/include
 
 MBR_LOADER_SRC :=$(wildcard $(MBR_LOADER_DIR)/*.c )
@@ -30,4 +30,4 @@ $(MBR_LOADER_DIR)/loader.o:$(MBR_LOADER_DIR)/loader.asm
 #链接loader.bin
 $(MBR_LOADER_DIR)/loader.bin:$(MBR_LOADER_OBJS)
 	$(LD) $(MBR_LOADER_LDFLAGS) -o $@ $^ 
-	$(LD) -g -m elf_i386 -nostdlib -s -T $(MBR_LOADER_LINKER) -o $@.gdb $^ 
+#	$(LD) -g -m elf_i386 -nostdlib -s -T $(MBR_LOADER_LINKER) -o $@.gdb $^ 

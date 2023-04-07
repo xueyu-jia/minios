@@ -40,8 +40,7 @@ void find_act_part(void *dst) {
     if (partition_type == ACT_PART_FLAG)  // 活跃分区
     {
       u32 temp = 0;
-      start =
-          start + 12;  // 分区的起始扇区号在8字节处，长度为4个字节，从后往前读
+      start = start + 12;  // 分区的起始扇区号在8字节处，长度为4个字节，从后往前读
       temp = temp + (u32)(*start);
       for (int j = 0; j < 4; j++)  // 读取4个字节
       {
@@ -53,10 +52,6 @@ void find_act_part(void *dst) {
     }
     start = start + PART_TABLE_ENTRY_SIZE;  // 查找下一个分区
   }
-bad:
-  lprintf( "----fail to kernel elf----");
-  while (1)
-    ;
 }
 static void ide_readsect(void *dst,u32 offset){
     // wait for disk to be ready
@@ -83,10 +78,11 @@ static void ide_read(void *dst, u32 offset,int count){
     ide_readsect(dst+i*SECTSIZE,offset+i);
   }
 }
-
+//只读一个sect
 void readsect(void *dst, u32 offset) {
   readsects(dst,offset,1);
 }
+//一次读多个sector
 void readsects(void* dst, u32 offset,u32 count){
   if(found_sata_dev)sata_read(0,dst,offset,count);
   else ide_read(dst,offset,count);

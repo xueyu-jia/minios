@@ -64,10 +64,10 @@ u32 fat_now_sec;
 u32 elf_first;
 
 
-u32 get_next_clus(u32 current_clus);
-void *read_cluster(void *dst, u32 current_clus);
+/* u32 get_next_clus(u32 current_clus);
+void *read_cluster(void *dst, u32 current_clus); */
 void fat32_init();
-int fat32_read_elf_file(char *filename,void *dst);
+int  fat32_read_file(char *filename,void *dst);
 
 
 /* typedef struct//定义目录项：占32个字节
