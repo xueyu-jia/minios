@@ -37,7 +37,7 @@ MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 FREE_LOOP =$(shell sudo losetup -f)
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
-USING_GRUB_CHAINLOADER = false
+USING_GRUB_CHAINLOADER = true
 
 include ./os/Makefile
 include	./user/Makefile
@@ -80,7 +80,7 @@ buildimg_mbr:
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	dd if=os/boot/mbr/boot.bin of=b.img bs=1 count=420 seek=$(OSBOOT_START_OFFSET) conv=notrunc
-
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 	sudo mount $(FREE_LOOP)p1 iso/
 
 	sudo cp -fv os/boot/mbr/loader.bin iso/
@@ -129,6 +129,7 @@ buildimg_mbr:
 	sudo umount iso/
 
 	sudo losetup -d $(FREE_LOOP)
+	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
 # added by mingxuan 2020-10-22
 build_fs:
@@ -143,8 +144,8 @@ build_fs:
 		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
 		sudo umount iso ;\
 	fi
-#	sudo ./o_copy ./kernel.bin $(FREE_LOOP)p5/kernel.bin
-
+	sudo ./o_copy ./os/boot/mbr/loader.bin $(FREE_LOOP)p5/loader.bin
+	sudo ./o_copy ./kernel.bin $(FREE_LOOP)p5/kernel.bin
 	sudo losetup -d $(FREE_LOOP)
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8

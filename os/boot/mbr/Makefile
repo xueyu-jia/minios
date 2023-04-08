@@ -21,6 +21,7 @@ $(MBR_LOADER_DIR)/mbr.bin : $(MBR_LOADER_DIR)/mbr.asm
 	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
 $(MBR_LOADER_DIR)/boot.bin : $(MBR_LOADER_DIR)/boot.asm
 	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
+	$(ASM)  $(ASMBFLAGS_mbr) -o $(MBR_LOADER_DIR)/orangefs_boot.bin $(MBR_LOADER_DIR)/orangefs_boot.asm
 	
 #编译出所有的.o文件
 $(MBR_LOADER_DIR)/%.o:$(MBR_LOADER_DIR)/%.c

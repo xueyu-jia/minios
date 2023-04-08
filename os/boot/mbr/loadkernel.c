@@ -36,10 +36,10 @@ void load_kernel() {
     clear_screen();
     lprintf("----start loading kernel elf----\n");
     find_act_part((void *)BUF_ADDR);
-    fat32_init();
-    //orangefs_init();
-    //int ret = orangefs_read_file("kernel.bin",(void *)ELF_ADDR);
-    int ret = fat32_read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
+    //fat32_init();
+    orangefs_init();
+    int ret = orangefs_read_file("kernel.bin",(void *)ELF_ADDR);
+    //int ret = fat32_read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
     //判断文件是否读取成功
     if(ret != TRUE)goto bad;
     struct Elf *eh = (struct Elf *)ELF_ADDR;
