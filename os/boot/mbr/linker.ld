@@ -24,7 +24,4 @@ SECTIONS
         *(*)
     }
 
-    /DISCARD/ : {
-        *(.eh_frame .note.GNU-stack)
-    }
 }

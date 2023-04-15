@@ -15,7 +15,29 @@ static u32 get_next_clus(u32 current_clus) {
     }
     return *(u32 *)(BUF_ADDR + off);  // 返回下一个簇的簇号
 }
+//将文件名转为大写 .转为"  "
+static void fat32_uppercase_filename(char*src,char*dst){
+  char *p = src;
+  int index = 0;
+  int len = strlen(src)+1;
+  while(len){
+    if(*p >= 'a'&&*p <= 'z'){
+      dst[index++] = *p-32;
+    }
+    else if(*p=='.'){
+      //"."转化为两个空格
+      dst[index++]=' ';
+      dst[index++]=' ';
+    }
+    else{
+      dst[index++] = *p;
+      if(*p == "\0")return;
+    }
+    p++;
+    len--;
+  }
 
+}
 /*
  * 读入簇号对应的数据区的所有数据
  */
@@ -35,14 +57,16 @@ void fat32_init(){
     // 当扇区字节大小不为512时判断为错误
     if ( bpb.BPB_BytsPerSec != SECTSIZE) goto bad;
     fat_start_sec = bpb.BPB_RsvdSecCnt;  // 计算fat表起始扇区号
-    data_start_sec = fat_start_sec + bpb.BPB_FATSz32 * bpb.BPB_NumFATs + bpb.BPB_HiddSec;  // 计算data起始扇区号
+    data_start_sec = fat_start_sec + bpb.BPB_FATSz32 * bpb.BPB_NumFATs ;  // 计算data起始扇区号
     return ;
     bad:
     while (1);
 }
 
 int fat32_read_file(char *filename,void *dst){
-
+    char filename_upper[strlen(filename)+1];
+    fat32_uppercase_filename(filename,filename_upper);
+    filename = filename_upper;
     u32 root_clus = bpb.BPB_RootClus;  // 根目录簇号
     while (root_clus < 0x0FFFFFF8) {
       void *read_end = read_cluster((void *)BUF_ADDR, root_clus);  // 将根目录区的所有数据读入缓冲区，返回最后的地址

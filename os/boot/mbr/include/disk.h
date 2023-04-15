@@ -35,7 +35,6 @@
 extern u32 bootPartStartSector;
 extern bool found_sata_dev;
 
-void waitdisk(void);
 //读一个扇区
 void readsect(void *dst, u32 offset);
 void find_act_part(void* dst);

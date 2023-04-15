@@ -40,13 +40,6 @@ SelectorFlatC       equ LABEL_DESC_FLAT_C   - LABEL_GDT
 SelectorFlatRW      equ LABEL_DESC_FLAT_RW  - LABEL_GDT
 SelectorVideo       equ LABEL_DESC_VIDEO    - LABEL_GDT + SA_RPL3
 
-
-;; 变量
-_dwMCRNumber:		dd	0	; Memory Check Result
-_dwMemSize:			dd	0
-_MemChkBuf:	times	256	db	0
-
-
 Main:            ; <--- 从这里开始 *************
     mov    ax, cs
     mov    ds, ax
@@ -54,9 +47,9 @@ Main:            ; <--- 从这里开始 *************
     mov    ss, ax
     mov    sp, BaseOfStack
 
-    mov    cx, 02000h
-    mov    ah, 01h
-    int    10h
+    ;mov    cx, 02000h
+    ;mov    ah, 01h
+    ;int    10h
 ;向int 15h询问内存信息
 Getmem:
     pusha
@@ -77,7 +70,6 @@ Getmem:
 .MemChkFail:
     pop edx
     popa
-	mov	dword [_dwMCRNumber], 0
 .MemChkOK:
     pop edx
     popa
@@ -100,6 +92,10 @@ Getmem:
     mov    cr0, eax
 ; 真正进入保护模式
     jmp    dword SelectorFlatC:LABEL_PM_START
+    ;; 变量
+_dwMCRNumber:		dd	0	; Memory Check Result
+_dwMemSize:			dd	0
+_MemChkBuf:	times	1024	db	0
 	
 ; 从此以后的代码在保护模式下执行 ----------------------------------------------------
 ; 32 位代码段. 由实模式跳入 ---------------------------------------------------------
@@ -120,8 +116,9 @@ LABEL_PM_START:
     mov    ss, ax
     mov    esp, TopOfStack
     
-    push dword MemChkBuf
     push dword [dwMCRNumber]
+    push dword MemChkBuf
+
     call loader_cstart
 ;	call	paging			
 ;    add	esp,4

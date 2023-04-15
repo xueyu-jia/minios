@@ -2,7 +2,7 @@
 #include "string.h"
 int strlen(const char *s)
 {
-	int n;
+	int n = 0;
 
 	for (n = 0; *s != '\0'; s++)
 		n++;

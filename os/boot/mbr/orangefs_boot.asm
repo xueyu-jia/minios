@@ -74,6 +74,10 @@ START:
 	mov		es, ax ;deleted by mingxuan 2020-9-13
 	mov		ss, ax
 	mov		fs,	ax
+;	pusha
+;	mov		dx, 0184fh		; 右下角: (80, 50)
+;	int		10h				; int 10h
+;	popa
 	mov	word[DATA_BUFF_SEG],ax ;数据缓冲区的段地址与DS一致 add by sundong 2023.3.16
 	cmp 	si,0
 	jz	.Init_DAP
@@ -83,8 +87,8 @@ START:
 	mov		eax, [ds:si+OffsetOfStartSecInPET]
 	mov		[OffsetOfActiPartStartSec],eax	;将起始扇区的物理扇区号放入OffsetOfActiPartStartSec地址处 loader中会用到该值
 .Init_DAP:
-	mov 	eax,18432
-	mov		[OffsetOfActiPartStartSec],eax
+	;mov 	eax,18432
+	mov		eax,[OffsetOfActiPartStartSec]
 	mov		sp, STACK_ADDR
 	mov  	bp, BaseOfStack
 	mov 	dword [bp - DAP_SECTOR_HIGH ],	00h

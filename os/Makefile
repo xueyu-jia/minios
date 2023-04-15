@@ -51,7 +51,7 @@ LDFLAGS_kernel_gdb	= -m elf_i386 -Ttext $(ENTRYPOINT)
 
 # This Program
 ORANGESBOOT	= os/boot/floppy/boot.bin os/boot/floppy/loader.bin \
-			  os/boot/mbr/mbr.bin os/boot/mbr/boot.bin os/boot/mbr/loader.bin #modified by mingxuan 2019-5-17
+			  os/boot/mbr/mbr.bin os/boot/mbr/boot.bin os/boot/mbr/orangefs_boot.bin os/boot/mbr/loader.bin #modified by mingxuan 2019-5-17
 
 
 ORANGESKERNEL	= kernel.bin

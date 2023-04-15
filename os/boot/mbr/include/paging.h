@@ -19,6 +19,7 @@
 
 #define KERNBASE	0xC0000000
 #define K_PHY2LIN(x)	((x)+KERNBASE)
+#define _32M		0x2000000
 
 #define KB		1024u
 #define MB		(1024u * KB)

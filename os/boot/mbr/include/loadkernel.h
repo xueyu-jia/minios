@@ -10,7 +10,7 @@
 //#include "disk.h"
 //#include "string.h"
 #include "type.h"
-#define KERNEL_FILENAME "KERNEL  BIN"
+#define KERNEL_FILENAME "kernel.bin"
 #define BSS_SECTION_NAME ".bss"
 extern u32 fat_start_sec;
 extern u32 data_start_sec;

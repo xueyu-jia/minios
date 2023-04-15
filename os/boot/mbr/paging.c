@@ -10,12 +10,14 @@ static phyaddr_t phy_malloc_pte =
     PageTblBase;  // 读汇编得到页表存放地值的宏定义,修改名称
 
 static phyaddr_t phy_kmalloc_base = PhyMallocBase;
-void paging(u32 MCRNumber, u32 MemChkBuf) {
+void paging(u32 MemChkBuf,u32 MCRNumber) {
   lprintf("----start paging---- \n");
   u32 size = get_mem_size(MemChkBuf, MCRNumber);
+  size = size>_32M?_32M:size;
   mem_check_32M();
   lprintf("memsize %d \n", size);
   u32 cr3 = PageDirBase;
+  memset(PageDirBase,0,PGSIZE);
   map(cr3, size);
   lcr3(PageDirBase);  // load cr3
   u32 flag;
@@ -50,11 +52,13 @@ u32 get_mem_size(u32 MemChkBuf, u32 MCRNumber) {
 // 分配一页页表
 phyaddr_t pte_malloc_4k(void) {
   phyaddr_t paddr = phy_malloc_pte;
+  memset(phy_malloc_pte,0,PGSIZE);
   phy_malloc_pte += PGSIZE;
   return paddr;
 }
 
 phyaddr_t phy_kmalloc(u32 size){
+  memset(phy_malloc_pte,0,PGSIZE);
   phy_kmalloc_base+=size;
   return phy_kmalloc_base-size;
 
@@ -67,10 +71,9 @@ void lin_mapping_phy(u32 cr3,          // 页目录起始
 {
   // 分配PTE
   uintptr_t *pde_ptr = (uintptr_t *)cr3;
-  if ((pde_ptr[PDX(laddr)] & PG_P) ==
-      0) {  // 若虚拟地址计算出的页目录项没有东西，则分配
+  if ((pde_ptr[PDX(laddr)] & PG_P) == 0) {  // 若虚拟地址计算出的页目录项没有东西，则分配
     phyaddr_t pte_phy = pte_malloc_4k();  // 分配
-    memset((void *)pte_phy, 0, PGSIZE);   // 分配的内存块先全部填充0
+   // memset((void *)pte_phy, 0, PGSIZE);   // 分配的内存块先全部填充0
     pde_ptr[PDX(laddr)] = pte_phy | PG_P | PG_USU |
                           PG_RWW;  // 将分配的地址写回虚拟地址计算的页目录项
   }

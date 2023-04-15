@@ -8,8 +8,10 @@
 #include "paging.h"
 #include "ahci.h"
 #include "orangefs.h"
+#include "fs.h"
 void loader_cstart(u32 MemChkBuf,u32 MCRNumber){
     clear_screen();
+    lprintf("MemChkBuf: %d MCRNumber %d \n",MemChkBuf,MCRNumber);
     //启动分页
     paging(MemChkBuf,MCRNumber);
     //初始化AHCI
@@ -36,9 +38,11 @@ void load_kernel() {
     clear_screen();
     lprintf("----start loading kernel elf----\n");
     find_act_part((void *)BUF_ADDR);
-    //fat32_init();
-    orangefs_init();
-    int ret = orangefs_read_file("kernel.bin",(void *)ELF_ADDR);
+    if(!init_fs()){
+        lprintf("fs type not support !\n");
+        goto bad;
+    }
+    int ret = read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
     //int ret = fat32_read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
     //判断文件是否读取成功
     if(ret != TRUE)goto bad;
