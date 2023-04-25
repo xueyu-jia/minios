@@ -112,6 +112,11 @@ buildimg_mbr:
 	sudo cp -fv user/user/ptest12.bin iso/
 	sudo cp -fv user/user/ptest13.bin iso/
 
+	# added by dzq 2023-4-2
+	sudo cp -fv user/user/t_fork01.bin iso/
+	# added by dzq 2023-4-12
+	sudo cp -fv user/user/t_exit.bin iso/
+
 
 	# added by yingchi 2022.01.05
 	# sudo cp -fv user/user/myTest.bin iso/
