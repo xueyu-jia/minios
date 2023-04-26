@@ -31,14 +31,16 @@ AR		= ar
 
 # added by mingxuan 2020-10-22
 MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
+
 #added by sundong 写镜像用,用losetup -f查看
 FREE_LOOP =$(shell sudo losetup -f)
+#added by sundong 2023.4.25
+ROOT_FS_PART=$(FREE_LOOP)p2
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
 USING_GRUB_CHAINLOADER = false
 #选择启动分区的文件系统格式，目前支持fat32和orangfs
-BOOT_PART_FS_TYPE= orangefs
-
+BOOT_PART_FS_TYPE= fat32
 
 ifeq ($(BOOT_PART_FS_TYPE),fat32)
 BOOT_PART_FS_MAKER = mkfs.vfat
@@ -49,7 +51,9 @@ BOOT =boot.bin
 BOOT_SIZE = 420
 # FAT32规范规定os_boot的前89个字节是FAT32的配置信息
 # OSBOOT_START_OFFSET = OSBOOT_OFFSET + 90
-OSBOOT_START_OFFSET = 1048666 # for test12.img
+OSBOOT_START_OFFSET = 1048666 # 2048*512+90
+#OSBOOT_START_OFFSET=2097242 # for test12.img
+BOOT_PART=$(FREE_LOOP)p1
 BOOT_PART_MOUNTPOINT = iso
 endif
 
@@ -60,12 +64,14 @@ CP = ./o_copy
 CP_FLAG = 
 BOOT=orangefs_boot.bin
 BOOT_SIZE =512
-# FAT32规范规定os_boot的前89个字节是FAT32的配置信息
-# OSBOOT_START_OFFSET = OSBOOT_OFFSET + 90
-OSBOOT_START_OFFSET =1048576 # for test12.img
-BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p5
+# orangefs boot直接放在分区的0号扇区
+# OSBOOT_START_OFFSET = OSBOOT_OFFSET 
+OSBOOT_START_OFFSET =2097152 #4096*512
+#p2分区格式化为orangefs
+BOOT_PART=$(FREE_LOOP)p2
+BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
 endif
-
+ 
 include ./os/Makefile
 include	./user/Makefile
 
@@ -81,7 +87,30 @@ everything : $(MKFS)
 
 all : everything
 
-image : everything buildimg_mbr build_fs # modified by mingxuan 2020-12-8
+image : everything build_fs buildimg_mbr # 调整了下build_fs和buildimg_mbr的执行顺序 modified by sundong 2023.4.25 
+
+# added by mingxuan 2020-10-22
+build_fs :
+#	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
+
+	sudo losetup -P $(FREE_LOOP) b.img
+
+
+	sudo mkfs.vfat -F 32 $(FREE_LOOP)p5;
+
+	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
+		sudo mount $(FREE_LOOP)p5 iso && \
+		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
+		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
+		sudo umount iso ;\
+	fi
+
+
+#	sudo ./o_list $(FREE_LOOP)p1
+	sudo losetup -d $(FREE_LOOP)
+
+#	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 
 buildimg :
 	dd if=os/boot/floppy/boot.bin of=a.img bs=512 count=1 conv=notrunc	# modified by mingxuan 2019-5-17
@@ -97,25 +126,27 @@ buildimg :
 # added by mingxuan 2019-5-17
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
-	cp ./hd/test.img ./b.img	# added by mingxuan 2020-10-5
+	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
 	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
 		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
 	fi
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
 	sudo losetup -P $(FREE_LOOP) b.img
-	sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG) $(FREE_LOOP)p1	# modified by mingxuan 2021-2-28
+	sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG) $(BOOT_PART)  #$(FREE_LOOP)p2	# modified by mingxuan 2021-2-28
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	dd if=os/boot/mbr/$(BOOT) of=b.img bs=1 count=$(BOOT_SIZE) seek=$(OSBOOT_START_OFFSET) conv=notrunc
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
+	#初始化根文件系统
+	sudo ./format $(ROOT_FS_PART)
 
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo mount $(FREE_LOOP)p1 $(BOOT_PART_MOUNTPOINT) ; \
-	else \
-			sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG)  $(FREE_LOOP)p5 && \
-			sudo  $(CP) $(CP_FLAG) ./os/boot/mbr/loader.bin $(FREE_LOOP)p1/loader.bin && \
-			sudo  $(CP) $(CP_FLAG) ./kernel.bin $(FREE_LOOP)p1/kernel.bin ; \
+		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
+#	else \
+#			sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG)  $(FREE_LOOP)p2 && \
+#			sudo  $(CP) $(CP_FLAG) ./os/boot/mbr/loader.bin $(FREE_LOOP)p2/loader.bin && \
+#			sudo  $(CP) $(CP_FLAG) ./kernel.bin $(FREE_LOOP)p2/kernel.bin ; \
 	fi
 
 	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
@@ -167,26 +198,7 @@ buildimg_mbr:
 	sudo losetup -d $(FREE_LOOP)
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-# added by mingxuan 2020-10-22
-build_fs:
-	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
-#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-	sudo losetup -P $(FREE_LOOP) b.img
-	sudo mkfs.vfat -F 32 $(FREE_LOOP)p6;
-
-	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
-		sudo mount $(FREE_LOOP)p6 iso && \
-		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
-		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
-		sudo umount iso ;\
-	fi
-
-
-#	sudo ./o_list $(FREE_LOOP)p1
-	sudo losetup -d $(FREE_LOOP)
-
-#	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 
 # mkfs_orange
 fs_flags/orange_flag.bin : fs_flags/orange_flag.asm
