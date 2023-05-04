@@ -36,10 +36,12 @@ MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 FREE_LOOP =$(shell sudo losetup -f)
 #added by sundong 2023.4.25
 ROOT_FS_PART=$(FREE_LOOP)p2
+GRUB_INSTALL_PART=$(FREE_LOOP)p5
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
+#可选值为 true  false
 USING_GRUB_CHAINLOADER = false
-#选择启动分区的文件系统格式，目前支持fat32和orangfs
+#选择启动分区的文件系统格式，目前仅支持fat32和orangfs
 BOOT_PART_FS_TYPE= fat32
 
 ifeq ($(BOOT_PART_FS_TYPE),fat32)
@@ -83,7 +85,7 @@ include	./user/Makefile
 nop :
 	@echo "why not \`make image' huh? :)"
 
-everything : $(MKFS)
+#everything : $(MKFS)
 
 all : everything
 
@@ -100,7 +102,7 @@ build_fs :
 	sudo mkfs.vfat -F 32 $(FREE_LOOP)p5;
 
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
-		sudo mount $(FREE_LOOP)p5 iso && \
+		sudo mount  $(GRUB_INSTALL_PART) iso && \
 		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
 		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
 		sudo umount iso ;\
@@ -140,13 +142,9 @@ buildimg_mbr:
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 	#初始化根文件系统
 	sudo ./format $(ROOT_FS_PART)
-
+#orangefs有专用的cp 不需要挂载到linux目录下，其他如fat32需要挂载
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
-#	else \
-#			sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG)  $(FREE_LOOP)p2 && \
-#			sudo  $(CP) $(CP_FLAG) ./os/boot/mbr/loader.bin $(FREE_LOOP)p2/loader.bin && \
-#			sudo  $(CP) $(CP_FLAG) ./kernel.bin $(FREE_LOOP)p2/kernel.bin ; \
 	fi
 
 	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
@@ -185,7 +183,7 @@ buildimg_mbr:
 
 
 	# added by yingchi 2022.01.05
-	# sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
+#	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
 	
 	# added by mingxuan 2021-2-28
 	sudo $(CP) $(CP_FLAG) user/user/sig_0.bin $(BOOT_PART_MOUNTPOINT)/sig_0.bin
@@ -201,12 +199,12 @@ buildimg_mbr:
 
 
 # mkfs_orange
-fs_flags/orange_flag.bin : fs_flags/orange_flag.asm
-	$(ASM) -o $@ $<
+#fs_flags/orange_flag.bin : fs_flags/orange_flag.asm
+#	$(ASM) -o $@ $<
 
 # mkfs_fat32
-fs_flags/fat32_flag.bin : fs_flags/fat32_flag.asm
-	$(ASM) -o $@ $<
+#fs_flags/fat32_flag.bin : fs_flags/fat32_flag.asm
+#	$(ASM) -o $@ $<
 
 # generate tags file. added by xw, 19/1/2
 tags :

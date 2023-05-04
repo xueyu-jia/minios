@@ -25,7 +25,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		for(dev=0;dev<=MAXDEV;dev++){
 			for(fun=0;fun<=MAXFUN;fun++){				
 				out_dword(PCI_CONFIG_ADD,mk_pci_add(bus,dev,fun,0));//0号寄存器为device——id和vendor——id
-				if((in_dword(PCI_CONFIG_DATA)|0xffff)!=0xffff){//如果vendorid合法,表示该位置存在设备					
+				if((in_dword(PCI_CONFIG_DATA)&0xffff)!=0xffff){//如果vendorid合法,表示该位置存在设备					
 					out_dword(0xcf8,mk_pci_add(bus,dev,fun,2));//2号寄存器为classcode,设备类别
 					if((in_dword(PCI_CONFIG_DATA)>>16)==0x0106){//判断是否为AHCI
 						// disp_str("  bus: ");
@@ -600,15 +600,15 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// disp_str("\nWait for completion");
 	// disp_str("\nslot:");
 	// disp_int(slot);
-	while (sata_wait_flag)
+	while (1)
 	{
 		// In some longer duration reads, it may be helpful to spin on the DPS bit 
 		// in the PxIS port field as well (1 << 5)
 		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		// if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
 		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
 		// 	// disp_str("port_is:");disp_int(port->is);
-		// 	break;}
+		 	break;}
 		
 		// disp_int((port->ci)>>slot);
 		// if (port->is & HBA_PxIS_TFES)	// Task file error

@@ -37,7 +37,7 @@
 
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
-PRIVATE volatile int hd_int_waiting_flag;
+PRIVATE volatile int hd_int_waiting_flag = 1;
 PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
 PRIVATE u8 *satabuf=NULL;

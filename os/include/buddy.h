@@ -10,10 +10,11 @@
 #define FMIBuff		0x007ff000  //必须于load.inc保持一致, mingxuan 2021-8-25
 
 #define MAX_ORDER 11        //页块链表数目
-#define BITMAP_SIZE 12288                          //memory can be 3G
+//#define BITMAP_SIZE 12288                          //memory can be 3G
+#define BITMAP_SIZE 16384       //memory can be 4G
 //#define buddy_size 16384      //bitmap二维数组第二维的大小，由buddy管理的内存大小决定,
                             //buddy_size = Max physic address/(4*1024*2*32)  when buddy_size=16384, memory can be 4G
-#define LIST_SIZE 512       //buddy每一个级别链表上最多有多少个空闲页块                  add by wang 2021.3.9
+#define LIST_SIZE 1024       //buddy每一个级别链表上最多有多少个空闲页块                  add by wang 2021.3.9
 #define MAX_FREE_BLOCK 1024     //空闲物理内存分区的最大数目
 
 #define WALL            0x10000000            //256M

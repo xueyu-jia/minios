@@ -249,7 +249,7 @@ PRIVATE void init_vfs_table(){  // modified by mingxuan 2020-10-30
         vfs_table[i].op = &f_op_table[0];
         vfs_table[i].sb = &super_block[i];
         vfs_table[i].s_op = &sb_op_table[0];
-        vfs_table[5].used = 0; //动态绑定
+        vfs_table[i].used = 0; //动态绑定
     }
 }
 
