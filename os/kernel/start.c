@@ -29,7 +29,7 @@ PUBLIC int init_kernel_page()
 {
 	//第一步: 生成一张内核用的页目录表
 	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
-
+	memset((void *)K_PHY2LIN(kernel_pde_addr_phy), 0, num_4K); //by qianglong
 	//第二步: 初始化3G~3G+kernel_size的内核映射
 	u32 AddrLin = 0, phy_addr = 0;
 

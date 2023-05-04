@@ -216,6 +216,7 @@ PRIVATE int initialize_processes()
 	for (pid = 0; pid < NR_PCBS; pid++)
 	{
 		//some operations
+		memset(p_proc,0,sizeof(PROCESS));//by qianglong
 		p_proc++;
 	}
 
