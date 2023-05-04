@@ -2,10 +2,11 @@
 BaseOfStack			equ		0x07c00		; Boot状态下堆栈基地址
 STACK_ADDR  		equ  	0x7bea 		; 堆栈栈顶
 
-BaseOfBoot 					equ	1000h 		; added by mingxuan 2020-9-12
+;BaseOfBoot 					equ	1000h 		; added by mingxuan 2020-9-12
 OffsetOfBoot				equ	7c00h		; load Boot sector to BaseOfBoot:OffsetOfBoot
 OffsetOfActiPartStartSec	equ 7e00h		; 活动分区的起始扇区号相对于BaseOfBoot的偏移量	;added by mingxuan 2020-9-12 
 											; 该变量来自分区表，保存在该内存地址，用于在os_boot和loader中查找FAT32文件
+OffsetOfStartSecInPET		equ 0x08		; 分区表表项中用于存储物理起始扇区变量的相对于分区表项的偏移量
 
 BOOT_FAT32_INFO		equ		0x5A		;位于boot中的FAT32配置信息的长度
 										;added by mingxuan 2020-9-16
@@ -13,7 +14,7 @@ BOOT_FAT32_INFO		equ		0x5A		;位于boot中的FAT32配置信息的长度
 DATA_BUF_OFF 		equ  	0x2000		; 目录 被加载的缓冲区地址
 
 OSLOADER_SEG 		equ  	0x09000 	; 起始段地址     
-OSLOADER_SEG_OFF	equ		0x0100
+OSLOADER_SEG_OFF	equ		0x0400
 
 ;FAT_START_SECTOR 	equ  	0x820	  	; FAT表的起始扇区号  DWORD
 ;FAT_START_SECTOR 	equ  	0x1020	  	; FAT表的起始扇区号  DWORD ; for test 2020-9-10, mingxuan
@@ -89,6 +90,8 @@ BS_VolName			equ		(OffsetOfBoot + 0x47)	;卷标
 
 	FAT_START_SECTOR 	DD 	0 ;FAT表的起始扇区号 ;added by mingxuan 2020-9-17
 	DATA_START_SECTOR 	DD  0 ;数据区起始扇区号 ;added by mingxuan 2020-9-17
+	DATA_BUFF_SEG		DW	0 ;存储数据缓冲区的段地址;added by sundong 2023.3.16
+
 
 ;deleted by mingxuan 2020-9-12
 	;BS_OEM			DB	'mkfs.fat'	;文件系统标志
@@ -127,6 +130,8 @@ START:
 	mov		ds, ax
 	mov		es, ax ;deleted by mingxuan 2020-9-13
 	mov		ss, ax
+	mov		fs,	ax
+	mov	word[DATA_BUFF_SEG],ax ;数据缓冲区的段地址与DS一致 add by sundong 2023.3.16
 
 	; 清屏
 	; for test, added by mingxuan 2020-9-15
@@ -141,10 +146,21 @@ START:
 
 	;FAT_START_SECTOR  DD 	([fs:OffsetOfActiPartStartSec] + [fs:BPB_RsvdSecCnt]) 
 	; 计算FAT表的起始扇区号 ; added by mingxuan 2020-9-17
-	mov		eax, [ OffsetOfActiPartStartSec]
+
+	;added by sundong 2023.3.21
+	;判断加载boot使用的是不是grub chainloader，
+	;若使用的是grub chainloader则si寄存器存储的是分区表的地址
+	;否则si应该在mbr.bin中被置为0 
+	cmp 	si,0
+	jz	.Get_StartSector
+	;grub 链式引导，将当前分区表表项的起始地址放在DS：SI处
+	;si加上一个起始扇区在表项中的偏移量就是用于存储起始扇区的那段内存
+	mov		eax, [ds:si+OffsetOfStartSecInPET]
+	mov		[OffsetOfActiPartStartSec],eax	;将起始扇区的物理扇区号放入OffsetOfActiPartStartSec地址处 loader中会用到该值
+.Get_StartSector:
+	mov		eax,[OffsetOfActiPartStartSec]
 	add		ax, [ BPB_RsvdSecCnt ]
 	mov 	[FAT_START_SECTOR], eax
-
 	; 计算数据区起始扇区号 ; added by mingxuan 2020-9-17
 	add		eax, [BS_SecPerFAT]
 	add		eax, [BS_SecPerFAT]
@@ -158,7 +174,8 @@ START:
 	;mov 	byte  [bp - DAP_RESERVED2   ], 	00h ;deleted by mingxuan 2020-9-17
 	mov 	byte  [bp - DAP_PACKET_SIZE ], 	10h
 	mov		byte  [bp - DAP_READ_SECTORS],  01h
-	mov		word  [bp - DAP_BUFFER_SEG  ],	01000h
+	mov		ax,	[DATA_BUFF_SEG]
+	mov		word  [bp - DAP_BUFFER_SEG  ],	ax
 
 	;for test, added by mingxuan 2020-9-4
 	;call 	DispStr		; 
@@ -188,7 +205,6 @@ _DISK_ERROR:      	 ; 显示磁盘错误信息
 	;mov		dx, 0184fh		; 右下角: (80, 50)
 	;int		10h				; int 10h
 	;popa
-
 	JMP  	$
 
 ReadSector:
@@ -217,8 +233,6 @@ ReadSector:
 	;mov		dx, 0184fh		; 右下角: (80, 50)
 	;int		10h				; int 10h
 	;popa
-
-
 	popa
 	ret
 
@@ -286,7 +300,7 @@ _NEXT_ROOT_ENTRY:
 	;mov	si, 0x7df1 			; for test, added by mingxuan 2020-9-16
 	
 	mov		cx, 10
-	repe	cmpsb
+	repe	cmpsb	;把si指向的数据与di指向的数据按byte比较，相同时继续比较 不同时就停止，比较一次cx-1
 	jcxz	_FOUND_LOADER
 
 	pop		di
@@ -591,6 +605,7 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	XOR  	ECX, ECX
 	mov	cx, word [BPB_BytesPerSec]	
 	DIV  	ECX  ; EAX = Sector EDX = OFFSET
+
 	pop ECX
 	; 设置缓冲区地址
 	ADD  	EAX, [FAT_START_SECTOR] 
@@ -598,8 +613,9 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	
 	cmp byte[esp+2], DATA
 	jne .L5
-	MOV  WORD [BP - DAP_BUFFER_SEG  ], 01000H 
-	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF
+	MOV		  AX,[DATA_BUFF_SEG]	;设置存储fat表的数据缓冲区的段地址
+	MOV  WORD [BP - DAP_BUFFER_SEG  ], AX
+	MOV  WORD [BP - DAP_BUFFER_OFF  ], DATA_BUF_OFF 
 .L5:
 	call  ReadSector
 	
@@ -612,5 +628,5 @@ _CHECK_NEXT_CLUSTER:					;added by yangxiaofeng 2021-12-1
 	;CMP  EAX,CLUSTER_LAST
 	ret 
 
-times 	510-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
+times 	420-($-$$)	db	0	; 填充剩下的空间，使生成的二进制代码恰好为512字节
 dw 	0xaa55				; 结束标志

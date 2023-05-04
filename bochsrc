@@ -31,7 +31,7 @@ mouse: enabled=0
 
 # enable key mapping, using US layout as default.
 #keyboard: keymap=/home/liu/bochs-2.6.9/gui/keymaps/x11-pc-us.map
-keyboard: keymap=/usr/share/bochs/keymaps/x11-pc-us.map
+keyboard: keymap=/usr/local/share/bochs/keymaps/sdl2-pc-us.map
 
 # deleted by mingxuan 2020-10-5
 # hard disk; added by xw, 18/5/25

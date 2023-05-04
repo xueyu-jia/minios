@@ -191,8 +191,8 @@ int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
     {
 
         int tmp = bgn_addr % num_4K;
-
-        fragmentUse(bgn_addr, num_4K - tmp); //edited by wang 2021.6.25
+        if(bud==kbud) 
+            fragmentUse(bgn_addr, num_4K - tmp); //edited by wang 2021.6.25
 
         bgn_addr = bgn_addr - tmp + num_4K;
     }
@@ -214,7 +214,8 @@ int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
         }
         if (bsize < num_4K && bsize != 0)
         {
-            fragmentUse(bgn_addr, bsize); //edited by wang 2021.6.25
+            if(bud==kbud)                           //edited by qianglong 2021.4.19
+                fragmentUse(bgn_addr, bsize); //edited by wang 2021.6.25
             break;
         }
     }
