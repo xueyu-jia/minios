@@ -99,8 +99,8 @@ char* getcwd(char* buf, int size) {
 	return _syscall2(_NR_getcwd, buf, size);
 }
 
-int wait_() {
-	return _syscall0(_NR_wait);
+int wait_(int *status) {
+	return _syscall1(_NR_wait, status);
 }
 
 void exit(int status) {

@@ -181,6 +181,11 @@ buildimg_mbr:
 	sudo $(CP) $(CP_FLAG) user/user/ptest12.bin $(BOOT_PART_MOUNTPOINT)/ptest12.bin
 	sudo $(CP) $(CP_FLAG) user/user/ptest13.bin $(BOOT_PART_MOUNTPOINT)/ptest13.bin
 
+	# added by dzq 2023-4-2
+	sudo cp -fv user/user/t_fork01.bin iso/
+	# added by dzq 2023-4-12
+	sudo cp -fv user/user/t_exit.bin iso/
+
 
 	# added by yingchi 2022.01.05
 #	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin

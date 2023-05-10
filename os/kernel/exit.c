@@ -129,6 +129,25 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 
 	//暂时不考虑过继, mingxuan 2021-1-6
 
+	//过继机制，added by dongzhangqi 2023-4-14
+	/*过继机制未完成
+	if(p_proc->task.info.child_p_num > 0){//有子进程
+		for(int i=0; i<p_proc->task.info.child_p_num; i++){//把所有子进程都过继给init进程
+			u32 child_pid = p_proc->task.info.child_process[i];
+			
+			//子进程的父进程pid设为init进程的pid
+			proc_table[child_pid].task.info.ppid = NR_K_PCBS; 
+			
+			//init进程的孩子数加一
+			proc_table[NR_K_PCBS].task.info.child_p_num++;
+
+			//更改init进程的子进程列表
+			proc_table[NR_K_PCBS].task.info.child_process[] = 
+
+		}
+	}
+	*/
+
 	//暂时不考虑file exit, mingxuan 2021-1-6
 
 
@@ -169,7 +188,8 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 
 	}
 	//释放线程资源完毕，将自己的子线程数量设为0
-	p_proc->task.info.child_p_num = 0;
+	//p_proc->task.info.child_p_num = 0;
+	p_proc->task.info.child_t_num = 0;//modified by dongzhangqi 2023-4-12
 
 
 	//释放进程的所有页地址空间
