@@ -227,6 +227,7 @@ PRIVATE int initialize_processes()
 		strcpy(p_proc->task.p_name, p_task->name); //名称
 		p_proc->task.pid = pid;					   //pid
 		p_proc->task.stat = READY;				   //状态
+		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -386,6 +387,7 @@ PRIVATE int initialize_processes()
 		strcpy(p_proc->task.p_name, "initial"); //名称
 		p_proc->task.pid = pid;					//pid
 		p_proc->task.stat = READY;				//状态
+		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -538,11 +540,11 @@ PRIVATE int initialize_processes()
 		selector_ldt += 1 << 3;
 	}
 
-	proc_table[0].task.ticks = proc_table[0].task.priority = 1;
-	proc_table[1].task.ticks = proc_table[1].task.priority = 1;
-	proc_table[2].task.ticks = proc_table[2].task.priority = 1;
-	proc_table[3].task.ticks = proc_table[3].task.priority = 1; //added by xw, 18/8/27
-	proc_table[NR_K_PCBS].task.ticks = proc_table[NR_K_PCBS].task.priority = 1;
+	// proc_table[0].task.ticks = proc_table[0].task.priority = 1;
+	// proc_table[1].task.ticks = proc_table[1].task.priority = 1;
+	// proc_table[2].task.ticks = proc_table[2].task.priority = 1;
+	// proc_table[3].task.ticks = proc_table[3].task.priority = 1; //added by xw, 18/8/27
+	// proc_table[NR_K_PCBS].task.ticks = proc_table[NR_K_PCBS].task.priority = 1;
 
 	/* When the first process begin running, a clock-interruption will happen immediately.
 	 * If the first process's initial ticks is 1, it won't be the first process to execute its

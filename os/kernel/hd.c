@@ -1151,17 +1151,17 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 	// Issue command
 	port->ci = 1<<slot;	
 	// Wait for completion
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
-			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("\nport_is:");disp_int(port->is);
-			break;}
-	}
-
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
+	// 		// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 		// disp_str("\nport_is:");disp_int(port->is);
+	// 		break;}
+	// }
+	while (sata_wait_flag);
 	sata_wait_flag = 1;
  
 	// Check again

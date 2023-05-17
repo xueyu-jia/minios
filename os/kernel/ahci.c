@@ -81,6 +81,14 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
+	int task_tty_pid = kern_get_pid_byname("task_tty");
+
+	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+										ahci_info[0].ABAR, //物理地址
+										task_tty_pid,
+										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+
 	int initial_pid = kern_get_pid_byname("initial");
 
 	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
@@ -118,7 +126,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}
 	
-	// HBA->ghc |=(1<<1);//enable interrupt
+	HBA->ghc |=(1<<1);//enable interrupt
 	sata_irq=ahci_info[0].irq_info&0xff;
 	if(sata_irq<=16){
 		put_irq_handler(sata_irq, sata_handler);
@@ -385,16 +393,18 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 	port->ci = 1<<slot;	// Issue command
  
 	// Wait for completion
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)) {
-			// disp_str("\nidentity_success,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("\nport_is:");disp_int(port->is);
-			break;
-		}
-	}
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)) {
+	// 		// disp_str("\nidentity_success,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 		// disp_str("\nport_is:");disp_int(port->is);
+	// 		break;
+	// 	}
+	// }
+	while (sata_wait_flag);
+	sata_wait_flag = 1;
 	// if (port->is & HBA_PxIS_TFES)
 	// {
 	// 	// disp_str("Read disk error,restart port\n");
