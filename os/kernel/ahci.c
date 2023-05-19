@@ -189,8 +189,11 @@ PRIVATE void sata_handler(int irq)
 		index++;
 		is >>= 1;
 	}
-	
-	sata_wait_flag = 0;
+	if (kernel_initial == 1) {
+		sata_wait_flag = 0;
+	} else {
+		sys_wakeup(&sata_wait_flag);
+	}
 	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
 
 	return;
@@ -390,7 +393,6 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 		return FALSE;
 	}
  
-	port->ci = 1<<slot;	// Issue command
  
 	// Wait for completion
 	// while (1)
@@ -403,8 +405,17 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 	// 		break;
 	// 	}
 	// }
-	while (sata_wait_flag);
-	sata_wait_flag = 1;
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
+	}
+
 	// if (port->is & HBA_PxIS_TFES)
 	// {
 	// 	// disp_str("Read disk error,restart port\n");
@@ -601,7 +612,7 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	}
 
 	// Issue command
-	port->ci = 1<<slot;	
+	// port->ci = 1<<slot;	
 	
 
 
@@ -610,24 +621,34 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// disp_str("\nWait for completion");
 	// disp_str("\nslot:");
 	// disp_int(slot);
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-		// 	// disp_str("port_is:");disp_int(port->is);
-		 	break;}
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+	// 	// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	// 	// disp_str("port_is:");disp_int(port->is);
+	// 	 	break;}
 		
-		// disp_int((port->ci)>>slot);
-		// if (port->is & HBA_PxIS_TFES)	// Task file error
-		// {
-		// 	disp_str("Read disk error\n");
-		// 	return FALSE;
-		// }
+	// 	// disp_int((port->ci)>>slot);
+	// 	// if (port->is & HBA_PxIS_TFES)	// Task file error
+	// 	// {
+	// 	// 	disp_str("Read disk error\n");
+	// 	// 	return FALSE;
+	// 	// }
+	// }
+	// sata_wait_flag = 1;
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
 	}
-	sata_wait_flag = 1;
  
 	// Check again
 	// if (port->is & HBA_PxIS_TFES)

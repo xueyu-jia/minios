@@ -84,3 +84,14 @@ PUBLIC void delay(int time)
 		}
 	}
 }
+
+/**
+ * @brief 获取当前进程的特权级
+ * added by zhenhao 2023.5.19
+ * @return void
+ */
+PUBLIC u32 get_ring_level() {
+	int ringLevel;
+	asm volatile ("mov %%cs, %0 \n\t and $0x3, %0" : "=a" (ringLevel));
+	return ringLevel;
+}

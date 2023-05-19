@@ -358,16 +358,12 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 	
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, &rwinfo);
-		p_proc_current->task.channel = &hdque;
-		p_proc_current->task.stat = SLEEPING;
-		sched();
+		wait_event(&hdque);
 		phys_copy(p->BUF, buffer, p->CNT);
 	} else {
 		phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, &rwinfo);
-		p_proc_current->task.channel = &hdque;
-		p_proc_current->task.stat = SLEEPING;
-		sched();
+		wait_event(&hdque);
 	}
 	
 	hdque_buf.addr = K_LIN2PHY((u32)buffer);
@@ -1148,8 +1144,6 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		return FALSE;
 	}
 
-	// Issue command
-	port->ci = 1<<slot;	
 	// Wait for completion
 	// while (1)
 	// {
@@ -1161,8 +1155,16 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 	// 		// disp_str("\nport_is:");disp_int(port->is);
 	// 		break;}
 	// }
-	while (sata_wait_flag);
-	sata_wait_flag = 1;
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
+	}
  
 	// Check again
 	if (port->is & HBA_PxIS_TFES)

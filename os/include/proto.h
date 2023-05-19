@@ -35,6 +35,7 @@ PUBLIC u32	seg2phys(u16 seg);
 
 /* klib.c */
 PUBLIC void	delay(int time);
+PUBLIC u32  get_ring_level();
 
 /* kernel.asm */
 PUBLIC void  sys_call();    //int_handler
@@ -253,6 +254,7 @@ PUBLIC void* va2la(int pid, void* va);
 
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
+PUBLIC void wait_event(void* event);
 
 /* testfunc.c */
 /*  //deleted by mingxuan 2021-8-13
