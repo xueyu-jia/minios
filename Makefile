@@ -194,6 +194,8 @@ buildimg_mbr:
 	sudo $(CP) $(CP_FLAG) user/user/sig_0.bin $(BOOT_PART_MOUNTPOINT)/sig_0.bin
 	sudo $(CP) $(CP_FLAG) user/user/sig_1.bin $(BOOT_PART_MOUNTPOINT)/sig_1.bin
 
+	sudo $(CP) $(CP_FLAG) user/user/sema1.bin $(BOOT_PART_MOUNTPOINT)/sema1.bin
+
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
 	fi
