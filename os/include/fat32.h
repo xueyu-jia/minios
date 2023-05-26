@@ -190,15 +190,16 @@ void GetNextSector(SUPER_BLOCK *psb, PFile pfile,DWORD curSectorIndex,PDWORD nex
 
 int read_adapter(int fd,BYTE buf[], DWORD length);
 int write_adapter(int fd,BYTE buf[],DWORD length);
-int delete_adapter(PCHAR filename);
-int deletedir_adapter(PCHAR dirname);
-int createdir_adapter(PCHAR dirname);
-int create_adapter(PCHAR filename);
-int open_adapter(PCHAR filename,UINT mode);
+int delete_adapter(struct super_block *sb,PCHAR filename);
+int deletedir_adapter(struct super_block *sb,PCHAR dirname);
+int createdir_adapter(struct super_block *sb,PCHAR dirname);
+int create_adapter(struct super_block *sb,PCHAR filename);
+int open_adapter(struct super_block *sb,PCHAR filename,UINT mode);
 int close_adapter(int fd);
-int opendir_adapter(PCHAR dirname);
-int readdir_adapter(PCHAR dirname, DWORD dir[3], char* filename);
-int chdir_adapter(const char *path);
+int opendir_adapter(struct super_block *sb,PCHAR dirname);
+
+int readdir_adapter(struct super_block *sb,PCHAR dirname, DWORD dir[3], char* filename);
+int chdir_adapter(struct super_block *sb,const char *path);
 
 int rw_sector_fat(int io_type, int dev, unsigned long long pos, int bytes, int proc_nr, void* buf);
 int rw_sector_sched_fat(int io_type, int dev, int pos, int bytes, int proc_nr, void* buf);

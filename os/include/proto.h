@@ -197,7 +197,7 @@ int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
 int init_block_dev(int drive);
-
+int orangefs_dir_test();
 
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */
@@ -319,3 +319,4 @@ PUBLIC int sys_umount();
 
 /*fs.c*/
 PUBLIC int sys_init_block_dev();
+PUBLIC int sys_init_char_dev();

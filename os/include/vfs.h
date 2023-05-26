@@ -77,20 +77,21 @@ int sys_DeleteDir();
 int sys_ListDir();
 
 //文件系统的操作函数
+//modified by sundong 2023.5.19 部分接口中添加了superblock参数
 struct file_op{
-	int (*create)   (const char*);
-	int (*open)    (const char* ,int);
+	int (*create)   (struct super_block *,const char*);
+	int (*open)    (struct super_block *,const char* ,int);
 	int (*close)   (int);
 	int (*read)    (int,void * ,int);
-	int (*write)   (int ,const void* ,int);
-	int (*lseek)   (int ,int ,int);
-	int (*unlink)  (const char*);
-    int (*delete) (const char*);
-	int (*opendir) (const char *);
-	int (*createdir) (const char *);
-	int (*deletedir) (const char *);
-	int (*readdir) (PCHAR, DWORD[], PCHAR);
-	int (*chdir) (const char*); //added by ran
+	int (*write)   (int,const void* ,int);
+	int (*lseek)   (int,int,int);
+	int (*unlink)  (struct super_block *,const char*);
+    int (*delete) (struct super_block *,const char*);
+	int (*opendir) (struct super_block *,const char *);
+	int (*createdir) (struct super_block *,const char *);
+	int (*deletedir) (struct super_block *,const char *);
+	int (*readdir) (struct super_block *,PCHAR, DWORD[], PCHAR);
+	int (*chdir) (struct super_block *,const char*); //added by ran
 	int tag;
 	// union {
 	// 	struct {

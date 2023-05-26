@@ -293,12 +293,13 @@ os/kernel/fs.o: os/kernel/fs.c os/include/type.h os/include/const.h os/include/p
 		-D $(INSTALL_TYPE) \
 		-o $@ $<
 # modified by mingxuan 2021-4-2
-	$(CC) $(CFLAGS) \
-		-D INSTALL_FILENAME='"$(INSTALL_FILENAME)"' \
-		-D INSTALL_NR_SECTORS=$(INSTALL_NR_SECTORS) \
-		-D INSTALL_START_SECTOR=$(INSTALL_START_SECTOR) \
-		-o $@ $<
-
+#	$(CC) $(CFLAGS) \
+#		-D INSTALL_FILENAME='"$(INSTALL_FILENAME)"' \
+#		-D INSTALL_NR_SECTORS=$(INSTALL_NR_SECTORS) \
+#		-D INSTALL_START_SECTOR=$(INSTALL_START_SECTOR) \
+#		-o $@ $<
+# modified by sundong 2023.5.19
+	$(CC) $(CFLAGS) -o $@ $<
 
 
 # spinlock.o	added by mingxuan 2019-1-5

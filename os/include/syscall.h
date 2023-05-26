@@ -68,7 +68,7 @@
 #define _NR_mount						57
 #define _NR_umount						58
 #define _NR_init_block_dev				59
-
+#define _NR_init_char_dev				60
 #define INT_VECTOR_SYS_CALL             0x90
 
 /* 无参数的系统调用 */
