@@ -90,9 +90,9 @@ struct file_op{
 	int (*opendir) (struct super_block *,const char *);
 	int (*createdir) (struct super_block *,const char *);
 	int (*deletedir) (struct super_block *,const char *);
-	int (*readdir) (struct super_block *,PCHAR, DWORD[], PCHAR);
+	int (*readdir) (struct super_block *,char*, int*, char*);
 	int (*chdir) (struct super_block *,const char*); //added by ran
-	int tag;
+	//int tag;
 	// union {
 	// 	struct {
     // 		int (*create)   (const char*);

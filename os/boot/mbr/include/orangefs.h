@@ -3,7 +3,7 @@
 #include "type.h"
 
 #define	MAX_FILENAME_LEN	12
-#define	SUPER_BLOCK_SIZE	64		//modified by mingxuan 2020-10-30
+#define	SUPER_BLOCK_SIZE	64		
 /**
  * @def   INODE_SIZE
  * @brief The size of i-node stored \b in \b the \b device.
@@ -13,11 +13,23 @@
  */
 #define	INODE_SIZE	32
 /**
+ * @def   BLOCK_SIZE
+ * @brief The size of BLOCK. It must be same as the block size in orange fs format programe.
+ *
+ */
+ #define BLOCK_SIZE 4096
+ /**
+ * @def   SECT_SIZE
+ * @brief The size of sector.
+ */
+ #define SECT_SIZE 512
+ /**
  * @def   DIR_ENTRY_SIZE
  * @brief The size of directory entry in the device.
  *
  * It is as same as the size in memory.
  */
+
 #define	DIR_ENTRY_SIZE	sizeof(struct dir_entry)
 
 /**

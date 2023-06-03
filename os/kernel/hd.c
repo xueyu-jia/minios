@@ -101,7 +101,7 @@ PUBLIC void init_hd()
 PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 {
 	//disp_str("Read hd information...  ");	//deleted by mingxuan 2021-2-7
-	if(satabuf == NULL)satabuf = (u8*)kern_kmalloc(SECTOR_SIZE*2);
+	if(satabuf == NULL)satabuf = (u8*)kern_kmalloc(BLOCK_SIZE);
 	/* Get the number of drives from the BIOS data area */
 	u8 * pNrDrives = (u8*)(0x475);
 	// printf("NrDrives:%d.\n", *pNrDrives);
@@ -630,7 +630,7 @@ PRIVATE void partition(int device, int style)
 			// added by mingxuan 2020-10-27
 			struct fs_flags fs_flags_real;
 			struct fs_flags *fs_flags_buf = &fs_flags_real;
-			get_fs_flags(drive, hdi->part[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
+			get_fs_flags(drive, hdi->part[dev_nr].base+BLOCK_SIZE/SECTOR_SIZE, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
 			if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
 				hdi->part[dev_nr].fs_type = ORANGE_TYPE;
 
@@ -1060,14 +1060,14 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 
 	if(p->type == DEV_WRITE)
 	{
-		phys_copy(satabuf, buf, SECTOR_SIZE);
+		phys_copy(satabuf, buf, p->CNT);
 	}
 
 	SATA_rdwt_sects(drive-SATA_BASE, p->type, sect_nr, count);
 
 	if(p->type == DEV_READ)
 	{
-		phys_copy(buf, satabuf, SECTOR_SIZE);
+		phys_copy(buf, satabuf, p->CNT);
 	}
 
 	return 1;

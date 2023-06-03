@@ -93,7 +93,7 @@ PUBLIC void init_fileop_table(){
     f_op_table[0].lseek = real_lseek;
     f_op_table[0].unlink = real_unlink;
     f_op_table[0].read = real_read;
-    f_op_table[0].tag = 0;
+    //f_op_table[0].tag = 0;
 
     // table[1] for orange
     f_op_table[1].open = real_open;
@@ -104,7 +104,7 @@ PUBLIC void init_fileop_table(){
     f_op_table[1].read = real_read;
     f_op_table[1].createdir = real_createdir;
     f_op_table[1].deletedir = real_deletedir;
-    f_op_table[1].tag = 0;
+    //f_op_table[1].tag = 0;
 
     // table[2] for fat32
     // f_op_table[2].create = CreateFile;
@@ -146,7 +146,7 @@ PUBLIC void init_fileop_table(){
     f_op_table[2].deletedir = deletedir_adapter;
     f_op_table[2].readdir = readdir_adapter;
     f_op_table[2].chdir = chdir_adapter;
-    f_op_table[2].tag = 1;
+    //f_op_table[2].tag = 1;
 
 }
 
@@ -801,10 +801,10 @@ PUBLIC int kern_vcreate(char *filepath) { //modified by mingxuan 2019-5-17
     }
     struct vfs *pvfs = &vfs_table[index];
 
-    if (pvfs->op->tag)
+/*     if (pvfs->op->tag)
     {
         strcpy(pathname, path);
-    }
+    } */
     state = pvfs->op->create(pvfs->sb,pathname);
 
     // if (pvfs->sb->fs_type == FAT32_TYPE)
@@ -860,10 +860,10 @@ PUBLIC int kern_vdelete(char *path) {   //modified by mingxuan 2021-8-15
 
     int result;
 
-    if (pvfs->op->tag)
+/*     if (pvfs->op->tag)
     {
         strcpy(pathname, path);
-    }
+    } */
     result = pvfs->op->delete(pvfs->sb,pathname);
     // if (pvfs->sb->fs_type == FAT32_TYPE)
     // {
@@ -940,10 +940,10 @@ PUBLIC int kern_vcreatedir(char *path) {  //modified by mingxuan 2021-8-15
     }
     struct vfs *pvfs = &vfs_table[index];
 
-    if (pvfs->op->tag)
+/*     if (pvfs->op->tag)
     {
         strcpy(pathname, path);
-    }
+    } */
     state = pvfs->op->createdir(pvfs->sb,pathname);
 
     // if (pvfs->sb->fs_type == FAT32_TYPE)
@@ -988,10 +988,10 @@ PUBLIC int kern_vdeletedir(char *path) {    //modified by mingxuan 2021-8-15
     }
     struct vfs *pvfs = &vfs_table[index];
 
-    if (pvfs->op->tag)
+/*     if (pvfs->op->tag)
     {
         strcpy(pathname, path);
-    }
+    } */
     state = pvfs->op->deletedir(pvfs->sb,pathname);
 
     // if (pvfs->sb->fs_type == FAT32_TYPE)

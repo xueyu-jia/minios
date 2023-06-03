@@ -117,7 +117,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	}
 
 
-    path = exec_path(path);//added by xyx&&wjh 2021.12.31
+    //path = exec_path(path);//added by xyx&&wjh 2021.12.31
 
 	/*******************打开文件************************/
 	// u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19

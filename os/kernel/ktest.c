@@ -610,14 +610,14 @@ void initial()
 	//disp_str("\n");
 
 	//get_pid();
-
+	createdir("/dev");
 	init_block_dev(SATA_BASE);		//added by xiaofeng
 	init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
-	mount("dev_sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
+	mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
 /* 	createdir("test");
 	createdir("test/dir");
 	int fd = open("test/dir/file",O_CREAT|O_RDWR);
-	orangefs_dir_test();
+	//orangefs_dir_test();
 	char buff[16] = {'a','b','c'};
 	if(fd>=0){
 		write(fd,buff,8);
@@ -635,7 +635,7 @@ void initial()
 	unlink("test/dir/file");
 
 	//orangefs_dir_test();
-	orangefs_dir_test();
+	//orangefs_dir_test();
 
 	while (1); */
 	
