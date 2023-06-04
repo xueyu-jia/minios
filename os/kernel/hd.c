@@ -1174,3 +1174,103 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 
 	return 1;
 }
+
+// add by sundong 2023.6.3 
+//读写扇区  读写块的函数实现应该放在驱动层 而不是放在文件系统的实现中
+/*****************************************************************************
+ *                                rw_sector
+ *****************************************************************************/
+/**
+ * <Ring 1> R/W a sector via messaging with the corresponding driver.
+ *
+ * @param io_type  DEV_READ or DEV_WRITE
+ * @param dev      device nr
+ * @param pos      Byte offset from/to where to r/w.
+ * @param bytes    r/w count in bytes.
+ * @param proc_nr  To whom the buffer belongs.
+ * @param buf      r/w buffer.
+ *
+ * @return Zero if success.
+ *****************************************************************************/
+/// zcr: change the "u64 pos" to "int pos"
+int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+{
+	MESSAGE driver_msg;
+
+	driver_msg.type = io_type;
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE = dev;
+	// attention
+	//  driver_msg.POSITION	= (unsigned long long)pos;
+	driver_msg.POSITION = pos;
+	driver_msg.CNT = bytes; /// hu is: 512
+	driver_msg.PROC_NR = proc_nr;
+	driver_msg.BUF = buf;
+	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
+	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
+
+	/// replace the statement above.
+	// disp_int(proc_nr);
+	hd_rdwt(&driver_msg);
+	return 0;
+}
+
+// added by xw, 18/8/27
+int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+{
+	MESSAGE driver_msg;
+
+	driver_msg.type = io_type;
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE = dev;
+
+	driver_msg.POSITION = pos;
+	driver_msg.CNT = bytes; /// hu is: 512
+	driver_msg.PROC_NR = proc_nr;
+	driver_msg.BUF = buf;
+
+	hd_rdwt_sched(&driver_msg);
+	return 0;
+}
+//~xw
+
+//add by sundong 2023.5.26
+int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+{
+	MESSAGE driver_msg;
+
+	driver_msg.type = io_type;
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE = dev;
+	// attention
+	//  driver_msg.POSITION	= (unsigned long long)pos;
+	driver_msg.POSITION = pos;
+	driver_msg.CNT = bytes; 
+	driver_msg.PROC_NR = proc_nr;
+	driver_msg.BUF = buf;
+	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
+	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
+
+	/// replace the statement above.
+	// disp_int(proc_nr);
+	hd_rdwt(&driver_msg);
+	return 0;
+}
+
+//add by sundong 2023.5.26
+int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+{
+	MESSAGE driver_msg;
+
+	driver_msg.type = io_type;
+	// driver_msg.DEVICE	= MINOR(dev);
+	driver_msg.DEVICE = dev;
+
+	driver_msg.POSITION = pos;
+	driver_msg.CNT = bytes; 
+	driver_msg.PROC_NR = proc_nr;
+	driver_msg.BUF = buf;
+
+	hd_rdwt_sched(&driver_msg);
+	return 0;
+}
