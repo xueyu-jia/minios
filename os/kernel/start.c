@@ -126,7 +126,7 @@ PUBLIC void cstart()
 {
 	disp_str("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n-----\"cstart\" begins-----\n");
 
-	buddy_init(); //moved from kernel_main, mingxuan 2021-8-25
+	memory_init(); //moved from kernel_main, mingxuan 2021-8-25
 
 	if (-1 == init_kernel_page())
 	{

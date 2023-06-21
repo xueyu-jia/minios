@@ -9,9 +9,9 @@
 #ifndef _PAGING_H_
 #define _PAGING_H_
 #include "type.h"
-#define PageDirBase 0x400000
-#define PageTblBase	0x401000
-#define PhyMallocBase 0x600000
+#define PageDirBase 0x100000
+#define PageTblBase	0x101000
+#define PhyMallocBase 0x110000
 #define PG_P 1
 #define PG_USU 4
 #define PG_RWW 2

@@ -531,7 +531,8 @@ PUBLIC u32 do_kmalloc_4k() //无参数，从内核线性地址空间申请一页
 //modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kmalloc_4k() //无参数，从内核线性地址空间申请一页内存
 {
-	int res = alloc_pages(kbud, 0);
+	page *page = alloc_pages(kbud, 0);
+    int res = pfn_to_phy(page_to_pfn(page));
 	//disp_str("m");
 	if (res == 0)
 		disp_color_str("phy_kmalloc_4k: alloc_pages Error,no memory", 0x74);
@@ -595,8 +596,8 @@ PUBLIC u32 phy_kfree_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉
 	}
 
 	//disp_str("f");
-
-	return free_pages(kbud, phy_addr, 0);
+    page *page = pfn_to_page(phy_to_pfn(phy_addr));
+	return free_pages(kbud, page, 0);
 }
 
 //added by mingxuan 2021-8-17
@@ -618,7 +619,8 @@ PUBLIC u32 do_malloc_4k() //无参数，从用户线性地址空间堆中申请�
 //modified by mingxuan 2021-8-14
 PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请一页内存
 {
-	int res = alloc_pages(ubud, 0);
+	page *page = alloc_pages(ubud, 0);
+    int res = pfn_to_phy(page_to_pfn(page));
 	if (res == 0)
 		disp_color_str("phy_malloc_4k:alloc_pages Error,no memory", 0x74);
 	return res;
@@ -683,7 +685,8 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 			return 0;
 		}
 	}
-	return free_pages(ubud, phy_addr, 0);
+	page *page = pfn_to_page(phy_to_pfn(phy_addr));
+	return free_pages(ubud, page, 0);
 }
 
 //added by mingxuan 2021-8-16

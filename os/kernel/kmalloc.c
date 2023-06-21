@@ -40,8 +40,8 @@ void kmem_init()
 u32 kmalloc_over4k(u32 size)
 {
     u32 order = which_order(size);
-
-    u32 addr = alloc_pages(kbud, order);
+    page *page = alloc_pages(kbud, order);
+    u32 addr = pfn_to_phy(page_to_pfn(page));
 
     if (size < block_size[order]) //申请的内存小于order页块的大小，将剩余内存返回buddy系统，如申请10K，则分配一个16K页块，将剩余6K返回到buddy系统
 
