@@ -444,7 +444,7 @@ PUBLIC u32 do_kmalloc(u32 size) //有int型参数size，从内核线性地址空
 //modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址空间申请一段大小为size的内存
 {
-	if (size < num_4K)
+	if (size <= (1 << MAX_BUFF_ORDER))
 		return kmalloc(size);
 	else
 		return kmalloc_over4k(size);
@@ -505,7 +505,7 @@ PUBLIC u32 phy_kfree(u32 phy_addr) //有unsigned int型参数addr和size，释�
 	}
 
 	u32 size = get_kmalloc_size(phy_addr);
-	if (size < num_4K)
+	if (size <= (1 << MAX_BUFF_ORDER))
 		return kfree(phy_addr);
 	else
 		return kfree_over4k(phy_addr);

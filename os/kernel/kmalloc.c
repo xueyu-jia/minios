@@ -17,7 +17,7 @@ free_kmem kmem;
 //extern struct free_area kfree_area[Max_order];
 
 
-static void kfree_page(u32 index);
+// static void kfree_page(u32 index);
 void malloced_insert(u32 addr, u32 size);
 //static u32 do_kfree(u32 addr,u32 size);
 //static u32 do_kfree_static(u32 addr,u32 size);  //modified by mingxuan 2021-3-25
@@ -128,7 +128,7 @@ static u32 which_order(u32 size)
     return i;
 }
 
-u32 kmalloc(u32 size) //核心态下为内核程序分配小内存
+/*u32 kmalloc(u32 size) //核心态下为内核程序分配小内存
 {
     u32 i, addr;
 
@@ -180,7 +180,7 @@ u32 kmalloc(u32 size) //核心态下为内核程序分配小内存
     malloced_insert(addr, size);
 
     return addr;
-}
+}*/
 
 void malloced_insert(u32 addr, u32 size) //已经分配分区的记录表，供kfree使用
 {
@@ -196,7 +196,7 @@ void malloced_insert(u32 addr, u32 size) //已经分配分区的记录表，供k
         disp_color_str("kmalloc error:kmalloced table is full\n",0x74);
 }
 
-int kfree(u32 addr) //核心态下内核程序释放已申请的小内存
+/*int kfree(u32 addr) //核心态下内核程序释放已申请的小内存
 {
 
     u32 i, size;
@@ -259,7 +259,7 @@ static void kfree_page(u32 index)
     }
 
     kmem.count--;
-}
+}*/
 
 //static u32 do_kfree(u32 addr,u32 size)
 /*
@@ -378,7 +378,7 @@ static u32 do_kfree_static(u32 addr,u32 size)   //modified by mingxuan 2021-3-25
     return -1;
 }
 */
-static u32 phy_kfree_static(u32 addr, u32 size) //modified by mingxuan 2021-8-17
+/*static u32 phy_kfree_static(u32 addr, u32 size) //modified by mingxuan 2021-8-17
 {
     //释放
     int i, j, pageid;
@@ -484,7 +484,7 @@ static u32 phy_kfree_static(u32 addr, u32 size) //modified by mingxuan 2021-8-17
     }
 
     return -1;
-}
+}*/
 
 //test
 void scan_ktable()

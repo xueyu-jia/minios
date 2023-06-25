@@ -78,6 +78,7 @@ void memory_init()
     }
 
     kmem_init(); //added by mingxuan 2021-3-8
+    init_cache();
 }
 
 void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {

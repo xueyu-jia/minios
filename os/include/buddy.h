@@ -1,4 +1,4 @@
-﻿/*************************************************************
+/*************************************************************
 *     buddy.h     add by wang   2021.3.3
 **************************************************************/
 #ifndef KERNEL_BUDDY_H
@@ -6,7 +6,7 @@
 
 #include "type.h"
 #include "const.h"
-
+#include "slab.h"
 
 
 #define FMIBuff		0x007ff000  //必须于load.inc保持一致, mingxuan 2021-8-25
@@ -27,10 +27,10 @@
 
 typedef struct page
 {
-    u32 order;
-    u32 inbuddy;
+    u32 order;              // buddy的order
+    u32 inbuddy;            // 当前page是否在buddy系统的管理中
+    kmem_cache_t *cache;    // slab对应的cache
     struct page *next;
-    // kmem_cache slab;
 }page;
 
 struct free_area

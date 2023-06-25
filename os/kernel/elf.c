@@ -98,7 +98,7 @@ void read_Shdr(u32 fd,Elf32_Shdr *File_Shdr,u32 offset)
 	return;
 }
 
-PUBLIC void read_elf(u32 fd,Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr Echo_Phdr[],Elf32_Shdr Echo_Shdr[])
+PUBLIC void read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr)
 {
 	int i;
 	read_Ehdr(fd,Echo_Ehdr,0);

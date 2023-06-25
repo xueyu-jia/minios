@@ -70,7 +70,7 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
 			os/ipc/shm.o os/ipc/msg.o \
 			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
-			os/kernel/mount.o
+			os/kernel/mount.o os/kernel/slab.o
 			
 #added by mingxuan 2021-2-28
 
@@ -380,4 +380,7 @@ os/kernel/ahci.o: os/kernel/ahci.c os/include/ahci.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 os/kernel/mount.o: os/kernel/mount.c os/include/mount.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+os/kernel/slab.o: os/kernel/slab.c os/include/slab.h os/include/buddy.h
 	$(CC) $(CFLAGS) -o $@ $<

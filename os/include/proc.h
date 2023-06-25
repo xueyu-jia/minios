@@ -4,8 +4,11 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+#ifndef KERNEL_PROC_H
+#define KERNEL_PROC_H
 
 #include "fs.h" //added by ran
+#include "protect.h"
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -207,3 +210,5 @@ typedef struct s_task {
 
 //added by zcr
 #define proc2pid(x) (x - proc_table)
+
+#endif

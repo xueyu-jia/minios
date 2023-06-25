@@ -274,7 +274,7 @@ PUBLIC int set_vfstable(u32 device, char *target)
     }
     
     
-    pvfs->fs_name = (char*)kmalloc(12);
+    pvfs->fs_name = (char*)kern_kmalloc(12);
     strcpy(pvfs->fs_name, target);
 
     int sb_index;
