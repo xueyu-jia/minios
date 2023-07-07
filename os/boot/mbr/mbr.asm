@@ -176,6 +176,11 @@ LABLE_ACTIVE:
 	; mov	ah,0h
 	; int	16h
 
+	;add by sundong 2023.3.21
+	;si 寄存器设置为0
+	;因为在boot中会通过si的置位情况来判断boot.bin是通过grub chainloader加载的还是mbr.bin加载的
+	;si的值为0表示是通过mbr（也就是本程序）加载的
+	mov		si,0
 	jmp 	BaseOfBoot:OffsetOfBoot
 	
 LABLE_NOT_FOUND:

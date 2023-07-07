@@ -249,7 +249,7 @@ PRIVATE void init_vfs_table(){  // modified by mingxuan 2020-10-30
         vfs_table[i].op = &f_op_table[0];
         vfs_table[i].sb = &super_block[i];
         vfs_table[i].s_op = &sb_op_table[0];
-        vfs_table[5].used = 0; //动态绑定
+        vfs_table[i].used = 0; //动态绑定
     }
 }
 
@@ -274,7 +274,7 @@ PUBLIC int set_vfstable(u32 device, char *target)
     }
     
     
-    pvfs->fs_name = (char*)kmalloc(12);
+    pvfs->fs_name = (char*)kern_kmalloc(12);
     strcpy(pvfs->fs_name, target);
 
     int sb_index;

@@ -34,7 +34,7 @@ PUBLIC int printf(const char *fmt,...){
     
     
     int i;
-    char buf[256];
+    char buf[PRINT_BUF_LEN];
     va_list arg = (va_list)((char*)(&fmt) + 4); 
     
 	i = vsprintf(buf, fmt, arg);

@@ -57,11 +57,14 @@ int ksem_wait(struct Semaphore *sem, int count)
     release(&(sem->lock));
     return -1;
   }
-  if((*sem).maxValue <count)
-  {
-    release(&(sem->lock));
-    return -1;
-  }
+
+  // if((*sem).maxValue <count)
+  // {
+  //   release(&(sem->lock));
+  //   return -1;
+  // }
+  // deleted by zhenhao 2023.5.20
+
   // if there is no enough lock, sleep
   while(((*sem).value) <= count - 1)
   {

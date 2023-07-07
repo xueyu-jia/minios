@@ -287,6 +287,8 @@ struct hd_info
 					      ((drv) << 4) |		\
 					      (lba_highest & 0xF) | 0xA0)
 
+#define HDQUE_MAXSIZE	64
+
 // added by xw, 18/8/26
 typedef struct rdwt_info
 {

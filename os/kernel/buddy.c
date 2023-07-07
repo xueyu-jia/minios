@@ -1,51 +1,35 @@
-﻿/*************************************************************
+/*************************************************************
 * 内存管理-buddy系统相关代码     add by wang   2021.3.3
 **************************************************************/
 
-/*
-#include "buddy.h"
-#include "type.h"
-#include "memman.h"
-*/
 #include "../include/buddy.h"
 #include "../include/type.h"
 #include "../include/kmalloc.h"
-//#include "../include/memman.h"    //deleted by mingxuan 2021-8-13
-
-//struct free_area free_area[MAX_ORDER]; //伙伴系统数组，每一个数组元素代表一种内存页块
-//u32 bitmap[11][128];    //用来标识伙伴的状态，0,1,2...11代表order
-//struct free_memory freemem[128];
-
-//int memory_init(buddy *bud); //初始化内存
-//u32 alloc_pages(buddy *bud,u32 order); //分配2^order个4K页面
-//int free_pages(buddy *bud,u32 paddr,u32 order); //释放页面
 
 buddy kbuddy, ubuddy;
 buddy *kbud = &kbuddy;
 buddy *ubud = &ubuddy;
-bmap bmap1;
-bmap *bp = &bmap1;
-free_mem kfreemem, ufreemem;
-free_mem *kfreem = &kfreemem;
-free_mem *ufreem = &ufreemem;
 
 u32 MemInfo[256] = {0}; //存放FMIBuff后1k内容
-u32 block_size[11];     //the block size of each order
+u32 block_size[MAX_ORDER];     //the block size of each order
 
 int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
 u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27
 u32 kernel_code_size = 0;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
 u32 test_phy_mem_size = 0; //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
 
-static u32 Split_buddy(buddy *bud, u32 order, u32 tmp);
-static int list_insert(buddy *bud, u32 order, u32 node);
-static int merge_buddy(buddy *bud, u32 freepage, u32 index, u32 order);
-static u32 intpow(int ji, int zhi);
-static void fragmentUse(u32 addr, u32 size);
+PRIVATE void fragmentUse(u32 addr, u32 size);
+PRIVATE u32 __find_buddy_pfn(u32 page_pfn, u32 order);
+PRIVATE u32 page_is_buddy(u32 pfn, page *page, u32 order);
+PRIVATE void del_page_from_free_list(page *page, buddy *bud,u32 order);
+PRIVATE void add_to_free_list(page *page, buddy *bud,u32 order);
+PRIVATE void set_page_order(page *page, u32 order);
+PRIVATE void set_buddy_order(page *page, u32 order);
+PRIVATE page* get_page_from_free_area(struct free_area *area);
+PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
 
-void buddy_init()
+void memory_init()
 {
-
     memcpy(MemInfo, (u32 *)FMIBuff, 1024); //复制内存
 
     test_phy_mem_size = MemInfo[MemInfo[0]];
@@ -64,157 +48,74 @@ void buddy_init()
     disp_str("\n");
 
     u32 bsize = num_4K;
-
-    for (i = 0; i < 11; i++)
-    {
+    for (i = 0; i < 11; i++) {
         block_size[i] = bsize;
         bsize = 2 * bsize;
     }
 
-    for (i = 0; i < MAX_ORDER; i++)
-    {
-
-        for (j = 0; j < BITMAP_SIZE; j++)
-        {
-
-            bp->bitmap[i][j] = 0;
-        }
+    // TODO: ALL_PAGES 怎么确定
+    u32 last_pfn = phy_to_pfn(test_phy_mem_size);
+    for (i = 0; i < last_pfn; i++) {
+        mem_map[i].inbuddy = TRUE;
+    }
+    for (; i < ALL_PAGES; i++) {
+        mem_map[i].inbuddy = FALSE;
     }
 
-    if (test_phy_mem_size < WALL)
-    {
+    if (test_phy_mem_size < WALL) {
         big_kernel = 0;
-
         kernel_code_size = KKWALL1;
-
         kernel_size = SmallKernelSize;
-
-        kbuddy_init(KKWALL1, KUWALL1);
-
-        ubuddy_init(KUWALL1, test_phy_mem_size);
+        buddy_init(kbud, KKWALL1, KUWALL1);
+        buddy_init(ubud, KUWALL1, test_phy_mem_size);
     }
-    else
-    {
+    else {
         big_kernel = 1;
-
         kernel_code_size = KKWALL2;
-
         kernel_size = BigKernelSize;
-
-        kbuddy_init(KKWALL2, KUWALL2);
-
-        ubuddy_init(KUWALL2, test_phy_mem_size);
+        buddy_init(kbud, KKWALL2, KUWALL2);
+        buddy_init(ubud, KUWALL2, test_phy_mem_size);
     }
 
     kmem_init(); //added by mingxuan 2021-3-8
+    init_cache();
 }
 
-void ubuddy_init(u32 bgn_addr, u32 end_addr)
-{
-    int i;
-
-    ufreem->freemem[0].bgn_addr = bgn_addr;
-
-    ufreem->freemem[0].end_addr = end_addr;
-
-    ufreem->freemem_num = 1;
-
-    ubud->current_mem_size = 0;
-
-    ubud->total_mem_size = end_addr - bgn_addr;
-    for (i = 0; i < MAX_ORDER; i++)
-    {
-
-        ubud->free_area[i].free_count = 0;
+void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {
+    
+    bud->current_mem_size = 0;
+    bud->total_mem_size = end_addr - bgn_addr;
+    for (int i = 0; i < MAX_ORDER; i++) {
+        bud->free_area[i].free_count = 0;
     }
 
-    memory_init(ufreem, ubud);
-}
-
-void kbuddy_init(u32 bgn_addr, u32 end_addr)
-{
-    int i;
-
-    kfreem->freemem[0].bgn_addr = bgn_addr;
-
-    kfreem->freemem[0].end_addr = end_addr;
-
-    kfreem->freemem_num = 1;
-
-    kbud->current_mem_size = 0;
-
-    kbud->total_mem_size = end_addr - bgn_addr;
-    for (i = 0; i < MAX_ORDER; i++)
-    {
-
-        kbud->free_area[i].free_count = 0;
-    }
-
-    memory_init(kfreem, kbud);
-}
-
-//edit by wang 2021.6.7
-int memory_init(free_mem *free, buddy *bud) //将空闲内存挂在buddy系统上
-{
-    u32 i, bgn_addr, end_addr;
-
-    for (i = 0; i < free->freemem_num; i++)
-    {
-
-        bgn_addr = free->freemem[i].bgn_addr;
-
-        end_addr = free->freemem[i].end_addr;
-
-        block_init(bgn_addr, end_addr, bud);
-    }
-
-    return 0;
-}
-
-//added by wang 2021.6.25
-static void fragmentUse(u32 addr, u32 size)
-{
-    malloced_insert(addr, size);
-    kmem.total_mem_size += size;
-    //do_kfree(addr);
-    phy_kfree(addr); //modified by mingxuan 2021-8-17
+    block_init(bgn_addr, end_addr, bud);
 }
 
 //added by wang 2021.6.8
 int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
 {
-
     int bsize, i;
-
-    if (bgn_addr % num_4K != 0)
-
-    {
-
+    if (bgn_addr % num_4K != 0) {
         int tmp = bgn_addr % num_4K;
-
-        fragmentUse(bgn_addr, num_4K - tmp); //edited by wang 2021.6.25
-
+        if(bud==kbud) 
+            fragmentUse(bgn_addr, num_4K - tmp); //edited by wang 2021.6.25
         bgn_addr = bgn_addr - tmp + num_4K;
     }
 
     bsize = end_addr - bgn_addr;
-
-    while (bsize)
-
-    {
-        for (i = 10; i >= 0; i--)
-        {
-            if (bgn_addr % block_size[i] == 0 && bsize >= block_size[i])
-            {
-                free_pages(bud, bgn_addr, i);
+    while (bsize){
+        for (i = MAX_ORDER-1; i >= 0; i--){
+            if (bgn_addr % block_size[i] == 0 && bsize >= block_size[i]){
+                free_pages(bud, pfn_to_page(phy_to_pfn(bgn_addr)), i);
                 bgn_addr += block_size[i];
                 bsize -= block_size[i];
                 break;
             }
         }
-        if (bsize < num_4K && bsize != 0)
-        {
-            fragmentUse(bgn_addr, bsize); //edited by wang 2021.6.25
+        if (bsize < num_4K && bsize != 0){
+            if(bud==kbud)                           //edited by qianglong 2021.4.19
+                fragmentUse(bgn_addr, bsize); //edited by wang 2021.6.25
             break;
         }
     }
@@ -222,7 +123,137 @@ int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
     return 0;
 }
 
-u32 alloc_pages(buddy *bud, u32 order) //分配2^order页的页块
+int free_pages(buddy *bud, page *page, u32 order) {
+    u32 buddy_pfn;
+	u32 combined_pfn;
+	struct page *buddy;
+    u32 pfn = page_to_pfn(page);
+    u32 max_order = MAX_ORDER - 1;
+
+continue_merging:
+	while (order < max_order) {
+		//查找伙伴块的页号
+		buddy_pfn = __find_buddy_pfn(pfn, order);
+		buddy = page + (buddy_pfn - pfn);
+        //查找伙伴块是否在buddy系统中
+		//若不在，继续执行done_merging
+		if (!page_is_buddy(buddy_pfn, buddy, order))
+			goto done_merging;
+		//若在，将伙伴块从free_list中删除
+		del_page_from_free_list(buddy, bud, order);
+		//合并伙伴块
+		combined_pfn = buddy_pfn & pfn;     // find head of block by & 
+		page = page + (combined_pfn - pfn);
+		pfn = combined_pfn;
+		order++;
+	}
+done_merging:
+	//设置当前page的order
+	set_buddy_order(page, order);
+	//将该page加入对应order的free_list中
+	add_to_free_list(page, bud, order);
+
+    bud->current_mem_size += block_size[order];
+    return 0;
+}
+
+page* alloc_pages(buddy *bud, u32 order) {
+	u32 current_order;
+    page *page = NULL;
+	struct free_area *area;
+	
+    //从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
+	for (current_order = order; current_order < MAX_ORDER; ++current_order) {
+		area = &(bud->free_area[current_order]);
+		page = get_page_from_free_area(area);
+		//若未查到则继续查找
+		if (!page)
+			continue;
+		//若查找到了，先将其从free_list中删除，如果需要再调用expand()函数进行大内存块拆分
+		del_page_from_free_list(page, bud, current_order );
+		expand(bud, page, order, current_order);
+
+        if (page) {
+            page->order = order;
+            bud->current_mem_size -= block_size[order];
+            return page;
+        }
+	}
+	return NULL;
+}
+
+//added by wang 2021.6.25
+PRIVATE void fragmentUse(u32 addr, u32 size) {
+    malloced_insert(addr, size);
+    kmem.total_mem_size += size;
+    //do_kfree(addr);
+    phy_kfree(addr); //modified by mingxuan 2021-8-17
+}
+
+PRIVATE u32 __find_buddy_pfn(u32 page_pfn, u32 order) {
+	return page_pfn ^ (1 << order);
+}
+
+PRIVATE u32 page_is_buddy(u32 pfn, page *page, u32 order) {
+	if (!page->inbuddy || page->order != order || pfn >= ALL_PAGES)
+		return FALSE;
+	return TRUE;
+}
+
+PRIVATE void del_page_from_free_list(page *page, buddy *bud,u32 order) {
+    // list operation
+    bud->free_area[order].free_list = page->next ;
+    // page -> next != NULL
+    page->next = NULL ;
+	page -> inbuddy = FALSE;
+	bud->free_area[order].free_count--;
+}
+
+PRIVATE void add_to_free_list(page *page, buddy *bud,u32 order) {
+	struct free_area *area = &bud->free_area[order];
+	page->next = NULL;
+	if (area->free_list==NULL) {
+		
+		area->free_list = page;
+	} else {
+		struct page * node;
+		node = area->free_list;
+		while (node->next) {
+			node = node->next;
+		}
+		node->next = page;
+	}
+	area->free_count++;
+}
+
+PRIVATE void set_page_order(page *page, u32 order) {
+	page->order = order;
+}
+
+PRIVATE void set_buddy_order(page *page, u32 order) {
+	set_page_order(page, order);
+	page->inbuddy = TRUE;
+}
+
+PRIVATE page* get_page_from_free_area(struct free_area *area) {   
+    struct page * node ;
+    //返回该链表第一个块或者返回NULL
+    node = area->free_list; // *page
+    return node;
+}
+
+PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high) {
+	u32 size = 1 << high;
+
+	while (high > low) {
+		high--;
+		size >>= 1;
+		add_to_free_list(&page[size], bud, high);
+		set_buddy_order(&page[size], high);
+	}
+}
+
+/*u32 alloc_pages(buddy *bud, u32 order) //分配2^order页的页块
 {
 
     u32 paddr;
@@ -552,7 +583,7 @@ static int merge_buddy(buddy *bud, u32 freepage, u32 index, u32 order) //合并b
 
         return freepage;
     }
-}
+}*/
 
 //test buddy
 
@@ -561,17 +592,18 @@ void Scan_free_area(buddy *bud)
     u32 i, j;
     for (i = 0; i < MAX_ORDER; i++)
     {
-
+        struct free_area *area = &bud->free_area[i];
+        page *node = area->free_list;
         disp_str("   order = ");
         disp_int(i);
         disp_str("   nr_free=");
-        disp_int(bud->free_area[i].free_count);
+        disp_int(area->free_count);
         disp_str("  paddr:");
 
-        for (j = 0; j < bud->free_area[i].free_count; j++)
-        {
-            disp_int(bud->free_area[i].free_list[j]);
+        while (node != NULL) {
+            disp_int(pfn_to_phy(page_to_pfn(node)));
             disp_str("  ");
+            node = node->next;
         }
         disp_str("\n");
     }
@@ -615,7 +647,7 @@ void test_alloc_pages()
 
 void test_free_pages()
 {
-    u32 first, second, third;
+    page *first, *second, *third;
 
     //    disp_str("\n-----------------before alloc------------\n");
     //    Scan_free_area(ubud);

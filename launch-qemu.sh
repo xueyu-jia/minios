@@ -21,18 +21,10 @@
 # -drive id=disk1,file=c.img,if=none -device ide-hd,drive=disk1,bus=ahci.1 \
 # -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=ahci.2 \
 # -hda a.img -hdb e.img
-
-# qemu-system-i386 \
-# -device ich9-ahci,id=xiaofeng \
-# -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
-# -drive id=disk1,file=c.img,if=none -device ide-hd,drive=disk1,bus=xiaofeng.1  \
-# -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=xiaofeng.2  \
-# -drive id=disk3,file=f.img,if=none -device ide-hd,drive=disk3,bus=xiaofeng.3  \
-# -hda a.img -hdb e.img \
-# -boot menu=on \
-# -monitor stdio
-
+#cp b.img c.img
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
+
+-boot menu=on \
 -monitor stdio

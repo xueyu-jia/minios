@@ -8,6 +8,9 @@
 #include "signal.h"  //modified by mingxuan 2021-8-7
 #include "msg.h" //added by yingchi 2022.01.07
 #include "spinlock.h"
+#include "tty.h"
+#include "proc.h"
+
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
@@ -34,6 +37,7 @@ PUBLIC void	init_prot();
 PUBLIC u32	seg2phys(u16 seg);
 
 /* klib.c */
+PUBLIC void disp_int(int input);
 PUBLIC void	delay(int time);
 PUBLIC u32 get_ring_level();
 
@@ -318,7 +322,18 @@ PUBLIC  int lin_mapping_phy(u32 AddrLin,u32 phy_addr,u32 pid,u32 pde_Attribute,u
 PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
 /*memman.c*/
+PUBLIC u32 phy_kmalloc(u32 size);
+PUBLIC u32 phy_kfree(u32 phy_addr);
+PUBLIC u32 kern_kmalloc(u32 size);
+PUBLIC u32 kern_kfree(u32 addr);
+PUBLIC u32 phy_kmalloc_4k();
+PUBLIC u32 phy_kfree_4k(u32 phy_addr);
+PUBLIC u32 kern_kmalloc_4k();
+PUBLIC u32 kern_kfree_4k(u32 addr);
+PUBLIC u32 phy_malloc_4k();
 PUBLIC u32 phy_free_4k(u32 phy_addr);
+PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
+PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
 
 /*mount.c */
 PUBLIC int sys_mount();
@@ -326,3 +341,7 @@ PUBLIC int sys_umount();
 
 /*fs.c*/
 PUBLIC int sys_init_block_dev();
+
+/*slab.c*/
+void *kmalloc(u32 size);
+int kfree(u32 object);

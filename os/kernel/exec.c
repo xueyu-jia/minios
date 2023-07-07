@@ -26,8 +26,8 @@
 
 #include "../include/buddy.h"// added by wang 2021.8.27
 
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute);
-PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo_Phdr[]);
+PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute);
+PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(char *path);
 
 //PUBLIC u32 do_execve(char *path);  deleted by xyx&&wjh 2021-12-31
@@ -92,9 +92,9 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 {
 	//disable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
-	Elf32_Ehdr Echo_Ehdr;
-	Elf32_Phdr Echo_Phdr[10];
-	Elf32_Shdr Echo_Shdr[10];
+	Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
+	Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
+	Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
 	u32 addr_lin;
 	u32 err_temp;
 	u32 pde_addr_phy, addr_phy_temp;
@@ -147,7 +147,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	// u32 fd = fake_open(path,"r");	//modified by xw, 18/5/30
 
 	/*************获取elf信息**************/
-	read_elf(fd, &Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
+	read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
 
     /*    added by xyx&&wjh   2021-12-31  */
     char **p = argv;
@@ -205,7 +205,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 	/*************根据elf的program复制文件信息**************/
 	//disp_free();	//for test, added by mingxuan 2021-1-7
-	if (-1 == exec_load(fd, &Echo_Ehdr, Echo_Phdr))
+	if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr))
 	{
 		disp_str("exec_load error!\n"); //added by mingxuan 2020-12-22
 
@@ -253,7 +253,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 	/***********************代码、数据、堆、栈***************************/
 	//代码、数据已经处理，将eip重置即可
-	p_proc_current->task.regs.eip = Echo_Ehdr.e_entry;						 //进程入口线性地址
+	p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;						 //进程入口线性地址
 	p_reg = (char *)(p_proc_current + 1);									 //added by xw, 17/12/11
 	*((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_proc_current->task.regs.eip; //added by xw, 17/12/11
 
@@ -358,20 +358,20 @@ PRIVATE char *exec_path(char* path)
 *                          exec_elfcpy		add by visual 2016.5.23
 *复制elf中program到内存中
 *======================================================================*/
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
+PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
 {
-	u32 lin_addr = Echo_Phdr.p_vaddr;
-	u32 lin_limit = Echo_Phdr.p_vaddr + Echo_Phdr.p_memsz;
+	u32 lin_addr = Echo_Phdr->p_vaddr;
+	u32 lin_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_memsz;
 
-	u32 file_offset = Echo_Phdr.p_offset;
-	u32 file_limit = Echo_Phdr.p_offset + Echo_Phdr.p_filesz;
+	u32 file_offset = Echo_Phdr->p_offset;
+	u32 file_limit = Echo_Phdr->p_offset + Echo_Phdr->p_filesz;
 
-	u32 lin_file_limit = Echo_Phdr.p_vaddr + Echo_Phdr.p_filesz; //added by mingxuan 2021-3-16
+	u32 lin_file_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_filesz; //added by mingxuan 2021-3-16
 
 	/*	//deleted by mingxuan 2021-1-29
 	u8 ch;
 	//u32 pde_addr_phy = get_pde_phy_addr(p_proc_current->task.pid); //页目录物理地址			//delete by visual 2016.5.19
-	//u32 addr_phy = do_malloc(Echo_Phdr.p_memsz);//申请物理内存					//delete by visual 2016.5.19
+	//u32 addr_phy = do_malloc(Echo_Phdr->p_memsz);//申请物理内存					//delete by visual 2016.5.19
 
 	for(  ; lin_addr<lin_limit ; lin_addr++,file_offset++ )
 	{
@@ -402,7 +402,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部�
 	*/
 
 	// modified by mingxuan 2021-1-29, start
-	char buf[num_4K]; // added by mingxuan 2020-12-14
+	char *buf = kern_kmalloc_4k();; // added by mingxuan 2020-12-14
 
 	// added by mingxuan 2020-12-14
 	// 给lin_addr建立页映射, mingxuan
@@ -413,8 +413,8 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部�
 		ker_umalloc_4k(lin_addr,p_proc_current->task.pid,attribute);           //edited by wang 2021.8.27
 	}
 
-	lin_addr = Echo_Phdr.p_vaddr;	  // added by mingxuan 2020-12-14
-	file_offset = Echo_Phdr.p_offset; // added by mingxuan 2020-12-14
+	lin_addr = Echo_Phdr->p_vaddr;	  // added by mingxuan 2020-12-14
+	file_offset = Echo_Phdr->p_offset; // added by mingxuan 2020-12-14
 
 	u32 for_flag; //added by mingxuan 2021-3-16
 	for_flag = 0; //added by mingxuan 2021-8-8
@@ -477,7 +477,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr Echo_Phdr, u32 attribute) // 这部�
 *                          exec_load		add by visual 2016.5.23
 *根据elf的program复制文件信息
 *======================================================================*/
-PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo_Phdr[])
+PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr)
 {
 	u32 ph_num;
 
@@ -516,7 +516,7 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo
 				}
 			}
 
-			exec_elfcpy(fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); //进程代码段
+			exec_elfcpy(fd, &Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); //进程代码段
 
 			//deleted by mingxuan 2021-1-30
 			//p_proc_current->task.memmap.text_lin_base = Echo_Phdr[ph_num].p_vaddr;
@@ -538,7 +538,7 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr Echo
 		}
 		else if (Echo_Phdr[ph_num].p_flags == 0x6)						//110，读写
 		{																//.data .bss
-			exec_elfcpy(fd, Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWW); //进程数据段
+			exec_elfcpy(fd, &Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWW); //进程数据段
 			p_proc_current->task.memmap.data_lin_base = Echo_Phdr[ph_num].p_vaddr;
 			p_proc_current->task.memmap.data_lin_limit = Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
 		}

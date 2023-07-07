@@ -1,3 +1,6 @@
+#ifndef USER_PTHREAD_H
+#define USER_PTHREAD_H
+
 #include "type.h"
 
 #define uint unsigned
@@ -101,3 +104,5 @@ int pthread_cond_timewait(pthread_cond_t *cond,pthread_mutex_t *mutex,int *timeo
 int pthread_cond_signal(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
 int pthread_cond_broadcast(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
 int pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
+
+#endif

@@ -27,15 +27,16 @@ OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
 		user/user/fortest1.o user/user/fortest2.o user/user/fortest3.o user/user/fortest4.o user/user/fortest5.o \
 		user/user/fortest6.o user/user/fortest7.o user/user/fortest8.o user/user/fortest9.o user/user/fortest10.o \
 		user/user/fortest11.o user/user/fortest12.o user/user/fortest13.o user/user/t_fork01.o user/user/t_exit01.o \
-		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o 
+		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o user/user/sema1.o
 
 ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
 			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
 			user/user/test_5.bin user/user/test_6.bin user/user/test_7.bin user/user/sig_0.bin user/user/sig_1.bin user/user/myTest.bin \
 			user/user/ptest1.bin user/user/ptest2.bin user/user/ptest3.bin user/user/ptest4.bin user/user/ptest5.bin \
 			user/user/ptest6.bin user/user/ptest7.bin user/user/ptest8.bin user/user/ptest9.bin user/user/ptest10.bin \
+
 			user/user/ptest11.bin user/user/ptest12.bin user/user/ptest13.bin user/user/ptest13.gdb.bin user/user/t_fork01.bin \
-			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin
+			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin user/user/sema1.bin
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
@@ -347,7 +348,10 @@ user/user/t_pthr03.o: user/user/t_pthr03.c user/include/stdio.h
 user/user/t_pthr03.bin : user/user/t_pthr03.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
+user/user/sema1.o: user/user/sema1.c user/include/stdio.h user/include/pthread.h user/include/syscall.h
+	$(CC) $(CFLAGS) -o $@ $<
 
-
+user/user/sema1.bin : user/user/sema1.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
 

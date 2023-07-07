@@ -193,7 +193,12 @@ void wait_for_sem(void *chan, struct spinlock *lk)
   p_proc_current->task.stat = SLEEPING;
   release(lk);
   
-  sched();
+  u32 ringlevel = get_ring_level();
+  if (ringlevel == 0) {
+  	sched();
+  } else {
+	yield();
+  }
   
   acquire(lk);
   // Tidy up.
