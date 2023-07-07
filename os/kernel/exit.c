@@ -106,7 +106,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 {
     //disp_str("\nexit\n");
 	PROCESS *p_proc = p_proc_current;	//p_proc表示exit应该处理的进程，该设计是为了兼容在线程中使用exit
-
+	
 	//检查是线程还是进程
 	//added by mingxuan 2021-8-21
 	if(TYPE_THREAD == p_proc->task.info.type)
@@ -122,7 +122,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		p_proc = p_father;
 	}
 
-    p_proc->task.we_flag = NORMAL;
+    //p_proc->task.we_flag = NORMAL;
 
     //exit_status
 	p_proc->task.exit_status = status;
@@ -130,23 +130,26 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//暂时不考虑过继, mingxuan 2021-1-6
 
 	//过继机制，added by dongzhangqi 2023-4-14
-	/*过继机制未完成
+	/*
 	if(p_proc->task.info.child_p_num > 0){//有子进程
-		for(int i=0; i<p_proc->task.info.child_p_num; i++){//把所有子进程都过继给init进程
-			u32 child_pid = p_proc->task.info.child_process[i];
-			
-			//子进程的父进程pid设为init进程的pid
-			proc_table[child_pid].task.info.ppid = NR_K_PCBS; 
-			
-			//init进程的孩子数加一
-			proc_table[NR_K_PCBS].task.info.child_p_num++;
+		for(int i = 0;i < NR_CHILD_MAX;i++){
+			if(p_proc_current->task.info.child_process[i] !=0){//所有子进程都过继给init进程
 
-			//更改init进程的子进程列表
-			proc_table[NR_K_PCBS].task.info.child_process[] = 
+				//子进程的父进程pid设为init进程的pid
+				proc_table[p_proc_current->task.info.child_process[i]].task.info.ppid = NR_K_PCBS;
+
+				//init进程的孩子数加一
+				proc_table[NR_K_PCBS].task.info.child_p_num++;
+
+				//更改init进程的子进程列表
+				proc_table[NR_K_PCBS].task.info.child_process[i] = i; 
+
+			}
 
 		}
-	}
-	*/
+
+	}*/
+	
 
 	//暂时不考虑file exit, mingxuan 2021-1-6
 
@@ -207,9 +210,14 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	}
 	else //有父进程
 	{
-		p_proc->task.we_flag = ZOMBY;	//modified by hejia 2019-12-25
-		p_proc->task.stat = SLEEPING;	//先置它为SLEEPING，因为当sched的时候产生进程调度，就不会调度它了（它的内存已经释放，如果再执行这个进程，肯定会发生错误）
+		//p_proc->task.we_flag = ZOMBY;	//modified by hejia 2019-12-25
+		//p_proc->task.stat = SLEEPING;	//先置它为SLEEPING，因为当sched的时候产生进程调度，就不会调度它了（它的内存已经释放，如果再执行这个进程，肯定会发生错误）
 												//但是不能设置为IDLE，因为可能会有其他的进程占据这个进程表项
+		
+		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
+		sys_wakeup(p_father);
+		p_proc->task.stat = ZOMBY; //modified by dongzhangqi 2023.6.2
+		
 	}
 
 	//while(1);	//added by mingxuan 2021-8-17

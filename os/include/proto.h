@@ -35,6 +35,7 @@ PUBLIC u32	seg2phys(u16 seg);
 
 /* klib.c */
 PUBLIC void	delay(int time);
+PUBLIC u32 get_ring_level();
 
 /* kernel.asm */
 PUBLIC void  sys_call();    //int_handler
@@ -197,6 +198,8 @@ int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
 int init_block_dev(int drive);
+void pthread_exit(void *retval);
+int pthread_join(pthread_t pthread, void **retval);
 
 
 /* syscallc.c */		//edit by visual 2016.4.6
@@ -228,6 +231,9 @@ PUBLIC void sys_test();//added by cjj 2021-12-25
 PUBLIC int sys_pthread_create();		//add by visual 2016.4.11
 PUBLIC pthread_t  sys_pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 
+PUBLIC void sys_pthread_exit();         //added by dongzhangqi 2023.5.4
+PUBLIC int sys_pthread_join();
+
 /* pthread_mutex.c pthread_cond.c */
 PUBLIC int sys_pthread_mutex_init ();//added by ZengHao & MaLinhan 2021.12.23
 PUBLIC int sys_pthread_mutex_destroy();//added by ZengHao & MaLinhan 2021.12.23
@@ -253,6 +259,7 @@ PUBLIC void* va2la(int pid, void* va);
 
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
+PUBLIC void wait_event(void* event);
 
 /* testfunc.c */
 /*  //deleted by mingxuan 2021-8-13

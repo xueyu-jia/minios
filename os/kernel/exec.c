@@ -107,9 +107,11 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
 		//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-		p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-		p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
@@ -131,10 +133,12 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它
 		//因此需要把state设置为IDLE，否则会发生缺页, mingxuan 2021-1-30
-		p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-		p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
@@ -207,10 +211,12 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
 		//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-		p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-		p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
@@ -283,10 +289,12 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 			//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
 			//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-			p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
+			//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 
 			//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-			p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+			//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
+			p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+			//因proc_stat和we_flag的改动而改动
 
 			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 

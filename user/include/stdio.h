@@ -25,6 +25,9 @@ int free_4k(void* AdddrLin);
 
 int fork();			
 int pthread_create(int *thread, void *attr, void *entry, void *arg);	
+void pthread_exit(void *retval);
+int pthread_join(pthread_t pthread, void **retval);
+
 void udisp_int(int arg);
 void udisp_str(char* arg);
 

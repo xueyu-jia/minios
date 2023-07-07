@@ -139,7 +139,9 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_get_pid_byname,
 														sys_mount,
 														sys_umount,
-														sys_init_block_dev
+														sys_init_block_dev,
+														sys_pthread_exit, //add by dongzhangqi 2023.5.17
+														sys_pthread_join
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19

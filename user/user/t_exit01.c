@@ -1,7 +1,8 @@
 /*
     added by dzq 2023.3.29
     
-    [Description]:
+    [Description]:测试exit()正常退出及传递退出状态
+    wait()接收exit()传递的退出状态
 
     
 
@@ -26,11 +27,10 @@ void main(int arg, char *argv[]){
         x = wait_(&s);
         printf("wait() send back:%d", x);
         printf("parentpid:%d\n", get_pid());
-        printf("exit code:%d", s);
+        printf("exit code:%d ", s);
         exit(0);
     }
     
-    exit(0);
 
 }
 

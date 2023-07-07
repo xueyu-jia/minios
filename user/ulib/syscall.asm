@@ -89,6 +89,9 @@
 ; _NR_mount						equ 57;
 ; _NR_umount						equ 58;
 
+; _NR_pthread_exit                  equ 60;
+; _NR_pthread_join                  equ 61;
+
 ; INT_VECTOR_SYS_CALL equ 0x90
 
 ; ; 导出符号
@@ -168,6 +171,9 @@
 
 ; global	mount
 ; global	umount
+
+; global pthread_join       ;added by dongzhangqi 2023.5.25
+; global pthread_exit       ;added by dongzhangqi 2023.5.25
 
 ; bits 32
 ; [section .text]
@@ -309,6 +315,27 @@
 ; 	pop ebx			;restore ebx
 ; 	add esp, 4
 ; 	ret
+
+; ; ====================================================================
+; ;                             pthread_join		//add by dongzhangqi 2023.5.25
+; ; ====================================================================
+; pthread_join:
+;   push 2
+;   mov ebx, esp
+;   mov eax, _NR_pthread_join
+;   int INT_VECTOR_SYS_CALL
+;   add esp, 4
+;   ret
+
+; ; ====================================================================
+; ;                             pthread_exit		
+; ; ====================================================================
+;pthread_exit:
+;   push 1
+;	mov ebx,[esp+4]
+;	mov	eax, _NR_pthread_exit
+;	int	INT_VECTOR_SYS_CALL
+;	ret
 
 ; ; ====================================================================
 ; ;                              udisp_int		//add by visual 2016.5.16

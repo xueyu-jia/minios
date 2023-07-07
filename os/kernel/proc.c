@@ -233,3 +233,20 @@ PUBLIC void* va2la(int pid, void* va)
 }
 //~zcr
 
+/**
+ * @brief 将进程状态置为睡眠，直至事件发生
+ * added by zhenhao 2023.5.19
+ * @param event:等待的事件 
+ * @return void 
+ */
+PUBLIC void wait_event(void* event) {
+	p_proc_current->task.channel = event;
+	p_proc_current->task.stat = SLEEPING;
+	
+	u32 ringlevel = get_ring_level();
+  	if (ringlevel == 0) {
+  		sched();	//非系统调用（sched中有为cr3赋值的操作，只有ring0级别才能执行）
+  	} else {
+		yield();	//系统调用
+  	}
+}

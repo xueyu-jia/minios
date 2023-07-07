@@ -92,7 +92,8 @@
 //#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API 
 //#define NR_SYS_CALL       42	//modified by xiaofeng 2022-1-10     增加了1个关于内核锁测试的接口
 // #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
-#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
+//#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
+#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
 
 /* TTY */
 //added by mingxuan 2019-5-19

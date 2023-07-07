@@ -115,7 +115,12 @@ buildimg_mbr:
 	# added by dzq 2023-4-2
 	sudo cp -fv user/user/t_fork01.bin iso/
 	# added by dzq 2023-4-12
-	sudo cp -fv user/user/t_exit.bin iso/
+	sudo cp -fv user/user/t_exit01.bin iso/
+
+	# added by dzq
+	sudo cp -fv user/user/t_pthr01.bin iso/
+	sudo cp -fv user/user/t_pthr02.bin iso/
+	sudo cp -fv user/user/t_pthr03.bin iso/
 
 
 	# added by yingchi 2022.01.05

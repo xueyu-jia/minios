@@ -53,12 +53,13 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 		for(i = 0;i < NR_CHILD_MAX;i++)
 		{
 			//该子进程表项中有值且处于ZOMBY
-			if(p_proc_current->task.info.child_process[i] !=0 && proc_table[p_proc_current->task.info.child_process[i]].task.we_flag == ZOMBY)
+			if(p_proc_current->task.info.child_process[i] !=0 && proc_table[p_proc_current->task.info.child_process[i]].task.stat == ZOMBY)
 			{
 				exit_child_hanging = 1;
 
 				//置子进程的状态为正常
-				proc_table[p_proc_current->task.info.child_process[i]].task.we_flag = NORMAL;
+				//proc_table[p_proc_current->task.info.child_process[i]].task.we_flag = NORMAL; 
+				//proc_table[p_proc_current->task.info.child_process[i]].task.stat = KILLED; 
 
 				//取走子进程的exit_status，并赋值给自己的child_exit_status
 				p_proc_current->task.child_exit_status = proc_table[p_proc_current->task.info.child_process[i]].task.exit_status;
@@ -79,7 +80,7 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 				free_PCB(&proc_table[p_proc_current->task.info.child_process[i]]);	//modified by mingxuan 2021-8-21
 
 				//将自己的状态置为正常
-				p_proc_current->task.we_flag = NORMAL;
+				//p_proc_current->task.we_flag = NORMAL;
 
 				//父进程的孩子数减一
 				p_proc_current->task.info.child_p_num--;
@@ -94,7 +95,9 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 		//如果没有子进程在ZOMBY
 		if(exit_child_hanging == 0)
 		{
-			p_proc_current->task.we_flag = WAITING;
+			//p_proc_current->task.we_flag = WAITING;
+			
+			wait_event(p_proc_current); //changed by dongzhangqi 2023.6.2
 		}
 	}
 
