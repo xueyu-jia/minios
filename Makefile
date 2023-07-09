@@ -180,7 +180,7 @@ buildimg_mbr:
 	sudo $(CP) $(CP_FLAG) user/user/ptest11.bin $(BOOT_PART_MOUNTPOINT)/ptest11.bin
 	sudo $(CP) $(CP_FLAG) user/user/ptest12.bin $(BOOT_PART_MOUNTPOINT)/ptest12.bin
 	sudo $(CP) $(CP_FLAG) user/user/ptest13.bin $(BOOT_PART_MOUNTPOINT)/ptest13.bin
-
+	sudo $(CP) $(CP_FLAG) user/user/fstest.bin $(BOOT_PART_MOUNTPOINT)/fstest.bin
 
 	# added by yingchi 2022.01.05
 #	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
