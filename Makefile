@@ -42,7 +42,7 @@ GRUB_INSTALL_PART=$(FREE_LOOP)p5
 #可选值为 true  false
 USING_GRUB_CHAINLOADER = false
 #选择启动分区的文件系统格式，目前仅支持fat32和orangfs
-BOOT_PART_FS_TYPE= fat32
+BOOT_PART_FS_TYPE= orangefs
 
 ifeq ($(BOOT_PART_FS_TYPE),fat32)
 BOOT_PART_FS_MAKER = mkfs.vfat
@@ -128,7 +128,7 @@ buildimg :
 # added by mingxuan 2019-5-17
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
-	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
+	cp ./hd/test3.img ./b.img	# added by mingxuan 2020-10-5
 	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
 		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
 	fi

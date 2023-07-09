@@ -8,30 +8,9 @@
 #include "../include/fs_misc.h"
 #include "../include/fs_const.h"
 #include "../include/hd.h"
+#include "../include/buffer.h"
 
-/* 缓冲块状态，
-CLEAN表示缓冲块数据与磁盘数据同步，
-UNUSED表示数据尚未写入，数据无效；
-DIRTY表示缓冲块内为脏数据 */
-/* enum buf_state
-{
-    UNUSED,
-    CLEAN,
-    DIRTY
-}; */
-// 缓冲块头部，记录了缓冲块的信息
-typedef struct buf_head
-{
-    u32 count;                 // 为以后优化预留
-    u32 dev, block;            // 设备号，扇区号(只有busy=true时才有效)
-    void *buffer;              // 该缓冲块的起始地址, 为cache的地址
-    struct buf_head *pre_lru;  // LRU链表指针，指向LRU链表的前一个元素
-    struct buf_head *nxt_lru;  // 指向下一个缓冲块头部
-    struct buf_head *pre_hash; // hash表链表中的前一项
-    struct buf_head *nxt_hash; // hash表链表中的后一项
-    u8 used;                   // 该缓冲块是否被使用 0 未被使用；1 已经被使用；
-    u8 dirty;                  // 该缓冲块是否是脏的 0 clean; 1 dirty
-} buf_head;
+
 /*用于记录LRU链表的数据结构*/
 struct buf_lru_list
 {
@@ -49,6 +28,7 @@ struct buf_lru_list
 }; */
 static struct buf_lru_list lru_list;
 static struct buf_head *buf_hash_table[NR_HASH];
+static SPIN_LOCK buf_lock;
 
 /*****************************************************************************
  *                                init_buffer
@@ -63,13 +43,17 @@ void init_buffer(int num_block)
     // 申请buffe head和buffer block的内存，初始化lru 双向链表
     buf_head *pre = kern_kzalloc(sizeof(buf_head));
     pre->buffer = kern_kzalloc(BLOCK_SIZE);
+    initlock(&(pre->lock),NULL);
     lru_list.lru_head = pre;
+    initlock(&buf_lock,"buf_lock");
     for (int i = 0; i < num_block - 1; i++)
     {
         pre->nxt_lru = kern_kzalloc(sizeof(buf_head));
         pre->nxt_lru->buffer = kern_kzalloc(BLOCK_SIZE);
         pre->nxt_lru->pre_lru = pre;
+        initlock(&(pre->nxt_lru->lock),NULL);
         pre = pre->nxt_lru;
+
     }
     pre->nxt_lru = lru_list.lru_head;
     lru_list.lru_head->pre_lru = pre;
@@ -86,7 +70,7 @@ void init_buffer(int num_block)
  * @return  Ptr to buf_head if founding in hash table, NULL if not founding in hash table.
  *
  *****************************************************************************/
-static struct buf_head *find_buffer(int dev, int block)
+static struct buf_head *find_buffer_hash(int dev, int block)
 {
     int ihash = HASH_CODE(dev, block);
     buf_head *tmp = buf_hash_table[ihash];
@@ -106,13 +90,16 @@ static struct buf_head *find_buffer(int dev, int block)
  * @param[in] bh   Ptr to buf head
  *
  *****************************************************************************/
-static void rm_bh_lru(buf_head *bh)
+static inline void rm_bh_lru(buf_head *bh)
 {
     bh->pre_lru->nxt_lru = bh->nxt_lru;
     bh->nxt_lru->pre_lru = bh->pre_lru;
     if (bh == lru_list.lru_tail)
     {
         lru_list.lru_tail = bh->pre_lru;
+    }
+    else if(bh == lru_list.lru_head){
+        lru_list.lru_head = bh->nxt_lru;
     }
 }
 
@@ -125,13 +112,12 @@ static void rm_bh_lru(buf_head *bh)
  * @return         Ptr to buf_head.
  *
  *****************************************************************************/
-static buf_head *get_bh_lru()
+static inline buf_head *get_bh_lru()
 {
     // lru list的头部就是一个最近最少未使用的buf head
     // 需要将buf head 从lru双向链表中“摘”出来
     buf_head *bh = lru_list.lru_head;
     lru_list.lru_head = bh->nxt_lru;
-    rm_bh_lru(bh);
     return bh;
 }
 /*****************************************************************************
@@ -200,6 +186,12 @@ static void put_bh_hashtbl(buf_head *bh)
     bh->pre_hash = tmp;
     tmp->nxt_hash = bh;
     bh->nxt_hash = NULL;
+
+}
+static inline void sync_buff(buf_head *bh){
+    WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
+    bh->dirty = 0;
+
 }
 /*****************************************************************************
  *                                getblk
@@ -215,27 +207,34 @@ static void put_bh_hashtbl(buf_head *bh)
  *****************************************************************************/
 buf_head *getblk(int dev, int block)
 {
-    buf_head *bh = find_buffer(dev, block);
+    acquire(&buf_lock);
+    buf_head *bh = find_buffer_hash(dev, block);
     // 如果在hash table中能找到，则直接返回
-    if (bh)
-        return bh;
-    // 从lru 表中获取一个最近未使用的buf head
-    bh = get_bh_lru();
-    // 如果它被用过则，从hash表中删掉它
-    if (bh->used)
+    if (!bh)
     {
-        rm_bh_hashtbl(bh);
-        bh->used = 0;
+        // 从lru 表中获取一个最近未使用的buf head
+        bh = get_bh_lru();
+        // 如果它被用过则，从hash表中删掉它
+        if (bh->used)
+        {
+            rm_bh_hashtbl(bh);
+            bh->used = 0;
+        }
+        // 如果是脏块就立即写回硬盘
+        if (bh->dirty)
+        {
+            sync_buff(bh);
+        }
+        bh->dev = dev;
+        bh->block = block;
     }
-    // 如果是脏块就立即写回硬盘
-    if (bh->dirty)
-    {
-        WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
-        bh->dirty = 0;
-    }
-    bh->dev = dev;
-    bh->block = block;
+
+    bh->count+=1;
+    rm_bh_lru(bh);   
+    release(&buf_lock);
+    return bh;
 }
+
 int buf_read_block(int dev, int block, int pid, void *buf)
 {
     buf_head *bh = getblk(dev, block);
@@ -244,7 +243,7 @@ int buf_read_block(int dev, int block, int pid, void *buf)
     {
         memcpy(buf, bh->buffer, BLOCK_SIZE);
         // 从lru双向链表中删除
-        rm_bh_lru(bh);
+        //rm_bh_lru(bh);
     }
     else
     {
@@ -268,7 +267,7 @@ int buf_write_block(int dev, int block, int pid, void *buf)
     if (bh->used)
     {
         // 把它从lru中删除，本函数执行结束时再加到lru尾部
-        rm_bh_lru(bh);
+        //rm_bh_lru(bh);
     }
     else
     {
@@ -280,4 +279,44 @@ int buf_write_block(int dev, int block, int pid, void *buf)
     // 把它放进lru的尾部，表示刚被用过
     put_bh_lru(bh);
     return 0;
+}
+
+buf_head *bread(int dev, int block)
+{
+    buf_head *bh = getblk(dev, block);
+    // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
+    if (bh->used)
+    {
+        // 从lru双向链表中删除
+       // rm_bh_lru(bh);
+    }
+    else
+    {
+        // 该buf head是一个新分配的，此时应该从硬盘读数据进来
+        RD_BLOCK_SCHED(dev, block, bh->buffer);
+        // 标记为已被使用
+        bh->used = 1;
+        // 把它放进hash tbl中
+        put_bh_hashtbl(bh);
+    }
+    // 把它放进lru的尾部，表示刚被用过
+    //put_bh_lru(bh);
+    return bh;
+}
+void mark_buff_dirty(buf_head *bh)
+{
+    bh->dirty = 1;
+}
+void brelse(buf_head *bh)
+{
+
+    release(&(bh->lock));
+    bh->count--;
+    acquire(&buf_lock);
+    put_bh_lru(bh);
+    //put_bh_hashtbl(bh);
+    release(&buf_lock);
+    if(bh->dirty&&bh->count == 0){
+        sync_buff(bh);
+    }
 }

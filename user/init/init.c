@@ -773,7 +773,7 @@ void main(int arg,char *argv[])
 	else
 	{//child
 		// execve("fat0/shell_0.bin");
-		execve("fat0/shell_0.bin",NULL,NULL);
+		execve("shell_0.bin",NULL,NULL);
 
 		//execve(filename);
 	}
