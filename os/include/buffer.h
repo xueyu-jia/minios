@@ -12,13 +12,14 @@ typedef struct buf_head
     u8 used;                   // 该缓冲块是否被使用 0 未被使用；1 已经被使用；
     u8 dirty;                  // 该缓冲块是否是脏的 0 clean; 1 dirty
 } buf_head;
-int buf_write_block(int dev, int block, int pid, void *buf);
-int buf_read_block(int dev, int block, int pid, void *buf);
+/* int buf_write_block(int dev, int block, int pid, void *buf);
+int buf_read_block(int dev, int block, int pid, void *buf); */
+/**********初始化buffer函数********************/
 void init_buffer(int num_block);
-#define BUF_RD_BLOCK(dev,block_nr,fsbuf) buf_read_block(dev,block_nr,proc2pid(p_proc_current),fsbuf);
-#define BUF_WR_BLOCK(dev,block_nr,fsbuf) buf_write_block(dev,block_nr,proc2pid(p_proc_current),fsbuf);
-
-
+/*#define BUF_RD_BLOCK(dev,block_nr,fsbuf) buf_read_block(dev,block_nr,proc2pid(p_proc_current),fsbuf);
+#define BUF_WR_BLOCK(dev,block_nr,fsbuf) buf_write_block(dev,block_nr,proc2pid(p_proc_current),fsbuf); */
+ 
+/********buffer向文件系统提供的API********/
 buf_head *bread(int dev, int block);
 void mark_buff_dirty(buf_head *bh);
 void brelse(buf_head *bh);

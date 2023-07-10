@@ -60,7 +60,7 @@ void init_buffer(int num_block)
     lru_list.lru_tail = pre;
 }
 /*****************************************************************************
- *                                find_buffer
+ *                                find_buffer_hash
  *****************************************************************************/
 /**
  * 从hash表中查找缓冲区头
@@ -214,28 +214,35 @@ buf_head *getblk(int dev, int block)
     {
         // 从lru 表中获取一个最近未使用的buf head
         bh = get_bh_lru();
-        // 如果它被用过则，从hash表中删掉它
-        if (bh->used)
-        {
-            rm_bh_hashtbl(bh);
-            bh->used = 0;
-        }
         // 如果是脏块就立即写回硬盘
         if (bh->dirty)
         {
             sync_buff(bh);
         }
+        // 如果它被用过则，从hash表中删掉它
+        if (bh->used)
+        {
+            rm_bh_hashtbl(bh);
+            bh->used = 0;
+            //缓冲区重新初始化为0
+            memset(bh->buffer,0,num_4K);
+        }
         bh->dev = dev;
         bh->block = block;
+        //放到hash 表中
+        put_bh_hashtbl(bh);
     }
 
     bh->count+=1;
-    rm_bh_lru(bh);   
+    //从lru原来位置移除
+    rm_bh_lru(bh);
+    //放到lru的头部
+    put_bh_lru(bh);
     release(&buf_lock);
     return bh;
 }
 
-int buf_read_block(int dev, int block, int pid, void *buf)
+/* int buf_read_block(int dev, int block, int pid, void *buf)
 {
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
@@ -258,8 +265,8 @@ int buf_read_block(int dev, int block, int pid, void *buf)
     // 把它放进lru的尾部，表示刚被用过
     put_bh_lru(bh);
     return 0;
-}
-int buf_write_block(int dev, int block, int pid, void *buf)
+} */
+/* int buf_write_block(int dev, int block, int pid, void *buf)
 {
     buf_head *bh = getblk(dev, block);
     memcpy(bh->buffer, buf, BLOCK_SIZE);
@@ -279,44 +286,39 @@ int buf_write_block(int dev, int block, int pid, void *buf)
     // 把它放进lru的尾部，表示刚被用过
     put_bh_lru(bh);
     return 0;
-}
+} */
 
 buf_head *bread(int dev, int block)
 {
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
-    if (bh->used)
-    {
-        // 从lru双向链表中删除
-       // rm_bh_lru(bh);
-    }
-    else
+    acquire(&bh->lock);
+    if (!bh->used)
     {
         // 该buf head是一个新分配的，此时应该从硬盘读数据进来
         RD_BLOCK_SCHED(dev, block, bh->buffer);
         // 标记为已被使用
         bh->used = 1;
-        // 把它放进hash tbl中
-        put_bh_hashtbl(bh);
+
     }
-    // 把它放进lru的尾部，表示刚被用过
-    //put_bh_lru(bh);
+    release(&bh->lock);
     return bh;
 }
 void mark_buff_dirty(buf_head *bh)
 {
+    acquire(&bh->lock);
     bh->dirty = 1;
+    release(&bh->lock);
+
 }
 void brelse(buf_head *bh)
 {
 
-    release(&(bh->lock));
+    acquire(&bh->lock);
     bh->count--;
-    acquire(&buf_lock);
-    put_bh_lru(bh);
-    //put_bh_hashtbl(bh);
-    release(&buf_lock);
     if(bh->dirty&&bh->count == 0){
         sync_buff(bh);
     }
+    release(&bh->lock);
+
 }
