@@ -202,7 +202,21 @@ PRIVATE u32 page_is_buddy(u32 pfn, page *page, u32 order) {
 
 PRIVATE void del_page_from_free_list(page *page, buddy *bud,u32 order) {
     // list operation
-    bud->free_area[order].free_list = page->next ;
+    struct page *node = bud->free_area[order].free_list;
+    if (node == page) {
+        bud->free_area[order].free_list = page->next;
+    } else {
+        while (node->next != NULL) {
+            if (node->next == page) {
+                break;
+            }
+            node = node->next;
+        }
+        if (node->next != page) {
+            disp_color_str("buddy: del_page_from_free_list, page not found\n", 0x74);
+        }
+        node->next = page->next;
+    }
     // page -> next != NULL
     page->next = NULL ;
 	page -> inbuddy = FALSE;
