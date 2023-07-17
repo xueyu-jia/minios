@@ -27,7 +27,8 @@ OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
 		user/user/fortest1.o user/user/fortest2.o user/user/fortest3.o user/user/fortest4.o user/user/fortest5.o \
 		user/user/fortest6.o user/user/fortest7.o user/user/fortest8.o user/user/fortest9.o user/user/fortest10.o \
 		user/user/fortest11.o user/user/fortest12.o user/user/fortest13.o user/user/t_exit01.o \
-		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o user/user/sema1.o
+		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o user/user/sema1.o \
+		user/user/fstest.o
 
 ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
 			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
@@ -35,7 +36,8 @@ ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin 
 			user/user/ptest1.bin user/user/ptest2.bin user/user/ptest3.bin user/user/ptest4.bin user/user/ptest5.bin \
 			user/user/ptest6.bin user/user/ptest7.bin user/user/ptest8.bin user/user/ptest9.bin user/user/ptest10.bin \
 			user/user/ptest11.bin user/user/ptest12.bin user/user/ptest13.bin user/user/ptest13.gdb.bin  \
-			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin user/user/sema1.bin
+			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin user/user/sema1.bin \
+			user/user/fstest.bin
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
@@ -50,15 +52,15 @@ GDBBIN = user/init/init.gdb.bin	#added by mingxuan 2021-4-6
 include user/init/makefile	 #added by mingxuan 2019-5-19
 
 # All Phony Targets
-.PHONY : everything final image clean_user realclean_user disasm all buildimg install_elf  #modified by mingxuan 2019-5-19
+.PHONY : everything final image clean_user realclean_user disasm all buildimg # install_elf  modified by mingxuan 2019-5-19 modified by sundong 2023.5.18
 
 # everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-2-7
 # everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-8-8
-everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER) install_elf clean_user # modified by mingxuan 2021-8-21
+everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER)  clean_user #install_elf modified by mingxuan 2021-8-21 modified by sundong 2023.5.18
 
 all : realclean_user everything
 
-image : realclean_user everything buildimg_mbr tags install_elf build_fs # modified by mingxuan 2020-12-8
+image : realclean_user everything buildimg_mbr tags  build_fs #install_elf  modified by mingxuan 2020-12-8 modified by sundong 2023.5.18
 
 clean_user :
 	rm -f $(OBJSINIT) $(OBJSUSER) $(OBJSULIB)
@@ -66,9 +68,9 @@ clean_user :
 realclean_user :
 	rm -f $(ORANGESINIT) $(ORANGESUSER) $(OBJSULIB)
 
-install_elf:
-	cd user/init && \
-	make
+#install_elf:
+#	cd user/init && \
+#	make
 
 
 #--------------------------------------init-------------------------------------------------
@@ -316,6 +318,10 @@ user/user/ptest13.bin : user/user/fortest13.o  user/user/userstart.o $(OBJSULIB)
 user/user/ptest13.gdb.bin : user/user/fortest13.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS_user_gdb) -o $@ $^
 
+user/user/fstest.o:user/user/fstest.c user/include/stdio.h
+	$(CC) $(CFLAGS) -o $@ $<
+user/user/fstest.bin :user/user/fstest.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
 
 

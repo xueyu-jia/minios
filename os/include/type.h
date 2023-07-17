@@ -97,7 +97,7 @@ enum msgtype {
 
 	/// zcr added from ch9/e/include/const.h
 	/* FS */
-	OPEN, CLOSE, READ, WRITE, LSEEK, STAT, UNLINK,
+	OPEN, CLOSE, READ, WRITE, LSEEK, STAT, UNLINK,CREATEDIR, OPENDIR, DELETEDIR, SHOWDIR,
 	
 	/* message type for drivers */
 	DEV_OPEN = 1001,

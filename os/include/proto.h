@@ -345,3 +345,4 @@ PUBLIC int sys_init_block_dev();
 /*slab.c*/
 void *kmalloc(u32 size);
 int kfree(u32 object);
+PUBLIC int sys_init_char_dev();
