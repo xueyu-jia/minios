@@ -72,7 +72,8 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	pthread_attr_t true_attr;
 	if(attr == NULL)
 	{
-		true_attr.detachstate		= PTHREAD_CREATE_DETACHED;
+		//true_attr.detachstate		= PTHREAD_CREATE_DETACHED;
+		true_attr.detachstate		= PTHREAD_CREATE_JOINABLE;//modified by dongzhangqi 2023.5.4 Detachstate的默认设置应为joinable，允许调用pthread_join
 		true_attr.schedpolicy		= SCHED_FIFO;
 		true_attr.inheritsched		= PTHREAD_INHERIT_SCHED;
 		true_attr.scope			= PTHREAD_SCOPE_PROCESS;
@@ -122,6 +123,10 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		
 		/**************更新进程树标识info信息************************/
 		pthread_update_info(p_child,p_parent);
+
+		/**************修改子线程的线程属性************************/
+		p_child->task.attr = true_attr;    //added by dongzhangqi 2023.5.7
+		p_child->task.who_wait_flag = -1;
 		
 		/************修改子进程的名字***************/		
 		strcpy(p_child->task.p_name,"pthread");	// 所有的子进程都叫pthread
@@ -268,7 +273,7 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added by xw, 17/12/11
 	
-	p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整esp
+	p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整ebp
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added by xw, 17/12/11
 
@@ -301,3 +306,116 @@ PUBLIC pthread_t  kern_pthread_self()
 	return p_proc_current->task.pthread_id;
 }
 /* 				end added  				   */
+
+
+/**********************************************************
+*		pthread_exit			//add by dongzhangqi 2023.5.4
+*
+*************************************************************/
+PUBLIC void sys_pthread_exit()
+{
+    return do_pthread_exit(get_arg(1));
+}
+
+PUBLIC void do_pthread_exit(void *retval)
+{
+	return kern_pthread_exit(retval);
+}
+
+PUBLIC void kern_pthread_exit(void *retval)
+{
+	
+    PROCESS *p_proc = p_proc_current;
+
+	
+	if(p_proc->task.who_wait_flag != -1){ //有进程正在等待自己	
+    PROCESS *p_father = &proc_table[p_proc->task.who_wait_flag];
+
+	p_proc->task.who_wait_flag = -1;
+	
+	sys_wakeup(p_father);
+
+	}
+
+	//设置返回值
+	p_proc->task.retval = retval;
+
+	p_proc->task.stat = ZOMBY;
+
+	//设置返回值
+    //p_proc->task.regs.eax = (u32)retval;
+
+
+	return;
+
+}
+
+
+
+/**********************************************************
+*		pthread_join			//add by dongzhangqi 2023.5.4
+*
+*************************************************************/
+
+PUBLIC int sys_pthread_join()
+{
+    return do_pthread_join(get_arg(1), get_arg(2));
+}
+
+PUBLIC int do_pthread_join(pthread_t thread, void **retval)
+{
+	return kern_pthread_join(thread, retval);
+}
+
+PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
+{
+	PROCESS *p_proc_father = p_proc_current;//发起等待的进程
+
+	if(p_proc_father->task.info.child_t_num == 0)
+	{
+		disp_color_str("no child_pthread!! error\n", 0x74);
+		return -1;
+	}
+
+	PROCESS *p_proc_child = &proc_table[thread];//要等待的目标子线程
+
+	//子线程不是joinable的
+	if(p_proc_child->task.attr.detachstate != PTHREAD_CREATE_JOINABLE){
+		disp_color_str("pthread is not joinable!! error\n", 0x74);
+		return -1;
+	}
+	while(1){
+		if(p_proc_child->task.stat != ZOMBY){
+			//挂起，并告知被等待的线程，线程退出时再唤醒
+			p_proc_child->task.who_wait_flag = p_proc_father->task.pid;
+			wait_event(p_proc_father);
+		}
+		else{
+			//获取返回值
+			if(retval != NULL){
+				*retval = p_proc_child->task.retval;
+				
+			}
+
+			p_proc_father->task.info.child_t_num--;
+
+			p_proc_father->task.info.child_thread[thread] = 0;
+
+			//释放栈物理页
+			free_seg_phypage(p_proc_child->task.pid, MEMMAP_STACK);
+
+			//释放栈页表
+			free_seg_pagetbl(p_proc_child->task.pid, MEMMAP_STACK);
+
+			//释放PCB
+			free_PCB(p_proc_child);
+
+
+		}
+
+		return 0;
+
+	}	
+
+		
+} 

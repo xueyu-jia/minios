@@ -34,15 +34,19 @@
 #include "../include/fs.h"
 #include "../include/fs_misc.h"
 #include "../include/ahci.h"
+#include "../include/semaphore.h"
 
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
-PRIVATE volatile int hd_int_waiting_flag;
+PRIVATE volatile int hd_int_waiting_flag = 1;
 PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
 PRIVATE u8 *satabuf=NULL;
 PRIVATE u8 hd_LBA48_sup[4]={0};
 PUBLIC	struct hd_info hd_info[12];		//modified by xiaofeng 2022-8-6
+PRIVATE struct Semaphore hdque_mutex;
+PRIVATE struct Semaphore hdque_empty;
+PRIVATE struct Semaphore hdque_full;
 
 PRIVATE void init_hd_queue(HDQueue *hdq);
 PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p);
@@ -85,6 +89,9 @@ PUBLIC void init_hd()
 	
 	//init hd rdwt queue. added by xw, 18/8/27
 	init_hd_queue(&hdque);
+	ksem_init(&hdque_mutex, 1);
+	ksem_init(&hdque_empty, HDQUE_MAXSIZE);
+	ksem_init(&hdque_full, 0);
 }
 
 /*****************************************************************************
@@ -257,12 +264,15 @@ PUBLIC void hd_service()
 	
 	while(1)
 	{
-		//the hd queue is not empty when out_hd_queue return 1.
-		while(out_hd_queue(&hdque, &rwinfo))
-		{
-			hd_rdwt_real(rwinfo);
-			rwinfo->proc->task.stat = READY;
-		}
+		// //the hd queue is not empty when out_hd_queue return 1.
+		// while(out_hd_queue(&hdque, &rwinfo))
+		// {
+		// 	hd_rdwt_real(rwinfo);
+		// 	rwinfo->proc->task.stat = READY;
+		// }
+		out_hd_queue(&hdque, &rwinfo);
+		hd_rdwt_real(rwinfo);
+		rwinfo->proc->task.stat = READY;
 		yield();
 		
 		//disp_str("H ");
@@ -358,16 +368,12 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 	
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, &rwinfo);
-		p_proc_current->task.channel = &hdque;
-		p_proc_current->task.stat = SLEEPING;
-		sched();
+		wait_event(&hdque);
 		phys_copy(p->BUF, buffer, p->CNT);
 	} else {
 		phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, &rwinfo);
-		p_proc_current->task.channel = &hdque;
-		p_proc_current->task.stat = SLEEPING;
-		sched();
+		wait_event(&hdque);
 	}
 	
 	hdque_buf.addr = K_LIN2PHY((u32)buffer);
@@ -385,6 +391,9 @@ PUBLIC void init_hd_queue(HDQueue *hdq)
 
 PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p)
 {
+	ksem_wait(&hdque_empty, 1);
+	ksem_wait(&hdque_mutex, 1);
+
 	p->next = NULL;
 	if(hdq->rear == NULL) {	//put in the first node
 		hdq->front = hdq->rear = p;
@@ -392,12 +401,15 @@ PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p)
 		hdq->rear->next = p;
 		hdq->rear = p;
 	}
+
+	ksem_post(&hdque_mutex, 1);
+	ksem_post(&hdque_full, 1);
 }
 
 PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
 {
-	if (hdq->rear == NULL)
-		return 0;	//empty
+	ksem_wait(&hdque_full, 1);
+	ksem_wait(&hdque_mutex, 1);
 	
 	*p = hdq->front;
 	if (hdq->front == hdq->rear) {	//put out the last node
@@ -405,7 +417,9 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
 	} else {
 		hdq->front = hdq->front->next;
 	}
-	return 1;	//not empty
+
+	ksem_post(&hdque_mutex, 1);
+	ksem_post(&hdque_empty, 1);
 }
 //~xw
 
@@ -1148,21 +1162,28 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		return FALSE;
 	}
 
-	// Issue command
-	port->ci = 1<<slot;	
 	// Wait for completion
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
-			// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("\nport_is:");disp_int(port->is);
-			break;}
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
+	// 		// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 		// disp_str("\nport_is:");disp_int(port->is);
+	// 		break;}
+	// }
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		/*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
 	}
-
-	sata_wait_flag = 1;
  
 	// Check again
 	if (port->is & HBA_PxIS_TFES)

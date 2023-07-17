@@ -14,7 +14,7 @@ BOOT_FAT32_INFO		equ		0x5A		;位于boot中的FAT32配置信息的长度
 DATA_BUF_OFF 		equ  	0x2000		; 目录 被加载的缓冲区地址
 
 OSLOADER_SEG 		equ  	0x09000 	; 起始段地址     
-OSLOADER_SEG_OFF	equ		0x0100
+OSLOADER_SEG_OFF	equ		0x0400
 
 ;FAT_START_SECTOR 	equ  	0x820	  	; FAT表的起始扇区号  DWORD
 ;FAT_START_SECTOR 	equ  	0x1020	  	; FAT表的起始扇区号  DWORD ; for test 2020-9-10, mingxuan

@@ -1,3 +1,6 @@
+#ifndef PTHREAD_H
+#define PTHREAD_H
+
 #include "type.h"
 
 /* detachstate-线程分离状态 */
@@ -19,6 +22,7 @@ schedparam需要涉及到对timespec定义，
 
 typedef struct p_sched_param {
         /* DATA */
+        int sched_priority; //added by dongzhangqi 2023.5.8
 }SCHED_PARAM;
 
 /* inheritsched-线程的继承性 */
@@ -41,3 +45,4 @@ typedef struct p_pthread_attr_t{
         u32             stacksize;
 }pthread_attr_t;
 
+#endif

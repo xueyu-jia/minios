@@ -25,6 +25,9 @@ int free_4k(void* AdddrLin);
 
 int fork();			
 int pthread_create(int *thread, void *attr, void *entry, void *arg);	
+void pthread_exit(void *retval);
+int pthread_join(pthread_t pthread, void **retval);
+
 void udisp_int(int arg);
 void udisp_str(char* arg);
 
@@ -37,6 +40,8 @@ void udisp_str(char* arg);
 #define SEEK_SET	1
 #define SEEK_CUR	2
 #define SEEK_END	3
+
+#define  PRINT_BUF_LEN  1024
 
 int open(const char *pathname, int flags);		//added by xw, 18/6/19
 int close(int fd);								//added by xw, 18/6/19

@@ -25,7 +25,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		for(dev=0;dev<=MAXDEV;dev++){
 			for(fun=0;fun<=MAXFUN;fun++){				
 				out_dword(PCI_CONFIG_ADD,mk_pci_add(bus,dev,fun,0));//0号寄存器为device——id和vendor——id
-				if((in_dword(PCI_CONFIG_DATA)|0xffff)!=0xffff){//如果vendorid合法,表示该位置存在设备					
+				if((in_dword(PCI_CONFIG_DATA)&0xffff)!=0xffff){//如果vendorid合法,表示该位置存在设备					
 					out_dword(0xcf8,mk_pci_add(bus,dev,fun,2));//2号寄存器为classcode,设备类别
 					if((in_dword(PCI_CONFIG_DATA)>>16)==0x0106){//判断是否为AHCI
 						// disp_str("  bus: ");
@@ -81,6 +81,14 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
+	int task_tty_pid = kern_get_pid_byname("task_tty");
+
+	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+										ahci_info[0].ABAR, //物理地址
+										task_tty_pid,
+										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+
 	int initial_pid = kern_get_pid_byname("initial");
 
 	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
@@ -118,7 +126,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}
 	
-	// HBA->ghc |=(1<<1);//enable interrupt
+	HBA->ghc |=(1<<1);//enable interrupt
 	sata_irq=ahci_info[0].irq_info&0xff;
 	if(sata_irq<=16){
 		put_irq_handler(sata_irq, sata_handler);
@@ -181,8 +189,11 @@ PRIVATE void sata_handler(int irq)
 		index++;
 		is >>= 1;
 	}
-	
-	sata_wait_flag = 0;
+	if (kernel_initial == 1) {
+		sata_wait_flag = 0;
+	} else {
+		sys_wakeup(&sata_wait_flag);
+	}
 	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
 
 	return;
@@ -382,19 +393,29 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 		return FALSE;
 	}
  
-	port->ci = 1<<slot;	// Issue command
  
 	// Wait for completion
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)) {
-			// disp_str("\nidentity_success,transfer byte count:");disp_int(cmdheader->prdbc);
-			// disp_str("\nport_is:");disp_int(port->is);
-			break;
-		}
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)) {
+	// 		// disp_str("\nidentity_success,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 		// disp_str("\nport_is:");disp_int(port->is);
+	// 		break;
+	// 	}
+	// }
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
 	}
+
 	// if (port->is & HBA_PxIS_TFES)
 	// {
 	// 	// disp_str("Read disk error,restart port\n");
@@ -591,7 +612,7 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	}
 
 	// Issue command
-	port->ci = 1<<slot;	
+	// port->ci = 1<<slot;	
 	
 
 
@@ -600,24 +621,34 @@ PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
 	// disp_str("\nWait for completion");
 	// disp_str("\nslot:");
 	// disp_int(slot);
-	while (sata_wait_flag)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-		// if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-		// 	// disp_str("port_is:");disp_int(port->is);
-		// 	break;}
+	// while (1)
+	// {
+	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+	// 	// in the PxIS port field as well (1 << 5)
+	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+	// 	// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+	// 	// 	// disp_str("port_is:");disp_int(port->is);
+	// 	 	break;}
 		
-		// disp_int((port->ci)>>slot);
-		// if (port->is & HBA_PxIS_TFES)	// Task file error
-		// {
-		// 	disp_str("Read disk error\n");
-		// 	return FALSE;
-		// }
+	// 	// disp_int((port->ci)>>slot);
+	// 	// if (port->is & HBA_PxIS_TFES)	// Task file error
+	// 	// {
+	// 	// 	disp_str("Read disk error\n");
+	// 	// 	return FALSE;
+	// 	// }
+	// }
+	// sata_wait_flag = 1;
+	if (kernel_initial == 1) {
+		port->ci = 1<<slot;	// Issue command
+		while (sata_wait_flag);
+		sata_wait_flag = 1;
+	} else {
+		disable_int();
+		port->ci = 1<<slot;	// Issue command
+		wait_event(&sata_wait_flag);
+		enable_int();
 	}
-	sata_wait_flag = 1;
  
 	// Check again
 	// if (port->is & HBA_PxIS_TFES)

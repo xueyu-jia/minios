@@ -68,6 +68,8 @@
 #define _NR_mount						57
 #define _NR_umount						58
 #define _NR_init_block_dev				59
+#define _NR_pthread_exit                60
+#define _NR_pthread_join                61
 
 #define INT_VECTOR_SYS_CALL             0x90
 

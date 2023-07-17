@@ -53,7 +53,7 @@ PUBLIC int vsprintf(char *buf, const char *fmt, va_list args)
 	unsigned int	m;
 	int d;
 
-	char	inner_buf[256];
+	char	inner_buf[PRINT_BUF_LEN];
 	char	cs;
 	int	align_nr;
 

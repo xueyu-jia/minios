@@ -9,9 +9,7 @@ SHELL := /bin/bash
 # 活动分区所在的扇区号对应的字节数
 # OSBOOT_OFFSET = $(OSBOOT_SEC)*512
 OSBOOT_OFFSET = 1048576
-# FAT32规范规定os_boot的前89个字节是FAT32的配置信息
-# OSBOOT_START_OFFSET = OSBOOT_OFFSET + 90
-OSBOOT_START_OFFSET = 1048666 # for test12.img
+
 
 # added by mingxuan 2020-10-29
 # Offset of fs in hd
@@ -33,12 +31,49 @@ AR		= ar
 
 # added by mingxuan 2020-10-22
 MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
+
 #added by sundong 写镜像用,用losetup -f查看
-FREE_LOOP_ID = 15
+FREE_LOOP =$(shell sudo losetup -f)
+#added by sundong 2023.4.25
+ROOT_FS_PART=$(FREE_LOOP)p2
+GRUB_INSTALL_PART=$(FREE_LOOP)p5
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
+#可选值为 true  false
 USING_GRUB_CHAINLOADER = false
+#选择启动分区的文件系统格式，目前仅支持fat32和orangfs
+BOOT_PART_FS_TYPE= fat32
 
+ifeq ($(BOOT_PART_FS_TYPE),fat32)
+BOOT_PART_FS_MAKER = mkfs.vfat
+BOOT_PART_FS_MAKE_FLAG = -F 32 -s8
+CP = cp
+CP_FLAG = -fv
+BOOT =boot.bin
+BOOT_SIZE = 420
+# FAT32规范规定os_boot的前89个字节是FAT32的配置信息
+# OSBOOT_START_OFFSET = OSBOOT_OFFSET + 90
+OSBOOT_START_OFFSET = 1048666 # 2048*512+90
+#OSBOOT_START_OFFSET=2097242 # for test12.img
+BOOT_PART=$(FREE_LOOP)p1
+BOOT_PART_MOUNTPOINT = iso
+endif
+
+ifeq ($(BOOT_PART_FS_TYPE),orangefs)
+BOOT_PART_FS_MAKER = ./format
+BOOT_PART_FS_MAKE_FLAG = 
+CP = ./o_copy
+CP_FLAG = 
+BOOT=orangefs_boot.bin
+BOOT_SIZE =512
+# orangefs boot直接放在分区的0号扇区
+# OSBOOT_START_OFFSET = OSBOOT_OFFSET 
+OSBOOT_START_OFFSET =2097152 #4096*512
+#p2分区格式化为orangefs
+BOOT_PART=$(FREE_LOOP)p2
+BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
+endif
+ 
 include ./os/Makefile
 include	./user/Makefile
 
@@ -50,11 +85,34 @@ include	./user/Makefile
 nop :
 	@echo "why not \`make image' huh? :)"
 
-everything : $(MKFS)
+#everything : $(MKFS)
 
 all : everything
 
-image : everything buildimg_mbr build_fs # modified by mingxuan 2020-12-8
+image : everything build_fs buildimg_mbr # 调整了下build_fs和buildimg_mbr的执行顺序 modified by sundong 2023.4.25 
+
+# added by mingxuan 2020-10-22
+build_fs :
+#	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
+
+	sudo losetup -P $(FREE_LOOP) b.img
+
+
+	sudo mkfs.vfat -F 32 $(FREE_LOOP)p5;
+
+	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
+		sudo mount  $(GRUB_INSTALL_PART) iso && \
+		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
+		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
+		sudo umount iso ;\
+	fi
+
+
+#	sudo ./o_list $(FREE_LOOP)p1
+	sudo losetup -d $(FREE_LOOP)
+
+#	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 
 buildimg :
 	dd if=os/boot/floppy/boot.bin of=a.img bs=512 count=1 conv=notrunc	# modified by mingxuan 2019-5-17
@@ -71,90 +129,95 @@ buildimg :
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
 	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
-	if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
+	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
 		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
 	fi
-	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-	sudo mkfs.vfat -F 32 -s8 /dev/loop$(FREE_LOOP_ID)p1	# modified by mingxuan 2021-2-28
+	sudo losetup -P $(FREE_LOOP) b.img
+	sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG) $(BOOT_PART)  #$(FREE_LOOP)p2	# modified by mingxuan 2021-2-28
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
-	dd if=os/boot/mbr/boot.bin of=b.img bs=1 count=420 seek=$(OSBOOT_START_OFFSET) conv=notrunc
+	dd if=os/boot/mbr/$(BOOT) of=b.img bs=1 count=$(BOOT_SIZE) seek=$(OSBOOT_START_OFFSET) conv=notrunc
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
+	#初始化根文件系统
+	sudo ./format $(ROOT_FS_PART)
+#orangefs有专用的cp 不需要挂载到linux目录下，其他如fat32需要挂载
+	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
+		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
+	fi
 
-	sudo mount /dev/loop$(FREE_LOOP_ID)p1 iso/
-
-	sudo cp -fv os/boot/mbr/loader.bin iso/
-	sudo cp -fv kernel.bin iso/
+	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
+	sudo $(CP) $(CP_FLAG) kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
 
 	# 在启动盘放置init.bin启动文件
-	sudo cp -fv user/init/init.bin iso/
+	sudo $(CP) $(CP_FLAG) user/init/init.bin $(BOOT_PART_MOUNTPOINT)/init.bin
 
 	# 在此处添加用户程序的文件
-	sudo cp -fv user/user/shell_0.bin iso/
-	sudo cp -fv user/user/shell_1.bin iso/
-	sudo cp -fv user/user/shell_2.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/shell_0.bin $(BOOT_PART_MOUNTPOINT)/shell_0.bin
+	sudo $(CP) $(CP_FLAG) user/user/shell_1.bin $(BOOT_PART_MOUNTPOINT)/shell_1.bin
+	sudo $(CP) $(CP_FLAG) user/user/shell_2.bin $(BOOT_PART_MOUNTPOINT)/shell_2.bin
 
-	sudo cp -fv user/user/test_0.bin iso/
-	sudo cp -fv user/user/test_1.bin iso/
-	sudo cp -fv user/user/test_2.bin iso/	# added by mingxuan 2021-2-28
-	sudo cp -fv user/user/test_3.bin iso/
-	sudo cp -fv user/user/test_4.bin iso/
-	sudo cp -fv user/user/test_5.bin iso/
-	sudo cp -fv user/user/test_6.bin iso/
-	sudo cp -fv user/user/test_7.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/test_0.bin $(BOOT_PART_MOUNTPOINT)/test_0.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_1.bin $(BOOT_PART_MOUNTPOINT)/test_1.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_2.bin $(BOOT_PART_MOUNTPOINT)/test_2.bin	# added by mingxuan 2021-2-28
+	sudo $(CP) $(CP_FLAG) user/user/test_3.bin $(BOOT_PART_MOUNTPOINT)/test_3.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_4.bin $(BOOT_PART_MOUNTPOINT)/test_4.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_5.bin $(BOOT_PART_MOUNTPOINT)/test_5.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_6.bin $(BOOT_PART_MOUNTPOINT)/test_6.bin
+	sudo $(CP) $(CP_FLAG) user/user/test_7.bin $(BOOT_PART_MOUNTPOINT)/test_7.bin
 
-	sudo cp -fv user/user/ptest1.bin iso/
-	sudo cp -fv user/user/ptest2.bin iso/
-	sudo cp -fv user/user/ptest3.bin iso/
-	sudo cp -fv user/user/ptest4.bin iso/
-	sudo cp -fv user/user/ptest5.bin iso/
-	sudo cp -fv user/user/ptest6.bin iso/
-	sudo cp -fv user/user/ptest7.bin iso/
-	sudo cp -fv user/user/ptest8.bin iso/
-	sudo cp -fv user/user/ptest9.bin iso/
-	sudo cp -fv user/user/ptest10.bin iso/
-	sudo cp -fv user/user/ptest11.bin iso/
-	sudo cp -fv user/user/ptest12.bin iso/
-	sudo cp -fv user/user/ptest13.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/ptest1.bin $(BOOT_PART_MOUNTPOINT)/ptest1.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest2.bin $(BOOT_PART_MOUNTPOINT)/ptest2.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest3.bin $(BOOT_PART_MOUNTPOINT)/ptest3.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest4.bin $(BOOT_PART_MOUNTPOINT)/ptest4.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest5.bin $(BOOT_PART_MOUNTPOINT)/ptest5.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest6.bin $(BOOT_PART_MOUNTPOINT)/ptest6.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest7.bin $(BOOT_PART_MOUNTPOINT)/ptest7.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest8.bin $(BOOT_PART_MOUNTPOINT)/ptest8.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest9.bin $(BOOT_PART_MOUNTPOINT)/ptest9.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest10.bin $(BOOT_PART_MOUNTPOINT)/ptest10.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest11.bin $(BOOT_PART_MOUNTPOINT)/ptest11.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest12.bin $(BOOT_PART_MOUNTPOINT)/ptest12.bin
+	sudo $(CP) $(CP_FLAG) user/user/ptest13.bin $(BOOT_PART_MOUNTPOINT)/ptest13.bin
+
+
+	# added by dzq 2023-4-12
+	sudo $(CP) $(CP_FLAG) user/user/t_exit01.bin $(BOOT_PART_MOUNTPOINT)/t_exit01.bin
+
+
+	# added by dzq
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr01.bin $(BOOT_PART_MOUNTPOINT)/t_pthr01.bin
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr02.bin $(BOOT_PART_MOUNTPOINT)/t_pthr02.bin
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr03.bin $(BOOT_PART_MOUNTPOINT)/t_pthr03.bin
+
 
 
 	# added by yingchi 2022.01.05
-	# sudo cp -fv user/user/myTest.bin iso/
+#	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
 	
 	# added by mingxuan 2021-2-28
-	sudo cp -fv user/user/sig_0.bin iso/
-	sudo cp -fv user/user/sig_1.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/sig_0.bin $(BOOT_PART_MOUNTPOINT)/sig_0.bin
+	sudo $(CP) $(CP_FLAG) user/user/sig_1.bin $(BOOT_PART_MOUNTPOINT)/sig_1.bin
 
+	sudo $(CP) $(CP_FLAG) user/user/sema1.bin $(BOOT_PART_MOUNTPOINT)/sema1.bin
 
-	sudo umount iso/
-
-	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
-
-# added by mingxuan 2020-10-22
-build_fs:
-	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
-
-	sudo losetup -P /dev/loop$(FREE_LOOP_ID) b.img
-	sudo mkfs.vfat -F 32 /dev/loop$(FREE_LOOP_ID)p6;
-
-	if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
-		sudo mount /dev/loop$(FREE_LOOP_ID)p6 iso && \
-		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  /dev/loop$(FREE_LOOP_ID) &&\
-		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
-		sudo umount iso ;\
+	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
+		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
 	fi
 
-	sudo losetup -d /dev/loop$(FREE_LOOP_ID)
+	sudo losetup -d $(FREE_LOOP)
+#	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-#	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
+
 
 # mkfs_orange
-fs_flags/orange_flag.bin : fs_flags/orange_flag.asm
-	$(ASM) -o $@ $<
+#fs_flags/orange_flag.bin : fs_flags/orange_flag.asm
+#	$(ASM) -o $@ $<
 
 # mkfs_fat32
-fs_flags/fat32_flag.bin : fs_flags/fat32_flag.asm
-	$(ASM) -o $@ $<
+#fs_flags/fat32_flag.bin : fs_flags/fat32_flag.asm
+#	$(ASM) -o $@ $<
 
 # generate tags file. added by xw, 19/1/2
 tags :

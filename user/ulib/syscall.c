@@ -99,8 +99,8 @@ char* getcwd(char* buf, int size) {
 	return _syscall2(_NR_getcwd, buf, size);
 }
 
-int wait_() {
-	return _syscall0(_NR_wait);
+int wait_(int *status) {
+	return _syscall1(_NR_wait, status);
 }
 
 void exit(int status) {
@@ -241,4 +241,12 @@ int umount(const char *target) {
 
 int init_block_dev(int drive) {
 	return _syscall1(_NR_init_block_dev, drive);
+}
+
+void pthread_exit(void *retval){
+	return _syscall1(_NR_pthread_exit, retval);
+}
+
+int pthread_join(pthread_t thread, void **retval){
+	return _syscall2(_NR_pthread_join, thread, retval);
 }

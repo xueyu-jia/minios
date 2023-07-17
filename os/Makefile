@@ -51,7 +51,8 @@ LDFLAGS_kernel_gdb	= -m elf_i386 -Ttext $(ENTRYPOINT)
 
 # This Program
 ORANGESBOOT	= os/boot/floppy/boot.bin os/boot/floppy/loader.bin \
-			  os/boot/mbr/mbr.bin os/boot/mbr/boot.bin os/boot/mbr/loader.bin #modified by mingxuan 2019-5-17
+			  os/boot/mbr/mbr.bin os/boot/mbr/boot.bin os/boot/mbr/orangefs_boot.bin os/boot/mbr/loader.bin #modified by mingxuan 2019-5-17
+
 
 ORANGESKERNEL	= kernel.bin
 
@@ -69,13 +70,15 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
 			os/ipc/shm.o os/ipc/msg.o \
 			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
-			os/kernel/mount.o
+			os/kernel/mount.o os/kernel/slab.o
 			
 #added by mingxuan 2021-2-28
 
 OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/stringc.o os/klib/stringasm.o os/klib/string.o
 
 GDBBIN = kernel.gdb.bin
+
+include os/boot/mbr/Makefile
 
 .PHONY : everything final image clean_os realclean_os disasm all buildimg #modified by mingxuan 2019-5-19
 
@@ -95,7 +98,7 @@ clean_os :
 	rm -f $(OBJS) $(OBJSKLIB)
 
 realclean_os :
-	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) # modified by mingxuan 2021-2-7
+	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS) # modified by mingxuan 2021-2-7
 
 disasm :
 	$(DASM) $(DASMFLAGS) $(ORANGESKERNEL) > $(DASMOUTPUT)
@@ -109,16 +112,16 @@ os/boot/floppy/loader.bin : os/boot/floppy/loader.asm os/boot/floppy/include/loa
 	$(ASM) $(ASMBFLAGS) -o $@ $<
 
 # added by mingxuan 2019-5-17
-os/boot/mbr/mbr.bin : os/boot/mbr/mbr.asm
-	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
+#os/boot/mbr/mbr.bin : os/boot/mbr/mbr.asm
+#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
 
 # added by mingxuan 2019-5-17
-os/boot/mbr/boot.bin : os/boot/mbr/boot.asm
-	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
+#os/boot/mbr/boot.bin : os/boot/mbr/boot.asm
+#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
 
 # added by mingxuan 2019-5-17
-os/boot/mbr/loader.bin : os/boot/mbr/loader.asm os/boot/mbr/include/loader.inc os/boot/mbr/include/fat32.inc os/boot/mbr/include/pm.inc
-	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
+#os/boot/mbr/loader.bin : os/boot/mbr/loader.asm os/boot/mbr/include/loader.inc os/boot/mbr/include/fat32.inc os/boot/mbr/include/pm.inc
+#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
 
 $(ORANGESKERNEL) : $(OBJS)
 	$(LD) $(LDFLAGS_kernel) -o $(ORANGESKERNEL) $(OBJS)
@@ -377,4 +380,7 @@ os/kernel/ahci.o: os/kernel/ahci.c os/include/ahci.h
 	$(CC) $(CFLAGS) -o $@ $<
 
 os/kernel/mount.o: os/kernel/mount.c os/include/mount.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+os/kernel/slab.o: os/kernel/slab.c os/include/slab.h os/include/buddy.h
 	$(CC) $(CFLAGS) -o $@ $<

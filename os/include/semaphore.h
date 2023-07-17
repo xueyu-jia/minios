@@ -10,7 +10,7 @@
 #include "spinlock.h"
 
 /*信号量*/
-struct Semaphore
+volatile struct Semaphore
 {
    int value;
    int maxValue;

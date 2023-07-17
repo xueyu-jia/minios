@@ -37,9 +37,6 @@ typedef struct malloced    //已经kmalloc的内存块的记录表，供kfree时
     malloc_block mtable[MAX_MBLOCK];
 } malloced;
 
-
-u32 kmem_malloc(u32 size);
-int kfree(u32 addr);
 void kmem_init();
 
 extern free_kmem kmem;

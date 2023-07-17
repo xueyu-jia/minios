@@ -4,8 +4,12 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+#ifndef KERNEL_PROC_H
+#define KERNEL_PROC_H
 
 #include "fs.h" //added by ran
+#include "pthread.h"
+#include "protect.h"
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -64,9 +68,12 @@
 												 * it is not freed yet.
 												 * added by xw, 18/12/19
 												 */
-enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE};	//add FREE state which means this PCB is free, added by mingxuan 2021-9-21
+//enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE};	//add FREE state which means this PCB is free, added by mingxuan 2021-9-21
 
-enum wait_exit_flag	{NORMAL,WAITING,ZOMBY};    		//used for exit and wait //added by mingxuan 2021-1-6
+enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE,WAITING,ZOMBY};//combine wai_flag into proc_stat 2023.6.2 changed by dongzhangqi
+
+enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 2021-1-6
+														//deleted by dongzhangqi 2023-6-2
 
 #define NR_CHILD_MAX (NR_PCBS-NR_K_PCBS-1)    //定义最多子进程/线程数量	//add by visual 2016.5.26
 #define TYPE_PROCESS	0//进程//add by visual 2016.5.26
@@ -182,6 +189,14 @@ typedef struct s_proc {
 	u32 sig_arg[NR_SIGNALS];
 	void* _Hanlder;
 
+	//add by dongzhangqi 2023.5.8
+	//线程相关
+	pthread_attr_t attr;           
+	void * retval;
+	u32 who_wait_flag;   
+
+	
+
 }PROCESS_0;
 
 //new PROCESS struct with PCB and process's kernel stack
@@ -207,3 +222,5 @@ typedef struct s_task {
 
 //added by zcr
 #define proc2pid(x) (x - proc_table)
+
+#endif

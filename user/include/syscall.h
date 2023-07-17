@@ -68,6 +68,8 @@
 #define _NR_mount						57
 #define _NR_umount						58
 #define _NR_init_block_dev				59
+#define _NR_pthread_exit                60
+#define _NR_pthread_join                61
 
 #define INT_VECTOR_SYS_CALL             0x90
 
@@ -168,7 +170,7 @@ int deletedir(const char* dirname);
 int readdir(const char* dirname, unsigned int dir[3], char* filename);
 int chdir(const char* path);
 char* getcwd(char* buf, int size);
-int wait_();
+int wait_(int *status);
 void exit(int status);
 int _signal(int sig, void* handler, void* _Handler);	//"user/ulib/signal.c" 中提供了上层封装
 int sigsend(int pid, Sigaction* sigaction_p);
@@ -203,5 +205,7 @@ int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
 int init_block_dev(int drive);
+void pthread_exit(void *retval);
+int pthread_join(pthread_t pthread, void **retval);
 
 #endif

@@ -590,7 +590,8 @@ void main(int arg,char *argv[])
 			{	//father
 
                 int exit_status;
-                exit_status = wait_();				
+                //exit_status = wait_();
+                wait_(&exit_status);//modified by dongzhangqi 2023.4.20 因wait的调整而修改
 				printf("exit_status:%d", exit_status);
 			}
 			else

@@ -8,6 +8,9 @@
 #include "signal.h"  //modified by mingxuan 2021-8-7
 #include "msg.h" //added by yingchi 2022.01.07
 #include "spinlock.h"
+#include "tty.h"
+#include "proc.h"
+
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
@@ -34,7 +37,9 @@ PUBLIC void	init_prot();
 PUBLIC u32	seg2phys(u16 seg);
 
 /* klib.c */
+PUBLIC void disp_int(int input);
 PUBLIC void	delay(int time);
+PUBLIC u32 get_ring_level();
 
 /* kernel.asm */
 PUBLIC void  sys_call();    //int_handler
@@ -197,6 +202,8 @@ int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
 int init_block_dev(int drive);
+void pthread_exit(void *retval);
+int pthread_join(pthread_t pthread, void **retval);
 
 
 /* syscallc.c */		//edit by visual 2016.4.6
@@ -228,6 +235,9 @@ PUBLIC void sys_test();//added by cjj 2021-12-25
 PUBLIC int sys_pthread_create();		//add by visual 2016.4.11
 PUBLIC pthread_t  sys_pthread_self();		//added by ZengHao & MaLinhan 21.12.23
 
+PUBLIC void sys_pthread_exit();         //added by dongzhangqi 2023.5.4
+PUBLIC int sys_pthread_join();
+
 /* pthread_mutex.c pthread_cond.c */
 PUBLIC int sys_pthread_mutex_init ();//added by ZengHao & MaLinhan 2021.12.23
 PUBLIC int sys_pthread_mutex_destroy();//added by ZengHao & MaLinhan 2021.12.23
@@ -253,6 +263,7 @@ PUBLIC void* va2la(int pid, void* va);
 
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
+PUBLIC void wait_event(void* event);
 
 /* testfunc.c */
 /*  //deleted by mingxuan 2021-8-13
@@ -311,7 +322,18 @@ PUBLIC  int lin_mapping_phy(u32 AddrLin,u32 phy_addr,u32 pid,u32 pde_Attribute,u
 PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
 /*memman.c*/
+PUBLIC u32 phy_kmalloc(u32 size);
+PUBLIC u32 phy_kfree(u32 phy_addr);
+PUBLIC u32 kern_kmalloc(u32 size);
+PUBLIC u32 kern_kfree(u32 addr);
+PUBLIC u32 phy_kmalloc_4k();
+PUBLIC u32 phy_kfree_4k(u32 phy_addr);
+PUBLIC u32 kern_kmalloc_4k();
+PUBLIC u32 kern_kfree_4k(u32 addr);
+PUBLIC u32 phy_malloc_4k();
 PUBLIC u32 phy_free_4k(u32 phy_addr);
+PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
+PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
 
 /*mount.c */
 PUBLIC int sys_mount();
@@ -319,3 +341,7 @@ PUBLIC int sys_umount();
 
 /*fs.c*/
 PUBLIC int sys_init_block_dev();
+
+/*slab.c*/
+void *kmalloc(u32 size);
+int kfree(u32 object);
