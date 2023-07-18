@@ -60,13 +60,13 @@ BOOT_PART=$(FREE_LOOP)p1
 BOOT_PART_MOUNTPOINT = iso
 BOOT_IMG = fat32_boot.img
 GRUB_CONFIG=fat32_grub.cfg
+BOOT_FLAGS= -DFAT32_BOOT
 endif
 
 ifeq ($(BOOT_PART_FS_TYPE),orangefs)
 BOOT_PART_FS_MAKER = ./format
 BOOT_PART_FS_MAKE_FLAG = 
 CP = ./o_copy
-CP_FLAG = 
 BOOT=orangefs_boot.bin
 BOOT_SIZE =512
 # orangefs boot直接放在分区的0号扇区
@@ -78,6 +78,7 @@ BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
 #镜像；不用文件系统作为启动分区时镜像是不同的
 BOOT_IMG=orangefs_boot.img
 GRUB_CONFIG=orangefs_grub.cfg
+BOOT_FLAGS= -DORANGE_BOOT
 
 endif
  

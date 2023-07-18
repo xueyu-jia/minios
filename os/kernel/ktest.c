@@ -614,7 +614,6 @@ void initial()
 	init_block_dev(SATA_BASE);		//added by xiaofeng
 	init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
 	mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
-
 /* 	createdir("test");
 	createdir("test/dir");
 	int fd = open("test/dir/file",O_CREAT|O_RDWR);
@@ -654,7 +653,12 @@ void initial()
 	//orangefs_test();
 	//while (1);
 	
+#ifdef FAT32_BOOT
 	execve("fat0/init.bin",NULL,NULL);
+#endif
+#ifdef ORANGE_BOOT
+	execve("init.bin",NULL,NULL);
+#endif
 	//execve("fat0/test_0.bin");
 	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
 
