@@ -74,6 +74,13 @@ START:
 	mov		es, ax ;deleted by mingxuan 2020-9-13
 	mov		ss, ax
 	mov		fs,	ax
+
+		; 清屏
+;	mov		ax, 0600h		; AH = 6,  AL = 0h
+;	mov		bx, 0700h		; 黑底白字(BL = 07h)
+;	mov		cx, 0			; 左上角: (0, 0)
+;	mov		dx, 0184fh		; 右下角: (80, 50)
+;	int		10h				; int 10h
 ;	pusha
 ;	mov		dx, 0184fh		; 右下角: (80, 50)
 ;	int		10h				; int 10h
@@ -116,9 +123,11 @@ START:
 	lea 	bp,[INODE_DATA_OFF+si]
 	;eax 存放根节点的起始扇区
 	mov 	eax,[bp+INODE_I_START_SECT]
+	lea     eax,[eax*8]
 	add		eax,[OffsetOfActiPartStartSec]
 	;ecx 根节点占用的扇区数目，也是外循环的此时
 	mov		ecx,[bp+INODE_I_NR_SECTS]
+	lea 	ecx,[ecx*8]
 	mov		dx,	DATA_BUF_OFF
 	mov		si, LoaderName
 ;这个循环负责遍历根目录所有的扇区
@@ -176,8 +185,9 @@ _FOUND_LOADER:
 	div 	ebx
 	mov 	ecx,eax
 	inc 	ecx ;上取整，cx存储的是实际占用的扇区数
-	mov 	eax,[OffsetOfActiPartStartSec]
-	add 	eax,[bp+INODE_I_START_SECT]
+	mov 	eax,[bp+INODE_I_START_SECT]
+	lea     eax,[eax*8]
+	add 	eax,[OffsetOfActiPartStartSec]
 	mov 	bp,BaseOfStack
 	;loader 加载的段地址
 	mov		bx,	OSLOADER_SEG
@@ -200,7 +210,7 @@ _FOUND_LOADER:
 Read_SB:
 	pusha
 	mov		eax,[OffsetOfActiPartStartSec]
-	add		eax,1
+	add		eax,8
 	mov		dword[bp-DAP_SECTOR_LOW], eax
 	mov		bx,	SB_DATA_OFF
 	mov		word[bp-DAP_BUFFER_OFF], bx
@@ -212,10 +222,12 @@ Read_Inode_Area:
 	pusha
 	mov 	bp,SB_DATA_OFF
 	mov		eax,[OffsetOfActiPartStartSec]
-	add		eax,2
+	add		eax,16
 	mov		ebx,[bp+SB_NR_IMAP_SECTS]
+	lea		ebx,[ebx*8]
 	add		eax,ebx
 	mov		ebx,[bp+SB_NR_SMAP_SECTS]
+	lea		ebx,[ebx*8]
 	add		ebx,eax
 ;	mov		ecx,[bp+SB_NR_INODE_SECTS]
 	mov		ecx,1;根目录对应着1号inode，存放在inode区域的第一个扇区中，因此只读1个扇区

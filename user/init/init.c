@@ -758,9 +758,9 @@ void main()
 
 void main(int arg,char *argv[])
 {
-	int stdin = open("dev_tty0",O_RDWR);
-	int stdout= open("dev_tty0",O_RDWR);
-	int stderr= open("dev_tty0",O_RDWR);
+	int stdin = open("/dev/tty0",O_RDWR);
+	int stdout= open("/dev/tty0",O_RDWR);
+	int stderr= open("/dev/tty0",O_RDWR);
 
 	printf("init:toatal_mem_size=%x\n",total_mem_size());
 

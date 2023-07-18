@@ -645,7 +645,7 @@ STATE OpenFile(SUPER_BLOCK *psb, PCHAR filename,UINT mode)
 	//disp_str("index:");
 	//deint(i);
 	p_proc_current->task.filp[fd] ->fd_node.fd_file = &f_desc_table_fat[i];
-
+	p_proc_current->task.filp[fd] ->dev_index = -1; //add by sundong 2023.5.18
 	return fd;
 }
 
@@ -924,7 +924,7 @@ int write_adapter(int fd,BYTE buf[],DWORD length)
 	return WriteFile(pvfs->sb, fd, buf, length);
 }
 
-//added by ran
+// added by ran
 int close_adapter(int fd)
 {
 	int index = p_proc_current->task.filp[fd]->dev_index;
@@ -932,67 +932,75 @@ int close_adapter(int fd)
 	return CloseFile(pvfs->sb, fd);
 }
 
-//added by ran
-int delete_adapter(PCHAR filename)
+// added by ran
+int delete_adapter(struct super_block *sb, PCHAR filename)
 {
-	int index = get_index(filename);
-	struct vfs *pvfs = &vfs_table[index];
-	return DeleteFile(pvfs->sb, filename);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(filename);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return DeleteFile(sb, filename);
 }
 
-//added by ran
-int deletedir_adapter(PCHAR dirname)
+// added by ran
+int deletedir_adapter(struct super_block *sb, PCHAR dirname)
 {
-	int index = get_index(dirname);
-	struct vfs *pvfs = &vfs_table[index];
-	return DeleteDir(pvfs->sb, dirname);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(dirname);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return DeleteDir(sb, dirname);
 }
 
-//added by ran
-int createdir_adapter(PCHAR dirname)
+// added by ran
+int createdir_adapter(struct super_block *sb, PCHAR dirname)
 {
-	int index = get_index(dirname);
-	struct vfs *pvfs = &vfs_table[index];
-	return CreateDir(pvfs->sb, dirname);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(dirname);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return CreateDir(sb, dirname);
 }
 
-//added by ran
-int create_adapter(PCHAR filename)
+// added by ran
+int create_adapter(struct super_block *sb, PCHAR filename)
 {
-	int index = get_index(filename);
-	struct vfs *pvfs = &vfs_table[index];
-	return CreateFile(pvfs->sb, filename);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(filename);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return CreateFile(sb, filename);
 }
 
-//added by ran
-int open_adapter(PCHAR filename,UINT mode)
+// added by ran
+int open_adapter(struct super_block *sb, PCHAR filename, UINT mode)
 {
-	int index = get_index(filename);
-	struct vfs *pvfs = &vfs_table[index];
-	return OpenFile(pvfs->sb, filename, mode);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(filename);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return OpenFile(sb, filename, mode);
 }
 
-//added by ran
-int opendir_adapter(PCHAR dirname)
+// added by ran
+int opendir_adapter(struct super_block *sb, PCHAR dirname)
 {
-	int index = get_index(dirname);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(dirname); */
 	return OpenDir(dirname);
 }
 
-//added by ran
-int readdir_adapter(PCHAR dirname, DWORD dir[3], char* filename)
+// added by ran
+int readdir_adapter(struct super_block *sb, PCHAR dirname, DWORD dir[3], char *filename)
 {
-	int index = get_index(dirname);
-	struct vfs *pvfs = &vfs_table[index];
-	return ReadDir(pvfs->sb, dirname, dir, filename);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(dirname);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return ReadDir(sb, dirname, dir, filename);
 }
 
-//added by ran
-int chdir_adapter(const char *path)
+// added by ran
+int chdir_adapter(struct super_block *sb, const char *path)
 {
-	int index = get_index(path);
-	struct vfs *pvfs = &vfs_table[index];
-	return ChangeDir(pvfs->sb, path);
+	// delete by sundong 2023.5.19
+	/* 	int index = get_index(path);
+		struct vfs *pvfs = &vfs_table[index]; */
+	return ChangeDir(sb, path);
 }
 
 PRIVATE void mkfs_fat() {

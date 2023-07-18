@@ -16,10 +16,10 @@ OSBOOT_OFFSET = 1048576
 # 文件系统标志所在扇区号 = 文件系统所在分区的第1个扇区 + 1
 # ORANGE_FS_SEC = 6144 + 1 = 6145
 # 文件系统标志所在扇区 = $(ORANGE_FS_SEC)*512
-ORANGE_FS_START_OFFSET = 3146240
+#ORANGE_FS_START_OFFSET = 3146240
 # FAT32_FS_SEC = 53248 + 1 = 53249
 # 文件系统标志所在扇区 = $(ORANGE_FS_SEC)*512
-FAT32_FS_START_OFFSET = 27263488
+#FAT32_FS_START_OFFSET = 27263488
 
 
 # Programs, flags, etc.
@@ -30,7 +30,8 @@ LD		= ld
 AR		= ar
 
 # added by mingxuan 2020-10-22
-MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
+# added by sundong 2023-7-10
+#MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 
 #added by sundong 写镜像用,用losetup -f查看
 FREE_LOOP =$(shell sudo losetup -f)
@@ -57,6 +58,8 @@ OSBOOT_START_OFFSET = 1048666 # 2048*512+90
 #OSBOOT_START_OFFSET=2097242 # for test12.img
 BOOT_PART=$(FREE_LOOP)p1
 BOOT_PART_MOUNTPOINT = iso
+BOOT_IMG = fat32_boot.img
+GRUB_CONFIG=fat32_grub.cfg
 endif
 
 ifeq ($(BOOT_PART_FS_TYPE),orangefs)
@@ -72,6 +75,10 @@ OSBOOT_START_OFFSET =2097152 #4096*512
 #p2分区格式化为orangefs
 BOOT_PART=$(FREE_LOOP)p2
 BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
+#镜像；不用文件系统作为启动分区时镜像是不同的
+BOOT_IMG=orangefs_boot.img
+GRUB_CONFIG=orangefs_grub.cfg
+
 endif
  
 include ./os/Makefile
@@ -104,7 +111,7 @@ build_fs :
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
 		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
-		sudo cp os/boot/mbr/grub/grub.cfg iso/grub &&\
+		sudo cp os/boot/mbr/grub/$(GRUB_CONFIG) iso/grub/grub.cfg &&\
 		sudo umount iso ;\
 	fi
 
@@ -128,7 +135,8 @@ buildimg :
 # added by mingxuan 2019-5-17
 buildimg_mbr:
 	rm -f b.img 				# added by mingxuan 2020-10-5
-	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
+#	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
+	cp ./hd/$(BOOT_IMG) ./b.img	
 	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
 		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
 	fi
@@ -180,17 +188,15 @@ buildimg_mbr:
 	sudo $(CP) $(CP_FLAG) user/user/ptest11.bin $(BOOT_PART_MOUNTPOINT)/ptest11.bin
 	sudo $(CP) $(CP_FLAG) user/user/ptest12.bin $(BOOT_PART_MOUNTPOINT)/ptest12.bin
 	sudo $(CP) $(CP_FLAG) user/user/ptest13.bin $(BOOT_PART_MOUNTPOINT)/ptest13.bin
-
-	# added by dzq 2023-4-2
-	sudo cp -fv user/user/t_fork01.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/fstest.bin $(BOOT_PART_MOUNTPOINT)/fstest.bin
 	# added by dzq 2023-4-12
-	sudo cp -fv user/user/t_exit01.bin iso/
+	sudo $(CP) $(CP_FLAG) user/user/t_exit01.bin $(BOOT_PART_MOUNTPOINT)/t_exit01.bin
+
 
 	# added by dzq
-	sudo cp -fv user/user/t_pthr01.bin iso/
-	sudo cp -fv user/user/t_pthr02.bin iso/
-	sudo cp -fv user/user/t_pthr03.bin iso/
-
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr01.bin $(BOOT_PART_MOUNTPOINT)/t_pthr01.bin
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr02.bin $(BOOT_PART_MOUNTPOINT)/t_pthr02.bin
+	sudo $(CP) $(CP_FLAG) user/user/t_pthr03.bin $(BOOT_PART_MOUNTPOINT)/t_pthr03.bin
 
 	# added by yingchi 2022.01.05
 #	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
