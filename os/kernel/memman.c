@@ -455,6 +455,14 @@ PUBLIC u32 kern_kmalloc(u32 size)
 {
 	return K_PHY2LIN(phy_kmalloc(size));
 }
+//add by sundong 2023.6.3
+//分配一段内存,并初始化为0
+PUBLIC u32 kern_kzalloc(u32 size)
+{
+	void *p = K_PHY2LIN(phy_kmalloc(size));
+	memset(p,0,size);
+	return (u32)p;
+}
 
 //在内核中直接使用,mingxuan 2021-3-25
 //edited by wang 2021.6.8

@@ -618,26 +618,33 @@ void initial()
 	createdir("test/dir");
 	int fd = open("test/dir/file",O_CREAT|O_RDWR);
 	//orangefs_dir_test();
-	char buff[16] = {'a','b','c'};
+	char * buff = kern_kzalloc(4096*2);
+	buff[4097] = '2';
+	buff[4098] = '5';
+	buff[4099] = '8';
 	if(fd>=0){
-		write(fd,buff,8);
+		write(fd,buff,4096*2);
 		close(fd);
 	}
 	fd = open("test/dir/file",O_RDWR);
 	//int ret = deletedir("test");
 	memset(buff,0,8);
-	read(fd,buff,8);
+	lseek(fd,4097,SEEK_SET);
+	read(fd,buff,4);
 	disp_str("file content:\n");
 	disp_str(buff);
+	disp_str("\n");
 	unlink("test/dir/file");
 	close(fd);
 	int ret = deletedir("test/dir");
 	unlink("test/dir/file");
+	fd = open("test/dir/file",O_RDWR);
+	ret = deletedir("test/dir"); */
 
 	//orangefs_dir_test();
 	//orangefs_dir_test();
 
-	while (1); */
+	//while (1);
 	
 	//int fd = open("fat0/init.bin",O_RDWR);
 	//open("fat0/init.bin",O_RDWR);
@@ -646,7 +653,12 @@ void initial()
 	//orangefs_test();
 	//while (1);
 	
-	execve("/fat0/init.bin",NULL,NULL);
+#ifdef FAT32_BOOT
+	execve("fat0/init.bin",NULL,NULL);
+#endif
+#ifdef ORANGE_BOOT
+	execve("init.bin",NULL,NULL);
+#endif
 	//execve("fat0/test_0.bin");
 	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
 

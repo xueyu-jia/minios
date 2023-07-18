@@ -5,8 +5,8 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 //ported by sundong 2023.3.26
 
-#ifndef	_ORANGES_TYPE_H_
-#define	_ORANGES_TYPE_H_
+#ifndef	_TYPE_H_
+#define	_TYPE_H_
 #include <stdbool.h>
 
 #ifndef NULL
@@ -48,4 +48,4 @@ typedef char		    CHAR;//字符类型
 #define TRUE 1//是
 #define FALSE 0//否
 
-#endif /* _ORANGES_TYPE_H_ */
+#endif /* _TYPE_H_ */

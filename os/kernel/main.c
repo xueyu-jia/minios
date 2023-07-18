@@ -29,6 +29,7 @@
 #include "../include/buddy.h"
 #include "../include/semaphore.h"
 #include "../include/ahci.h"
+#include "../include/buffer.h"
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -136,6 +137,7 @@ PUBLIC int kernel_main()
 	disable_int();
 
 	//get_pde(10);         //added by wang 2021.7.7
+	init_buffer(64);
 
 	disp_str("-----Processes Begin-----\n");
 

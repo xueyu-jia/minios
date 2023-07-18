@@ -24,7 +24,7 @@
 #include "../include/fs.h"
 #include "../include/fs_misc.h"
 #include "../include/mount.h"
-#include "../include/kmalloc.h"
+#include "../include/buffer.h" 
 
 /* FSBUF_SIZE is defined as macro in fs_const.h.
  * The physical address space 6MB~7MB is used as fs buffer in Orange's, but we can't use this
@@ -91,12 +91,6 @@ PUBLIC int real_unlink(struct super_block *sb, const char *pathname); // modifie
 // PRIVATE int real_lseek(int fd, int offset, int whence); //deleted by mingxuan 2019-5-17
 PUBLIC int real_lseek(int fd, int offset, int whence); // modified by mingxuan 2019-5-17
 
-PRIVATE int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-PRIVATE int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-
-//add by sundong 2023.5.26 读取数据块
-PRIVATE int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-PRIVATE int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 
 
 PRIVATE int strip_path(char *filename, const char *pathname, struct inode **ppinode);
@@ -971,64 +965,8 @@ PRIVATE void mkfs(int device)
 //
 }
 
-/*****************************************************************************
- *                                rw_sector
- *****************************************************************************/
-/**
- * <Ring 1> R/W a sector via messaging with the corresponding driver.
- *
- * @param io_type  DEV_READ or DEV_WRITE
- * @param dev      device nr
- * @param pos      Byte offset from/to where to r/w.
- * @param bytes    r/w count in bytes.
- * @param proc_nr  To whom the buffer belongs.
- * @param buf      r/w buffer.
- *
- * @return Zero if success.
- *****************************************************************************/
-/// zcr: change the "u64 pos" to "int pos"
-PRIVATE int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
-{
-	MESSAGE driver_msg;
 
-	driver_msg.type = io_type;
-	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
-	// attention
-	//  driver_msg.POSITION	= (unsigned long long)pos;
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; /// hu is: 512
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
-	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
-	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
-
-	/// replace the statement above.
-	// disp_int(proc_nr);
-	hd_rdwt(&driver_msg);
-	return 0;
-}
-
-// added by xw, 18/8/27
-PRIVATE int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
-{
-	MESSAGE driver_msg;
-
-	driver_msg.type = io_type;
-	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
-
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; /// hu is: 512
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
-
-	hd_rdwt_sched(&driver_msg);
-	return 0;
-}
-//~xw
-
-//add by sundong 2023.5.26
+/* //add by sundong 2023.5.26
 PRIVATE int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
 	MESSAGE driver_msg;
@@ -1067,7 +1005,7 @@ PRIVATE int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_n
 
 	hd_rdwt_sched(&driver_msg);
 	return 0;
-}
+} */
 
 // added by zcr from chapter9/e/lib/open.c and modified it.
 
@@ -2029,8 +1967,10 @@ PRIVATE struct inode *get_inode_sched(int dev, int num)
 	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
 	//char fsbuf[SECTOR_SIZE];	 // local array, to substitute global fsbuf. added by xw, 18/12/27
 	//RD_SECT_SCHED(dev, blk_nr, fsbuf); // added by xw, 18/12/27
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE);
-	RD_BLOCK_SCHED(dev,blk_nr,fsbuf);
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	//BUF_RD_BLOCK(dev,blk_nr,fsbuf);
+	buf_head *bh = bread(dev,blk_nr);
+	char *fsbuf = bh->buffer;
 	struct inode *pinode =  
 		(struct inode *)((u8 *)fsbuf +
 						 ((num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE);
@@ -2038,7 +1978,8 @@ PRIVATE struct inode *get_inode_sched(int dev, int num)
 	q->i_size = pinode->i_size;
 	q->i_start_block = pinode->i_start_block;
 	q->i_nr_blocks = pinode->i_nr_blocks;
-	kern_kfree(fsbuf);
+	brelse(bh);
+	//kern_kfree(fsbuf);
 	return q;
 }
 /*****************************************************************************
@@ -2071,10 +2012,12 @@ PRIVATE void sync_inode(struct inode *p)
 	struct inode *pinode;
 	struct super_block *sb = get_super_block(p->i_dev);
 	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((p->i_num - 1) / (BLOCK_SIZE / INODE_SIZE));
-	char *fsbuf = kern_kmalloc(BLOCK_SIZE);		// local array, to substitute global fsbuf. added by xw, 18/12/27
+	//char *fsbuf = kern_kmalloc(BLOCK_SIZE);		// local array, to substitute global fsbuf. added by xw, 18/12/27
 	//RD_SECT_SCHED(p->i_dev, blk_nr, fsbuf); // modified by xw, 18/12/27
 	// RD_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
-	RD_BLOCK_SCHED(p->i_dev, blk_nr, fsbuf)
+	//BUF_RD_BLOCK(p->i_dev, blk_nr, fsbuf)
+	buf_head *bh = bread(p->i_dev, blk_nr);
+	char * fsbuf = bh->buffer;
 	pinode = (struct inode *)((u8 *)fsbuf +
 							  (((p->i_num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE));
 	pinode->i_mode = p->i_mode;
@@ -2083,8 +2026,10 @@ PRIVATE void sync_inode(struct inode *p)
 	pinode->i_nr_blocks = p->i_nr_blocks;
 	//WR_SECT_SCHED(p->i_dev, blk_nr, fsbuf); // modified by xw, 18/12/27
 											// WR_SECT(p->i_dev, blk_nr, fsbuf);	//modified by mingxuan 2019-5-20
-	WR_BLOCK_SCHED(p->i_dev, blk_nr, fsbuf)		
-	kern_kfree(fsbuf);								
+	//BUF_WR_BLOCK(p->i_dev, blk_nr, fsbuf)		
+	//kern_kfree(fsbuf);
+	mark_buff_dirty(bh);
+	brelse(bh);								
 }
 
 /// added by zcr (from ch9/e/fs/open.c)
@@ -2149,13 +2094,15 @@ PRIVATE void new_dir_entry(struct inode *dir_inode, int inode_nr, char *filename
 	struct dir_entry *new_de = 0;
 
 	int i, j;
-	char *fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	char *fsbuf =NULL; // kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	buf_head *bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
 	{
 		//RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
 		// RD_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
-		RD_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
-
+		//BUF_RD_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -2168,9 +2115,10 @@ PRIVATE void new_dir_entry(struct inode *dir_inode, int inode_nr, char *filename
 				break;
 			}
 		}
-		if (m > nr_dir_entries || /* all entries have been iterated or */
-			new_de)				  /* free slot is found */
+		if (m > nr_dir_entries || new_de)	/* all entries have been iterated or free slot is found */
 			break;
+		brelse(bh);
+
 	}
 	if (!new_de)
 	{ /* reached the end of the dir */
@@ -2184,9 +2132,11 @@ PRIVATE void new_dir_entry(struct inode *dir_inode, int inode_nr, char *filename
 
 	/* write dir block -- ROOT dir block */
 	//WR_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-	WR_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
+	//BUF_WR_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
+	mark_buff_dirty(bh);
+	brelse(bh);
 	// WR_SECT(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	/* update dir inode */
 	sync_inode(dir_inode);
 }
@@ -2219,13 +2169,16 @@ PRIVATE int alloc_imap_bit(int dev)
 	// disp_int(sb->nr_imap_sects);
 	// disp_str("  ");
 
-	char *fsbuf = kern_kmalloc(BLOCK_SIZE);//[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
-
+	//char *fsbuf = kern_kmalloc(BLOCK_SIZE);//[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
 	for (i = 0; i < sb->nr_imap_blocks; i++)
 	{
 		// RD_SECT(dev, imap_blk0_nr + i);		/// zcr: place the result in fsbuf?
 		//RD_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-		RD_BLOCK_SCHED(dev, imap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
+		//BUF_RD_BLOCK(dev, imap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
+		bh = bread(dev, imap_blk0_nr + i);
+		fsbuf = bh->buffer;
 		// RD_SECT(dev, imap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 		/// zcr debug(output is 0x2, right.)
 		// disp_str("imap_blk0_nr + i: ");
@@ -2267,14 +2220,16 @@ PRIVATE int alloc_imap_bit(int dev)
 			/* write the bit to imap */
 			//WR_SECT_SCHED(dev, imap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
 			// WR_SECT(dev, imap_blk0_nr + i, fsbuf);	//added by mingxuan 2019-5-20
-			WR_BLOCK_SCHED(dev, imap_blk0_nr + i, fsbuf);
+			//BUF_WR_BLOCK(dev, imap_blk0_nr + i, fsbuf);
+			mark_buff_dirty(bh);
 			break;
 		}
+		brelse(bh);
 		if(inode_nr)goto alloc_end;
 		
 	}
 alloc_end:
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	if(!inode_nr)disp_str("Panic: inode-map is probably full.\n");/* no free bit in imap */
 	return inode_nr;
 	
@@ -2304,13 +2259,16 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc)
 	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
 	int free_sect_nr = 0;
 	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE);
-
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
 	for (i = 0; i < sb->nr_smap_blocks; i++)
 	{												 /* smap_blk0_nr + i :
 									   current sect nr. */
 		//RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-		RD_BLOCK_SCHED(dev, smap_blk0_nr + i, fsbuf);
+		//BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf);
+		bh = bread(dev, smap_blk0_nr + i);
+		fsbuf = bh->buffer;
 		// RD_SECT(dev, smap_blk0_nr + i, fsbuf);	//modified by mingxuan 2019-5-20
 
 		/* byte offset in current sect */
@@ -2339,17 +2297,17 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc)
 			}
 		}
 
-		if (free_sect_nr)								 /* free bit found, write the bits to smap */
+		if (free_sect_nr)mark_buff_dirty(bh);								 /* free bit found, write the bits to smap */
 		//	WR_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-		WR_BLOCK_SCHED(dev, smap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
+		//BUF_WR_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
 		// WR_SECT(dev, smap_blk0_nr + i, fsbuf); //added by mingxuan 2019-5-20
-
+		brelse(bh);
 		if (nr_sects_to_alloc == 0)
 			break;
 	}
 
 	// assert(nr_sects_to_alloc == 0);
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 
 	return free_sect_nr;
 }
@@ -2569,7 +2527,9 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 		int i;
 
 		//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
-		char *fsbuf = kern_kmalloc(BLOCK_SIZE);
+		//char *fsbuf = kern_kmalloc(BLOCK_SIZE);
+		char *fsbuf = NULL;
+		buf_head * bh = NULL;
 		//char fsbuf[BLOCK_SIZE];
 		for (i = rw_sect_min; i <= rw_sect_max; i += chunk)
 		{
@@ -2582,8 +2542,11 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 //							chunk * SECTOR_SIZE,
 //							proc2pid(p_proc_current), /// TASK_FS
 //							fsbuf);
-			RD_BLOCK_SCHED(pin->i_dev,i,fsbuf);
+			//RD_BLOCK_SCHED(pin->i_dev,i,fsbuf);
 
+			//BUF_RD_BLOCK(pin->i_dev,i,fsbuf);
+			bh = bread(pin->i_dev,i);
+			fsbuf = bh->buffer;
 			if (fs_msg->type == READ)
 			{
 				if (p_proc_current->task.filp[fd]->fd_pos + bytes > pos_end)
@@ -2607,12 +2570,14 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 //								chunk * SECTOR_SIZE,
 //								proc2pid(p_proc_current),
 //								fsbuf);
-				WR_BLOCK_SCHED(pin->i_dev,i,fsbuf);
+				//BUF_WR_BLOCK(pin->i_dev,i,fsbuf);
+				mark_buff_dirty(bh);
 			}
 			off = 0;
 			bytes_rw += bytes;
 			p_proc_current->task.filp[fd]->fd_pos += bytes;
 			bytes_left -= bytes;
+			brelse(bh);
 		}
 
 		if (p_proc_current->task.filp[fd]->fd_pos > pin->i_size)
@@ -2623,7 +2588,7 @@ PRIVATE int ora_rdwt(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 			/* write the updated i-node back to disk */
 			sync_inode(pin);
 		}
-		kern_kfree(fsbuf);
+		//kern_kfree(fsbuf);
 
 		return bytes_rw;
 	}
@@ -2839,11 +2804,15 @@ PRIVATE int ora_unlink(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 	int dir_size = 0;
 	bool finish_unlink = false;
 	//char fsbuf[SECTOR_SIZE];
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
 	for (int i = 0; i < nr_dir_blks; i++)
 	{
 		//RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-		RD_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		//BUF_RD_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		int j;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
@@ -2858,7 +2827,9 @@ PRIVATE int ora_unlink(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 				/* pde->inode_nr = 0; */
 				memset(pde, 0, DIR_ENTRY_SIZE);
 				//WR_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by xw, 18/12/27
-				WR_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+				//BUF_WR_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+				mark_buff_dirty(bh);
+				brelse(bh);
 				finish_unlink = true;
 				dir_inode->i_size -= DIR_ENTRY_SIZE;
 				sync_inode(dir_inode);
@@ -2868,6 +2839,7 @@ PRIVATE int ora_unlink(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 						if (pde->inode_nr != INVALID_INODE)
 							dir_size += DIR_ENTRY_SIZE; */
 		}
+		brelse(bh);
 
 		if (m > nr_dir_entries || finish_unlink) /* all entries have been iterated or 已经把文件删掉 */
 			break;
@@ -2877,7 +2849,7 @@ PRIVATE int ora_unlink(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
 	//		dir_inode->i_size = dir_size;
 	//		sync_inode(dir_inode);
 	//	}
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	return finish_unlink ? 0 : -1;
 }
 
@@ -2993,6 +2965,10 @@ PUBLIC int sys_unlink(void *uesp)
  */
 static int find_dir_inode_cur_dir(struct inode **ppinode, char *dir_name)
 {
+	if (dir_name == 0)
+	{
+		return 0;
+	}
 	struct inode **cur_dir_inode = ppinode;
 	int nr_dir_blks = ((*cur_dir_inode)->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
@@ -3003,15 +2979,15 @@ static int find_dir_inode_cur_dir(struct inode **ppinode, char *dir_name)
 	struct dir_entry *pde;
 	int i, j;
 	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
-	char * fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf.
-	if (dir_name == 0)
-	{
-		return 0;
-	}
+	//char * fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf.
+	char * fsbuf = NULL;
+	buf_head * bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
 	{
 		//RD_SECT_SCHED((*cur_dir_inode)->i_dev, dir_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
-		RD_BLOCK_SCHED((*cur_dir_inode)->i_dev, dir_blk0_nr + i, fsbuf);
+		//BUF_RD_BLOCK((*cur_dir_inode)->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread((*cur_dir_inode)->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3030,13 +3006,16 @@ static int find_dir_inode_cur_dir(struct inode **ppinode, char *dir_name)
 				// if ((*cur_dir_inode)->i_num != 1)//if not root inode
 				// 	put_inode(*cur_dir_inode);
 				*ppinode = get_inode_sched((*cur_dir_inode)->i_dev, pde->inode_nr);
-				kern_kfree(fsbuf);
+				brelse(bh);
+				//kern_kfree(fsbuf);
 				return 1;
 			}
 		}
+		brelse(bh);
+		
 	}
 
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	return 0;
 }
 
@@ -3103,11 +3082,15 @@ static int search_file_in_dir(char *name, struct inode *dir_inode) /*added by gf
 											 */
 	int m = 0;
 	struct dir_entry *pde;
-	char *fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	//char *fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
 	{
 		// RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		//BUF_RD_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3115,15 +3098,22 @@ static int search_file_in_dir(char *name, struct inode *dir_inode) /*added by gf
 			{
 				continue;
 			}
-			if (strcmp(name, pde->name) == 0)
+			if (strcmp(name, pde->name) == 0){
+				brelse(bh);
 				return pde->inode_nr;
-			if (++m > nr_dir_entries)
+			}
+				
+			if (++m >= nr_dir_entries){
+				brelse(bh);
 				break;
+			}
+				
 		}
-		if (m > nr_dir_entries) /* all entries have been iterated */
+		brelse(bh);
+		if (m >= nr_dir_entries) /* all entries have been iterated */
 			break;
 	}
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	return 0;
 }
 /*add by gfx 2022-1-14*/
@@ -3144,12 +3134,17 @@ static int find_max_i_cnt(struct inode *dir_inode)
 	int m = 0;
 
 	struct dir_entry *pde;
-	char *fsbuf = (char *)kern_kmalloc(BLOCK_SIZE); // 减少内核栈空间使用,改用堆空间
+	//char *fsbuf = (char *)kern_kmalloc(BLOCK_SIZE); // 减少内核栈空间使用,改用堆空间
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
+
 	int dir_blk0_nr = dir_inode->i_start_block;
 	int nr_dir_entries = dir_inode->i_size / DIR_ENTRY_SIZE;
 	for (i = 0; i < dir_inode->i_nr_blocks; i++)
 	{
-		RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		//RD_SECT_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3188,11 +3183,12 @@ static int find_max_i_cnt(struct inode *dir_inode)
 			if (++m >= nr_dir_entries)
 				break;
 		}
+		brelse(bh);
 
 		if (m >= nr_dir_entries) /* all entries have been iterated */
 			break;
 	}
-	kern_kfree((u32)fsbuf);
+	//kern_kfree((u32)fsbuf);
 	return max_icnt;
 }
 
@@ -3297,11 +3293,15 @@ static int ora_deletedir(MESSAGE *fs_msg)
 	int m = 0;
 	struct dir_entry *pde;
 	// char fsbuf[SECTOR_SIZE];
-	char *fsbuf = (char *)kern_kmalloc(BLOCK_SIZE); // 减少内核栈空间使用,改用堆空间
+	//char *fsbuf = (char *)kern_kmalloc(BLOCK_SIZE); // 减少内核栈空间使用,改用堆空间
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
 	// for (i = 0; i < nr_dir_blks; i++)/*modified by gfx 2022-1-14*/
 	for (i = 0; i < dir_inode->i_nr_blocks; i++)
 	{
-		RD_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		//BUF_RD_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3323,12 +3323,14 @@ static int ora_deletedir(MESSAGE *fs_msg)
 				memset(pde, 0, DIR_ENTRY_SIZE); // just for easy to see ,can delete
 				dir_inode->i_size -= DIR_ENTRY_SIZE;
 				// 在处理完".."的时候同步到磁盘,因为"."在前面处理完了
-				WR_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+				//BUF_WR_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+				mark_buff_dirty(bh);
 			}
 			// 其他子目录和文件
 			else
 			{
 				disp_str("delete dir error: dir is not empty!");
+				brelse(bh);
 				return -1;
 				//modified by sundong 2023.5.19
 				//暂时不支持级联删除（当目录下有文件or目录时无法删除该目录）
@@ -3369,6 +3371,7 @@ static int ora_deletedir(MESSAGE *fs_msg)
 			if (++m >= nr_dir_entries)
 				break;
 		}
+		brelse(bh);
 		if (m >= nr_dir_entries) /* all entries have been iterated */
 			break;
 	}
@@ -3382,8 +3385,9 @@ static int ora_deletedir(MESSAGE *fs_msg)
 	m = 0;
 	for (i = 0; i < fath_inode->i_nr_blocks; i++)
 	{
-
-		RD_BLOCK_SCHED(fath_inode->i_dev, fath_dir_blk0_nr + i, fsbuf);
+		bh = bread(fath_inode->i_dev, fath_dir_blk0_nr + i);
+		fsbuf = bh->buffer;
+		//BUF_RD_BLOCK(fath_inode->i_dev, fath_dir_blk0_nr + i, fsbuf);
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3395,12 +3399,14 @@ static int ora_deletedir(MESSAGE *fs_msg)
 			{
 				pde->inode_nr = 0;
 				memset(pde, 0, DIR_ENTRY_SIZE); // just for easy to see ,can delete
-				WR_BLOCK_SCHED(fath_inode->i_dev, fath_dir_blk0_nr + i, fsbuf);
+				mark_buff_dirty(bh);
+				//BUF_WR_BLOCK(fath_inode->i_dev, fath_dir_blk0_nr + i, fsbuf);
 			}
 
 			if (++m >= fath_nr_dir_entries)
 				break;
 		}
+		brelse(bh);
 		if (m >= fath_nr_dir_entries) /* all entries have been iterated */
 			break;
 	}
@@ -3425,7 +3431,7 @@ static int ora_deletedir(MESSAGE *fs_msg)
 	sync_inode(dir_inode);
 	// dir_inode->i_num = 0;
 	memset(dir_inode, 0, INODE_SIZE);
-	kern_kfree((u32)fsbuf);
+	//kern_kfree((u32)fsbuf);
 
 	return 0;
 }
@@ -3558,12 +3564,16 @@ static int ora_showdir(MESSAGE *fs_msg)
 	int m = 0;
 	struct dir_entry *pde;
 	//char fsbuf[SECTOR_SIZE];
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char * fsbuf = NULL;
+	buf_head *bh = NULL;
 	int dir_blk0_nr = dir_inode->i_start_block;
 	int nr_dir_entries = dir_inode->i_size / DIR_ENTRY_SIZE;
 	for (i = 0; i < dir_inode->i_nr_blocks; i++)
 	{
-		RD_BLOCK_SCHED(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
+		//BUF_RD_BLOCK(dir_inode->i_dev, dir_blk0_nr + i, fsbuf);
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
@@ -3580,6 +3590,7 @@ static int ora_showdir(MESSAGE *fs_msg)
 			if (++num >= nr_dir_entries)
 				break;
 		}
+		brelse(bh);
 
 		if (num >= nr_dir_entries) /* all entries have been iterated */
 			break;
@@ -3607,15 +3618,20 @@ static int free_imap_bit(int dev, int inode_nr)
 	struct super_block *sb = get_super_block(dev);
 
 	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
 	// (i * SECTOR_SIZE + j) * 8 + k = inode_nr ;
 	k = inode_nr % 8;
 	j = ((inode_nr - k) / 8) % BLOCK_SIZE;
 	i = (((inode_nr - k) / 8) - j) / BLOCK_SIZE;
-
-	RD_BLOCK_SCHED(dev, imap_blk0_nr + i, fsbuf);
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
+	bh = bread(dev, imap_blk0_nr + i);
+	fsbuf = bh->buffer;
+	//BUF_RD_BLOCK(dev, imap_blk0_nr + i, fsbuf);
 	fsbuf[j] &= ~(1 << k);
-	WR_BLOCK_SCHED(dev, imap_blk0_nr + i, fsbuf);
+	mark_buff_dirty(bh);
+	brelse(bh);
+	//BUF_WR_BLOCK(dev, imap_blk0_nr + i, fsbuf);
 
 	return 0;
 }
@@ -3641,7 +3657,9 @@ static int free_smap_bit(int dev, int start_sect_nr, int nr_sects_to_free)
 	struct super_block *sb = get_super_block(dev);
 
 	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
 
 	k = (start_sect_nr - sb->n_1st_block + 1) % 8;
 	j = ((start_sect_nr - sb->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
@@ -3651,7 +3669,9 @@ static int free_smap_bit(int dev, int start_sect_nr, int nr_sects_to_free)
 	{ /* smap_blk0_nr + i :
 current sect nr. */
 		// RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		RD_BLOCK_SCHED(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		//BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		bh = bread(dev, smap_blk0_nr + i);
+		fsbuf = bh->buffer;
 
 		/* byte offset in current sect */
 		for (; j < BLOCK_SIZE && nr_sects_to_free > 0; j++)
@@ -3666,17 +3686,19 @@ current sect nr. */
 			}
 			k = 0;
 		}
+		mark_buff_dirty(bh);
+		brelse(bh);
 
-		WR_BLOCK_SCHED(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan 2019-5-20
+		//BUF_WR_BLOCK(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan 2019-5-20
 
 		if (nr_sects_to_free == 0)
 			break;
 	}
 	if (!nr_sects_to_free)
-		kern_kfree(fsbuf);
+		//kern_kfree(fsbuf);
 		return -1;
 
-	kern_kfree(fsbuf);
+	//kern_kfree(fsbuf);
 	return 0;
 }
 
@@ -3696,9 +3718,12 @@ static void set_dir_entry(struct inode *new_inode, int father_inode_nr)
 
 	struct dir_entry *pde;
 
-	char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf.
-
-	RD_BLOCK_SCHED(new_inode->i_dev, dir_blk0_nr, fsbuf);
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf.
+	char* fsbuf = NULL;
+	buf_head * bh = NULL;
+	bh = bread(new_inode->i_dev, dir_blk0_nr);
+	fsbuf = bh->buffer;
+	//BUF_RD_BLOCK(new_inode->i_dev, dir_blk0_nr, fsbuf);
 
 	pde = (struct dir_entry *)fsbuf;
 
@@ -3708,7 +3733,9 @@ static void set_dir_entry(struct inode *new_inode, int father_inode_nr)
 	pde++;
 	pde->inode_nr = father_inode_nr;
 	strcpy(pde->name, ".."); 
-	WR_BLOCK_SCHED(new_inode->i_dev, dir_blk0_nr, fsbuf);
+	mark_buff_dirty(bh);
+	brelse(bh);
+	//BUF_WR_BLOCK(new_inode->i_dev, dir_blk0_nr, fsbuf);
 
 	new_inode->i_size = 2 * DIR_ENTRY_SIZE;
 	sync_inode(new_inode);
