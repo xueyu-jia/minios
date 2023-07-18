@@ -92,8 +92,7 @@ PUBLIC int real_unlink(struct super_block *sb, const char *pathname); // modifie
 PUBLIC int real_lseek(int fd, int offset, int whence); // modified by mingxuan 2019-5-17
 
 
-
-PRIVATE int strip_path(char *filename, const char *pathname, struct inode **ppinode);
+PRIVATE int strip_path(char * filename, const char * pathname, struct inode** ppinode);
 PRIVATE int search_file(char *path);
 PRIVATE struct inode *create_file(char *path, int imod);
 PRIVATE struct inode *get_inode(int dev, int num);
@@ -642,10 +641,8 @@ PUBLIC int init_orangefs(int device)
 
 	if (sb->magic != MAGIC_V1)
 	{
-		mkfs(device);
-
-		read_super_block_to_target(device, sb);
-		sb->fs_type = ORANGE_TYPE;
+		disp_color_str("Error:Please format the root file system before starting the kernel!!\n", 0x74);
+		while (1);
 	}
 
 	return sb - super_block;
@@ -718,8 +715,8 @@ PUBLIC void init_rootfs(int device)
  *          - Create the inodes of the files
  *          - Create `/', the root directory
  *****************************************************************************/
-PRIVATE void mkfs(int device)
-{
+//PRIVATE void mkfs(int device)
+//{
 //	MESSAGE driver_msg;
 //	int i, j;
 //
@@ -963,23 +960,115 @@ PRIVATE void mkfs(int device)
 //	// WR_SECT(ROOT_DEV, sb.n_1st_sect, fsbuf);	//modified by xw, 18/12/27	//deleted by mingxuan 2020-10-27
 //	WR_SECT(orange_dev, sb.n_1st_sect, fsbuf); // modified by mingxuan 2020-10-27
 //
-}
+//}
+//   
+//	/************************/
+//	/*       inodes         */
+//	/************************/
+//	/* inode of `/' */
+//	memset(fsbuf, 0, SECTOR_SIZE);
+//	struct inode * pi = (struct inode*)fsbuf;
+//	pi->i_mode = I_DIRECTORY;
+//
+//	//deleted by mingxuan 2019-5-21
+//	//pi->i_size = DIR_ENTRY_SIZE * 4; //4 files: (预定义四个文件)
+//					  /* `.',
+//					  * `dev_tty0', `dev_tty1', `dev_tty2',
+//					  */
+//
+//	//modified by mingxuan 2019-5-21
+//	pi->i_size = DIR_ENTRY_SIZE * 5; /* 5 files: (预定义5个文件)
+//					  * `.',
+//					  * `dev_tty0', `dev_tty1', `dev_tty2','app.tar'
+//					  */
+//
+//	pi->i_start_sect = sb.n_1st_sect;
+//	pi->i_nr_sects = NR_DEFAULT_FILE_SECTS;
+//
+//	/* inode of `/dev_tty0~2' */
+//	for (i = 0; i < NR_CONSOLES; i++) {
+//		pi = (struct inode*)(fsbuf + (INODE_SIZE * (i + 1)));
+//		pi->i_mode = I_CHAR_SPECIAL;
+//		pi->i_size = 0;
+//		pi->i_start_sect = MAKE_DEV(DEV_CHAR_TTY, i);
+//		pi->i_nr_sects = 0;
+//	}
+//
+//	/* inode of /app.tar */
+//	//added by mingxuan 2019-5-19
+//	pi = (struct inode*)(fsbuf + (INODE_SIZE * (NR_CONSOLES + 1)));
+//	pi->i_mode = I_REGULAR;
+//	pi->i_size = INSTALL_NR_SECTORS * SECTOR_SIZE;
+//	pi->i_start_sect = INSTALL_START_SECTOR;
+//	pi->i_nr_sects = INSTALL_NR_SECTORS;
+//
+//	//WR_SECT(ROOT_DEV, 2 + sb.nr_imap_sects + sb.nr_smap_sects, fsbuf);	//modified by xw, 18/12/27	//deleted by mingxuan 2020-10-27
+//	WR_SECT(orange_dev, 2 + sb.nr_imap_sects + sb.nr_smap_sects, fsbuf);	//modified by mingxuan 2020-10-27
+//
+//	/************************/
+//	/*          `/'         */
+//	/************************/
+//	memset(fsbuf, 0, SECTOR_SIZE);
+//	struct dir_entry * pde = (struct dir_entry *)fsbuf;
+//
+//	pde->inode_nr = 1;
+//	strcpy(pde->name, ".");
+//
+//	/* dir entries of `/dev_tty0~2' */
+//	for (i = 0; i < NR_CONSOLES; i++) {
+//		pde++;
+//		pde->inode_nr = i + 2; /* dev_tty0's inode_nr is 2 */
+//		// sprintf(pde->name, "dev_tty%d", i);
+//		/// zcr added to replace the statement above
+//		switch(i) {
+//			case 0:
+//				strcpy(pde->name, "dev_tty0");
+//				break;
+//			case 1:
+//				strcpy(pde->name, "dev_tty1");
+//				break;
+//			case 2:
+//				strcpy(pde->name, "dev_tty2");
+//				break;
+//		}
+//	}
+//
+//	(++pde)->inode_nr = NR_CONSOLES + 2; //added by mingxuan 2019-5-19
+//	strcpy(pde->name, INSTALL_FILENAME); //added by mingxuan 2019-5-19
+//
+//	//WR_SECT(ROOT_DEV, sb.n_1st_sect, fsbuf);	//modified by xw, 18/12/27	//deleted by mingxuan 2020-10-27
+//	WR_SECT(orange_dev, sb.n_1st_sect, fsbuf);	//modified by mingxuan 2020-10-27
+//} 
 
-
-/* //add by sundong 2023.5.26
-PRIVATE int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+/*****************************************************************************
+ *                                rw_sector
+ *****************************************************************************/
+/**
+ * <Ring 1> R/W a sector via messaging with the corresponding driver.
+ *
+ * @param io_type  DEV_READ or DEV_WRITE
+ * @param dev      device nr
+ * @param pos      Byte offset from/to where to r/w.
+ * @param bytes    r/w count in bytes.
+ * @param proc_nr  To whom the buffer belongs.
+ * @param buf      r/w buffer.
+ *
+ * @return Zero if success.
+ *****************************************************************************/
+/* /// zcr: change the "u64 pos" to "int pos"
+PRIVATE int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void* buf)
 {
 	MESSAGE driver_msg;
 
-	driver_msg.type = io_type;
+	driver_msg.type		= io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
-	// attention
-	//  driver_msg.POSITION	= (unsigned long long)pos;
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; 
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
+	driver_msg.DEVICE	= dev;
+	//attention
+	// driver_msg.POSITION	= (unsigned long long)pos;
+	driver_msg.POSITION	= pos;
+	driver_msg.CNT		= bytes;	/// hu is: 512
+	driver_msg.PROC_NR	= proc_nr;
+	driver_msg.BUF		= buf;
 	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
 
@@ -989,23 +1078,24 @@ PRIVATE int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, voi
 	return 0;
 }
 
-//add by sundong 2023.5.26
-PRIVATE int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+//added by xw, 18/8/27
+PRIVATE int rw_sector_sched(int io_type, int dev, int pos, int bytes, int proc_nr, void* buf)
 {
 	MESSAGE driver_msg;
 
-	driver_msg.type = io_type;
+	driver_msg.type		= io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
+	driver_msg.DEVICE	= dev;
 
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; 
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
+	driver_msg.POSITION	= pos;
+	driver_msg.CNT		= bytes;	/// hu is: 512
+	driver_msg.PROC_NR	= proc_nr;
+	driver_msg.BUF		= buf;
 
 	hd_rdwt_sched(&driver_msg);
 	return 0;
 } */
+//~xw
 
 // added by zcr from chapter9/e/lib/open.c and modified it.
 
