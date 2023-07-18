@@ -19,6 +19,12 @@
 #define	MAX_PATH	128
 #define	MAX_FILENAME_LEN	12
 
+
+/* Error types of dir option*/
+#define DIR_PATH_INEXISTE -1
+#define DIR_PATH_REPEATED -2
+#define DIR_FILE_OCCUPIYED -3
+
 /* //deleted by mingxuan 2019-5-17
 PUBLIC int open(const char *pathname, int flags);
 PUBLIC int close(int fd);
@@ -40,21 +46,27 @@ PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
 
 PUBLIC void init_rootfs(int device);
 PUBLIC int init_orangefs(int device);
-PUBLIC void create_mountpoint(const char *pathname, u32 dev);
+PUBLIC void create_mountpoint(const char *pathname, u32 dev,u8 index_mnt_table);
 PUBLIC void free_mountpoint(const char *pathname, u32 dev);
+PUBLIC int vfs_path_transfer(char* path,int* fs_index);
 
 //added by mingxuan 2019-5-17
-PUBLIC int real_open(const char *pathname, int flags);
+PUBLIC int real_open(struct super_block *sb,const char *pathname, int flags);
 PUBLIC int real_close(int fd);
 PUBLIC int real_read(int fd, char *buf, int count);
 PUBLIC int real_write(int fd, const char *buf, int count);
-PUBLIC int real_unlink(const char *pathname);
+PUBLIC int real_unlink(struct super_block *sb,const char *pathname);
 PUBLIC int real_lseek(int fd, int offset, int whence);
+
+PUBLIC int real_createdir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+PUBLIC int real_opendir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+PUBLIC int real_deletedir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+PUBLIC int real_showdir(const char *pathname,char* dir_content);/*add by gfx 2023-2-13*/
 
 //added by mingxuan 2020-10-30
 PUBLIC void read_super_block(int dev);
 PUBLIC struct super_block* get_super_block(int dev);
 //~xw
 PUBLIC int get_fs_dev(int drive, int fs_type);	// added by mingxuan 2020-10-27
-
+PUBLIC int get_blockfile_dev(char *path); //add by sundong 2023.5.28
 #endif /* FS_H */

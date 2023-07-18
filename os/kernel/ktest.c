@@ -559,6 +559,7 @@ PRIVATE void untar(const char *filename)
 	disp_str(" files extracted]\n");
 }
 
+
 void initial()
 {
 
@@ -609,10 +610,43 @@ void initial()
 	//disp_str("\n");
 
 	//get_pid();
-
+	createdir("/dev");
 	init_block_dev(SATA_BASE);		//added by xiaofeng
-	mount("dev_sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
-	execve("fat0/init.bin",NULL,NULL);
+	init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
+	mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
+/* 	createdir("test");
+	createdir("test/dir");
+	int fd = open("test/dir/file",O_CREAT|O_RDWR);
+	//orangefs_dir_test();
+	char buff[16] = {'a','b','c'};
+	if(fd>=0){
+		write(fd,buff,8);
+		close(fd);
+	}
+	fd = open("test/dir/file",O_RDWR);
+	//int ret = deletedir("test");
+	memset(buff,0,8);
+	read(fd,buff,8);
+	disp_str("file content:\n");
+	disp_str(buff);
+	unlink("test/dir/file");
+	close(fd);
+	int ret = deletedir("test/dir");
+	unlink("test/dir/file");
+
+	//orangefs_dir_test();
+	//orangefs_dir_test();
+
+	while (1); */
+	
+	//int fd = open("fat0/init.bin",O_RDWR);
+	//open("fat0/init.bin",O_RDWR);
+	//unlink("fat0/f1");
+	//orangefs_dir_test();
+	//orangefs_test();
+	//while (1);
+	
+	execve("/fat0/init.bin",NULL,NULL);
 	//execve("fat0/test_0.bin");
 	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
 

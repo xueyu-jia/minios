@@ -21,7 +21,7 @@ static bool is_fat32(){
 
 }
 static bool is_orangefs(){
-    readsect(BUF_ADDR,bootPartStartSector+1);
+    readsect(BUF_ADDR,bootPartStartSector+(BLOCK_SIZE/SECT_SIZE));
     super_block* orange_sb =  (super_block*)BUF_ADDR;
     return orange_sb->magic == MAGIC_V1;//orangefs的magic为MAGIC_V1 0x111
 

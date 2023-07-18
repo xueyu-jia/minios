@@ -272,3 +272,8 @@ void pthread_exit(void *retval){
 int pthread_join(pthread_t thread, void **retval){
 	return _syscall2(_NR_pthread_join, thread, retval);
 }
+//add by sundong 2023.5.19 初始化块设备的系统调用
+//drive 是根文件系统所在的硬盘编号，该系统调用会创建3个字符设备类型的文件（/dev/tty0~2）
+int init_char_dev(int drive){
+	return _syscall1(_NR_init_char_dev,drive);
+}
