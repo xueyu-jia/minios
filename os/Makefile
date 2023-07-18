@@ -70,7 +70,8 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
 			os/ipc/shm.o os/ipc/msg.o \
 			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
-			os/kernel/mount.o os/kernel/slab.o
+			os/kernel/mount.o \
+			os/kernel/buffer.o os/kernel/slab.o
 			
 #added by mingxuan 2021-2-28
 
@@ -220,6 +221,10 @@ os/kernel/memman.o: os/kernel/memman.c os/include/type.h os/include/const.h os/i
 
 
 os/kernel/buddy.o: os/kernel/buddy.c os/include/buddy.h os/include/type.h os/include/string.h
+#                        os/include/memman.h	# deleted by mingxuan 2021-8-14
+	$(CC) $(CFLAGS) -o $@ $<
+
+os/kernel/buffer.o: os/kernel/buffer.c #os/include/buffer.h os/include/type.h os/include/string.h os/include/string.h os/include/string.h os/include/string.h
 #                        os/include/memman.h	# deleted by mingxuan 2021-8-14
 	$(CC) $(CFLAGS) -o $@ $<
 
