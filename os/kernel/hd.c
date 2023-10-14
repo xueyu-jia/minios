@@ -1077,8 +1077,22 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 }
 
 
+/*
+ * @brief 读/写SATA硬盘
+ * @param drive		drive统一编码
+ * @param type 		0: read, device to host ;	1: write, host to device
+ * @param sect_nr	读/写的起始扇区
+ * @param count 	读/写扇区的数量
+ * @retval			0: error  ;  1:sucess 
+ * @note			还没实现出错重发的功能;"satabuf += 8*1024;"这行存在bug;
+*/
 PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 {
+	if(drive < SATA_BASE || drive >= SATA_LIMIT){
+		disp_str("ERROR:SATA_rdwt_sects");
+		return FALSE;
+	}
+	drive -= SATA_BASE;
 
 	int port_num=ahci_info[0].satadrv_atport[drive];
 	HBA_PORT *port=&(HBA->ports[port_num]);
@@ -1087,7 +1101,7 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 
 	int slot = find_cmdslot(port);
 	if (slot == -1)
-		return 0;
+		return FALSE;
 
 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
 
@@ -1151,38 +1165,20 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		return FALSE;
 	}
 
-	// Wait for completion
-	// while (1)
-	// {
-	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
-	// 	// in the PxIS port field as well (1 << 5)
-	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-	// 	if (((port->ci & (1<<slot)) == 0)/*&&(cmdheader->prdbc == count)*/){
-	// 		// disp_str("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-	// 		// disp_str("\nport_is:");disp_int(port->is);
-	// 		break;}
-	// }
 	if (kernel_initial == 1) {
-		port->ci = 1<<slot;	// Issue command
+		port->ci = 1<<slot;			// Issue command
 		while (sata_wait_flag);
 		sata_wait_flag = 1;
 	} else {
 		/*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
 		disable_int();
-		port->ci = 1<<slot;	// Issue command
+		port->ci = 1<<slot;			// Issue command
 		wait_event(&sata_wait_flag);
 		enable_int();
 	}
- 
-	// Check again
-	if (port->is & HBA_PxIS_TFES)
-	{
-		// disp_str("Read disk error\n");
-		tf_err_rec(port);
-		return FALSE;
-	}
-
-	return 1;
+	
+	if(sata_error_flag == 1)	return FALSE;
+	else 						return TRUE;
 }
 
 // add by sundong 2023.6.3 
