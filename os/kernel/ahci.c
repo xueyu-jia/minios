@@ -6,7 +6,10 @@
 #include "../include/proto.h"
 #include "../include/ahci.h"
 
+// 0: free;  1: waiting
 PUBLIC volatile int sata_wait_flag = 1;
+// 0 : no error;  1: error
+PUBLIC volatile int sata_error_flag = 0;
 
 PUBLIC HBA_MEM* HBA;
 
@@ -162,41 +165,58 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	return TRUE;
 }
 
+/*
+ * @brief   sata中断处理函数
+ * @param 	irq
+ * @details 只支持一个AHCI控制器ahci_info[0]，错误处理未完成 
+ * 			因为hd_service是单线程的，因此只支持一个端口的中断处理
+ * 			必须先完成端口的清中断，再完成控制器的清中断
+ * 			目前没加内存屏障，有出现bug的可能性
+*/
 PRIVATE void sata_handler(int irq)
-{
-	// disp_str(" S ");
-	// disp_int(ticks);
-	// disp_int(HBA->ports[0].is);
+{	
+	u32 port_bitmap = HBA->is;
+    
+	if(port_bitmap == 0){
+        disp_str("SATA handler:No error but interrupt\n");
+        return;
+    }
 
-	int is = HBA->is;
-	int index = 0;
-
-
-	HBA->is=0xffffffff;
-
-	while (index <32 && is)
-	{
-		if(is&1)
-		{
-			// Check again
-		if (HBA->ports[index].is & HBA_PxIS_TFES)
-		{
-			// disp_str("Read disk error\n");
-			tf_err_rec(&(HBA->ports[index]));
-		}
-			HBA->ports[index].is=0xffffffff;
-		}
-		index++;
-		is >>= 1;
+	// 判断是哪个端口触发的中断
+	int prot_num;
+	for (prot_num = 0; prot_num <= MAXDEV; prot_num++) {
+		if (port_bitmap & (1 << prot_num))								
+			break;
 	}
-	if (kernel_initial == 1) {
-		sata_wait_flag = 0;
+	// 中断处理
+	u32 intr_status = HBA->ports[prot_num].is;
+	HBA->ports[prot_num].is = intr_status;					//端口清中断
+	if(intr_status == 0) {
+		//debug
+		//disp_str("\nsata_handler: PxIS = 0\n");
+	} else if (intr_status & HBA_Port_ERROR) {			
+		// 发生错误
+		disp_str("\nsata_handler:error\n");
+		disp_int((int)intr_status);
+		tf_err_rec(&(HBA->ports[prot_num]));				//错误处理
+		sata_error_flag = 1;															
+		if (kernel_initial == 1)	sata_wait_flag = 0;		//完成错误处理后唤醒进程
+		else						sys_wakeup(&sata_wait_flag);
+
+	} else if (intr_status & HBA_Port_COMPLETED) {
+		// 数据读写完成			
+		sata_error_flag = 0;
+		if (kernel_initial == 1)	sata_wait_flag = 0;
+		else						sys_wakeup(&sata_wait_flag);
+
 	} else {
-		sys_wakeup(&sata_wait_flag);
+		// 其他错误, undo
+		disp_str("\nPANIC:sata_handler:other error\n");
+		disp_int((int)intr_status);
+		sata_error_flag = 1;
 	}
-	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
-
-	return;
+	HBA->is = port_bitmap;			// 控制器清中断
+	return;			
 }
 
 //Detect attached SATA devices

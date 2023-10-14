@@ -241,7 +241,58 @@ typedef	struct tagahci_info
 	u32 satadrv_atport[4];//连接了SATADRIVE的端口号0~31，考虑到实际情况，这里只支持4个硬盘,默认第一个为minios系统盘
 	u16 irq_info;
 }AHCI_INFO;
-#define HBA_PxIS_TFES 0x40000000
+
+/*****************************************************************************************/
+/* 	
+	Port Registers (one set per port)
+	Offset 10h: PxIS – Port x Interrupt Status
+	请参考 《 Serial ATA Advanced Host Controller Interface (AHCI)1.3.1 》 3.3.5节
+	https://www.intel.cn/content/www/cn/zh/io/serial-ata/serial-ata-ahci-tech-proposal-rev1_3_1.html
+	
+	lirong
+*/
+// Cold Port Detect Status (CPDS)
+#define HBA_PxIS_CPDS 				(1 << 31)
+// Task File Error Status (TFES)
+#define HBA_PxIS_TFES 				(1 << 30)	
+// host bus fatal error， host致命错误
+#define HBA_PxIS_HBFS				(1 << 29)
+// host bus data error， host总线数据错误
+#define HBA_PxIS_HBDS				(1 << 28)
+//	interface fatal error， 内部致命错误
+#define HBA_PxIS_IFS				(1 << 27)
+// Interface Non-fatal Error Status (INFS) 表示 HBA 在串行 ATA 接口上遇到错误，但能够继续操作
+#define HBA_PxIS_INFS 				(1 << 26)
+// Overflow Status (OFS)， 内存越界，设备真实收到的数据量比PRD表中描述的数据量大
+#define HBA_PxIS_OFS 				(1 << 24)
+// Incorrect Port Multiplier Status (IPMS)
+#define HBA_PxIS_IPMS 				(1 << 23)
+// PhyRdy Change Status (PRCS)
+#define HBA_PxIS_PRCS 				(1 << 22)
+// Device Mechanical Presence Status (DMPS)
+#define HBA_PxIS_DMPS				(1 << 7)
+// Port Connect Change Status (PCS)
+#define HBA_PxIS_PCS				(1 << 6)
+// descriptor processed，所有数据传输完成
+#define HBA_PxIS_SG_DONE			(1 << 5)
+// Unknown FIS Interrupt (UFS)
+#define HBA_PxIS_UFS				(1 << 4)
+// Set Device Bits Interrupt (SDBS)，收到Set Device Bits FIS
+#define HBA_PxIS_SDBS				(1 << 3)
+// DMA Setup FIS Interrupt (DSS)
+#define HBA_PxIS_DSS				(1 << 2)
+// PIO Setup FIS Interrupt (PSS)
+#define HBA_PxIS_PSS				(1 << 1)
+// Device to Host Register FIS Interrupt (DHRS)
+#define HBA_PxIS_DHRS				(1 << 0)
+// 表示该端口遇到错误
+#define HBA_Port_ERROR				( HBA_PxIS_TFES | HBA_PxIS_HBFS | HBA_PxIS_HBDS \
+									| HBA_PxIS_IFS | HBA_PxIS_OFS | HBA_PxIS_UFS )
+// 表示该端口数据传输完成
+#define HBA_Port_COMPLETED          ( HBA_PxIS_DHRS | HBA_PxIS_DSS | HBA_PxIS_PSS \
+                                    | HBA_PxIS_SDBS | HBA_PxIS_SG_DONE )									 
+/*****************************************************************************************/
+
 #define MAX_AHCI_NUM 4
 PUBLIC int AHCI_init();
 PUBLIC u32 identity_SATA(HBA_PORT *port,u8 *buf );
@@ -250,6 +301,7 @@ PUBLIC void tf_err_rec(HBA_PORT* port);
 
 extern HBA_MEM* HBA;
 
-extern	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+extern AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
 extern volatile int sata_wait_flag;
+extern volatile int sata_error_flag;
 #endif /* ACHI_H */
