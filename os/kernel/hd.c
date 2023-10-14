@@ -1066,7 +1066,7 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 		phys_copy(satabuf, buf, p->CNT);
 	}
 
-	SATA_rdwt_sects(drive-SATA_BASE, p->type, sect_nr, count);
+	SATA_rdwt_sects(drive, p->type, sect_nr, count);
 
 	if(p->type == DEV_READ)
 	{
