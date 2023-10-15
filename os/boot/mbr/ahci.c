@@ -642,190 +642,191 @@ int sata_read(int dev, u16 *buf, u64 sect, u32 count){
 
 }
 
-PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
-{	
 
-	u8 buffer[512];
-	u8 *buf = buffer;
-	char wbuf[512]="1111111111111111111111111111111111";
-	// lprintf(wbuf);
-	memset(buf,0,512);
-	if(rw==1)memcpy(buf,wbuf,512);
-	int port_num=ahci_info[0].satadrv_atport[0];
-	HBA_PORT *port=&(HBA->ports[0]);
-/*  	if (!rw)
-	{
-		sata_read1(port,sect,1,buf);
-		lprintf("\n");
-		lprintf("\n read finish\n ");
-		for (int i = 0; i < 16; i++)
-		{
-			disp_int(buf[i]);
-		}
+// PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
+// {	
+
+// 	u8 buffer[512];
+// 	u8 *buf = buffer;
+// 	char wbuf[512]="1111111111111111111111111111111111";
+// 	// lprintf(wbuf);
+// 	memset(buf,0,512);
+// 	if(rw==1)memcpy(buf,wbuf,512);
+// 	int port_num=ahci_info[0].satadrv_atport[0];
+// 	HBA_PORT *port=&(HBA->ports[0]);
+// /*  	if (!rw)
+// 	{
+// 		sata_read1(port,sect,1,buf);
+// 		lprintf("\n");
+// 		lprintf("\n read finish\n ");
+// 		for (int i = 0; i < 16; i++)
+// 		{
+// 			disp_int(buf[i]);
+// 		}
 		
 		
-		return 1;
-	} 
-	 */
+// 		return 1;
+// 	} 
+// 	 */
 
-	port->is = (u32) -1;		// Clear pending interrupt bits
-	// lprintf("\nport_is:");
-	// disp_int(port->is);
-	int spin = 0; // Spin lock timeout counter
-	int slot = find_cmdslot(port);
-	if (slot == -1)
-		return 0;
-	// u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
+// 	port->is = (u32) -1;		// Clear pending interrupt bits
+// 	// lprintf("\nport_is:");
+// 	// disp_int(port->is);
+// 	int spin = 0; // Spin lock timeout counter
+// 	int slot = find_cmdslot(port);
+// 	if (slot == -1)
+// 		return 0;
+// 	// u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+// 	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
 
-	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
-	// 	hd_info[drive].primary[p->msg->DEVICE].base :
-	// 	hd_info[drive].logical[logidx].base;
-	u64	sect_nr	= sect;
-	// u64	sect_nr	= 3000;
-	u32	count = 1;
+// 	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+// 	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
+// 	// 	hd_info[drive].primary[p->msg->DEVICE].base :
+// 	// 	hd_info[drive].logical[logidx].base;
+// 	u64	sect_nr	= sect;
+// 	// u64	sect_nr	= 3000;
+// 	u32	count = 1;
 
-	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)(port->clb);
+// 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)(port->clb);
 
-	cmdheader += slot;
-	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
-	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
-	// cmdheader->w = (p->msg->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
-	cmdheader->w = rw ;
-	// disp_int(cmdheader->w);
-	cmdheader->c = 0;               
-    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
-	cmdheader->prdbc = 0;
-	cmdheader->prdtl =  1;	// PRDT entries count
+// 	cmdheader += slot;
+// 	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+// 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
+// 	// cmdheader->w = (p->msg->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
+// 	cmdheader->w = rw ;
+// 	// disp_int(cmdheader->w);
+// 	cmdheader->c = 0;               
+//     cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+// 	cmdheader->prdbc = 0;
+// 	cmdheader->prdtl =  1;	// PRDT entries count
  
-	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)(cmdheader->ctba);
-	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
- 		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
+// 	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)(cmdheader->ctba);
+// 	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
+//  		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
  
 	
-	// cmdtbl->prdt_entry[0].dba = (u32)(buf);
-	// cmdtbl->prdt_entry[0].dbc = 512-1;	// this value should always be set to 1 less than the actual value
-	// cmdtbl->prdt_entry[0].i = 0;
-	int i=0;
-	for ( i=0; i<cmdheader->prdtl-1; i++)
-	{
-		cmdtbl->prdt_entry[i].dba = (u32)(buf);
-		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
-		cmdtbl->prdt_entry[i].i = 0 ;
-		buf += 8*1024;	// 8k bytes
-		count -= 16;	// 16 sectors
-	}
-	// Last entry202.117.249.6
-	cmdtbl->prdt_entry[i].dba = (u32)(buf);
-	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
-	cmdtbl->prdt_entry[i].i = 0;
+// 	// cmdtbl->prdt_entry[0].dba = (u32)(buf);
+// 	// cmdtbl->prdt_entry[0].dbc = 512-1;	// this value should always be set to 1 less than the actual value
+// 	// cmdtbl->prdt_entry[0].i = 0;
+// 	int i=0;
+// 	for ( i=0; i<cmdheader->prdtl-1; i++)
+// 	{
+// 		cmdtbl->prdt_entry[i].dba = (u32)(buf);
+// 		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
+// 		cmdtbl->prdt_entry[i].i = 0 ;
+// 		buf += 8*1024;	// 8k bytes
+// 		count -= 16;	// 16 sectors
+// 	}
+// 	// Last entry202.117.249.6
+// 	cmdtbl->prdt_entry[i].dba = (u32)(buf);
+// 	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
+// 	cmdtbl->prdt_entry[i].i = 0;
 
  
-	// Setup command
-	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+// 	// Setup command
+// 	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
  
-	cmdfis->fis_type = FIS_TYPE_REG_H2D;
-	cmdfis->c = 1;	// Command
+// 	cmdfis->fis_type = FIS_TYPE_REG_H2D;
+// 	cmdfis->c = 1;	// Command
 
-	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
- 	cmdfis->command = (rw == 0) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+// 	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+//  	cmdfis->command = (rw == 0) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
 
-	cmdfis->lba0 = sect_nr & 0xFF;
-	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
-	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
-	cmdfis->device = 1<<6;	// LBA mode
+// 	cmdfis->lba0 = sect_nr & 0xFF;
+// 	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
+// 	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
+// 	cmdfis->device = 1<<6;	// LBA mode
  
-	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
-	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
-	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
+// 	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
+// 	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
+// 	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
  
-	cmdfis->countl = count & 0xFF;
-	cmdfis->counth = (count >> 8) & 0xFF;
+// 	cmdfis->countl = count & 0xFF;
+// 	cmdfis->counth = (count >> 8) & 0xFF;
  
-	// The below loop waits until the port is no longer busy before issuing a new command
-	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
-	{
-		spin++;
-	}
-	if (spin == 1000000)
-	{
-		lprintf("\nPort is hung");
-		return FALSE;
-	}
+// 	// The below loop waits until the port is no longer busy before issuing a new command
+// 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
+// 	{
+// 		spin++;
+// 	}
+// 	if (spin == 1000000)
+// 	{
+// 		lprintf("\nPort is hung");
+// 		return FALSE;
+// 	}
 
-	// Issue command
-	port->ci = 1<<slot;	
+// 	// Issue command
+// 	port->ci = 1<<slot;	
 	
 
 
-	// Wait for completion
-	// if (rw==1)	
-	// lprintf("\nWait for completion");
-	// lprintf("\nslot:");
-	// disp_int(slot);
-/* 	while (sata_wait_flag)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		// lprintf("transfer byte count:");disp_int(cmdheader->prdbc);
-		// if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-		// 	// lprintf("port_is:");disp_int(port->is);
-		// 	break;}
+// 	// Wait for completion
+// 	// if (rw==1)	
+// 	// lprintf("\nWait for completion");
+// 	// lprintf("\nslot:");
+// 	// disp_int(slot);
+// /* 	while (sata_wait_flag)
+// 	{
+// 		// In some longer duration reads, it may be helpful to spin on the DPS bit 
+// 		// in the PxIS port field as well (1 << 5)
+// 		// lprintf("transfer byte count:");disp_int(cmdheader->prdbc);
+// 		// if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+// 		// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+// 		// 	// lprintf("port_is:");disp_int(port->is);
+// 		// 	break;}
 		
-		// disp_int((port->ci)>>slot);
-		// if (port->is & HBA_PxIS_TFES)	// Task file error
-		// {
-		// 	lprintf("Read disk error\n");
-		// 	return FALSE;
-		// }
-	}
-	sata_wait_flag = 1; */
-	while (1)
-	{
-		// In some longer duration reads, it may be helpful to spin on the DPS bit 
-		// in the PxIS port field as well (1 << 5)
-		if ((port->ci & (1<<slot)) == 0) break;
-		/*
-		if (port->is & HBA_PxIS_TFES)	// Task file error
-		{
-			trace_ahci("Read disk error\n");
-			return FALSE;
-		}
-		*/
-	}
+// 		// disp_int((port->ci)>>slot);
+// 		// if (port->is & HBA_PxIS_TFES)	// Task file error
+// 		// {
+// 		// 	lprintf("Read disk error\n");
+// 		// 	return FALSE;
+// 		// }
+// 	}
+// 	sata_wait_flag = 1; */
+// 	while (1)
+// 	{
+// 		// In some longer duration reads, it may be helpful to spin on the DPS bit 
+// 		// in the PxIS port field as well (1 << 5)
+// 		if ((port->ci & (1<<slot)) == 0) break;
+// 		/*
+// 		if (port->is & HBA_PxIS_TFES)	// Task file error
+// 		{
+// 			trace_ahci("Read disk error\n");
+// 			return FALSE;
+// 		}
+// 		*/
+// 	}
  
-	// Check again
-	// if (port->is & HBA_PxIS_TFES)
-	// {
-	// 	lprintf("Read disk error\n");
-	// 	return FALSE;
-	// }
+// 	// Check again
+// 	// if (port->is & HBA_PxIS_TFES)
+// 	// {
+// 	// 	lprintf("Read disk error\n");
+// 	// 	return FALSE;
+// 	// }
 	
-	 if(rw==0){
-		lprintf("\nread finish\n");
-	// 	memcpy(rbuf,buf,512);
-		// // lprintf("\nread,success:");
-		  for (int i = 0; i < 16; i++)
-		  {	
-		 	lprintf("%d ",buf[i]);
-		  }
-	}
-	else{
-		lprintf("\nwrite finish\n");
-	// 	memcpy(rbuf,buf,512);
-		// // lprintf("\nread,success:");
-		  for (int i = 0; i < 16; i++)
-		  {	
-		 	lprintf("%d ",buf[i]);
-		  }
-	}
-	// else	lprintf("\nwrite success");
-	//kern_kfree(buf);
-	return 1;
-}
- 
+// 	 if(rw==0){
+// 		lprintf("\nread finish\n");
+// 	// 	memcpy(rbuf,buf,512);
+// 		// // lprintf("\nread,success:");
+// 		  for (int i = 0; i < 16; i++)
+// 		  {	
+// 		 	lprintf("%d ",buf[i]);
+// 		  }
+// 	}
+// 	else{
+// 		lprintf("\nwrite finish\n");
+// 	// 	memcpy(rbuf,buf,512);
+// 		// // lprintf("\nread,success:");
+// 		  for (int i = 0; i < 16; i++)
+// 		  {	
+// 		 	lprintf("%d ",buf[i]);
+// 		  }
+// 	}
+// 	// else	lprintf("\nwrite success");
+// 	//kern_kfree(buf);
+// 	return 1;
+// }
+
 // Find a free command list slot
 PUBLIC int find_cmdslot(HBA_PORT *port)
 {
