@@ -10,7 +10,7 @@
 #include "type.h"
 
 #define SECTSIZE	512
-#define BUF_ADDR	0x30000
+#define BUF_ADDR	0x40000
 #define ELF_ADDR	0x7e00
 #define ACT_PART_FLAG 0x80
 #define DISK_READY_FLAG 0x40

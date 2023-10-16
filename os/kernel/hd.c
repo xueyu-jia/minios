@@ -108,7 +108,7 @@ PUBLIC void init_hd()
 PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 {
 	//disp_str("Read hd information...  ");	//deleted by mingxuan 2021-2-7
-	if(satabuf == NULL)satabuf = (u8*)kern_kmalloc(SECTOR_SIZE*2);
+	if(satabuf == NULL)satabuf = (u8*)kern_kmalloc(BLOCK_SIZE);
 	/* Get the number of drives from the BIOS data area */
 	u8 * pNrDrives = (u8*)(0x475);
 	// printf("NrDrives:%d.\n", *pNrDrives);
