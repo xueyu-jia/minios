@@ -46,7 +46,7 @@ void load_kernel() {
     //int ret = fat32_read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
     //判断文件是否读取成功
     if(ret != TRUE)goto bad;
-    struct Elf *eh = (struct Elf *)ELF_ADDR;
+    struct Elfdr *eh = (struct Elfdr *)ELF_ADDR;
     struct Proghdr *ph = (struct Proghdr *)((void *)eh + eh->e_phoff);
     for (int i = 0; i < eh->e_phnum;i++, ph++) {  // 遍历所有程序段，加载可加载的程序段
         print_elf(ph);
