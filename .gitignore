@@ -7,7 +7,9 @@
 .idea
 
 # ignore *.bin
-*.bin
+/os/*.bin
+/user/*.bin
+
 
 # ignore hard disk image
 80m.img
