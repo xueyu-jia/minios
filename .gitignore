@@ -7,8 +7,8 @@
 .idea
 
 # ignore *.bin
-*.bin
-!kernel.gdb.bin
+
+# !kernel.gdb.bin
 
 # ignore hard disk image
 80m.img
