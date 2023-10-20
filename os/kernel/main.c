@@ -30,6 +30,7 @@
 #include "../include/semaphore.h"
 #include "../include/ahci.h"
 #include "../include/buffer.h"
+#include "../gdbstub/gdbstub.h"
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -51,7 +52,7 @@ PUBLIC int kernel_main()
 		}
 	}
 	disp_pos = 0;
-
+    gdb_sys_init();
 	disp_str("-----Kernel Initialization Begins-----\n");
 	kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 

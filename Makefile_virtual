@@ -1,6 +1,5 @@
 #########################
 # Makefile for Orange'S #
-# for Real machine
 #########################
 SHELL := /bin/bash
 # added by mingxuan 2020-9-12
@@ -35,11 +34,10 @@ AR		= ar
 #MKFS = fs_flags/orange_flag.bin fs_flags/fat32_flag.bin
 
 #added by sundong 写镜像用,用losetup -f查看
-#FREE_LOOP =$(shell sudo losetup -f)
-FREE_LOOP=/dev/sda
+FREE_LOOP =$(shell sudo losetup -f)
 #added by sundong 2023.4.25
-ROOT_FS_PART=$(FREE_LOOP)2
-GRUB_INSTALL_PART=$(FREE_LOOP)5
+ROOT_FS_PART=$(FREE_LOOP)p2
+GRUB_INSTALL_PART=$(FREE_LOOP)p5
 #added by sundong 2023.3.21
 #用于区分是使用grub chainloader
 #可选值为 true  false
@@ -58,9 +56,9 @@ BOOT_SIZE = 420
 # OSBOOT_START_OFFSET = OSBOOT_OFFSET + 90
 OSBOOT_START_OFFSET = 1048666 # 2048*512+90
 #OSBOOT_START_OFFSET=2097242 # for test12.img
-BOOT_PART=$(FREE_LOOP)1
+BOOT_PART=$(FREE_LOOP)p1
 BOOT_PART_MOUNTPOINT = iso
-BOOT_IMG = fat32_boot.img #mark
+BOOT_IMG = fat32_boot.img
 GRUB_CONFIG=fat32_grub.cfg
 BOOT_FLAGS= -DFAT32_BOOT
 endif
@@ -75,8 +73,8 @@ BOOT_SIZE =512
 # OSBOOT_START_OFFSET = OSBOOT_OFFSET 
 OSBOOT_START_OFFSET =2097152 #4096*512
 #p2分区格式化为orangefs
-BOOT_PART=$(FREE_LOOP)2
-BOOT_PART_MOUNTPOINT =$(FREE_LOOP)2
+BOOT_PART=$(FREE_LOOP)p2
+BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
 #镜像；不用文件系统作为启动分区时镜像是不同的
 BOOT_IMG=orangefs_boot.img
 GRUB_CONFIG=orangefs_grub.cfg
@@ -106,9 +104,10 @@ build_fs :
 #	dd if=fs_flags/orange_flag.bin of=b.img bs=1 count=1 seek=$(ORANGE_FS_START_OFFSET) conv=notrunc
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-	#sudo losetup -P $(FREE_LOOP) b.img
-	#sudo mkfs.vfat -F 32 $(FREE_LOOP)p5;
-	sudo mkfs.vfat -F 32 $(FREE_LOOP)5;
+	sudo losetup -P $(FREE_LOOP) b.img
+
+
+	sudo mkfs.vfat -F 32 $(FREE_LOOP)p5;
 
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
@@ -119,7 +118,7 @@ build_fs :
 
 
 #	sudo ./o_list $(FREE_LOOP)p1
-	#sudo losetup -d $(FREE_LOOP)
+	sudo losetup -d $(FREE_LOOP)
 
 #	cp ./b.img ./user/user/b.img	# for debug, added by mingxuan 2021-8-8
 
@@ -136,18 +135,19 @@ buildimg :
 
 # added by mingxuan 2019-5-17
 buildimg_mbr:
-	#rm -f b.img 				# added by mingxuan 2020-10-5
-	#cp ./hd/$(BOOT_IMG) ./b.img	
+	rm -f b.img 				# added by mingxuan 2020-10-5
+#	cp ./hd/test2.img ./b.img	# added by mingxuan 2020-10-5
+	cp ./hd/$(BOOT_IMG) ./b.img	
 	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
-		d if=os/boot/mbr/mbr.bin of=/dev/sda bs=1 count=446 conv=notrunc ; \
+		dd if=os/boot/mbr/mbr.bin of=b.img bs=1 count=446 conv=notrunc ; \
 	fi
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
-	#sudo losetup -P $(FREE_LOOP) b.img
+	sudo losetup -P $(FREE_LOOP) b.img
 	sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG) $(BOOT_PART)  #$(FREE_LOOP)p2	# modified by mingxuan 2021-2-28
 
 	# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
-	dd if=os/boot/mbr/$(BOOT) of=/dev/sda bs=1 count=$(BOOT_SIZE) seek=$(OSBOOT_START_OFFSET) conv=notrunc
+	dd if=os/boot/mbr/$(BOOT) of=b.img bs=1 count=$(BOOT_SIZE) seek=$(OSBOOT_START_OFFSET) conv=notrunc
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 	#初始化根文件系统
 	sudo ./format $(ROOT_FS_PART)
@@ -212,7 +212,7 @@ buildimg_mbr:
 		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
 	fi
 
-	#sudo losetup -d $(FREE_LOOP)
+	sudo losetup -d $(FREE_LOOP)
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 
 

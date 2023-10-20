@@ -664,16 +664,15 @@ PUBLIC void init_rootfs(int device)
 	for (i = 0; i < NR_INODE; i++)
 		memset(&inode_table[i], 0, sizeof(struct inode));
 	struct super_block *sb = super_block; // deleted by mingxuan 2020-10-30
-
 	// for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)				//deleted by mingxuan 2020-10-30
 	//	sb->sb_dev = NO_DEV;										//deleted by mingxuan 2020-10-30
-
 	int orange_dev = get_fs_dev(device, ORANGE_TYPE); // added by mingxuan 2020-10-27
 
 	/* load super block of ROOT */
 	// read_super_block(ROOT_DEV);		// deleted by mingxuan 2020-10-27
 	read_super_block(orange_dev); // modified by mingxuan 2020-10-27
 	// sb = get_super_block(ROOT_DEV);	// deleted by mingxuan 2020-10-27
+    disp_int(11);
 	sb = get_super_block(orange_dev); // modified by mingxuan 2020-10-27
 
 	disp_str("Superblock Address:");

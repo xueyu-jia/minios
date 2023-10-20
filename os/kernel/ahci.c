@@ -191,7 +191,8 @@ PRIVATE void sata_handler(int irq)
 	// 中断处理
 	u32 intr_status = HBA->ports[prot_num].is;
 	HBA->ports[prot_num].is = intr_status;					//端口清中断
-	if(intr_status == 0) {
+	//disp_int((int)intr_status);
+    if(intr_status == 0) {
 		//debug
 		//disp_str("\nsata_handler: PxIS = 0\n");
 	} else if (intr_status & HBA_Port_ERROR) {			

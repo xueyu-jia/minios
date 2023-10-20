@@ -71,7 +71,8 @@ OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
 			os/ipc/shm.o os/ipc/msg.o \
 			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
 			os/kernel/mount.o \
-			os/kernel/buffer.o os/kernel/slab.o
+			os/kernel/buffer.o os/kernel/slab.o \
+			os/gdbstub/gdbstub_x86_int.o
 			
 #added by mingxuan 2021-2-28
 
@@ -390,3 +391,6 @@ os/kernel/mount.o: os/kernel/mount.c os/include/mount.h
 
 os/kernel/slab.o: os/kernel/slab.c os/include/slab.h os/include/buddy.h
 	$(CC) $(CFLAGS) -o $@ $<
+
+os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
+	nasm -I gdbstub/ -f elf -o $@ $<
