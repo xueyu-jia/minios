@@ -58,7 +58,6 @@ struct Directory_Entry {
 struct BPB bpb;
 u32 fat_start_sec;
 u32 data_start_sec;
-u32 elf_clus;
 u32 elf_off; 
 u32 fat_now_sec;
 u32 elf_first;

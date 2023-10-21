@@ -6,6 +6,20 @@
 #include "loaderprint.h"
 //读文件函数指针，根据不同的fs，有不同的实现；
 int (*read_file)(char*,void*);
+
+struct FD{
+    char *filename;
+    
+    // fat32
+    u32 file_clus;
+    u8 fat_table[SECT_SIZE];
+
+    // orange
+    int inode;
+};
+struct FD (*open_file) (char*);
+struct FD elf_fd;
+
 static bool is_fat32(){
     //判断是否是FAT32的方法：
     // boot扇区的第0x52开始的8的字节的值是否为{4641-5433-3220-2020}("FAT32   ")
@@ -39,4 +53,12 @@ int init_fs(){
     }
     else return FALSE;
 
+}
+int open(char *filename)
+{
+    elf_fd.filename = filename;
+    if(is_fat32()){
+        elf_fd.file_clus = 
+        elf_fd.
+    }
 }

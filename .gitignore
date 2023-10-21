@@ -10,6 +10,7 @@
 *.bin
 !kernel.gdb.bin
 
+Makefile
 
 # ignore hard disk image
 80m.img

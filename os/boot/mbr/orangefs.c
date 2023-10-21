@@ -61,7 +61,7 @@ int orangefs_read_file(char *filename,void *dst){
     //文件实际占用的扇区的数量(上取整)
     int num_sect =  target_inode.i_size%SECTSIZE == 0?target_inode.i_size/SECTSIZE:target_inode.i_size/SECTSIZE+1;
     //lprintf("isize %d numn sect %d\n", target_inode.i_size,target_inode.i_size/SECTSIZE);
-    readsects(dst,bootPartStartSector+target_inode.i_start_sect*(BLOCK_SIZE/SECT_SIZE),num_sect);
+    readsects(dst, bootPartStartSector+target_inode.i_start_sect*(BLOCK_SIZE/SECT_SIZE), num_sect);
 /*      for (int i = 0; i < num_sect+1; i++)
     {
         readsect(dst+i*SECTSIZE,bootPartStartSector+target_inode.i_start_sect+i);
