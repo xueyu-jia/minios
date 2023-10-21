@@ -52,7 +52,7 @@ PUBLIC int kernel_main()
 		}
 	}
 	disp_pos = 0;
-    gdb_sys_init();
+    //gdb_sys_init();
 	disp_str("-----Kernel Initialization Begins-----\n");
 	kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 
