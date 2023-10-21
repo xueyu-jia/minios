@@ -42,9 +42,11 @@ void load_kernel() {
         lprintf("fs type not support !\n");
         goto bad;
     }
-    int ret = read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
-    //int ret = fat32_read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
+    // int ret = read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
+    fat32_open_file(KERNEL_FILENAME);
+    int ret = fat32_read(0, 1843200, (void *)ELF_ADDR);
     //判断文件是否读取成功
+    lprintf("%d", ret);
     if(ret != TRUE)goto bad;
     struct Elfdr *eh = (struct Elfdr *)ELF_ADDR;
     struct Proghdr *ph = (struct Proghdr *)((void *)eh + eh->e_phoff);

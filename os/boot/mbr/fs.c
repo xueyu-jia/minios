@@ -54,11 +54,11 @@ int init_fs(){
     else return FALSE;
 
 }
-int open(char *filename)
-{
-    elf_fd.filename = filename;
-    if(is_fat32()){
-        elf_fd.file_clus = 
-        elf_fd.
-    }
-}
+// int open(char *filename)
+// {
+//     elf_fd.filename = filename;
+//     if(is_fat32()){
+//         elf_fd.file_clus = 
+//         elf_fd.
+//     }
+// }
