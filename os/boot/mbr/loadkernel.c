@@ -1,14 +1,14 @@
 //ported by sundong 2023.3.26
 #include "loadkernel.h"
 #include "loaderprint.h"
-#include "elf.h"
+#include "./include/elf.h"
 #include "fat32.h"
 #include "disk.h"
 #include "string.h"
 #include "paging.h"
 #include "ahci.h"
 #include "orangefs.h"
-#include "fs.h"
+#include "./include/fs.h"
 void loader_cstart(u32 MemChkBuf,u32 MCRNumber){
     clear_screen();
     lprintf("MemChkBuf: %d MCRNumber %d \n",MemChkBuf,MCRNumber);
@@ -43,43 +43,49 @@ void load_kernel() {
         goto bad;
     }
     // int ret = read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
-    fat32_open_file(KERNEL_FILENAME);
-    int ret = fat32_read(0, 1843200, (void *)ELF_ADDR);
-    //判断文件是否读取成功
-    lprintf("%d", ret);
-    if(ret != TRUE)goto bad;
-    struct Elfdr *eh = (struct Elfdr *)ELF_ADDR;
-    struct Proghdr *ph = (struct Proghdr *)((void *)eh + eh->e_phoff);
-    for (int i = 0; i < eh->e_phnum;i++, ph++) {  // 遍历所有程序段，加载可加载的程序段
-        print_elf(ph);
-        if (ph->p_type != PT_LOAD) continue;
-        // 一个字节一个字节的把程序段加载到指定位置
-        memcpy((void *)ph->p_va, (const void *)eh + ph->p_offset, ph->p_filesz);
-        memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);  // 将不需要的内存置为0
+    open_file(KERNEL_FILENAME);
+    
+    struct Elfdr eh;
+    struct Proghdr ph;
+    struct Secthdr sh;
+    // 读elf文件头
+    int ret = read(0, sizeof(struct Elfdr), (void *)&eh);
+    if(ret != TRUE) goto bad;
+    
+    // 读program
+    for(int i = 0; i < eh.e_phnum; i++){
+        // 读program头
+        ret &= read(eh.e_phoff+eh.e_phentsize*i, eh.e_phentsize, (void *)&ph);
+        print_elf(&ph);
+        if (ph.p_type != PT_LOAD) continue;
+        // 将program写入内存
+        ret &= read(ph.p_offset, ph.p_filesz, (void *)ph.p_va);
+        memset((void *)ph.p_va + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);  // 将不需要的内存置为0
     }
+    if(ret != TRUE) goto bad;
+
     //开始清空bss section
-    struct Secthdr *sh = (struct Secthdr *)((void *)eh+eh->e_shoff);
-    //获取各个section的命名表
-    char * sh_name_tbl = (char*)((void*)eh+sh[eh->e_shstrndx].sh_offset);
+    char sh_name[128];
+    ret &= read(eh.e_shoff+eh.e_shentsize*eh.e_shstrndx, sizeof(struct Secthdr), (void *)&sh);
+    if(ret != TRUE) goto bad;
+    char *sh_name_tbl_offset = sh.sh_offset;
     //比较各个section header的名称，是否与BSS_SECTION_NAME相等
     //若相等则将该section置为0
-    for (int i = 0; i < eh->e_shnum; i++)
-    {
-        if(strcmp(sh_name_tbl+sh[i].sh_name,BSS_SECTION_NAME)==0){
-            memset(sh[i].sh_addr,0,sh[i].sh_size);
+    for(int i = 0; i < eh.e_shnum; i++){
+        ret &= read(eh.e_shoff+eh.e_shentsize*i, sizeof(struct Secthdr), (void *)&sh);
+        ret &= read(sh_name_tbl_offset+sh.sh_name, 128, (void*)sh_name);
+        if(strcmp(sh_name, BSS_SECTION_NAME) == 0){
+            memset(sh.sh_addr, 0, sh.sh_size);
             //检查是否已经设置为0
-            if(mem_check_IsZero(sh[i].sh_addr,sh[i].sh_size)){
-                break;
-            }else{
-                goto bad;
-            }
-
-
+            if(mem_check_IsZero(sh.sh_addr, sh.sh_size))    break;
+            else goto bad;
         }
     }
+    if(ret != TRUE) goto bad;
+
     lprintf("----finish loading kernel elf----\n");
-    lprintf("%d", eh->e_entry);
-    ((void (*)(void))(eh->e_entry))();
+    lprintf("%d", eh.e_entry);
+    ((void (*)(void))(eh.e_entry))();
     test:
     while (1)
         ;

@@ -5,7 +5,9 @@
 #include "disk.h"
 #include "loaderprint.h"
 //读文件函数指针，根据不同的fs，有不同的实现；
-int (*read_file)(char*,void*);
+int (*read_file)(char* filename, void* buf);
+int (*read)(u32 offset, u32 lenth, void *buf);
+int (*open_file)(char *filename);
 
 struct FD{
     char *filename;
@@ -17,8 +19,6 @@ struct FD{
     // orange
     int inode;
 };
-struct FD (*open_file) (char*);
-struct FD elf_fd;
 
 static bool is_fat32(){
     //判断是否是FAT32的方法：
@@ -44,6 +44,8 @@ int init_fs(){
     if(is_fat32()){
         fat32_init();
         read_file = fat32_read_file;
+        read = fat32_read;
+        open_file = fat32_open_file;
         return TRUE;
     }
     else if(is_orangefs()){
@@ -54,11 +56,3 @@ int init_fs(){
     else return FALSE;
 
 }
-// int open(char *filename)
-// {
-//     elf_fd.filename = filename;
-//     if(is_fat32()){
-//         elf_fd.file_clus = 
-//         elf_fd.
-//     }
-// }

@@ -2,15 +2,16 @@
 #include "fat32.h"
 #include "disk.h"
 #include "string.h"
+#define MIN(x,y)	(x>y ? y : x)
+//一个简单地文件描述符
 struct fat32_fd{
     char *filename;
     u32 first_clus; 
-    u8 fat_table[SECTSIZE];     //  fat
     u32 fat_start_sec;          //  fat表起始扇区号
     u32 data_start_sec;         //  data起始扇区号
-    u32 fat_now_sec;
 };
 struct fat32_fd elf_fd;
+
 /*
 获取下一个扇区号
 扇区号 = 簇号*4/每个扇区的字节数 + （隐藏扇区数 +
@@ -19,10 +20,7 @@ struct fat32_fd elf_fd;
 static u32 get_next_clus(u32 current_clus) {
     u32 sec = current_clus * 4 / SECTSIZE;  // 需要乘4是因为每个簇号大小为4字节
     u32 off = current_clus * 4 % SECTSIZE;
-    //if (elf_fd.fat_now_sec != elf_fd.fat_start_sec + sec) {  // 若当前簇号不为FAT32表所在的扇区的簇号则重新读取并更新当前簇号
-      readsect((void *)BUF_ADDR, bootPartStartSector + elf_fd.fat_start_sec + sec);
-    //  elf_fd.fat_now_sec = elf_fd.fat_start_sec + sec; 
-    //}
+    readsect((void *)BUF_ADDR, bootPartStartSector + elf_fd.fat_start_sec + sec);
     return *(u32 *)(BUF_ADDR + off);  // 返回下一个簇的簇号
 }
 //将文件名转为大写 .转为"  "
@@ -67,7 +65,8 @@ void fat32_init(){
     if ( bpb.BPB_BytsPerSec != SECTSIZE) goto bad;
     elf_fd.fat_start_sec = bpb.BPB_RsvdSecCnt;  // 计算fat表起始扇区号
     elf_fd.data_start_sec = elf_fd.fat_start_sec + bpb.BPB_FATSz32 * bpb.BPB_NumFATs ;  // 计算data起始扇区号
-    return ;
+    elf_fd.first_clus = 0;
+	return ;
     bad:
     while (1);
 }
@@ -119,7 +118,7 @@ int fat32_read_file(char *filename,void *buf)
     return TRUE;
 }
 /*
- * @brief 得到elf文件的第i个簇的簇号
+ * @brief 得到文件的第i个簇的簇号
 */
 u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
 {	
@@ -129,40 +128,48 @@ u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
 	}
 	return current_clus;
 }
-
+/*
+ * @brief 从文件的特定偏移量开始读数据
+ * @param offset:在文件中的偏移量
+ * @param buf必须大于等于lenth
+ * @param lenth:读数据的长度
+ * @note 请先用fat32_file_open()打开文件
+*/
 int fat32_read(u32 offset, u32 lenth, void *buf)
 {
     u32 clus_size = bpb.BPB_SecPerClus * SECTSIZE;
-	if(lenth < 0) return FALSE;
-	else if(lenth < clus_size)	lenth = clus_size;
+	// int retval = TRUE;
+	if(lenth <= 0) return FALSE;
 
 	u32 clus_i = offset / clus_size;
 	u32 offset_in_clus = offset % clus_size;
 	u32 current_clus = fat32_find_clus_i(elf_fd.first_clus, clus_i);
-	u32 first_read_lenth = clus_size-offset_in_clus;
+	u32 first_read_lenth = MIN(clus_size-offset_in_clus, lenth);
 
 	read_cluster((void *)BUF_ADDR, current_clus);
 	memcpy(buf, (void *)(BUF_ADDR+offset_in_clus), first_read_lenth);
 	current_clus = get_next_clus(current_clus);
 	lenth -= first_read_lenth;
 	buf += first_read_lenth;
-	int i;
-	for(i=0; (i*clus_size < lenth) && (0x0FFFFFF8 > current_clus); i++){
+	
+	while(lenth>0 && 0x0FFFFFF8>current_clus){
 		read_cluster((void *)BUF_ADDR, current_clus);
-		memcpy(buf, (void *)BUF_ADDR, clus_size);
+		memcpy(buf, (void *)BUF_ADDR, MIN(clus_size, lenth));
 
 		current_clus = get_next_clus(current_clus);
 		buf += clus_size;
-		//return current_clus;
+		lenth -= clus_size;
 	}
 	
     return TRUE;
 }
-
+/*
+ * @brief 通过文件名打开一个文件，维持一个简单的FD
+ * @return 0 if faile or 1 for success
+*/
 int fat32_open_file(char *filename)
 {
     elf_fd.filename = filename;
     elf_fd.first_clus = fat32_find_file(filename);
-    elf_fd.fat_now_sec = 0;
     return (elf_fd.first_clus == 0 ? FALSE : TRUE);
 }

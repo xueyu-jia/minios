@@ -18,7 +18,7 @@ struct Elfdr {
 	u32 e_shoff;//节头表偏移
 	u32 e_flags;//与文件相关的特定处理器的标准
 	u16 e_ehsize;//ELF头部的大小
-	u16 e_phentsize;//程序头表
+	u16 e_phentsize;//程序头表大小
 	u16 e_phnum;//程序头表的数量
 	u16 e_shentsize;//程序头表项的大小
 	u16 e_shnum;//节头表表项的大小
@@ -48,5 +48,4 @@ struct Secthdr {
 	u32 sh_addralign;
 	u32 sh_entsize;
 };
-
 #endif 
