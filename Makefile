@@ -76,9 +76,9 @@ OSBOOT_START_OFFSET =2097152 #4096*512
 BOOT_PART=$(FREE_LOOP)p2
 BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
 #镜像；不用文件系统作为启动分区时镜像是不同的
-BOOT_IMG = orangefs_boot.img
-GRUB_CONFIG = orangefs_grub.cfg
-BOOT_FLAGS = -DORANGE_BOOT
+BOOT_IMG=orangefs_boot.img
+GRUB_CONFIG=orangefs_grub.cfg
+BOOT_FLAGS= -DORANGE_BOOT
 
 endif
  
@@ -150,7 +150,7 @@ buildimg_mbr:
 	dd if=os/boot/mbr/$(BOOT) of=b.img bs=1 count=$(BOOT_SIZE) seek=$(OSBOOT_START_OFFSET) conv=notrunc
 #	dd if=os/boot/mbr/orangefs_boot.bin of=b.img bs=1 count=512 seek=$(OSBOOT_OFFSET) conv=notrunc
 	#初始化根文件系统
-	sudo mkfs.vfat -F 32 $(ROOT_FS_PART);
+#	sudo mkfs.vfat -F 32 $(ROOT_FS_PART);
 	sudo ./format $(ROOT_FS_PART)
 #orangefs有专用的cp 不需要挂载到linux目录下，其他如fat32需要挂载
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
