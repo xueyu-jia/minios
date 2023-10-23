@@ -51,6 +51,8 @@ int init_fs(){
     else if(is_orangefs()){
         orangefs_init();
         read_file = orangefs_read_file;
+        read = orangefs_read;
+        open_file = orangefs_open_file;
         return TRUE;
     }
     else return FALSE;

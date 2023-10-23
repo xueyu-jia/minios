@@ -43,7 +43,7 @@ GRUB_INSTALL_PART=$(FREE_LOOP)p5
 #可选值为 true  false
 USING_GRUB_CHAINLOADER = false
 #选择启动分区的文件系统格式，目前仅支持fat32和orangfs
-BOOT_PART_FS_TYPE= fat32
+BOOT_PART_FS_TYPE= orangefs
 
 ifeq ($(BOOT_PART_FS_TYPE),fat32)
 BOOT_PART_FS_MAKER = mkfs.vfat
@@ -76,9 +76,9 @@ OSBOOT_START_OFFSET =2097152 #4096*512
 BOOT_PART=$(FREE_LOOP)p2
 BOOT_PART_MOUNTPOINT =$(FREE_LOOP)p2
 #镜像；不用文件系统作为启动分区时镜像是不同的
-BOOT_IMG=orangefs_boot.img
-GRUB_CONFIG=orangefs_grub.cfg
-BOOT_FLAGS= -DORANGE_BOOT
+BOOT_IMG = orangefs_boot.img
+GRUB_CONFIG = orangefs_grub.cfg
+BOOT_FLAGS = -DORANGE_BOOT
 
 endif
  

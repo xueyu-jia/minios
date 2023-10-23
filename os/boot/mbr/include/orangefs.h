@@ -85,10 +85,10 @@ typedef struct super_block {
 typedef struct inode {
 	u32	i_mode;		/**< Accsess mode */
 	u32	i_size;		/**< File size */
-	u32	i_start_sect;	/**< The first sector of the data */
-	u32	i_nr_sects;	/**< How many sectors the file occupies */
-	u8	_unused[16];	/**< Stuff for alignment */
-
+	u32	i_start_block;	/**< The first block of the data */
+	u32	i_nr_blocks;	/**< How many blocks the file occupies */
+	u8	_unused[15];	/**< Stuff for alignment */
+	u8 i_mnt_index; /**the index in mnt_table when the inode is mountpoint*/
 	/* the following items are only present in memory */
 	int	i_dev;
 	int	i_cnt;		/**< How many procs share this inode  */
@@ -109,4 +109,6 @@ extern super_block sb;
 
 void orangefs_init();
 int orangefs_read_file(char *filename,void *dst);
+int orangefs_read(u32 offset, u32 lenth, void *buf);
+int orangefs_open_file(char *filename);
 #endif
