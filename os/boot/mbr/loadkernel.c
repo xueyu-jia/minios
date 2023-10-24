@@ -64,7 +64,7 @@ void load_kernel() {
     for (int i = 0; i < eh->e_shnum; i++)
     {
         if(strcmp(sh_name_tbl+sh[i].sh_name,BSS_SECTION_NAME)==0){
-            memset(sh[i].sh_addr,0,sh[i].sh_size);
+            memset((void *)sh[i].sh_addr,0,sh[i].sh_size);
             //检查是否已经设置为0
             if(mem_check_IsZero(sh[i].sh_addr,sh[i].sh_size)){
                 break;
@@ -78,9 +78,9 @@ void load_kernel() {
     lprintf("----finish loading kernel elf----\n");
     lprintf("%d", eh->e_entry);
     ((void (*)(void))(eh->e_entry))();
-    test:
-    while (1)
-        ;
+    // test:
+    // while (1)
+    //     ;
     bad:
     lprintf("----fail to kernel elf----");
     while (1)

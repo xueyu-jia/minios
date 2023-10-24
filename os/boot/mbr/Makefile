@@ -12,7 +12,7 @@ MBR_LOADER_OBJS:=$(patsubst %.asm,%.o,$(MBR_LOADER_OBJS))
 
 MBR_LOADER_LINKER=$(MBR_LOADER_DIR)/linker.ld
 
-MBR_LOADER_CFLAGS= -I $(MBR_LOADER_INC_DIR) $(CFLAGS) -fno-pie
+MBR_LOADER_CFLAGS= -I $(MBR_LOADER_INC_DIR) $(CFLAGS) -fno-pie -Wno-unused-variable -Wno-sign-compare
 MBR_LOADER_ASMBFLAGS =-f elf32  -I $(MBR_LOADER_INC_DIR) 
 #loader为二进制文件并非elf
 MBR_LOADER_LDFLAGS = -m elf_i386 -nostdlib -s -T $(MBR_LOADER_LINKER) --oformat binary 

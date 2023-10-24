@@ -17,7 +17,7 @@ void paging(u32 MemChkBuf,u32 MCRNumber) {
   mem_check_32M();
   lprintf("memsize %d \n", size);
   u32 cr3 = PageDirBase;
-  memset(PageDirBase,0,PGSIZE);
+  memset((void*)PageDirBase,0,PGSIZE);
   map(cr3, size);
   lcr3(PageDirBase);  // load cr3
   u32 flag;
@@ -33,7 +33,7 @@ u32 get_mem_size(u32 MemChkBuf, u32 MCRNumber) {
   u32 size = 0;
   struct ARDStruct *adr =
       (void *)MemChkBuf;  // 第一个结构体的起始指针指向MemChkBuf
-  for (int cnt = 0; cnt < MCRNumber; adr++)  // 每次循环读取一个结构体的内容
+  for (unsigned int cnt = 0; cnt < MCRNumber; adr++)  // 每次循环读取一个结构体的内容
   {
     cnt++;
     print_mem(adr);
@@ -52,13 +52,13 @@ u32 get_mem_size(u32 MemChkBuf, u32 MCRNumber) {
 // 分配一页页表
 phyaddr_t pte_malloc_4k(void) {
   phyaddr_t paddr = phy_malloc_pte;
-  memset(phy_malloc_pte,0,PGSIZE);
+  memset((void*)phy_malloc_pte,0,PGSIZE);
   phy_malloc_pte += PGSIZE;
   return paddr;
 }
 
 phyaddr_t phy_kmalloc(u32 size){
-  memset(phy_malloc_pte,0,PGSIZE);
+  memset((void*)phy_malloc_pte,0,PGSIZE);
   phy_kmalloc_base+=size;
   return phy_kmalloc_base-size;
 

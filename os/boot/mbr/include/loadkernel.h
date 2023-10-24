@@ -20,5 +20,5 @@ extern u32 fat_now_sec;
 extern u32 elf_first;
 extern struct BPB bpb;
 void loader_cstart(u32 MemChkBuf,u32 MCRNumber);
-
+void load_kernel();
 #endif

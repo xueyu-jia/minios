@@ -4,6 +4,7 @@
 #include "x86.h"
 #include "paging.h"
 #include "disk.h"
+#include "string.h"
 
 PUBLIC volatile int sata_wait_flag = 1;
 
@@ -13,7 +14,9 @@ PUBLIC	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，�
 
 PRIVATE int check_type(HBA_PORT *port);
 PRIVATE	void probe_port(HBA_MEM *abar);
-PRIVATE void sata_handler(int irq);
+// PRIVATE void sata_handler(int irq);
+void port_rebase(HBA_PORT *port);
+
 
 PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 {
@@ -65,7 +68,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 			}
 		}
 	}
-	finish:
+	//finish:
 	lprintf("finish AHCI INIT \n");
 
 	if (AHCI_cnt==0){
@@ -121,7 +124,7 @@ lin_mapping_phy(rcr3(),ahci_info[0].ABAR,ahci_info[0].ABAR,PG_P | PG_USS | PG_RW
 	probe_port(HBA);
 	// lprintf("\nprobe_port");
 	// disp_int(HBA->pi);
-	int i=0;
+	unsigned int  i=0;
 	for(i=0;i<ahci_info[0].satadrv_num;i++){
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}
@@ -162,39 +165,39 @@ lin_mapping_phy(rcr3(),ahci_info[0].ABAR,ahci_info[0].ABAR,PG_P | PG_USS | PG_RW
 	return TRUE;
 }
 
-PRIVATE void sata_handler(int irq)
-{
-	// lprintf(" S ");
-	// disp_int(ticks);
-	// disp_int(HBA->ports[0].is);
+// PRIVATE void sata_handler(int irq)
+// {
+// 	// lprintf(" S ");
+// 	// disp_int(ticks);
+// 	// disp_int(HBA->ports[0].is);
 
-	int is = HBA->is;
-	int index = 0;
+// 	int is = HBA->is;
+// 	int index = 0;
 
 
-	HBA->is=0xffffffff;
+// 	HBA->is=0xffffffff;
 
-	while (index <32 && is)
-	{
-		if(is&1)
-		{
-			// Check again
-		if (HBA->ports[index].is & HBA_PxIS_TFES)
-		{
-			// lprintf("Read disk error\n");
-			tf_err_rec(&(HBA->ports[index]));
-		}
-			HBA->ports[index].is=0xffffffff;
-		}
-		index++;
-		is >>= 1;
-	}
+// 	while (index <32 && is)
+// 	{
+// 		if(is&1)
+// 		{
+// 			// Check again
+// 		if (HBA->ports[index].is & HBA_PxIS_TFES)
+// 		{
+// 			// lprintf("Read disk error\n");
+// 			tf_err_rec(&(HBA->ports[index]));
+// 		}
+// 			HBA->ports[index].is=0xffffffff;
+// 		}
+// 		index++;
+// 		is >>= 1;
+// 	}
 	
-	sata_wait_flag = 0;
-	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
+// 	sata_wait_flag = 0;
+// 	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
 
-	return;
-}
+// 	return;
+// }
 
 //Detect attached SATA devices
 PRIVATE	void probe_port(HBA_MEM *abar)
@@ -226,7 +229,7 @@ PRIVATE	void probe_port(HBA_MEM *abar)
 			{
 				lprintf("\nPM drive found at port: %d ",i);
 			}
-			else;
+			
 		}
  
 		pi >>= 1;

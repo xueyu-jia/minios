@@ -8,15 +8,15 @@ static int search_file(char *filename){
     //1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区 nr_smap_sects个sector map扇区
     int inode_array_start_sect=bootPartStartSector+(1+1+sb.nr_imap_sects+sb.nr_smap_sects)*(BLOCK_SIZE/SECT_SIZE);
     //读出存储1号inode 的扇区 1号inode是根目录的inode
-    readsect(BUF_ADDR,inode_array_start_sect);
+    readsect((void*)BUF_ADDR,inode_array_start_sect);
     inode root_inode;
-    memcpy(&root_inode,BUF_ADDR,INODE_SIZE);
+    memcpy(&root_inode,(void*)BUF_ADDR,INODE_SIZE);
     //lprintf("i_size %d i_start_sect %d i_nr_sects %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
-    for (int i = 0; i < root_inode.i_nr_sects*(BLOCK_SIZE/SECT_SIZE); i++)
+    for (unsigned int  i = 0; i < root_inode.i_nr_sects*(BLOCK_SIZE/SECT_SIZE); i++)
     {
-        readsect(BUF_ADDR,bootPartStartSector+root_inode.i_start_sect*(BLOCK_SIZE/SECT_SIZE)+i);
+        readsect((void*)BUF_ADDR,bootPartStartSector+root_inode.i_start_sect*(BLOCK_SIZE/SECT_SIZE)+i);
         dir_entry* de = (dir_entry*)(BUF_ADDR);
-        for (int j = 0; j < SECTSIZE/DIR_ENTRY_SIZE; j++)
+        for (unsigned int  j = 0; j < SECTSIZE/DIR_ENTRY_SIZE; j++)
         {
 /*             lprintf(de->name);
             lprintf("\n"); */
@@ -36,15 +36,15 @@ static inode get_inode(int inode_id){
     int nr_inode_per_sect = SECTSIZE/INODE_SIZE;
     int inode_sect = inode_array_start_sect+(inode_id-1)/nr_inode_per_sect;
     int inode_offset_in_sect = (inode_id-1)%nr_inode_per_sect;
-    readsect(BUF_ADDR,inode_sect);
-    memcpy(&target_inode,BUF_ADDR+(INODE_SIZE*inode_offset_in_sect),INODE_SIZE);
+    readsect((void*)BUF_ADDR,inode_sect);
+    memcpy(&target_inode,(void*)BUF_ADDR+(INODE_SIZE*inode_offset_in_sect),INODE_SIZE);
     return target_inode;
 
 }
 void orangefs_init(){
     //superblock初始化
-    readsect(BUF_ADDR,bootPartStartSector+(BLOCK_SIZE/SECT_SIZE));
-    memcpy(&sb,BUF_ADDR,SUPER_BLOCK_SIZE);
+    readsect((void*)BUF_ADDR,bootPartStartSector+(BLOCK_SIZE/SECT_SIZE));
+    memcpy(&sb,(void*)BUF_ADDR,SUPER_BLOCK_SIZE);
     //lprintf("nr inodes %d nr 1st sect %d  nr_sects %d \n",sb.nr_inodes,sb.n_1st_sect,sb.nr_sects);
     
 }

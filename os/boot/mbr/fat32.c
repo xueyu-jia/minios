@@ -1,6 +1,7 @@
 //ported by sundong 2023.3.26
 #include "fat32.h"
 #include "disk.h"
+#include "string.h"
 /*
 获取下一个扇区号
 扇区号 = 簇号*4/每个扇区的字节数 + （隐藏扇区数 +
@@ -31,7 +32,7 @@ static void fat32_uppercase_filename(char*src,char*dst){
     }
     else{
       dst[index++] = *p;
-      if(*p == "\0")return;
+      if(*p == '\0')return;
     }
     p++;
     len--;

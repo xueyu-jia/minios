@@ -9,7 +9,7 @@ int (*read_file)(char*,void*);
 static bool is_fat32(){
     //判断是否是FAT32的方法：
     // boot扇区的第0x52开始的8的字节的值是否为{4641-5433-3220-2020}("FAT32   ")
-    readsect(BUF_ADDR,bootPartStartSector);
+    readsect((void*)BUF_ADDR,bootPartStartSector);
     int fs_flage;
 	fs_flage = *(int*)(BUF_ADDR + 0x52);
 	if (fs_flage != 0x33544146)
@@ -21,7 +21,7 @@ static bool is_fat32(){
 
 }
 static bool is_orangefs(){
-    readsect(BUF_ADDR,bootPartStartSector+(BLOCK_SIZE/SECT_SIZE));
+    readsect((void*)BUF_ADDR,bootPartStartSector+(BLOCK_SIZE/SECT_SIZE));
     super_block* orange_sb =  (super_block*)BUF_ADDR;
     return orange_sb->magic == MAGIC_V1;//orangefs的magic为MAGIC_V1 0x111
 

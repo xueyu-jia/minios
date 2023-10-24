@@ -52,7 +52,7 @@ void find_act_part(void *dst) {
   readsect(dst,offset);
  
   BYTE *start = (BYTE *)(dst + MBR_CODE_LEN);  // 查找后64个字节的分区信息
-  part_tbl_entry *p_mbr_entry = start;
+  part_tbl_entry *p_mbr_entry = (part_tbl_entry *)start;
   for (int i = 0; i < PART_NUM; i++)  // 只有4个分区，每个分区16个字节
   {
     lprintf("partition_type %d start sector %d style %d \n",p_mbr_entry->status,p_mbr_entry->lba,p_mbr_entry->partition_type);
