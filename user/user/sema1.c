@@ -8,7 +8,7 @@ char bufw1[BUF_SIZE] = "aa ";
 char bufw2[BUF_SIZE] = "bb ";
 char bufw3[BUF_SIZE] = "cc ";
 char bufr[BUF_SIZE];
-char filename[] = "fat0/test33.txt";
+char filename[] = "test33.txt";
 volatile int sum = 0;
 pthread_mutex_t mutex;
 pthread_t producer1, producer2, producer3;

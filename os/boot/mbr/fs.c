@@ -9,17 +9,6 @@
 int (*read)(u32 offset, u32 lenth, void *buf);
 int (*open_file)(char *filename);
 
-struct FD{
-    char *filename;
-    
-    // fat32
-    u32 file_clus;
-    u8 fat_table[SECT_SIZE];
-
-    // orange
-    int inode;
-};
-
 static bool is_fat32(){
     //判断是否是FAT32的方法：
     // boot扇区的第0x52开始的8的字节的值是否为{4641-5433-3220-2020}("FAT32   ")
