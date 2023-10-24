@@ -10,7 +10,6 @@
 *.bin
 !kernel.gdb.bin
 
-Makefile
 compile_commands.json
 
 # ignore hard disk image
