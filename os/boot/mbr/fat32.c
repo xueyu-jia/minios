@@ -3,6 +3,12 @@
 #include "disk.h"
 #include "string.h"
 #define MIN(x,y)	(x>y ? y : x)
+
+void fat32_init();
+// int  fat32_read_file(char *filename,void *dst);
+int fat32_open_file(char *filename);
+int fat32_read(u32 offset, u32 lenth, void *buf);
+
 //一个简单地文件描述符
 struct fat32_fd{
     char *filename;
@@ -98,25 +104,26 @@ u32 fat32_find_file(char *filename)
     }
     return file_clus;
 }
-/*
- * @brief   read a file to buf
- * @param   filename 
- * @param   buf
- * @return  0 if faile or 1 for success
-*/
-int fat32_read_file(char *filename,void *buf)
-{	
-	fat32_open_file(filename);
-    u32 file_clus = fat32_find_file(filename);
-    if (file_clus == 0) return FALSE;
+// 读一个完整的文件，目前loader不需要
+// /*
+//  * @brief   read a file to buf
+//  * @param   filename 
+//  * @param   buf
+//  * @return  0 if faile or 1 for success
+// */
+// int fat32_read_file(char *filename,void *buf)
+// {	
+// 	fat32_open_file(filename);
+//     u32 file_clus = fat32_find_file(filename);
+//     if (file_clus == 0) return FALSE;
 
-    // 将文件的所有数据从磁盘中读入ELF_ADDR
-    while (file_clus < 0x0FFFFFF8) {
-        buf = read_cluster(buf, file_clus);
-        file_clus = get_next_clus(file_clus);
-    }
-    return TRUE;
-}
+//     // 将文件的所有数据从磁盘中读入ELF_ADDR
+//     while (file_clus < 0x0FFFFFF8) {
+//         buf = read_cluster(buf, file_clus);
+//         file_clus = get_next_clus(file_clus);
+//     }
+//     return TRUE;
+// }
 /*
  * @brief 得到文件的第i个簇的簇号
 */

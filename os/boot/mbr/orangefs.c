@@ -50,6 +50,8 @@ void orangefs_init(){
     //lprintf("nr inodes %d nr 1st sect %d  nr_sects %d \n",sb.nr_inodes,sb.n_1st_sect,sb.nr_sects);
     
 }
+/*
+// 读一个完整的文件，目前loader不需要这个功能
 //读文件到dst的内存中
 int orangefs_read_file(char *filename,void *dst){
     int inode_id = search_file(filename);
@@ -64,13 +66,9 @@ int orangefs_read_file(char *filename,void *dst){
     int num_sect =  target_inode.i_size%SECTSIZE == 0?target_inode.i_size/SECTSIZE:target_inode.i_size/SECTSIZE+1;
     //lprintf("isize %d numn sect %d\n", target_inode.i_size,target_inode.i_size/SECTSIZE);
     readsects(dst, bootPartStartSector+target_inode.i_start_block*(BLOCK_SIZE/SECT_SIZE), num_sect);
-/*      for (int i = 0; i < num_sect+1; i++)
-    {
-        readsect(dst+i*SECTSIZE,bootPartStartSector+target_inode.i_start_sect+i);
-    }  */
     return TRUE;
 }
-
+*/
 /*
  * @brief   读入多个块的数据
  * @param   block_number 块号
@@ -83,7 +81,7 @@ static int orangefs_read_blocks(u32 block_number, u32 size, void *buf)
 }
 /*
  * @brief 通过文件名打开一个文件，维持一个简单的FD
- * @return 0 if faile or 1 for success
+ * @return TRUE or FALSE
 */
 int orangefs_open_file(char *filename)
 {
@@ -103,7 +101,7 @@ int orangefs_open_file(char *filename)
  * @param offset:在文件中的偏移量
  * @param buf必须大于等于lenth
  * @param lenth:读数据的长度
- * @note 请先用fat32_file_open()打开文件
+ * @note 请先用orangefs_open_file()打开文件
 */
 int orangefs_read(u32 offset, u32 lenth, void *buf)
 {
@@ -112,8 +110,8 @@ int orangefs_read(u32 offset, u32 lenth, void *buf)
     u32 first_read = BLOCK_SIZE - offset_in_block;
     u32 size = (lenth - first_read)/BLOCK_SIZE + 2;
 
-    orangefs_read_blocks(block_i+elf_inode.i_start_block, size, BUF_ADDR);
+    int ret = orangefs_read_blocks(block_i+elf_inode.i_start_block, size, BUF_ADDR);
     memcpy(buf, BUF_ADDR+offset_in_block, lenth);
 
-    return TRUE;
+    return ret;
 }
