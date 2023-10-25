@@ -41,7 +41,7 @@ ASMKFLAGS	= -I include/ -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 
-CFLAGS		= -I include/ -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 $(BOOT_FLAGS) -Wsign-compare
+CFLAGS		= -I include/ -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 $(BOOT_FLAGS)
 
 LDFLAGS_kernel	= -m elf_i386 -s -Ttext $(ENTRYPOINT) #modified by mingxuan 2021-3-29
 #LDFLAGS_init	= -m elf_i386 -s -T../user/init/lds
@@ -81,19 +81,9 @@ GDBBIN = kernel.gdb.bin
 
 include os/boot/mbr/Makefile
 
-.PHONY : everything final image clean_os realclean_os disasm all buildimg #modified by mingxuan 2019-5-19
+.PHONY : everything clean_os realclean_os disasm #modified by mingxuan 2019-5-19
 
-
-#everything : $(ORANGESBOOT) $(ORANGESKERNEL) $(ORANGESINIT) $(GDBBIN) # modified by mingxuan 2021-2-7
 everything : $(ORANGESBOOT) $(ORANGESKERNEL) $(GDBBIN) # modified by mingxuan 2021-4-6
-
-all : realclean_os everything
-
-#image : realclean_os everything # modified by mingxuan 2020-12-8
-image : realclean_os everything clean_os # modified by mingxuan 2021-8-20
-
-#clean_os :
-#	rm -f $(OBJS) $(OBJSINIT) $(OBJSKLIB)
 
 clean_os :
 	rm -f $(OBJS) $(OBJSKLIB)

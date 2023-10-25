@@ -52,21 +52,17 @@ GDBBIN = user/init/init.gdb.bin	#added by mingxuan 2021-4-6
 include user/init/makefile	 #added by mingxuan 2019-5-19
 
 # All Phony Targets
-.PHONY : everything final image clean_user realclean_user disasm all buildimg # install_elf  modified by mingxuan 2019-5-19 modified by sundong 2023.5.18
+.PHONY : everything clean_user realclean_user # install_elf  modified by mingxuan 2019-5-19 modified by sundong 2023.5.18
 
 # everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-2-7
 # everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-8-8
-everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER)  clean_user #install_elf modified by mingxuan 2021-8-21 modified by sundong 2023.5.18
-
-all : realclean_user everything
-
-image : realclean_user everything buildimg_mbr tags  build_fs #install_elf  modified by mingxuan 2020-12-8 modified by sundong 2023.5.18
+everything : $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER) #install_elf modified by mingxuan 2021-8-21 modified by sundong 2023.5.18
 
 clean_user :
 	rm -f $(OBJSINIT) $(OBJSUSER) $(OBJSULIB)
 
 realclean_user :
-	rm -f $(ORANGESINIT) $(ORANGESUSER) $(OBJSULIB)
+	rm -f $(ORANGESINIT) $(ORANGESUSER) $(OBJSULIB) $(OBJSINIT) $(OBJSUSER) $(GDBBIN) $(GDBBINUSER)
 
 #install_elf:
 #	cd user/init && \
