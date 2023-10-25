@@ -1,10 +1,10 @@
 /**********************************************************
 *	vfs.h       //added by mingxuan 2019-5-17
 ***********************************************************/
-
+// mark
 //#define NR_DEV 10
 #define NR_FS 16		//modified by mingxuan 2020-10-18
-#define DEV_NAME_LEN 15
+#define DEV_NAME_LEN 128
 //#define NR_fs 3
 #define NR_FS_OP 3		//modified by mingxuan 2020-10-18
 #define NR_SB_OP 2		//added by mingxuan 2020-10-30

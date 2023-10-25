@@ -15,7 +15,7 @@
 #define SEEK_SET	1
 #define SEEK_CUR	2
 #define SEEK_END	3
-
+// mark 路径最大长度
 #define	MAX_PATH	128
 #define	MAX_FILENAME_LEN	12
 

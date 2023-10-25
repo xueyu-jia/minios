@@ -63,7 +63,7 @@ u32 fat_now_sec;
 u32 elf_first;
 
 
-/* u32 get_next_clus(u32 current_clus);
+/* u32 get_next_clus_number(u32 current_clus);
 void *read_cluster(void *dst, u32 current_clus); */
 extern void fat32_init();
 // extern int  fat32_read_file(char *filename,void *dst);

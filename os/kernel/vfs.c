@@ -310,7 +310,7 @@ PUBLIC int set_vfstable(u32 device, char *target)
     return pvfs - vfs_table;
 }
 
-
+// mark 限制了文件名长度。函数功能与名字不符
 PRIVATE int get_fs_len(const char *path) {
   int pathlen = strlen(path);
   //char dev_name[DEV_NAME_LEN];

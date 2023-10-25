@@ -108,7 +108,8 @@ extern super_block sb;
 
 
 void orangefs_init();
-int orangefs_read_file(char *filename,void *dst);
+// int orangefs_read_file(char *filename,void *dst);
+
 int orangefs_read(u32 offset, u32 lenth, void *buf);
 int orangefs_open_file(char *filename);
 #endif

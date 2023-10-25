@@ -69,6 +69,7 @@ int orangefs_read_file(char *filename,void *dst){
     return TRUE;
 }
 */
+
 /*
  * @brief   读入多个块的数据
  * @param   block_number 块号
@@ -79,6 +80,7 @@ static int orangefs_read_blocks(u32 block_number, u32 size, void *buf)
 {   
     return readsects(buf, bootPartStartSector+block_number*(BLOCK_SIZE/SECT_SIZE), (BLOCK_SIZE/SECT_SIZE)*size);
 }
+
 /*
  * @brief 通过文件名打开一个文件，维持一个简单的FD
  * @return TRUE or FALSE
@@ -86,13 +88,12 @@ static int orangefs_read_blocks(u32 block_number, u32 size, void *buf)
 int orangefs_open_file(char *filename)
 {
     int inode_id = search_file(filename);
-    if(inode_id==0||inode_id>sb.nr_inodes){
+    if(inode_id==0 || inode_id>sb.nr_inodes){
         lprintf("error : can not find inode!\n");
         return FALSE;
     }
     elf_inode = get_inode(inode_id);
-    //文件实际占用的扇区的数量(上取整)
-    //int num_sect =  target_inode.i_size%SECTSIZE == 0?target_inode.i_size/SECTSIZE:target_inode.i_size/SECTSIZE+1;
+
     return TRUE;
 }
 

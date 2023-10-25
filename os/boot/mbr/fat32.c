@@ -6,6 +6,7 @@
 
 void fat32_init();
 // int  fat32_read_file(char *filename,void *dst);
+
 int fat32_open_file(char *filename);
 int fat32_read(u32 offset, u32 lenth, void *buf);
 
@@ -23,7 +24,7 @@ struct fat32_fd elf_fd;
 扇区号 = 簇号*4/每个扇区的字节数 + （隐藏扇区数 +
 保留扇区数）【相当于加上fat起始扇区号】 扇区偏移 = 簇号*4%每个扇区的字节数
 */
-static u32 get_next_clus(u32 current_clus) {
+static u32 get_next_clus_number(u32 current_clus) {
     u32 sec = current_clus * 4 / SECTSIZE;  // 需要乘4是因为每个簇号大小为4字节
     u32 off = current_clus * 4 % SECTSIZE;
     readsect((void *)BUF_ADDR, bootPartStartSector + elf_fd.fat_start_sec + sec);
@@ -100,7 +101,7 @@ u32 fat32_find_file(char *filename)
         }
         if (file_clus != 0)   break;
 
-        root_clus = get_next_clus(root_clus);  // 循环寻找下一个簇
+        root_clus = get_next_clus_number(root_clus);  // 循环寻找下一个簇
     }
     return file_clus;
 }
@@ -120,7 +121,7 @@ u32 fat32_find_file(char *filename)
 //     // 将文件的所有数据从磁盘中读入ELF_ADDR
 //     while (file_clus < 0x0FFFFFF8) {
 //         buf = read_cluster(buf, file_clus);
-//         file_clus = get_next_clus(file_clus);
+//         file_clus = get_next_clus_number(file_clus);
 //     }
 //     return TRUE;
 // }
@@ -131,7 +132,7 @@ u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
 {	
 	u32 current_clus = first_clus;
 	for(int i = 0; i < clus_i; i++){
-		current_clus = get_next_clus(current_clus);
+		current_clus = get_next_clus_number(current_clus);
 	}
 	return current_clus;
 }
@@ -155,7 +156,7 @@ int fat32_read(u32 offset, u32 lenth, void *buf)
 
 	read_cluster((void *)BUF_ADDR, current_clus);
 	memcpy(buf, (void *)(BUF_ADDR+offset_in_clus), first_read_lenth);
-	current_clus = get_next_clus(current_clus);
+	current_clus = get_next_clus_number(current_clus);
 	lenth -= first_read_lenth;
 	buf += first_read_lenth;
 	
@@ -163,7 +164,7 @@ int fat32_read(u32 offset, u32 lenth, void *buf)
 		read_cluster((void *)BUF_ADDR, current_clus);
 		memcpy(buf, (void *)BUF_ADDR, MIN(clus_size, lenth));
 
-		current_clus = get_next_clus(current_clus);
+		current_clus = get_next_clus_number(current_clus);
 		buf += clus_size;
 		lenth -= clus_size;
 	}
