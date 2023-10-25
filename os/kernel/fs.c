@@ -427,7 +427,7 @@ int sys_orangefs_dir_test()
  @param fs_index   用于存储该路径对应的文件系统在vfs_table数组中索引
  @return 0 if success; -1 if having error
 */
-PUBLIC int vfs_path_transfer(char *path, int *fs_index)
+PUBLIC int vfs_path_transfer(char *path, int *fs_index)			// mark  (char *path, int *fs_index, char * buf)	
 {
 	*fs_index = 3;
 	char *s = path;
@@ -450,8 +450,9 @@ PUBLIC int vfs_path_transfer(char *path, int *fs_index)
 
 	//	*ppinode = root_inode;
 	int path_len = strlen(path);
-	char pre_dir_name[MAX_FILENAME_LEN];
-	memset((void *)pre_dir_name, 0, MAX_FILENAME_LEN);
+	char pre_dir_name[MAX_PATH] = {0};
+	char *current_pos = path;
+	memset((void *)pre_dir_name, 0, MAX_PATH);
 	char *p = pre_dir_name;
 	struct inode * pinode;
 	struct inode **ppinode = &pinode;
@@ -498,13 +499,13 @@ PUBLIC int vfs_path_transfer(char *path, int *fs_index)
 				strcpy(path, tmp);
 				goto success;
 			}
-			memset((void *)pre_dir_name, 0, MAX_FILENAME_LEN);
+			memset((void *)pre_dir_name, 0, MAX_PATH);
 			p = pre_dir_name;
 			s++;
 			continue;
 		}
 		*p++ = *s++;
-		if (p - pre_dir_name >= MAX_FILENAME_LEN)
+		if (p - pre_dir_name >= MAX_PATH)
 			break;
 	}
 success:
@@ -1599,7 +1600,7 @@ PRIVATE int search_file(char *path)
 {
 	int i, j;
 
-	char filename[MAX_PATH];
+	char filename[MAX_FILENAME_LEN];
 	memset(filename, 0, MAX_FILENAME_LEN);
 	struct inode *dir_inode;
 	// 获取路径中的文件的文件名和父目录inode
@@ -1743,7 +1744,7 @@ PRIVATE int strip_path(char *filename, const char *pathname, struct inode **ppin
 	//	*t = 0;
 
 	//	*ppinode = root_inode;
-	char pre_dir_name[MAX_FILENAME_LEN]; /*mod by xkx 2023-1-3*/
+	char pre_dir_name[MAX_FILENAME_LEN]; /*mod by xkx 2023-1-3*/	// mark 可以不用局部变量pre_dir_name
 	memset((void *)pre_dir_name, 0, MAX_FILENAME_LEN);
 	char *p = pre_dir_name; /*mod by xkx 2023-1-3*/
 	*ppinode = root_inode;	/*mod by xkx 2023-1-3*/

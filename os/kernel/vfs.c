@@ -478,13 +478,9 @@ PUBLIC int do_vopen(const char *path, int flags) {
 PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2021-8-15
 
     int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-//    char pathnamebackup[MAX_PATH];
+    char pathname[MAX_PATH] = {0};
+    strcpy(pathname, path);
 
-    strcpy(pathname,path);
-/*     pathname[pathlen] = 0;
-    strcpy(pathnamebackup,path);
-    pathnamebackup[pathlen] = 0; */
     int index,i;
     int ret = vfs_path_transfer(pathname,&index);
     if(ret < 0){
