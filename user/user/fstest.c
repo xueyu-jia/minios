@@ -10,36 +10,14 @@
 */
 void main(int argc,char *argv[])
 {
- 	createdir("/fs_len_test");
-	createdir("/fs_len_test/dir");
-	int fd = open("/fs_len_test/dir/file.txt",O_CREAT|O_RDWR);
-    printf("fd = %d\n",fd);
-	char buff[16] = {'a','b','c'};
-	if(fd>=0){
-		write(fd,buff,8);
-		close(fd);
-	}
-	fd = open("/fs_len_test/dir/file.txt",O_RDWR);
-	//int ret = deletedir("test");
-	memset(buff,0,8);
-	read(fd,buff,8);
-	printf("file content:\n");
-	printf(buff);
-	printf("\n");
-	close(fd);
-    //测试目录下有文件时的删除目录操作
-	int ret = deletedir("/fs_len_test/dir");
-    printf("delete dir when dir is not empty; ret =  %d\n",ret);
-    //删除dir下的文件
-	unlink("/fs_len_test/dir/file.txt");
-    ret = deletedir("/fs_len_test/dir");
-    printf("delete dir when dir is empty; ret =  %d\n",ret);
-
-
-	char path[128];
+	// 创建长目录
+	char path[128], buff[128], filename[128];
+	int ret, fd;
 	memset(path, 0, 128);
+	memset(filename, 0, 128);
+	memset(buff, 0, 128);
 	int i;
-	for(i = 0; i < 122; i++){
+	for(i = 0; i < 118; i++){
 		path[i++] = '/'; 
 		path[i++] = 'a' + (i % 26);
 		path[i++] = 'a' + (i % 26);
@@ -51,11 +29,41 @@ void main(int argc,char *argv[])
 	}
 	printf("path:%s\n", path);
 	printf("path length :%d\n", strlen(path));
+	// 在长目录下创建文件并写入数据
+	strcpy(filename, path);
+	filename[i++] = '/';
+	filename[i++] = 'f';
+	filename[i++] = 's';
+	fd = open(filename, O_CREAT|O_RDWR);
+	if(fd>=0){
+		write(fd, path, 128);
+		close(fd);
+	}else{
+		printf("open file error/n");
+		exit(0);
+		return 0;
+	}
 
+	// 打开文件并读入数据
+	fd = open(filename, O_RDWR);
+	read(fd, buff, 128);
+	printf("file content: \n%s\n", buff);
+	printf("content length :%d\n", strlen(buff));
+
+	// 删除错误的目录
 	ret = deletedir("error");
 	printf("delete error path ret:%d\n", ret);
+
+	// 删除有文件的目录
 	ret = deletedir(path);
-	printf("long path ret:%d\n", ret);
+	printf("delete 1 ret:%d\n", ret);
+	for(int j = 0; j < 100000000; j++);
+	// 删除无文件的目录
+	ret = unlink(filename);
+	printf("delete file ret:%d\n", ret);
+	ret = deletedir(path);
+	printf("delete 2 ret:%d\n", ret);
+	
 	exit(0);
 	return 0;
 
