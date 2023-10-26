@@ -105,14 +105,14 @@ int orangefs_open_file(char *filename)
  * @note 请先用orangefs_open_file()打开文件
 */
 int orangefs_read(u32 offset, u32 lenth, void *buf)
-{
-    u32 block_i = offset / BLOCK_SIZE;
+{   
+    if(lenth <= 0)	return TRUE;
+    u32 block_i = offset / BLOCK_SIZE;      // 根据偏移量计算要从文件的第几个块开始读取
     u32 offset_in_block = offset % BLOCK_SIZE;
-    u32 first_read = BLOCK_SIZE - offset_in_block;
-    u32 size = (lenth - first_read)/BLOCK_SIZE + 2;
+    u32 nr_block = (offset_in_block + lenth + BLOCK_SIZE -1) / BLOCK_SIZE;  // 要读的数据块的数量
 
-    int ret = orangefs_read_blocks(block_i+elf_inode.i_start_block, size, BUF_ADDR);
+    int ret = orangefs_read_blocks(block_i+elf_inode.i_start_block, nr_block, BUF_ADDR);
     memcpy(buf, BUF_ADDR+offset_in_block, lenth);
-
+    
     return ret;
 }

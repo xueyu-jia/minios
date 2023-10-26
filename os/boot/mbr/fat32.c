@@ -142,18 +142,19 @@ u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
  * @param buf必须大于等于lenth
  * @param lenth:读数据的长度
  * @note 请先用fat32_file_open()打开文件
+ * 			lenth<=0 返回true
 */
 int fat32_read(u32 offset, u32 lenth, void *buf)
 {
+	if(lenth <= 0)	return TRUE;	
     u32 clus_size = bpb.BPB_SecPerClus * SECTSIZE;
 	// int retval = TRUE;
-	if(lenth <= 0) return FALSE;
 
 	u32 clus_i = offset / clus_size;
 	u32 offset_in_clus = offset % clus_size;
-	u32 current_clus = fat32_find_clus_i(elf_fd.first_clus, clus_i);
+	u32 current_clus = fat32_find_clus_i(elf_fd.first_clus, clus_i);	// 找到要读取的第一个簇的簇号
 	u32 first_read_lenth = MIN(clus_size-offset_in_clus, lenth);
-
+	
 	read_cluster((void *)BUF_ADDR, current_clus);
 	memcpy(buf, (void *)(BUF_ADDR+offset_in_clus), first_read_lenth);
 	current_clus = get_next_clus_number(current_clus);

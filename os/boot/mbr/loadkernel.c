@@ -44,21 +44,23 @@ void load_kernel() {
     open_file(KERNEL_FILENAME);
     
     struct Elfdr eh;
-    struct Proghdr ph;
+    struct Proghdr ph[10];
     struct Secthdr sh;
     // 读elf文件头
     int ret = read(0, sizeof(struct Elfdr), (void *)&eh);
     if(ret != TRUE) goto bad;
     
+    // 读program头
+    ret &= read(eh.e_phoff, eh.e_phentsize*eh.e_phnum, (void *)&ph);
+
     // 加载program段
     for(int i = 0; i < eh.e_phnum; i++){
-        // 读program头
-        ret &= read(eh.e_phoff+eh.e_phentsize*i, eh.e_phentsize, (void *)&ph);
-        print_elf(&ph);
-        if (ph.p_type != PT_LOAD) continue;
+        // ret &= read(eh.e_phoff+eh.e_phentsize*i, eh.e_phentsize, (void *)&ph);
+        // print_elf(&ph);
+        if (ph[i].p_type != PT_LOAD) continue;
         // 将program写入内存
-        ret &= read(ph.p_offset, ph.p_filesz, (void *)ph.p_va);
-        memset((void *)ph.p_va + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);  // 将不需要的内存置为0
+        ret &= read(ph[i].p_offset, ph[i].p_filesz, (void *)ph[i].p_va);
+        memset((void *)ph[i].p_va + ph[i].p_filesz, 0, ph[i].p_memsz - ph[i].p_filesz);  // 将不需要的内存置为0
     }
     if(ret != TRUE) goto bad;
     // 不需要，加载program段的代码已经将bss段清零了
