@@ -47,6 +47,7 @@ void main(int argc,char *argv[])
 	// 打开文件并读入数据
 	fd = open(filename, O_RDWR);
 	read(fd, buff, 128);
+	close(fd);
 	printf("file content: \n%s\n", buff);
 	printf("content length :%d\n", strlen(buff));
 
@@ -56,12 +57,16 @@ void main(int argc,char *argv[])
 
 	// 删除有文件的目录
 	ret = deletedir(path);
-	printf("delete 1 ret:%d\n", ret);
 	for(int j = 0; j < 100000000; j++);
-	// 删除无文件的目录
+	printf("delete 1 ret:%d\n", ret);
+	
+	// 删除文件,然后再删除目录
 	ret = unlink(filename);
+	for(int j = 0; j < 100000000; j++);
 	printf("delete file ret:%d\n", ret);
+	
 	ret = deletedir(path);
+	for(int j = 0; j < 100000000; j++);
 	printf("delete 2 ret:%d\n", ret);
 	
 	exit(0);
