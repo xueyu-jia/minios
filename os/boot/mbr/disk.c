@@ -83,7 +83,7 @@ void find_act_part(void *dst) {
     //start = start + PART_TABLE_ENTRY_SIZE;  // 查找下一个分区
   }
 }
-static void ide_readsect(void *dst,u32 offset){
+static int ide_readsect(void *dst,u32 offset){
     // wait for disk to be ready
   ide_waitdisk();
   outb(DISK_SECT_COUNT_PORT, 1);             // count = 1读写扇区数量
@@ -96,26 +96,29 @@ static void ide_readsect(void *dst,u32 offset){
   ide_waitdisk();
   // read a sector
   insl(DISK_PORT, dst, (SECTSIZE / 4));  // 从port0x1F0读取SECTSIZE/4个双字到dst中 
+  return TRUE;
 }
-static void ide_read(void *dst, u32 offset,int count){
+static int ide_read(void *dst, u32 offset,int count){
   if (count < 0 || count > 8)
   {
     lprintf("ide_read para err !\n");
-    return ;
+    return FALSE;
   }
+  int ret = 1;
   for (int i = 0; i < count; i++)
   {
-    ide_readsect(dst+i*SECTSIZE,offset+i);
+    ret &= ide_readsect(dst+i*SECTSIZE,offset+i);
   }
+  return ret;
 }
 //只读一个sect
-void readsect(void *dst, u32 offset) {
-  readsects(dst,offset,1);
+int readsect(void *dst, u32 offset) {
+  return readsects(dst,offset,1);
 }
 //一次读多个sector
-void readsects(void* dst, u32 offset,u32 count){
-  if(found_sata_dev)sata_read(0,dst,offset,count);
-  else ide_read(dst,offset,count);
+int readsects(void* dst, u32 offset,u32 count){
+  if(found_sata_dev)  return sata_read(0,dst,offset,count);
+  else                return ide_read(dst,offset,count);
   //ide_read(dst,offset,count);
 }
 

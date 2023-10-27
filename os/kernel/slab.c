@@ -158,13 +158,10 @@ PRIVATE void *slab_alloc_object(kmem_slab_t *slab) {
 }
 
 /*
-	给cache创建新的page。在page中初始化slab、位图、对象。
-
-	传入参数：
-		cache ： 某个cache的指针
-		
-	返回值：
-		初始化后的page的指针
+* @brief 	给定cache分配新的slab
+* @param 	cache:某个cache的指针
+* @retval 	新创建的slab的指针
+* @details	给cache创建新的page。在page中初始化slab、位图、对象。
 */ 
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
 	int i;
@@ -179,6 +176,7 @@ kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
 	slab->used_obj= 0;
 	slab->bitmap = (bitmap_entry_t*)ptr_offset(slab,sizeof(kmem_slab_t));
 	slab->objects = ptr_offset(slab->bitmap, (cache->bitmap_length)*sizeof(bitmap_entry_t));
+	slab->objects = ROUNDUP(slab->objects, cache->objorder);		//按照size对齐	lirong
 	slab->type = EMPTY;
 	
 	/* 初始化位图 */

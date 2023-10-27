@@ -10,8 +10,10 @@
 #include "type.h"
 
 #define SECTSIZE	512
-#define BUF_ADDR	0x30000
+// 用来读取ELF程序段头的缓冲区
 #define ELF_ADDR	0x7e00
+#define ELF_BUF_LEN	0x400
+#define BUF_ADDR	(ELF_ADDR + ELF_BUF_LEN)
 #define ACT_PART_FLAG 0x80
 #define DISK_READY_FLAG 0x40
 
@@ -37,10 +39,10 @@ extern u32 bootPartStartSector;
 extern bool found_sata_dev;
 
 //读一个扇区
-void readsect(void *dst, u32 offset);
+int readsect(void *dst, u32 offset);
 void find_act_part(void* dst);
 //读多个扇区
-void readsects(void* dst, u32 offset,u32 count);
+int readsects(void* dst, u32 offset,u32 count);
 typedef struct 
 {
 	u8 status;

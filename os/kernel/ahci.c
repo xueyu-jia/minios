@@ -6,7 +6,10 @@
 #include "../include/proto.h"
 #include "../include/ahci.h"
 
+// 0: free;  1: waiting
 PUBLIC volatile int sata_wait_flag = 1;
+// 0 : no error;  1: error
+PUBLIC volatile int sata_error_flag = 0;
 
 PUBLIC HBA_MEM* HBA;
 
@@ -75,7 +78,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	
 	int hd_service_pid = kern_get_pid_byname("hd_service");
 
-	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
 										hd_service_pid,
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
@@ -83,7 +86,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 
 	int task_tty_pid = kern_get_pid_byname("task_tty");
 
-	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
 										task_tty_pid,
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
@@ -91,7 +94,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 
 	int initial_pid = kern_get_pid_byname("initial");
 
-	err_temp = lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
 										initial_pid,
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
@@ -162,41 +165,59 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	return TRUE;
 }
 
+/*
+ * @brief   sata中断处理函数
+ * @param 	irq
+ * @details 只支持一个AHCI控制器ahci_info[0]，错误处理未完成 
+ * 			因为hd_service是单线程的，因此只支持一个端口的中断处理
+ * 			必须先完成端口的清中断，再完成控制器的清中断
+ * 			目前没加内存屏障，有出现bug的可能性
+*/
 PRIVATE void sata_handler(int irq)
-{
-	// disp_str(" S ");
-	// disp_int(ticks);
-	// disp_int(HBA->ports[0].is);
+{	
+	u32 port_bitmap = HBA->is;
+    
+	if(port_bitmap == 0){
+        disp_str("SATA handler:No error but interrupt\n");
+        return;
+    }
 
-	int is = HBA->is;
-	int index = 0;
-
-
-	HBA->is=0xffffffff;
-
-	while (index <32 && is)
-	{
-		if(is&1)
-		{
-			// Check again
-		if (HBA->ports[index].is & HBA_PxIS_TFES)
-		{
-			// disp_str("Read disk error\n");
-			tf_err_rec(&(HBA->ports[index]));
-		}
-			HBA->ports[index].is=0xffffffff;
-		}
-		index++;
-		is >>= 1;
+	// 判断是哪个端口触发的中断
+	int prot_num;
+	for (prot_num = 0; prot_num <= MAXDEV; prot_num++) {
+		if (port_bitmap & (1 << prot_num))								
+			break;
 	}
-	if (kernel_initial == 1) {
-		sata_wait_flag = 0;
+	// 中断处理
+	u32 intr_status = HBA->ports[prot_num].is;
+	HBA->ports[prot_num].is = intr_status;					//端口清中断
+	//disp_int((int)intr_status);
+    if(intr_status == 0) {
+		//debug
+		//disp_str("\nsata_handler: PxIS = 0\n");
+	} else if (intr_status & HBA_Port_ERROR) {			
+		// 发生错误
+		disp_str("\nsata_handler:error\n");
+		disp_int((int)intr_status);
+		tf_err_rec(&(HBA->ports[prot_num]));				//错误处理
+		sata_error_flag = 1;															
+		if (kernel_initial == 1)	sata_wait_flag = 0;		//完成错误处理后唤醒进程
+		else						sys_wakeup(&sata_wait_flag);
+
+	} else if (intr_status & HBA_Port_COMPLETED) {
+		// 数据读写完成			
+		sata_error_flag = 0;
+		if (kernel_initial == 1)	sata_wait_flag = 0;
+		else						sys_wakeup(&sata_wait_flag);
+
 	} else {
-		sys_wakeup(&sata_wait_flag);
+		// 其他错误, undo
+		disp_str("\nPANIC:sata_handler:other error\n");
+		disp_int((int)intr_status);
+		sata_error_flag = 1;
 	}
-	// HBA->ports[0].is=0xffffffff;//	write 1 to clear by qianglong 
-
-	return;
+	HBA->is = port_bitmap;			// 控制器清中断
+	return;			
 }
 
 //Detect attached SATA devices
@@ -516,161 +537,161 @@ PUBLIC u32 identity_SATA(HBA_PORT *port ,u8 *buf){
 // 	return 1;
 // }
 
-PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
-{	
-	u8* buf=kern_kmalloc(512);
-	char wbuf[512]="1111111111111111111111111111111111";
-	// disp_str(wbuf);
-	memset(buf,0,512);
-	if(rw==1)memcpy(buf,wbuf,512);
-	int port_num=ahci_info[0].satadrv_atport[0];
-	HBA_PORT *port=&(HBA->ports[0]);
-	port->is = (u32) -1;		// Clear pending interrupt bits
-	// disp_str("\nport_is:");
-	// disp_int(port->is);
-	int spin = 0; // Spin lock timeout counter
-	int slot = find_cmdslot(port);
-	if (slot == -1)
-		return 0;
-	// u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
+// PUBLIC	int SATA_rdwt_test(int rw,u64 sect)
+// {	
+// 	u8* buf=kern_kmalloc(512);
+// 	char wbuf[512]="1111111111111111111111111111111111";
+// 	// disp_str(wbuf);
+// 	memset(buf,0,512);
+// 	if(rw==1)memcpy(buf,wbuf,512);
+// 	int port_num=ahci_info[0].satadrv_atport[0];
+// 	HBA_PORT *port=&(HBA->ports[0]);
+// 	port->is = (u32) -1;		// Clear pending interrupt bits
+// 	// disp_str("\nport_is:");
+// 	// disp_int(port->is);
+// 	int spin = 0; // Spin lock timeout counter
+// 	int slot = find_cmdslot(port);
+// 	if (slot == -1)
+// 		return 0;
+// 	// u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+// 	// u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
 
-	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
-	// 	hd_info[drive].primary[p->msg->DEVICE].base :
-	// 	hd_info[drive].logical[logidx].base;
-	u64	sect_nr	= sect;
-	// u64	sect_nr	= 3000;
-	u32	count = 1;
+// 	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
+// 	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
+// 	// 	hd_info[drive].primary[p->msg->DEVICE].base :
+// 	// 	hd_info[drive].logical[logidx].base;
+// 	u64	sect_nr	= sect;
+// 	// u64	sect_nr	= 3000;
+// 	u32	count = 1;
 
-	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
+// 	HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER*)K_PHY2LIN(port->clb);
 
-	cmdheader += slot;
-	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
-	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
-	// cmdheader->w = (p->msg->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
-	cmdheader->w = rw ;
-	// disp_int(cmdheader->w);
-	cmdheader->c = 0;               
-    cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
-	cmdheader->prdbc = 0;
-	cmdheader->prdtl =  1;	// PRDT entries count
+// 	cmdheader += slot;
+// 	memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
+// 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
+// 	// cmdheader->w = (p->msg->type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
+// 	cmdheader->w = rw ;
+// 	// disp_int(cmdheader->w);
+// 	cmdheader->c = 0;               
+//     cmdheader->p = 1;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+// 	cmdheader->prdbc = 0;
+// 	cmdheader->prdtl =  1;	// PRDT entries count
  
-	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
-	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
- 		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
+// 	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
+// 	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
+//  		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
  
 	
-	// cmdtbl->prdt_entry[0].dba = (u32)K_LIN2PHY(buf);
-	// cmdtbl->prdt_entry[0].dbc = 512-1;	// this value should always be set to 1 less than the actual value
-	// cmdtbl->prdt_entry[0].i = 0;
-	int i=0;
-	for ( i=0; i<cmdheader->prdtl-1; i++)
-	{
-		cmdtbl->prdt_entry[i].dba = (u32)K_LIN2PHY(buf);
-		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
-		cmdtbl->prdt_entry[i].i = 0 ;
-		buf += 8*1024;	// 8k bytes
-		count -= 16;	// 16 sectors
-	}
-	// Last entry202.117.249.6
-	cmdtbl->prdt_entry[i].dba = (u32)K_LIN2PHY(buf);
-	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
-	cmdtbl->prdt_entry[i].i = 0;
+// 	// cmdtbl->prdt_entry[0].dba = (u32)K_LIN2PHY(buf);
+// 	// cmdtbl->prdt_entry[0].dbc = 512-1;	// this value should always be set to 1 less than the actual value
+// 	// cmdtbl->prdt_entry[0].i = 0;
+// 	int i=0;
+// 	for ( i=0; i<cmdheader->prdtl-1; i++)
+// 	{
+// 		cmdtbl->prdt_entry[i].dba = (u32)K_LIN2PHY(buf);
+// 		cmdtbl->prdt_entry[i].dbc = 8*1024-1;	// 8K bytes (this value should always be set to 1 less than the actual value)
+// 		cmdtbl->prdt_entry[i].i = 0 ;
+// 		buf += 8*1024;	// 8k bytes
+// 		count -= 16;	// 16 sectors
+// 	}
+// 	// Last entry202.117.249.6
+// 	cmdtbl->prdt_entry[i].dba = (u32)K_LIN2PHY(buf);
+// 	cmdtbl->prdt_entry[i].dbc = (count<<9)-1;	// 512 bytes per sector
+// 	cmdtbl->prdt_entry[i].i = 0;
 
  
-	// Setup command
-	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
+// 	// Setup command
+// 	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
  
-	cmdfis->fis_type = FIS_TYPE_REG_H2D;
-	cmdfis->c = 1;	// Command
+// 	cmdfis->fis_type = FIS_TYPE_REG_H2D;
+// 	cmdfis->c = 1;	// Command
 
-	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
- 	cmdfis->command = (rw == 0) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+// 	// cmdfis->command = (p->msg->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+//  	cmdfis->command = (rw == 0) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
 
-	cmdfis->lba0 = sect_nr & 0xFF;
-	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
-	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
-	cmdfis->device = 1<<6;	// LBA mode
+// 	cmdfis->lba0 = sect_nr & 0xFF;
+// 	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
+// 	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
+// 	cmdfis->device = 1<<6;	// LBA mode
  
-	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
-	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
-	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
+// 	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
+// 	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
+// 	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
  
-	cmdfis->countl = count & 0xFF;
-	cmdfis->counth = (count >> 8) & 0xFF;
+// 	cmdfis->countl = count & 0xFF;
+// 	cmdfis->counth = (count >> 8) & 0xFF;
  
-	// The below loop waits until the port is no longer busy before issuing a new command
-	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
-	{
-		spin++;
-	}
-	if (spin == 1000000)
-	{
-		disp_str("\nPort is hung");
-		return FALSE;
-	}
+// 	// The below loop waits until the port is no longer busy before issuing a new command
+// 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
+// 	{
+// 		spin++;
+// 	}
+// 	if (spin == 1000000)
+// 	{
+// 		disp_str("\nPort is hung");
+// 		return FALSE;
+// 	}
 
-	// Issue command
-	// port->ci = 1<<slot;	
+// 	// Issue command
+// 	// port->ci = 1<<slot;	
 	
 
 
-	// Wait for completion
-	// if (rw==1)	
-	// disp_str("\nWait for completion");
-	// disp_str("\nslot:");
-	// disp_int(slot);
-	// while (1)
-	// {
-	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
-	// 	// in the PxIS port field as well (1 << 5)
-	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
-	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
-	// 	// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
-	// 	// 	// disp_str("port_is:");disp_int(port->is);
-	// 	 	break;}
+// 	// Wait for completion
+// 	// if (rw==1)	
+// 	// disp_str("\nWait for completion");
+// 	// disp_str("\nslot:");
+// 	// disp_int(slot);
+// 	// while (1)
+// 	// {
+// 	// 	// In some longer duration reads, it may be helpful to spin on the DPS bit 
+// 	// 	// in the PxIS port field as well (1 << 5)
+// 	// 	// disp_str("transfer byte count:");disp_int(cmdheader->prdbc);
+// 	// 	if (((port->ci & (1<<slot)) == 0)&&(cmdheader->prdbc >= 512)){
+// 	// 	// 	// fat("\nsuccess,transfer byte count:");disp_int(cmdheader->prdbc);
+// 	// 	// 	// disp_str("port_is:");disp_int(port->is);
+// 	// 	 	break;}
 		
-	// 	// disp_int((port->ci)>>slot);
-	// 	// if (port->is & HBA_PxIS_TFES)	// Task file error
-	// 	// {
-	// 	// 	disp_str("Read disk error\n");
-	// 	// 	return FALSE;
-	// 	// }
-	// }
-	// sata_wait_flag = 1;
-	if (kernel_initial == 1) {
-		port->ci = 1<<slot;	// Issue command
-		while (sata_wait_flag);
-		sata_wait_flag = 1;
-	} else {
-		disable_int();
-		port->ci = 1<<slot;	// Issue command
-		wait_event(&sata_wait_flag);
-		enable_int();
-	}
+// 	// 	// disp_int((port->ci)>>slot);
+// 	// 	// if (port->is & HBA_PxIS_TFES)	// Task file error
+// 	// 	// {
+// 	// 	// 	disp_str("Read disk error\n");
+// 	// 	// 	return FALSE;
+// 	// 	// }
+// 	// }
+// 	// sata_wait_flag = 1;
+// 	if (kernel_initial == 1) {
+// 		port->ci = 1<<slot;	// Issue command
+// 		while (sata_wait_flag);
+// 		sata_wait_flag = 1;
+// 	} else {
+// 		disable_int();
+// 		port->ci = 1<<slot;	// Issue command
+// 		wait_event(&sata_wait_flag);
+// 		enable_int();
+// 	}
  
-	// Check again
-	// if (port->is & HBA_PxIS_TFES)
-	// {
-	// 	disp_str("Read disk error\n");
-	// 	return FALSE;
-	// }
-	 if(rw==0){
-	// 	memcpy(rbuf,buf,512);
-		// // disp_str("\nread,success:");
-		//  for (int i = 0; i < 16; i++)
-		//  {	
-		// 	disp_int(buf[i]);
+// 	// Check again
+// 	// if (port->is & HBA_PxIS_TFES)
+// 	// {
+// 	// 	disp_str("Read disk error\n");
+// 	// 	return FALSE;
+// 	// }
+// 	 if(rw==0){
+// 	// 	memcpy(rbuf,buf,512);
+// 		// // disp_str("\nread,success:");
+// 		//  for (int i = 0; i < 16; i++)
+// 		//  {	
+// 		// 	disp_int(buf[i]);
 			
-		//  }
+// 		//  }
 		
 		
-		}
-	// else	disp_str("\nwrite success");
-	kern_kfree(buf);
-	return 1;
-}
+// 		}
+// 	// else	disp_str("\nwrite success");
+// 	kern_kfree(buf);
+// 	return 1;
+// }
  
 // Find a free command list slot
 PUBLIC int find_cmdslot(HBA_PORT *port)
