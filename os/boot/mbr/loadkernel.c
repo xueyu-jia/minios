@@ -44,18 +44,18 @@ void load_kernel() {
     open_file(KERNEL_FILENAME);
     
     struct Elfdr eh;
-    struct Proghdr ph[10];
+    struct Proghdr *ph = ELF_ADDR;
     struct Secthdr sh;
     // 读elf文件头
     int ret = read(0, sizeof(struct Elfdr), (void *)&eh);
     if(ret != TRUE) goto bad;
     
     // 读program头
-    if(10 < eh.e_phnum){
-        lprintf("load kernel: eh.e_phnum\n");
+    if(ELF_BUF_LEN < eh.e_phentsize*eh.e_phnum){
+        lprintf("load kernel: ELF Buffer overflow\n");
         goto bad;
     }
-    ret &= read(eh.e_phoff, eh.e_phentsize*eh.e_phnum, (void *)&ph);
+    ret &= read(eh.e_phoff, eh.e_phentsize*eh.e_phnum, (void *)ph);
 
     // 加载program段
     for(int i = 0; i < eh.e_phnum; i++){

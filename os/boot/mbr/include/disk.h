@@ -10,8 +10,10 @@
 #include "type.h"
 
 #define SECTSIZE	512
-#define BUF_ADDR	0x7e00
-// #define ELF_ADDR	0x7e00
+// 用来读取ELF程序段头的缓冲区
+#define ELF_ADDR	0x7e00
+#define ELF_BUF_LEN	0x400
+#define BUF_ADDR	(ELF_ADDR + ELF_BUF_LEN)
 #define ACT_PART_FLAG 0x80
 #define DISK_READY_FLAG 0x40
 
