@@ -500,7 +500,7 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Ech
 		}
 
 		//if( Echo_Phdr[ph_num].p_flags == 0x5 ) //0x101,可读可执行
-		if (Echo_Phdr[ph_num].p_flags == 0x4 || Echo_Phdr[ph_num].p_flags == 0x5) //0x100，只读 0x101,可读可执行	//modified by mingxuan 2021-1-30
+		if (Echo_Phdr[ph_num].p_flags == 0x4 || Echo_Phdr[ph_num].p_flags == 0x5) //100b:只读; 101b:可读可执行	//modified by mingxuan 2021-1-30
 		//这样修改的原因：把.text, .rodata, .frame合并，一起赋给text_lin_*, mingxuan 2021-1-31
 		{ //.text .rodata .eh_frame
 

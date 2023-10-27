@@ -28,7 +28,7 @@ OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
 		user/user/fortest6.o user/user/fortest7.o user/user/fortest8.o user/user/fortest9.o user/user/fortest10.o \
 		user/user/fortest11.o user/user/fortest12.o user/user/fortest13.o user/user/t_exit01.o \
 		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o user/user/sema1.o \
-		user/user/fstest.o
+		user/user/fstest.o user/user/rwtest1.o
 
 ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
 			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
@@ -37,7 +37,7 @@ ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin 
 			user/user/ptest6.bin user/user/ptest7.bin user/user/ptest8.bin user/user/ptest9.bin user/user/ptest10.bin \
 			user/user/ptest11.bin user/user/ptest12.bin user/user/ptest13.bin user/user/ptest13.gdb.bin  \
 			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin user/user/sema1.bin \
-			user/user/fstest.bin
+			user/user/fstest.bin user/user/rwtest1.bin
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
@@ -353,4 +353,9 @@ user/user/sema1.o: user/user/sema1.c user/include/stdio.h user/include/pthread.h
 user/user/sema1.bin : user/user/sema1.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
+user/user/rwtest1.o: user/user/rwtest1.c user/include/stdio.h user/include/syscall.h
+	$(CC) $(CFLAGS) -o $@ $<
+
+user/user/rwtest1.bin : user/user/rwtest1.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 

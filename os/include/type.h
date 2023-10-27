@@ -112,4 +112,8 @@ enum msgtype {
 
 #define NULL 0
 
+#define bool	_Bool
+#define true	1
+#define false	0
+
 #endif /* _ORANGES_TYPE_H_ */

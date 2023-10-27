@@ -8,6 +8,9 @@
 
 # ignore *.bin
 *.bin
+!kernel.gdb.bin
+
+compile_commands.json
 
 # ignore hard disk image
 80m.img

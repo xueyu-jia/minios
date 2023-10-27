@@ -22,7 +22,7 @@
 
 /*  //deleted by mingxuan 2021-8-20
 int do_signal(int sig, void *handler, void* _Handler) {
-    if((uint32_t)sig >= NR_SIGNALS) {
+    if((u32)sig >= NR_SIGNALS) {
         return -1;
     }
     p_proc_current->task.sig_handler[sig] = handler;
@@ -33,7 +33,7 @@ int do_signal(int sig, void *handler, void* _Handler) {
 
 //added by mingxuan 2021-8-20
 int kern_signal(int sig, void *handler, void* _Handler) {
-    if((uint32_t)sig >= NR_SIGNALS) {
+    if((u32)sig >= NR_SIGNALS) {
         return -1;
     }
     p_proc_current->task.sig_handler[sig] = handler;
@@ -95,8 +95,8 @@ void do_sigreturn(int ebp)
     int esp_syscall = p_proc_current->task.esp_save_syscall;
     int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
 
-    uint16_t user_ss = p_proc_current->task.regs.ss;
-    uint16_t kernel_es ;
+    u16 user_ss = p_proc_current->task.regs.ss;
+    u16 kernel_es ;
 
     // change es to B_ss
     __asm__  (
@@ -107,7 +107,7 @@ void do_sigreturn(int ebp)
     :
     );
 
-    for(uint32_t* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(uint32_t);i++, p++, q++)
+    for(u32* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(u32);i++, p++, q++)
     {
         __asm__ (
         "mov %%eax, %%es:(%%edi)"
@@ -136,8 +136,8 @@ void kern_sigreturn(int ebp)
     int esp_syscall = p_proc_current->task.esp_save_syscall;
     int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
 
-    uint16_t user_ss = p_proc_current->task.regs.ss;
-    uint16_t kernel_es ;
+    u16 user_ss = p_proc_current->task.regs.ss;
+    u16 kernel_es ;
 
     // change es to B_ss
     __asm__  (
@@ -148,7 +148,7 @@ void kern_sigreturn(int ebp)
     :
     );
 
-    for(uint32_t* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(uint32_t);i++, p++, q++)
+    for(u32* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(u32);i++, p++, q++)
     {
         __asm__ (
         "mov %%eax, %%es:(%%edi)"
@@ -219,8 +219,8 @@ void process_signal() {
 
     disable_int();
 
-    uint16_t B_ss = regs.ss & 0xfffc;
-    uint16_t A_es ;
+    u16 B_ss = regs.ss & 0xfffc;
+    u16 A_es ;
 
     /* change es to B_ss */
     __asm__  (
@@ -232,8 +232,8 @@ void process_signal() {
     );
 
     /* save context */
-    int start = *(uint32_t*)(proc->task.esp_save_syscall + 16*4) - sizeof(regs);
-    for(uint32_t* p = start, *sf = proc->task.esp_save_syscall, i=0; i<sizeof(regs) / sizeof(uint32_t) ; i++,p++, sf++) {
+    int start = *(u32*)(proc->task.esp_save_syscall + 16*4) - sizeof(regs);
+    for(u32* p = start, *sf = proc->task.esp_save_syscall, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
             :
@@ -244,7 +244,7 @@ void process_signal() {
 
     /* push para */
     start -= sizeof(Sigaction);
-    for(uint32_t* p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(uint32_t) ;i++, p++, sf++) {
+    for(u32* p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(u32) ;i++, p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
             :
@@ -254,10 +254,10 @@ void process_signal() {
     }
 
     /* Handler return address */
-    start -= sizeof(uint32_t);
+    start -= sizeof(u32);
 
     /* switch to Handler */
-    uint32_t *context_p = proc->task.esp_save_syscall;
+    u32 *context_p = proc->task.esp_save_syscall;
     *(context_p + 13) =  proc->task._Hanlder; /* eip */
     *(context_p + 16) = start;                /* esp */
 

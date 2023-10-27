@@ -16,7 +16,7 @@ char bufr[BUF_SIZE];
 int main()
 {
     int fd;
-	char filename[] = "orange/text1.txt";
+	char filename[] = "text1.txt";
 
     for(int i =0;i<BUF_SIZE;i+=10){
         for(int j=0;j<10;j++)
@@ -33,7 +33,10 @@ int main()
         write(fd, bufw + DATA_SIZE + 51, 210);
 
 		close(fd);
-	}
+	}else{
+        exit(-1);
+        return -1;
+    }
 
     fd = open(filename, O_RDWR);
     if(fd != -1)
@@ -43,14 +46,19 @@ int main()
         read(fd, bufr + DATA_SIZE + 51, 210);
         // udisp_str(bufr);
         close(fd);
+        printf("the bufr:%s\n", bufr);
+    }else{
+        return -1;
     }
 
-    fd = open("orange/text1b.txt", O_CREAT | O_RDWR);
+    fd = open("text1b.txt", O_CREAT | O_RDWR);
     if(fd != -1)
 	{
 		write(fd, bufr, strlen(bufr));
 		close(fd);
-	}
+	}else{
+        return -1;
+    }
 
     exit(0);
 

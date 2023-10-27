@@ -58,17 +58,17 @@ struct Directory_Entry {
 struct BPB bpb;
 u32 fat_start_sec;
 u32 data_start_sec;
-u32 elf_clus;
 u32 elf_off; 
 u32 fat_now_sec;
 u32 elf_first;
 
 
-/* u32 get_next_clus(u32 current_clus);
+/* u32 get_next_clus_number(u32 current_clus);
 void *read_cluster(void *dst, u32 current_clus); */
-void fat32_init();
-int  fat32_read_file(char *filename,void *dst);
-
+extern void fat32_init();
+// extern int  fat32_read_file(char *filename,void *dst);
+extern int fat32_open_file(char *filename);
+extern int fat32_read(u32 offset, u32 lenth, void *buf);
 
 /* typedef struct//定义目录项：占32个字节
 {

@@ -23,11 +23,26 @@ typedef unsigned char bitmap_entry_t; //位图每块的类型
 #define BLOCK_SIZE 4096		     // page大小
 #define KMEM_CACHES_NUM 9		 // Cache的数目
 
+#define LEFTSHIFT(n)        (1<<(n))
+//  将address向上(高地址)对齐,对齐标准为(2^n)
+#define ROUNDUP(address, n) (((address) + LEFTSHIFT(n) -1) & ~(LEFTSHIFT(n) - 1))  
+
 struct kmem_list{
 	kmem_slab_t *head;
 	SPIN_LOCK lock;
 };
 
+/*
+    slab的空间视图
+        start                   (4K对齐的)
+            kmem_slab           (slab的记录数据结构)
+            bitmap              (位图，kmem_slab.bitmap 指向该地址，长度为kmem_cache.bitmap_length)
+            padding             (填充区，不使用,用以保证objects1是对齐的)
+            objects  1          (用于分配，开头地址按照kmem_cache.objsize对齐,kmem_slab.objects指向该地址)
+            ...
+            objects  n
+        end                     (start + 4K - 1)
+*/
 struct kmem_slab
 {
 	int used_obj;			  // slab中已经使用的对象个数
