@@ -44,7 +44,7 @@ void load_kernel() {
     open_file(KERNEL_FILENAME);
     
     struct Elfdr eh;
-    struct Proghdr *ph = ELF_ADDR;
+    struct Proghdr *ph = (struct Proghdr *)ELF_ADDR;
     struct Secthdr sh;
     // 读elf文件头
     int ret = read(0, sizeof(struct Elfdr), (void *)&eh);

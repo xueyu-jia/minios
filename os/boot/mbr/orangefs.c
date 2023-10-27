@@ -16,7 +16,7 @@ static int search_file(char *filename){
     //lprintf("i_size %d i_start_sect %d i_nr_sects %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
     for (unsigned int  i = 0; i < root_inode.i_nr_blocks*(BLOCK_SIZE/SECT_SIZE); i++)
     {
-        readsect(BUF_ADDR,bootPartStartSector+root_inode.i_start_block*(BLOCK_SIZE/SECT_SIZE)+i);
+        readsect((void*)BUF_ADDR,bootPartStartSector+root_inode.i_start_block*(BLOCK_SIZE/SECT_SIZE)+i);
         dir_entry* de = (dir_entry*)(BUF_ADDR);
         for (unsigned int  j = 0; j < SECTSIZE/DIR_ENTRY_SIZE; j++)
         {
@@ -111,8 +111,8 @@ int orangefs_read(u32 offset, u32 lenth, void *buf)
     u32 offset_in_block = offset % BLOCK_SIZE;
     u32 nr_block = (offset_in_block + lenth + BLOCK_SIZE -1) / BLOCK_SIZE;  // 要读的数据块的数量
 
-    int ret = orangefs_read_blocks(block_i+elf_inode.i_start_block, nr_block, BUF_ADDR);
-    memcpy(buf, BUF_ADDR+offset_in_block, lenth);
+    int ret = orangefs_read_blocks(block_i+elf_inode.i_start_block, nr_block, (void*)BUF_ADDR);
+    memcpy(buf, (void*)(BUF_ADDR+offset_in_block), lenth);
     
     return ret;
 }
