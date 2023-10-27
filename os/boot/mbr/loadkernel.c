@@ -51,6 +51,10 @@ void load_kernel() {
     if(ret != TRUE) goto bad;
     
     // 读program头
+    if(10 < eh.e_phnum){
+        lprintf("load kernel: eh.e_phnum\n");
+        goto bad;
+    }
     ret &= read(eh.e_phoff, eh.e_phentsize*eh.e_phnum, (void *)&ph);
 
     // 加载program段
