@@ -32,7 +32,7 @@ AR		= ar
 
 #added by sundong 写镜像用,用losetup -f查看
 ifeq ($(MACHINE_TYPE), virtual)
-	FREE_LOOP=$(shell sudo losetup -f)
+	FREE_LOOP:=$(shell sudo losetup -f)
 	ROOT_FS_PART=$(FREE_LOOP)p2
 	GRUB_INSTALL_PART=$(FREE_LOOP)p5
 	WRITE_DISK=b.img
@@ -115,7 +115,7 @@ build_grub:
 	else \
 		sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART); \
 	fi
-
+	
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
 		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(FREE_LOOP) &&\
@@ -150,7 +150,7 @@ build_fs:
 		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
 	fi
 
-	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
+		sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
 	sudo $(CP) $(CP_FLAG) kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
 
 # 在启动盘放置init.bin启动文件
