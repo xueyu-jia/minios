@@ -64,6 +64,9 @@ int main(int arg, char *argv[])
     pthread_mutex_init(&mutex, NULL);
 
     fd = open(filename, O_CREAT | O_RDWR);
+    if(fd == -1) {
+        fd = open(filename, O_RDWR);
+    }
     if (fd == -1) { 
         printf("open1 error!");
         exit(-1);

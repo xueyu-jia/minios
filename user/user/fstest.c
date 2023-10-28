@@ -34,8 +34,9 @@ void main(int argc,char *argv[])
 	filename[i++] = '/';
 	filename[i++] = 'f';
 	filename[i++] = 's';
+	printf("path + filename length :%d\n", strlen(filename));
 	fd = open(filename, O_CREAT|O_RDWR);
-	if(fd>=0){
+	if(fd >= 0){
 		write(fd, path, 128);
 		close(fd);
 	}else{
@@ -51,7 +52,7 @@ void main(int argc,char *argv[])
 	printf("file content: \n%s\n", buff);
 	printf("content length :%d\n", strlen(buff));
 
-	// 删除错误的目录
+	// 删除不存在的目录
 	ret = deletedir("error");
 	printf("delete error path ret:%d\n", ret);
 

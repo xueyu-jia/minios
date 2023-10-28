@@ -8,7 +8,7 @@
 
 # ignore *.bin
 *.bin
-!kernel.gdb.bin
+# !kernel.gdb.bin
 
 compile_commands.json
 

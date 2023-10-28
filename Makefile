@@ -135,6 +135,7 @@ build_mbr:
 
 build_fs:
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
+		sudo losetup -d $(FREE_LOOP); \
 		sudo losetup -P $(FREE_LOOP) $(WRITE_DISK); \
 	fi
 
