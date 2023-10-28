@@ -773,12 +773,12 @@ void main(int arg,char *argv[])
 	else
 	{//child
 		// execve("fat0/shell_0.bin");
-#ifdef FAT32_BOOT
-	execve("fat0/shell_0.bin",NULL,NULL);
-#endif
-#ifdef ORANGE_BOOT
+// #ifdef FAT32_BOOT
+// 	execve("fat0/shell_0.bin",NULL,NULL);
+// #endif
+// #ifdef ORANGE_BOOT
 	execve("shell_0.bin",NULL,NULL);
-#endif
+// #endif
 		//execve("fat0/shell_0.bin",NULL,NULL);
 
 		//execve(filename);
