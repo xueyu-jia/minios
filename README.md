@@ -16,7 +16,7 @@ MiniOS主要基于C语言和x86汇编语言开发，使用的开发工具包括�
 
 其中，Binutils是一套对二进制文件进行操作的工具集，包括创建静态库的工具ar，从二进制文件中去除符号表以减小文件体积的工具strip等。
 
-# 运行MiniOS
+# 运行MiniOS的方法
 ---
 MiniOS当前从软盘中启动，启动流程为：
 1. BIOS自检完毕后从软盘引导扇区中加载引导程序（boot.bin）至内存，并将控制权交给引导程序。
@@ -51,16 +51,91 @@ MiniOS当前从软盘中启动，启动流程为：
 3. 在gdb命令界面执行命令`target remote :1234`和Qemu建立连接。
 4. 用gdb像调试本地程序一样对MiniOS进行调试。
 
-# 常用MiniOS构建选项
+# MiniOS 编译、安装、运行
+## 编译MiniOS
+```bash
+# 直接编译
+make
+# 若在开发过程中需要重新编译请执行
+make clean && make
 ```
-# 编译MiniOS内核和用户程序init，并写入到软盘镜像a.img中
-make image
-# 清除所有.o目标文件
-make clean
-# 清除所有.o目标文件和可执行文件
-make realclean
+## 安装MiniOS
+### 制作启动镜像文件（真机启动无需此步骤）
+```bash
+#新建一个文件夹 hd，用于存放镜像
+mkdir hd
+#使用dd创建一个镜像,例如：
+dd if=/dev/zero of=hd/virtual_disk.img bs=512 count=204800
 ```
+### 使用fdisk对硬盘/镜像进行分区
+```bash
+#若使用虚拟机，则对镜像文件进行分区,例如：
+fdisk hd/virtual_disk.img
+#若使用真机，则直接对真机硬盘进行分区,例如：
+fdisk /dev/sda
+#分完区之后要选择一个分区作为启动分区，设置好启动分区标志
+```
+**例：一个分好区的硬盘的分区表如下**
+```
+minios@ubuntu:~/minios-virtual$ fdisk -l hd/virtual_disk.img
+Disk hd/virtual_disk.img: 100 MiB, 104857600 bytes, 204800 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0xdc261353
 
+Device               Boot  Start    End Sectors Size Id Type
+hd/virtual_disk.img1 *      2048   4095    2048   1M 83 Linux
+hd/virtual_disk.img2        4096 106495  102400  50M 83 Linux
+hd/virtual_disk.img3      106496 204799   98304  48M  5 Extended
+hd/virtual_disk.img5      108544 204799   96256  47M 83 Linux
+```
+### 安装镜像
+若选择默认安装方式，则直接执行
+```bash
+make install
+```
+*默认选项为使用虚拟机，启动分区为分区1，启动文件系统类型为fat32，根文件系统所在分区为分区2，不适用grub引导*
+```makefile
+#默认配置参数如下
+#选择OS的启动环境，virtual 代表虚机（qemu），real 代表真机
+MACHINE_TYPE = virtual
+#安装的硬盘，例如真机启动时该变量可能为 /dev/sda；虚机启动无需设置此变量
+INS_DEV=
+#启动分区的分区号，数字类型，例如: 1
+BOOT_PART_NUM=1
+#根文件系统所在的分区号，数字类型，例如：2
+ROOT_FS_PART_NUM=2
+#用于区分是使用grub chainloader
+#可选值为 true  false
+USING_GRUB_CHAINLOADER = false
+#grub安装的分区,数字类型，例如：5
+GRUB_PART_NUM=5
+#选择启动分区的文件系统格式，目前仅支持fat32和orangefs
+BOOT_PART_FS_TYPE= fat32
+#grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
+GRUB_CONFIG=boot_from_part1.cfg
+#使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
+BOOT_IMG=virtual_disk.img
+```
+用户可以根据需要在执行`make install`时传入参数，比如：若更改启动分区文件系统类型为orangefs，根文件系统所在分区为分区1，则可以执行：
+`make install BOOT_PART_FS_TYPE=orangefs ROOT_FS_PART_NUM=1`
+**注意事项**
+1. `make install`中选择的启动分区需要与硬盘中的启动分区保持一致。
+2. 若启动分区的文件系统类型为fat32，则启动分区与根文件系统所在分区不得为同一个分区。
+3. 若启动分区的文件系统类型为orangefs，则启动分区与根文件系统所在分区必须为同一个分区。
+4. 若使用grub做为引导程序，则grub安装的分区不得与根文件系统所在的分区一致。
+5. 当更改启动分区时，除了变量`BOOT_PART_NUM`需要修改之外，若使用grub做引导程序则还需要修改/新生成一个grub配置文件。当前的默认配置文件为`os/boot/mbr/grub/boot_from_part1.cfg`和`os/boot/mbr/grub/boot_from_part1.cfg`，这两个配置文件分别对应着启动分区为分区1和分区2。在配置文件中`hd0`表示要引导的os所在的硬盘为第一块硬盘，`msdos1`表示要引导的分区为分区1,可以通过修改这两个字段来配置grub引导程序。
+## 运行MiniOS
+```bash
+#在虚拟机运行请使用
+./launch-qemu.sh 
+#在真机运行请在真机BIOS中选择对应的硬盘启动
+```
+如下图所示：启动完成后，在MiniOS shell中直接输入测试程序文件名即可执行测试程序
+
+![Alt text](doc/image.png)
 # 参考资料
 * [Orange's](https://github.com/yyu/Oranges) ，由于渊开发的一个微型操作系统，在《一个操作系统的实现》这本书中讲述了Orange's的开发过程。MiniOS是基于Orange's进行开发的。
 * [xv6](https://pdos.csail.mit.edu/6.828/2014/xv6.html) ， 由MIT开发的一个用于教学的微型操作系统，xv6由Unix V6改写而来，被应用在MIT的操作系统课程6.828: Operating System Engineering中。
