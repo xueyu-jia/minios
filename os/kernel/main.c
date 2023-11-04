@@ -39,7 +39,8 @@ PRIVATE int initialize_cpus();		//added by xw, 18/6/2
                             kernel_main
  *======================================================================*/
 PUBLIC int kernel_main()
-{
+{   
+    //gdb_sys_init();
 	int error;
 
 	//zcr added(清屏)
@@ -52,7 +53,7 @@ PUBLIC int kernel_main()
 		}
 	}
 	disp_pos = 0;
-    //gdb_sys_init();
+    
 	disp_str("-----Kernel Initialization Begins-----\n");
 	kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 
@@ -390,7 +391,7 @@ PRIVATE int initialize_processes()
 		strcpy(p_proc->task.p_name, "initial"); //名称
 		p_proc->task.pid = pid;					//pid
 		p_proc->task.stat = READY;				//状态
-		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级
+		p_proc->task.ticks = p_proc->task.priority = 5;	//时间片和优先级
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;

@@ -32,8 +32,10 @@ void main(int argc,char *argv[])
 	// 在长目录下创建文件并写入数据
 	strcpy(filename, path);
 	filename[i++] = '/';
-	filename[i++] = 'f';
-	filename[i++] = 's';
+    while(i < 127){
+        filename[i++] = 'A' + (i % 26);
+    }
+	filename[i] = 0;
 	printf("path + filename length :%d\n", strlen(filename));
 	fd = open(filename, O_CREAT|O_RDWR);
 	if(fd >= 0){

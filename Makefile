@@ -190,7 +190,7 @@ build_grub:
 # added by mingxuan 2019-5-17
 build_mbr:
 	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
-		dd if=os/boot/mbr/mbr.bin of=$(WRITE_DISK) bs=1 count=446 conv=notrunc ; \
+		sudo dd if=os/boot/mbr/mbr.bin of=$(WRITE_DISK) bs=1 count=446 conv=notrunc ; \
 	fi
 
 build_fs:
