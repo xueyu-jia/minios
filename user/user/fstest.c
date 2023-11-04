@@ -39,7 +39,7 @@ void main(int argc,char *argv[])
 	printf("path + filename length :%d\n", strlen(filename));
 	fd = open(filename, O_CREAT|O_RDWR);
 	if(fd >= 0){
-		write(fd, path, 128);
+		write(fd, filename, 128);
 		close(fd);
 	}else{
 		printf("open file error/n");
