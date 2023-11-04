@@ -30,10 +30,19 @@
 #include "../include/semaphore.h"
 #include "../include/ahci.h"
 #include "../include/buffer.h"
-#include "../gdbstub/gdbstub.h"
+
+//added by lcy, 2023.10.22
+#define k_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define k_ds ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define k_es ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define k_fs ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define k_ss ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define k_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
+PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pid,int priority);//added by lcy, 2023.10.22
+PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip);//added by lcy, 2023.10.25
 
 /*======================================================================*
                             kernel_main
@@ -52,7 +61,7 @@ PUBLIC int kernel_main()
 		}
 	}
 	disp_pos = 0;
-    //gdb_sys_init();
+
 	disp_str("-----Kernel Initialization Begins-----\n");
 	kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 
@@ -149,7 +158,9 @@ PUBLIC int kernel_main()
 	 */
 	//clear_kernel_pagepte_low(); //delete by sundong 2023.3.8 因为kernel重新初始化页表的时候就删掉了低端页表
 
-	p_proc_current = proc_table;
+	// p_proc_current = proc_table;
+	p_proc_current = &proc_table[16];
+	cr3_ready=p_proc_current->task.cr3;
 	kernel_initial = 0; //kernel initialization is done. added by xw, 18/5/31
 
 	//test_alloc_pages();      //test memory management functions    added by wang 2021.3.25
@@ -197,6 +208,30 @@ PRIVATE int initialize_cpus()
 }
 
 /*************************************************************************
+进程基本信息初始化（name、stat等）
+added by lcy, 2023.10.22
+***************************************************************************/
+PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pid,int priority){
+		strcpy(proc->task.p_name, name); //名称
+		proc->task.pid = pid;					   //pid
+		proc->task.stat = stat;				   //初始化状态 -1表示未初始化
+		proc->task.ticks = proc->task.priority = priority;	//时间片和优先级
+		//proc->task.regs.eip = eip;
+}
+
+PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip){
+		proc->task.esp_save_int->cs = cs;
+		proc->task.esp_save_int->ds = ds;
+		proc->task.esp_save_int->es = es;
+		proc->task.esp_save_int->fs = fs;
+		proc->task.esp_save_int->ss = ss;
+		proc->task.esp_save_int->gs = gs;
+		proc->task.esp_save_int->eflags =eflags;    /* IF=1, IOPL=1 */
+		proc->task.esp_save_int->esp = esp;
+		proc->task.esp_save_int->eip = eip;
+}
+
+/*************************************************************************
 进程初始化部分
 return 0 if there is no error, or return -1.
 moved from kernel_main() by xw, 18/5/26
@@ -225,12 +260,15 @@ PRIVATE int initialize_processes()
 
 	p_proc = proc_table;
 	for (pid = 0; pid < NR_TASKS; pid++)
-	{ //1>对前NR_TASKS个PCB初始化,且状态为READY(生成的进程)
+	{ 	//delete by lcy 2023.10.22
+		//1>对前NR_TASKS个PCB初始化,且状态为READY(生成的进程)
 		/*************基本信息*********************************/
-		strcpy(p_proc->task.p_name, p_task->name); //名称
+		/*strcpy(p_proc->task.p_name, p_task->name); //名称
 		p_proc->task.pid = pid;					   //pid
 		p_proc->task.stat = READY;				   //状态
-		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级
+		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级*/
+		init_process(p_proc,p_task->name,READY,pid,1);//add by lcy 2023.10.22
+
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -239,14 +277,14 @@ PRIVATE int initialize_processes()
 		memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 		p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
-		/**************寄存器初值**********************************/
-		p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+		/**************寄存器初值**********************************///delete by lcy 2023.10.25
+		/*p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-		p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+		p_proc->task.regs.eflags = 0x1202;  */  /* IF=1, IOPL=1 */
 		//p_proc->task.cr3 在页表初始化中处理
 
 		/**************线性地址布局初始化**********************************/ //	add by visual 2016.5.4
@@ -270,8 +308,7 @@ PRIVATE int initialize_processes()
 		//	pde_addr_phy_temp = get_pde_phy_addr(pid);//获取该进程页目录物理地址			//delete by visual 2016.5.19
 
 		/****************代码数据*****************************/
-		p_proc->task.regs.eip = (u32)p_task->initial_eip; //进程入口线性地址		edit by visual 2016.5.4
-
+		//p_proc->task.regs.eip = (u32)p_task->initial_eip; //进程入口线性地址		edit by visual 2016.5.4  //delete by lcy 2023.10.22
 		//added by mingxuan 2021-8-24, for test
 		/*
 		for(AddrLin=ArgLinBase ; AddrLin<ArgLinLimitMAX; AddrLin++)
@@ -289,7 +326,7 @@ PRIVATE int initialize_processes()
 		}
 		*/
 		/****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
-		p_proc->task.regs.esp = (u32)StackLinBase; //栈地址最高处
+		//p_proc->task.regs.esp = (u32)StackLinBase; //栈地址最高处  deleted by lcy 2023.10.25
 		for (AddrLin = StackLinBase; AddrLin > p_proc->task.memmap.stack_lin_limit; AddrLin -= num_4K)
 		{ //栈
 			//addr_phy_temp = (u32)do_kmalloc_4k();//为栈申请一个物理页,Task的栈是在内核里面	//delete by visual 2016.5.19
@@ -319,10 +356,13 @@ PRIVATE int initialize_processes()
 		//added by xw, 17/12/11
 		p_regs = (char *)(p_proc + 1);
 		p_regs -= P_STACKTOP;
-		memcpy(p_regs, (char *)p_proc, 18 * 4);
+		//memcpy(p_regs, (char *)p_proc, 18 * 4);	//delete by lcy 2023.10.22
 
 		/***************some field about process switch****************************/
-		p_proc->task.esp_save_int = p_regs; //initialize esp_save_int, added by xw, 17/12/11
+		//初始化内核栈			added by lcy 2023.10.25
+		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11    //changed by lcy, 2023.10.24
+		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)StackLinBase,(u32)p_task->initial_eip);
+
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context
@@ -339,10 +379,12 @@ PRIVATE int initialize_processes()
 	for (; pid < NR_K_PCBS; pid++)
 	{ //2>对中NR_TASKS~NR_K_PCBS的PCB表初始化,状态为IDLE,没有初始化esp(并没有生成,所以没有代码入口,只是留位置)
 		/*************基本信息*********************************/
-		strcpy(p_proc->task.p_name, "Task"); //名称
+		/*strcpy(p_proc->task.p_name, "Task"); //名称
 		p_proc->task.pid = pid;				 //pid
 		//p_proc->task.stat = IDLE;  						//状态
-		p_proc->task.stat = FREE; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
+		p_proc->task.stat = FREE; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21*/
+
+		init_process(p_proc,"Task",FREE,pid,-1);//add by lcy 2023.10.22
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -351,14 +393,14 @@ PRIVATE int initialize_processes()
 		memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 		p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
-		/**************寄存器初值**********************************/
-		p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+		/**************寄存器初值**********************************/  //delete by lcy 2023.10.25
+		/*p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-		p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+		p_proc->task.regs.eflags = 0x1202;  */ /* IF=1, IOPL=1 */
 
 		/****************页表、代码数据、堆栈*****************************/
 		//无
@@ -368,10 +410,13 @@ PRIVATE int initialize_processes()
 		//added by xw, 17/12/11
 		p_regs = (char *)(p_proc + 1);
 		p_regs -= P_STACKTOP;
-		memcpy(p_regs, (char *)p_proc, 18 * 4);
+		//memcpy(p_regs, (char *)p_proc, 18 * 4);
 
 		/***************some field about process switch****************************/
-		p_proc->task.esp_save_int = p_regs; //initialize esp_save_int, added by xw, 17/12/11
+		//初始化内核栈			added by lcy 2023.10.25
+		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11		//changed by lcy, 2023.10.24
+		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)NULL,(u32)NULL);
+
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context
@@ -387,10 +432,11 @@ PRIVATE int initialize_processes()
 	for (; pid < NR_K_PCBS + 1; pid++)
 	{ //initial 进程的初始化				//add by visual 2016.5.17
 		/*************基本信息*********************************/
-		strcpy(p_proc->task.p_name, "initial"); //名称
+		/*strcpy(p_proc->task.p_name, "initial"); //名称
 		p_proc->task.pid = pid;					//pid
 		p_proc->task.stat = READY;				//状态
-		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级
+		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级*/      //delete by lcy 2023.10.22
+		init_process(p_proc,"initial",READY,pid,1);//add by lcy 2023.10.22
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -399,14 +445,14 @@ PRIVATE int initialize_processes()
 		memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 		p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
 
-		/**************寄存器初值**********************************/
-		p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
+		/**************寄存器初值**********************************/  //delete by lcy 2023.10.25
+		/*p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK;
 		p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK;
-		p_proc->task.regs.eflags = 0x1202; /* IF=1, IOPL=1 */
+		p_proc->task.regs.eflags = 0x1202;  */  /* IF=1, IOPL=1 */
 		//p_proc->task.cr3 在页表初始化中处理
 
 		/**************线性地址布局初始化**********************************/ //edit by visual 2016.5.25
@@ -445,10 +491,10 @@ PRIVATE int initialize_processes()
 		//pde_addr_phy_temp = get_pde_phy_addr(pid);//获取该进程页目录物理地址	//edit by visual 2016.5.19
 
 		/****************代码数据*****************************/
-		p_proc->task.regs.eip = (u32)initial; //进程入口线性地址		edit by visual 2016.5.17
+		//p_proc->task.regs.eip = (u32)initial; //进程入口线性地址		edit by visual 2016.5.17  //delete by lcy 2023.10.22
 
 		/****************栈（此时堆、栈已经区分，以后实验会重新规划堆的位置）*****************************/
-		p_proc->task.regs.esp = (u32)StackLinBase; //栈地址最高处
+		//p_proc->task.regs.esp = (u32)StackLinBase; //栈地址最高处  deleted by lcy 2023.10.25
 		for (AddrLin = StackLinBase; AddrLin > p_proc->task.memmap.stack_lin_limit; AddrLin -= num_4K)
 		{ //栈
 			//addr_phy_temp = (u32)do_kmalloc_4k();//为栈申请一个物理页,Task的栈是在内核里面 //delete by visual 2016.5.19
@@ -478,10 +524,13 @@ PRIVATE int initialize_processes()
 		//added by xw, 17/12/11
 		p_regs = (char *)(p_proc + 1);
 		p_regs -= P_STACKTOP;
-		memcpy(p_regs, (char *)p_proc, 18 * 4);
+		//memcpy(p_regs, (char *)p_proc, 18 * 4);deleted by lcy 2023.10.25
 
 		/***************some field about process switch****************************/
-		p_proc->task.esp_save_int = p_regs; //initialize esp_save_int, added by xw, 17/12/11
+		//初始化内核栈			added by lcy 2023.10.25
+		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11  	//changed by lcy, 2023.10.24
+		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)StackLinBase,(u32)initial);
+
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context
@@ -496,11 +545,15 @@ PRIVATE int initialize_processes()
 	}
 	for (; pid < NR_PCBS; pid++)
 	{ //3>对后NR_K_PCBS~NR_PCBS的PCB表部分初始化,(名称,pid,stat,LDT选择子),状态为IDLE.
+
+		//deleted by lcy 2023.10.24
 		/*************基本信息*********************************/
-		strcpy(p_proc->task.p_name, "USER"); //名称
+		/*strcpy(p_proc->task.p_name, "USER"); //名称
 		p_proc->task.pid = pid;				 //pid
 		//p_proc->task.stat = IDLE;  						//状态
-		p_proc->task.stat = FREE; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
+		p_proc->task.stat = FREE; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21*/
+
+		init_process(p_proc,"USER",FREE,pid,-1);//add by lcy 2023.10.22
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;
@@ -509,14 +562,15 @@ PRIVATE int initialize_processes()
 		memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 		p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5;
 
+		//deleted by lcy, 2023.10.24
 		/**************寄存器初值**********************************/
-		p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+		/*p_proc->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 		p_proc->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 		p_proc->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 		p_proc->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 		p_proc->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 		p_proc->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
-		p_proc->task.regs.eflags = 0x0202; /* IF=1, 倒数第二位恒为1 */
+		p_proc->task.regs.eflags = 0x0202; // IF=1, 倒数第二位恒为1*/
 
 		/****************页表、代码数据、堆栈*****************************/
 		//无
@@ -525,11 +579,12 @@ PRIVATE int initialize_processes()
 		//copy registers data to the bottom of the new kernel stack
 		//added by xw, 17/12/11
 		p_regs = (char *)(p_proc + 1);
+		*(u32 *)(p_regs + EFLAGSREG - P_STACKTOP) = 0x0202; //中断栈帧eflags赋初值 	added by lcy, 2023.10.24
 		p_regs -= P_STACKTOP;
-		memcpy(p_regs, (char *)p_proc, 18 * 4);
+		//memcpy(p_regs, (char *)p_proc, 18 * 4);			//deleted by lcy, 2023.10.24
 
 		/***************some field about process switch****************************/
-		p_proc->task.esp_save_int = p_regs; //initialize esp_save_int, added by xw, 17/12/11
+		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11 	 //changed by lcy, 2023.10.24
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context

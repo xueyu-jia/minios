@@ -117,10 +117,10 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		pthread_heap_init(p_child,p_parent);
 		
 		/********************设置线程的执行入口**********************************************/
-		p_child->task.regs.eip = (u32)entry;
+		//p_child->task.regs.eip = (u32)entry;
 		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-		*((u32*)(p_reg + EIPREG - P_STACKTOP)) = p_child->task.regs.eip;	//added by xw, 17/12/11
-		
+		//*((u32*)(p_reg + EIPREG - P_STACKTOP)) = p_child->task.regs.eip;	//added by xw, 17/12/11
+		*((u32*)(p_reg + EIPREG - P_STACKTOP)) = (u32)entry;
 		/**************更新进程树标识info信息************************/
 		pthread_update_info(p_child,p_parent);
 
@@ -132,15 +132,22 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		strcpy(p_child->task.p_name,"pthread");	// 所有的子进程都叫pthread
 		
 		/*************子进程返回值在其eax寄存器***************/
-		p_child->task.regs.eax = 0;//return child with 0
+		//p_child->task.regs.eax = 0;//return child with 0
 		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11
-		
-		/*************子进程参数***************/
+		//*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11
+		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0;
+
+		/*************子进程参数***************/ 
+		/*
 		p_child->task.regs.esp -= num_4B;
 		*((u32*)(p_child->task.regs.esp)) = (u32*)arg;
 		p_child->task.regs.esp -= num_4B;
-		*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;
+		*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;*/ //deleted by lcy 2023.10.25
+		u32 reg_esp= *((u32*)(p_reg + ESPREG - P_STACKTOP));
+		reg_esp -= num_4B;
+		*((u32 *)reg_esp) = (u32*)arg;
+		*((u32*)(p_reg + ESPREG - P_STACKTOP)) -= num_4B*2;
+		
 
 		/****************用户进程数+1****************************/
 		u_proc_sum += 1;
@@ -168,8 +175,8 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	int pid;
 	u32 eflags,selector_ldt,cr3_child;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
-	char *esp_save_int, *esp_save_context;	//use to save corresponding field in child's PCB, xw, 18/4/21
-	
+	char /*esp_save_int,*/ *esp_save_context;	//use to save corresponding field in child's PCB, xw, 18/4/21
+	STACK_FRAME* esp_save_int;  		//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
 	
@@ -196,7 +203,7 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	p_child->task.stat = IDLE;
 	p_child->task.esp_save_int = esp_save_int;	//esp_save_int of child must be restored!!
 	p_child->task.esp_save_context = esp_save_context;	//same above
-	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_parent + 1) - P_STACKTOP), 18 * 4);
+	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_parent + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
 	//modified end
 	
 	//恢复标识信息
@@ -269,13 +276,15 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_
 		ker_umalloc_4k(addr_lin,p_child->task.pid,PG_P  | PG_USU | PG_RWW);  //edited by wang 2021.8.29
 	}
 	
-	p_child->task.regs.esp = p_child->task.memmap.stack_lin_base;		//调整esp
+	//p_child->task.regs.esp = p_child->task.memmap.stack_lin_base;		//调整esp
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added by xw, 17/12/11
+	//*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added by xw, 17/12/11
+	*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
 	
-	p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整ebp
+	//p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整ebp
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added by xw, 17/12/11
+	//*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added by xw, 17/12/11
+	*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
 
 	return 0;
 }

@@ -186,6 +186,7 @@ csinit:		; “这个跳转指令强制使用刚刚初始化的结构”——<<O
 ; ---------------------------------
 %macro	hwint_master	1
 	;call save
+	push	0xFFFFFFFF			;no err code added by lcy 2023.10.26
 	call save_int			;save registers and some other things. modified by xw, 17/12/11
 	inc  dword [k_reenter]  ;If k_reenter isn't equal to 0, there is no switching to the irq-stack,
 							;which is performed in save_int. Added by xw, 18/4/21
@@ -210,10 +211,25 @@ csinit:		; “这个跳转指令强制使用刚刚初始化的结构”——<<O
 	cli
 	dec dword [k_reenter]
 
+
 	in	al, INT_M_CTLMASK	; `.
 	and	al, ~(1 << %1)		;  | 恢复接受当前中断
 	out	INT_M_CTLMASK, al	; /
-	ret
+
+	cmp	    dword [k_reenter], 0			;Added by xw, 18/4/19
+	jnz		restart_restore
+;	ret
+;restart_int:
+;	mov		eax, [p_proc_current]
+;	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
+    pop     esp
+	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
+	jnz		restart_restore
+	call	sched							;save current process's context, invoke schedule(), and then
+											;switch to the chosen process's kernel stack and restore it's context
+											;added by xw, 18/4/19
+;	call	renew_env
+	jmp     restart_restore
 %endmacro
 
 
@@ -259,6 +275,7 @@ hwint07:		; Interrupt routine for irq 7 (printer)
 ;~xw
 
 	;added by xw, 18/5/29
+	push	0xFFFFFFFF			;no err code added by lcy 2023.10.26
 	call save_int			;save registers and some other things.
 	inc  dword [k_reenter]  ;If k_reenter isn't equal to 0, there is no switching to the irq-stack,
 							;which is performed in save_int. Added by xw, 18/4/21
@@ -281,7 +298,20 @@ hwint07:		; Interrupt routine for irq 7 (printer)
 	in	al, INT_S_CTLMASK		; `.
 	and	al, ~(1 << (%1 - 8))	;  | 恢复接受当前中断
 	out	INT_S_CTLMASK, al		; /
-	ret
+
+	cmp	    dword [k_reenter], 0			;Added by xw, 18/4/19
+	jnz		restart_restore
+;	ret
+;restart_int:
+;	mov		eax, [p_proc_current]
+;	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
+	pop     esp
+	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
+	jnz		restart_restore
+	call	sched							;save current process's context, invoke schedule(), and then
+											;switch to the chosen process's kernel stack and restore it's context
+											;added by xw, 18/4/19
+	jmp     restart_restore
 	;~xw
 %endmacro
 ; ---------------------------------
@@ -591,8 +621,8 @@ save_int:
 		cmp	    dword [k_reenter], 0			;Added by xw, 18/4/19
 		jnz		instack
 
-		mov		ebx,  [p_proc_current]			;xw
-		mov		dword [ebx + ESP_SAVE_INT], esp	;xw save esp position in the kernel-stack of the process
+;		mov		ebx,  [p_proc_current]			;xw
+;		mov		dword [ebx + ESP_SAVE_INT], esp	;xw save esp position in the kernel-stack of the process
 ;		or		dword [ebx + SAVE_TYPE], 1		;set 1st-bit of save_type, added by xw, 17/12/04
         mov     dx, ss
         mov     ds, dx
@@ -603,12 +633,13 @@ save_int:
 
         mov     esi, esp
 	    mov     esp, StackTop   ;switches to the irq-stack from current process's kernel stack
-		push    restart_int		;added by xw, 18/4/19
+;		push    restart_int		;added by xw, 18/4/19    deleted by lcy , 2023.10.28
+		push    esi
 		jmp     [esi + RETADR - P_STACKBASE]
 instack:						;already in the irq-stack
-	 	push    restart_restore	;modified by xw, 18/4/19
+;	 	push    restart_restore	;modified by xw, 18/4/19
 ;		jmp		[esp + RETADR - P_STACKBASE]
-		jmp		[esp + 4 + RETADR - P_STACKBASE]	;modified by xw, 18/6/4
+		jmp		[esp + RETADR - P_STACKBASE]	;modified by xw, 18/6/4
 
 
 save_syscall:			;can't modify EAX, for it contains syscall number
@@ -620,7 +651,7 @@ save_syscall:			;can't modify EAX, for it contains syscall number
         push    gs      ; /
 		mov		edx,  [p_proc_current]				;xw
 		mov		dword [edx + ESP_SAVE_SYSCALL], esp	;xw save esp position in the kernel-stack of the process
-		mov		dword [edx + ESP_SAVE_SYSCALL_ARG], esp	;added by zhenhao 2023.3.5
+;		mov		dword [edx + ESP_SAVE_SYSCALL_ARG], esp	;added by zhenhao 2023.3.5
 ;		or		dword [edx + SAVE_TYPE], 4			;set 3rd-bit of save_type, added by xw, 17/12/04
         mov     dx, ss
         mov     ds, dx
@@ -631,7 +662,7 @@ save_syscall:			;can't modify EAX, for it contains syscall number
 
         mov     esi, esp
 ;       inc     dword [k_reenter]
-	    push    restart_syscall		;modified by xw, 17/12/04
+;	    push    restart_syscall		;modified by xw, 17/12/04   deleted by lcy 2023.10.28
 ;		push	judge
 	    jmp     [esi + RETADR - P_STACKBASE]
 ;modified end
@@ -675,7 +706,7 @@ sched:
 ; ====================================================================================
 ;renew process executing environment. Added by xw, 18/4/19
 renew_env:
-		call	switch_pde		;to change the global variable cr3_ready
+		;call	switch_pde		;to change the global variable cr3_ready
 		mov 	eax,[cr3_ready]	;to switch the page directory table
 		mov 	cr3,eax
 
@@ -711,6 +742,7 @@ sys_call:
 ;get syscall number from eax
 ;syscall that's called gets its argument from pushed ebx
 ;so we can't modify eax and ebx in save_syscall
+	push	0xFFFFFFFF			;no err code added by lcy 2023.10.26
 	call	save_syscall	;save registers and some other things. modified by xw, 17/12/11
 	sti
 	; push 	ebx							;push the argument the syscall need
@@ -720,8 +752,14 @@ sys_call:
 	mov		edx, [p_proc_current]
 	mov 	esi, [edx + ESP_SAVE_SYSCALL]
 	mov     [esi + EAXREG - P_STACKBASE], eax	;the return value of C function is in EAX
-	ret
-
+	;ret
+;restart_syscall:
+;	sub 	ebx, 4							;ebx gets its value from judge
+;	mov		dword [eax + SAVE_TYPE], ebx	;clear 3rd-bit of save_type
+	mov		eax, [p_proc_current]
+	mov 	esp, [eax + ESP_SAVE_SYSCALL]	;xw	restore esp position
+	call	sched							;added by xw, 18/4/26
+	jmp 	restart_restore
 ; ====================================================================================
 ;				    restart
 ; ====================================================================================
@@ -732,24 +770,24 @@ sys_call:
 ;xw		lea	eax, [esp + P_STACKTOP]
 ;xw		mov	dword [tss + TSS3_S_SP0], eax
 
-restart_int:
-	mov		eax, [p_proc_current]
-	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
-	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
-	jnz		restart_restore
-	call	sched							;save current process's context, invoke schedule(), and then
-											;switch to the chosen process's kernel stack and restore it's context
-											;added by xw, 18/4/19
-;	call	renew_env
-	jmp     restart_restore
+; restart_int:
+; 	mov		eax, [p_proc_current]
+; 	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
+; 	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
+; 	jnz		restart_restore
+; 	call	sched							;save current process's context, invoke schedule(), and then
+; 											;switch to the chosen process's kernel stack and restore it's context
+; 											;added by xw, 18/4/19
+; ;	call	renew_env
+; 	jmp     restart_restore
 
-restart_syscall:
+;restart_syscall:                           deleted by lcy 2023.10.28
 ;	sub 	ebx, 4							;ebx gets its value from judge
 ;	mov		dword [eax + SAVE_TYPE], ebx	;clear 3rd-bit of save_type
-	mov		eax, [p_proc_current]
-	mov 	esp, [eax + ESP_SAVE_SYSCALL]	;xw	restore esp position
-	call	sched							;added by xw, 18/4/26
-	jmp 	restart_restore
+;	mov		eax, [p_proc_current]
+;	mov 	esp, [eax + ESP_SAVE_SYSCALL]	;xw	restore esp position
+;	call	sched							;added by xw, 18/4/26
+;	jmp 	restart_restore
 
 ;xw	restart_reenter:
 restart_restore:
@@ -759,7 +797,7 @@ restart_restore:
 	pop		es
 	pop		ds
 	popad
-	add		esp, 4
+	add		esp, 4*2
 	iretd
 
 ;restart_initial:
@@ -777,9 +815,16 @@ restart_initial:
 ;	lea		ebx, [eax + INIT_STACK_SIZE]
 ;	mov		dword [tss + TSS3_S_SP0], ebx
 	call	renew_env						;renew process executing environment
-	mov		eax, [p_proc_current]
-	mov 	esp, [eax + ESP_SAVE_INT]		;restore esp position
-	jmp 	restart_restore
+	mov		ebx, [p_proc_current]
+	mov 	esp, [ebx + ESP_SAVE_CONTEXT]		;switch to a new kernel stack
+	popad
+	popfd
+	ret
+	
+	;mov		eax, [p_proc_current]
+	;mov 	esp, [eax + ESP_SAVE_INT]		;restore esp position
+	
+	;jmp 	restart_restore
 
 ; ====================================================================================
 ;				    read_cr2				//add by visual 2016.5.9
