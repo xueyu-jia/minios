@@ -253,15 +253,18 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 	/***********************代码、数据、堆、栈***************************/
 	//代码、数据已经处理，将eip重置即可
-	p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;						 //进程入口线性地址
+	//p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;						 //进程入口线性地址 deleted by lcy 2023.10.25
+
 	p_reg = (char *)(p_proc_current + 1);									 //added by xw, 17/12/11
-	*((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_proc_current->task.regs.eip; //added by xw, 17/12/11
+	//*((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_proc_current->task.regs.eip; //added by xw, 17/12/11  deleted by lcy 2023.10.25
+	*((u32 *)(p_reg + EIPREG - P_STACKTOP)) = Echo_Ehdr->e_entry;	
 
 	//test_kbud_mem_size();
 
-	//栈
-	p_proc_current->task.regs.esp = (u32)p_proc_current->task.memmap.stack_lin_base; //栈地址最高处
-	*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;		 //added by xw, 17/12/11
+	//栈deleted by lcy 2023.10.25
+	//p_proc_current->task.regs.esp = (u32)p_proc_current->task.memmap.stack_lin_base; //栈地址最高处
+	//*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;		 //added by xw, 17/12/11
+	*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = (u32)p_proc_current->task.memmap.stack_lin_base; //added by lcy 2023.10.25
 
 /*    added by xyx&&wjh  2021-12-31  */
 	// p_proc_current->task.regs.ecx = argc; /* argc */
@@ -565,20 +568,29 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.stat = READY;								   //状态
 	p_proc_current->task.ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;   //特权级修改为用户级
 	p_proc_current->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5; //特权级修改为用户级
-	p_proc_current->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+
+	/*p_proc_current->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
-	p_proc_current->task.regs.eflags = 0x202; /* IF=1,bit2 永远是1 */
+	p_proc_current->task.regs.eflags = 0x202;   */ /* IF=1,bit2 永远是1 */
 
 	/***************copy registers data****************************/
 	//copy registers data to the bottom of the new kernel stack
 	//added by xw, 17/12/11
 	p_regs = (char *)(p_proc_current + 1);
 	p_regs -= P_STACKTOP;
-	memcpy(p_regs, (char *)p_proc_current, 18 * 4);
+	p_proc_current->task.esp_save_int = (STACK_FRAME*)p_regs;
+	p_proc_current->task.esp_save_int->cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+	p_proc_current->task.esp_save_int->ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+	p_proc_current->task.esp_save_int->es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+	p_proc_current->task.esp_save_int->fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+	p_proc_current->task.esp_save_int->ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
+	p_proc_current->task.esp_save_int->gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
+	p_proc_current->task.esp_save_int->eflags = 0x202;
+	//memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 
 	//进程表线性地址布局部分，text、data已经在前面初始化了
 	p_proc_current->task.memmap.vpage_lin_base = VpageLinBase;				   //保留内存基址

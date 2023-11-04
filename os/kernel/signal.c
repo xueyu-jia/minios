@@ -136,7 +136,8 @@ void kern_sigreturn(int ebp)
     int esp_syscall = p_proc_current->task.esp_save_syscall;
     int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
 
-    u16 user_ss = p_proc_current->task.regs.ss;
+   // u16 user_ss = p_proc_current->task.regs.ss;
+    u16 user_ss = p_proc_current->task.esp_save_int->ss;
     u16 kernel_es ;
 
     // change es to B_ss
@@ -209,8 +210,10 @@ void process_signal() {
     // then second call signal_return to kernel
 
     STACK_FRAME regs;
+    STACK_FRAME *regs1;
     PROCESS* proc = p_proc_current;
-    memcpy(&regs, &proc->task.regs, sizeof(STACK_FRAME));
+    //memcpy(&regs, &proc->task.regs, sizeof(STACK_FRAME));
+    regs1=p_proc_current->task.esp_save_int;
     Sigaction sigaction = {
         .sig = sig,
         .handler = proc->task.sig_handler[sig],
@@ -219,7 +222,8 @@ void process_signal() {
 
     disable_int();
 
-    u16 B_ss = regs.ss & 0xfffc;
+    //u16 B_ss = regs.ss & 0xfffc;
+    u16 B_ss = regs1->ss & 0xfffc;
     u16 A_es ;
 
     /* change es to B_ss */
@@ -232,7 +236,7 @@ void process_signal() {
     );
 
     /* save context */
-    int start = *(u32*)(proc->task.esp_save_syscall + 16*4) - sizeof(regs);
+    int start = *(u32*)(proc->task.esp_save_syscall + 17*4) - sizeof(regs);
     for(u32* p = start, *sf = proc->task.esp_save_syscall, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
@@ -258,8 +262,8 @@ void process_signal() {
 
     /* switch to Handler */
     u32 *context_p = proc->task.esp_save_syscall;
-    *(context_p + 13) =  proc->task._Hanlder; /* eip */
-    *(context_p + 16) = start;                /* esp */
+    *(context_p + 14) =  proc->task._Hanlder; /* eip */
+    *(context_p + 17) = start;                /* esp */
 
     /*  reverse  */
     __asm__ __volatile__ (

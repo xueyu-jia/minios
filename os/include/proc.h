@@ -36,12 +36,13 @@
 #define ECXREG 10 * 4
 #define EAXREG 11 * 4
 #define RETADR 12 * 4
-#define EIPREG 13 * 4
-#define CSREG 14 * 4
-#define EFLAGSREG 15 * 4
-#define ESPREG 16 * 4
-#define SSREG 17 * 4
-#define P_STACKTOP 18 * 4
+#define ERROR 13 * 4   //added by lcy 2023.10.26
+#define EIPREG 14 * 4
+#define CSREG 15 * 4
+#define EFLAGSREG 16 * 4
+#define ESPREG 17 * 4
+#define SSREG 18 * 4
+#define P_STACKTOP 19 * 4
 
 /*总PCB表数和taskPCB表数*/
 //modified by xw, 18/8/27
@@ -93,6 +94,7 @@ typedef struct s_stackframe {	/* proc_ptr points here				↑ Low			*/
 	u32	ecx;		/* ┃						│			*/
 	u32	eax;		/* ┛						│			*/
 	u32	retaddr;	/* return address for assembly code save()	│			*/
+	u32	error;		//add by lcy 2023.10.26
 	u32	eip;		/*  ┓						│			*/
 	u32	cs;			/*  ┃						│			*/
 	u32	eflags;		/*  ┣ these are pushed by CPU during interrupt	│			*/
@@ -139,18 +141,19 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
 typedef struct s_proc {
-	STACK_FRAME regs;          /* process registers saved in stack frame */
+	//STACK_FRAME regs;          /* process registers saved in stack frame */ deleted by lcy 2023.10.25
 
 	u16 ldt_sel;               /* gdt selector giving ldt base and limit */
 	DESCRIPTOR ldts[LDT_SIZE]; /* local descriptors for code and data */
 
-	char* esp_save_int;		//to save the position of esp in the kernel stack of the process
+	STACK_FRAME* esp_save_int;
+	//char* esp_save_int;		//to save the position of esp in the kernel stack of the process
 							//added by xw, 17/12/11
 	char* esp_save_syscall;	//to save the position of esp in the kernel stack of the process
 	char* esp_save_context;	//to save the position of esp in the kernel stack of the process
 //	int   save_type;		//the cause of process losting CPU	//save_type is not needed any more, xw, 18/4/20
 							//1st-bit for interruption, 2nd-bit for context, 3rd-bit for syscall
-	char* esp_save_syscall_arg;	// to save the position of esp in the kernel stack of the process, used in save_syscall
+//	char* esp_save_syscall_arg;	// to save the position of esp in the kernel stack of the process, used in save_syscall
 								//added by zhenhao, 2023.3.6
 	void* channel;			/*if non-zero, sleeping on channel, which is a pointer of the target field
 							for example, as for syscall sleep(int n), the target field is 'ticks',

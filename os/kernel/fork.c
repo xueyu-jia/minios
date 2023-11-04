@@ -76,9 +76,10 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 		strcpy(p_child->task.p_name,"fork");	// 所有的子进程都叫fork
 		
 		/*************子进程返回值在其eax寄存器***************/
-		p_child->task.regs.eax = 0;		//return child with 0
+		//p_child->task.regs.eax = 0;		//return child with 0  deleted by lcy 2023.10.25
 		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11
+		//*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11 deleted by lcy 2023.10.25
+		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0; //added by lcy 2023.10.25
 
 		/****************用户进程数+1****************************/
 		u_proc_sum += 1;
@@ -210,8 +211,8 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	int pid;
 	u32 eflags,selector_ldt,cr3_child;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
-	char *esp_save_int, *esp_save_context;	//use to save corresponding field in child's PCB.
-	
+	char /**esp_save_int,*/ *esp_save_context;	//use to save corresponding field in child's PCB.
+	STACK_FRAME *esp_save_stackframe;				//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
 	
@@ -230,7 +231,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//esp_save_int and esp_save_context must be saved, because the child and the parent 
 	//use different kernel stack! And these two are importent to the child's initial running.
 	//Added by xw, 18/4/21
-	esp_save_int = p_child->task.esp_save_int;
+	esp_save_stackframe = p_child->task.esp_save_int;
 	esp_save_context = p_child->task.esp_save_context;
 
 	p_child->task = p_proc_current->task;
@@ -238,10 +239,10 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
 	p_child->task.stat = IDLE;
-	p_child->task.esp_save_int = esp_save_int;	//esp_save_int of child must be restored!!
+	p_child->task.esp_save_int = esp_save_stackframe;	//esp_save_int of child must be restored!!
 	p_child->task.esp_save_context = esp_save_context;	//same above
 	//p_child->task.esp_save_context = (char*)(p_child + 1) - P_STACKTOP - 4 * 6;	
-	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_proc_current + 1) - P_STACKTOP), 18 * 4);
+	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_proc_current + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
 	//modified end
 	
 	//恢复标识信息
