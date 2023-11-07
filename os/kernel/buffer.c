@@ -299,7 +299,9 @@ buf_head *bread(int dev, int block)
         RD_BLOCK_SCHED(dev, block, bh->buffer);
         // 标记为已被使用
         bh->used = 1;
-
+        bh->count = 1;
+    }else{
+        bh->count++;
     }
     release(&bh->lock);
     return bh;
@@ -315,7 +317,10 @@ void brelse(buf_head *bh)
 {
 
     acquire(&bh->lock);
-    bh->count--;
+    if(bh->count > 0){
+        bh->count--;
+    }
+    
     if(bh->dirty&&bh->count == 0){
         sync_buff(bh);
     }

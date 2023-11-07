@@ -32,7 +32,7 @@ AR		= ar
 #added by sundong 2023.10.28
 ########################用户可以输入的变量##########################
 #选择OS的启动环境，virtual 代表虚机（qemu），real 代表真机
-MACHINE_TYPE = real
+MACHINE_TYPE = virtual
 #安装的硬盘，例如真机启动时该变量可能为 /dev/sda；虚机启动无需设置此变量
 INS_DEV=/dev/sda
 #启动分区的分区号，数字类型，例如: 1

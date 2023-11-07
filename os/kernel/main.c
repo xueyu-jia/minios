@@ -439,7 +439,7 @@ PRIVATE int initialize_processes()
 		p_proc->task.pid = pid;					//pid
 		p_proc->task.stat = READY;				//状态
 		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级*/      //delete by lcy 2023.10.22
-		init_process(p_proc,"initial",READY,pid,5);//add by lcy 2023.10.22
+		init_process(p_proc,"initial",READY,pid,1);//add by lcy 2023.10.22
 
 		/**************LDT*********************************/
 		p_proc->task.ldt_sel = selector_ldt;

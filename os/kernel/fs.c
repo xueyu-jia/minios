@@ -355,7 +355,7 @@ int sys_init_block_dev()
 //在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
 PRIVATE int kern_init_char_dev(int drive)
 {
-	struct super_block *sb = get_super_block(drive);
+	// struct super_block *sb = get_super_block(drive);
 	//real_createdir(sb, "dev");
 	char ttypath[MAX_PATH] = {"dev/tty0"};
 	for (int i = 0; i < NR_CONSOLES; ++i)
@@ -2095,6 +2095,8 @@ PRIVATE void put_inode(struct inode *pinode)
  *          inode is changed.
  *
  * @param p I-node ptr.
+ * @note 写回存在问题，调用sync_indoe并不能保证inode写回磁盘   
+ *        当该inode所在的缓冲块有多人使用时，其bh->count > 0, 内容不会写回磁盘  // add by lirong 20231107
  *****************************************************************************/
 PRIVATE void sync_inode(struct inode *p)
 {
@@ -3193,7 +3195,7 @@ static int search_file_in_dir(char *name, struct inode *dir_inode) /*added by gf
 			}
 				
 			if (++m >= nr_dir_entries){
-				brelse(bh);
+				// brelse(bh);
 				break;
 			}
 				
