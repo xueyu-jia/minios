@@ -4,12 +4,12 @@
 
 #define BUF_SIZE 1024
 
-char bufw1[BUF_SIZE] = "aa ";
-char bufw2[BUF_SIZE] = "bb ";
-char bufw3[BUF_SIZE] = "cc ";
+char bufw1[BUF_SIZE] = "aa \0";
+char bufw2[BUF_SIZE] = "bb \0";
+char bufw3[BUF_SIZE] = "cc \0";
 char bufr[BUF_SIZE];
 char filename[] = "test33.txt";       // orangfs 目录下
-//char filename[] = "fat0/test33.txt";    // fat32 目录下
+// char filename[] = "fat0/test33.txt";    // fat32 目录下
 volatile int sum = 0;
 pthread_mutex_t mutex;
 pthread_t producer1, producer2, producer3;
@@ -61,6 +61,10 @@ int main(int arg, char *argv[])
 {
     int fd;
     printf("filename:%s\n", filename);
+    // 挂载sda1
+    int ret = mount("dev/sda1", "fat0", NULL, NULL, NULL);
+    printf("mount ret = %d\n", ret);
+
     pthread_mutex_init(&mutex, NULL);
 
     fd = open(filename, O_CREAT | O_RDWR);
@@ -93,6 +97,11 @@ int main(int arg, char *argv[])
         printf("bufr is: %s\n", bufr);
     }
     close(fd);
+
+    // 删除文件
+    if(unlink(filename)){
+        printf("delete file error!");
+    }
     exit(0);
 
 	return 0;

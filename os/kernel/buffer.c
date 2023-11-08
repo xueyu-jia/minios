@@ -301,7 +301,7 @@ buf_head *bread(int dev, int block)
         bh->used = 1;
         bh->count = 1;
     }else{
-        bh->count++;
+        // bh->count++;
     }
     release(&bh->lock);
     return bh;

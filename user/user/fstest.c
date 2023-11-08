@@ -1,5 +1,6 @@
 #include "../include/stdio.h"
 /*
+ * orangfs文件系统下
  * 长路径
  * 测试系统调用 
  * 创建、删除目录

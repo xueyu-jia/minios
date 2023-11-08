@@ -34,7 +34,7 @@ AR		= ar
 #选择OS的启动环境，virtual 代表虚机（qemu），real 代表真机
 MACHINE_TYPE = virtual
 #安装的硬盘，例如真机启动时该变量可能为 /dev/sda；虚机启动无需设置此变量
-INS_DEV=/dev/sda
+INS_DEV=
 #启动分区的分区号，数字类型，例如: 1
 BOOT_PART_NUM=1
 #根文件系统所在的分区号，数字类型，例如：2
@@ -195,6 +195,7 @@ build_mbr:
 
 build_fs:
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
+		sudo losetup -D $(INS_DEV); \
 		sudo losetup -P $(INS_DEV) $(WRITE_DISK); \
 	fi
 
