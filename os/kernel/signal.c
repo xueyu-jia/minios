@@ -133,7 +133,7 @@ void kern_sigreturn(int ebp)
     // copy saved regs from stack to  this regs
     // to some operation to compute true address
     // int ebp = msg->data[1];
-    u32* esp_syscall = p_proc_current->task.esp_save_int;
+    int esp_syscall = p_proc_current->task.esp_save_syscall;
     int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
 
    // u16 user_ss = p_proc_current->task.regs.ss;
@@ -236,8 +236,8 @@ void process_signal() {
     );
 
     /* save context */
-    int start = proc->task.esp_save_int->esp - sizeof(regs);
-    for(u32* p = start, *sf = proc->task.esp_save_int, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
+    int start = *(u32*)(proc->task.esp_save_syscall + 17*4) - sizeof(regs);
+    for(u32* p = start, *sf = proc->task.esp_save_syscall, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
             :
@@ -261,11 +261,9 @@ void process_signal() {
     start -= sizeof(u32);
 
     /* switch to Handler */
-    //u32 *context_p = proc->task.esp_save_int;
-    proc->task.esp_save_int->eip = proc->task._Hanlder;
-    proc->task.esp_save_int->esp = start;
-    //*(context_p + 14) =  proc->task._Hanlder; /* eip */
-    //*(context_p + 17) = start;                /* esp */
+    u32 *context_p = proc->task.esp_save_syscall;
+    *(context_p + 14) =  proc->task._Hanlder; /* eip */
+    *(context_p + 17) = start;                /* esp */
 
     /*  reverse  */
     __asm__ __volatile__ (

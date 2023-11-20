@@ -5,7 +5,7 @@
 
 PUBLIC u32 get_arg(int order)
 {
-	STACK_FRAME* syscall_esp = (STACK_FRAME*)(p_proc_current->task.esp_save_int);
+	STACK_FRAME* syscall_esp = (STACK_FRAME*)(p_proc_current->task.esp_save_syscall);
 	switch (order) {
 		case 1:
 			return syscall_esp->ebx;
