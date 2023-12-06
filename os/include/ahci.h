@@ -9,7 +9,7 @@
 #define MAXFUN 7
 
 #define	PCI_CONFIG_ADD 0xcf8
-#define PCI_CONFIG_DATA 0Xcfc
+#define PCI_CONFIG_DATA 0xcfc
 #define HBA_PxCMD_ST    0x0001
 #define HBA_PxCMD_FRE   0x0010
 #define HBA_PxCMD_FR    0x4000

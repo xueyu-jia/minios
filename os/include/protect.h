@@ -195,7 +195,7 @@ typedef struct s_tss {
 
 extern	u32		k_reenter;
 extern	TSS		tss;
-extern	irq_handler	irq_table[];
+extern	irq_handler	irq_table[NR_IRQ];
 extern	u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
 extern	DESCRIPTOR	gdt[GDT_SIZE];
 extern	u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
