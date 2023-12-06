@@ -5,7 +5,7 @@
 #include "../include/buddy.h"
 #include "../include/type.h"
 #include "../include/kmalloc.h"
-
+struct page mem_map[ALL_PAGES];
 buddy kbuddy, ubuddy;
 buddy *kbud = &kbuddy;
 buddy *ubud = &ubuddy;
@@ -34,15 +34,15 @@ void memory_init()
 
     test_phy_mem_size = MemInfo[MemInfo[0]];
     int t, i, j;
-    disp_str("memtest got memory available:\n");
-    disp_str("base_addr     end_addr\n");
-    for (t = 1; t <= MemInfo[0]; t++)
-    {
-        disp_int(MemInfo[t]);
-        disp_str("       ");
-        if (t % 2 == 0)
-            disp_str("\n");
-    }
+    // disp_str("memtest got memory available:\n");
+    // disp_str("base_addr     end_addr\n");
+    // for (t = 1; t <= MemInfo[0]; t++)
+    // {
+    //     disp_int(MemInfo[t]);
+    //     disp_str("       ");
+    //     if (t % 2 == 0)
+    //         disp_str("\n");
+    // }
     disp_str("test_phy_mem_size: ");
     disp_int(test_phy_mem_size);
     disp_str("\n");

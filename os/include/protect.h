@@ -7,7 +7,7 @@
 
 #ifndef	_ORANGES_PROTECT_H_
 #define	_ORANGES_PROTECT_H_
-
+#include "type.h"
 
 /* 存储段描述符/系统段描述符 */
 typedef struct s_descriptor		/* 共 8 个字节 */
@@ -126,6 +126,15 @@ typedef struct s_tss {
 #define	SA_TIG		0
 #define	SA_TIL		4
 
+/* 权限 */
+#define	PRIVILEGE_KRNL	0
+#define	PRIVILEGE_TASK	1
+#define	PRIVILEGE_USER	3
+/* RPL */
+#define	RPL_KRNL	SA_RPL0
+#define	RPL_TASK	SA_RPL1
+#define	RPL_USER	SA_RPL3
+
 /* 中断向量 */
 #define	INT_VECTOR_DIVIDE		0x0
 #define	INT_VECTOR_DEBUG		0x1
@@ -151,9 +160,44 @@ typedef struct s_tss {
 /* 系统调用 */
 #define INT_VECTOR_SYS_CALL             0x90
 
+#define	INT_M_CTL	0x20	/* I/O port for interrupt controller         <Master> */
+#define	INT_M_CTLMASK	0x21	/* setting bits in this port disables ints   <Master> */
+#define	INT_S_CTL	0xA0	/* I/O port for second interrupt controller  <Slave>  */
+#define	INT_S_CTLMASK	0xA1	/* setting bits in this port disables ints   <Slave>  */
+
+/* 8253/8254 PIT (Programmable Interval Timer) */
+#define TIMER0         0x40 /* I/O port for timer channel 0 */
+#define TIMER_MODE     0x43 /* I/O port for timer mode control */
+#define RATE_GENERATOR 0x34 /* 00-11-010-0 :
+			     * Counter0 - LSB then MSB - rate generator - binary
+			     */
+#define TIMER_FREQ     1193182L/* clock frequency for timer in PC and AT */
+#define HZ             100  /* clock freq (software settable on IBM-PC) */
+
+/* Hardware interrupts */
+#define	NR_IRQ		16	/* Number of IRQs */
+#define	CLOCK_IRQ	0
+#define	KEYBOARD_IRQ	1
+#define	CASCADE_IRQ	2	/* cascade enable for 2nd AT controller */
+#define	ETHER_IRQ	3	/* default ethernet interrupt vector */
+#define	SECONDARY_IRQ	3	/* RS232 interrupt vector for port 2 */
+#define	RS232_IRQ	4	/* RS232 interrupt vector for port 1 */
+#define	XT_WINI_IRQ	5	/* xt winchester */
+#define	FLOPPY_IRQ	6	/* floppy disk */
+#define	PRINTER_IRQ	7
+#define	AT_WINI_IRQ	14	/* at winchester */
+#define	MOUSE_IRQ 12    //added by mingxuan 2019-5-19
 /* 宏 */
 /* 线性地址 → 物理地址 */
 #define vir2phys(seg_base, vir)	(u32)(((u32)seg_base) + (u32)(vir))
+#define	GDT_SIZE	128
+#define	IDT_SIZE	256
 
-
+extern	u32		k_reenter;
+extern	TSS		tss;
+extern	irq_handler	irq_table[];
+extern	u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
+extern	DESCRIPTOR	gdt[GDT_SIZE];
+extern	u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
+extern	GATE		idt[IDT_SIZE];
 #endif /* _ORANGES_PROTECT_H_ */

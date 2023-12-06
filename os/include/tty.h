@@ -49,5 +49,6 @@ typedef struct s_tty
 	struct s_console *	console;
 }TTY;
 
-
+extern  TTY         tty_table[];
+extern int current_console; 
 #endif /* _ORANGES_TTY_H_ */

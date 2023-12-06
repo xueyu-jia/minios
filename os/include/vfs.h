@@ -1,6 +1,9 @@
 /**********************************************************
 *	vfs.h       //added by mingxuan 2019-5-17
 ***********************************************************/
+#ifndef VFS_H
+#define VFS_H
+#include "fs_misc.h"
 // mark
 //#define NR_DEV 10
 #define NR_FS 16		//modified by mingxuan 2020-10-18
@@ -130,3 +133,4 @@ struct sb_op{
 	void (*read_super_block) (int);
 	struct super_block* (*get_super_block) (int);
 };
+#endif

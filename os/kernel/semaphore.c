@@ -17,6 +17,7 @@
 #include "../include/buddy.h"
 #include "../include/semaphore.h"
 
+struct 	Semaphore	proc_table_sem;
 
 
 int ksem_init(struct Semaphore *sem, int max)

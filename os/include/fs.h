@@ -7,7 +7,8 @@
 
 #ifndef	FS_H
 #define	FS_H
-
+#include "type.h"
+#include "const.h"
 /* APIs of file operation */
 #define	O_CREAT		1
 #define	O_RDWR		2
@@ -43,7 +44,7 @@ PUBLIC int sys_write(void *uesp);
 PUBLIC int sys_lseek(void *uesp);	//~xw
 PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
 */
-
+#include "fs_misc.h" // todo: remerge fs headers by dependencies
 PUBLIC void init_rootfs(int device);
 PUBLIC int init_orangefs(int device);
 PUBLIC void create_mountpoint(const char *pathname, u32 dev,u8 index_mnt_table);

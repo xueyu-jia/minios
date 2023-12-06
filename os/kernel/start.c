@@ -124,7 +124,7 @@ PUBLIC void init_gdt()
  *======================================================================*/
 PUBLIC void cstart()
 {
-	disp_str("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n-----\"cstart\" begins-----\n");
+	disp_str("\n\n\n\n\n\n-----\"cstart\" begins-----\n");
 
 	memory_init(); //moved from kernel_main, mingxuan 2021-8-25
 
@@ -205,6 +205,7 @@ PUBLIC void cstart()
 	init_idt();		//added by mingxuan 2021-8-29
 
 	disp_str("-----\"cstart\" finished-----\n");
+	// while(1);
 }
 
 /*======================================================================*

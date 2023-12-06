@@ -21,6 +21,7 @@
 #include "../include/proto.h"
 #include "../include/keyboard.h"
 
+TTY         tty_table[];
 PUBLIC  int current_console;  //当前显示在屏幕上的console
 PUBLIC  void	tty_write	(TTY* tty, char* buf, int len);
 PUBLIC  int     tty_read    (TTY* tty, char* buf, int len);

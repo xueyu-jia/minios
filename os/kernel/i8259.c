@@ -13,12 +13,25 @@
 #include "global.h"
 #include "proto.h"
 */
+// #include "../include/type.h"
+// #include "../include/const.h"
+// #include "../include/protect.h"
+// #include "../include/proc.h"
+// #include "../include/global.h"
+// #include "../include/proto.h"
 #include "../include/type.h"
 #include "../include/const.h"
 #include "../include/protect.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
+
+/*======================================================================*
+                           spurious_irq
+ *======================================================================*/
+PUBLIC void spurious_irq(int irq)
+{
+	disp_str("spurious_irq: ");
+	disp_int(irq);
+	disp_str("\n");
+}
 
 /*======================================================================*
                             init_8259A
@@ -43,15 +56,6 @@ PUBLIC void init_8259A()
 	}
 }
 
-/*======================================================================*
-                           spurious_irq
- *======================================================================*/
-PUBLIC void spurious_irq(int irq)
-{
-	disp_str("spurious_irq: ");
-	disp_int(irq);
-	disp_str("\n");
-}
 
 /*======================================================================*
                            put_irq_handler

@@ -1,8 +1,8 @@
 #ifndef USHM_H
 #define USHM_H
 
-#define IPC_CREAT 0x200
-#define IPC_FIND 0x12
+#define SHM_IPC_CREAT 0x200
+#define SHM_IPC_FIND 0x12
 
 #define DELETE 0x41
 #define INFO 0x42

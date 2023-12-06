@@ -1,6 +1,6 @@
 #ifndef _ORANGES_KEYMAP_H_
 #define _ORANGES_KEYMAP_H_
-
+#include "keyboard.h"
 
 /* Keymap for US MF-2 keyboard. */
 

@@ -1,7 +1,10 @@
+#include "../include/type.h"
+#include "../include/const.h"
 #include "../include/syscall.h"
 #include "../include/protect.h"
 #include "../include/proc.h"
-#include "../include/global.h"
+#include "../include/msg.h"
+#include "../include/signal.h"
 
 PUBLIC u32 get_arg(int order)
 {

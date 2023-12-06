@@ -11,7 +11,7 @@
 #include "../include/global.h"
 #include "../include/proto.h"
 #include "../include/spinlock.h"
-
+struct spinlock lock_shmmemcpy;
 PUBLIC void do_shmdt(char *shmaddr);
 PUBLIC int do_shmget(int key, int size, int shmflg);
 PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg);
@@ -126,7 +126,7 @@ PUBLIC int kern_shmget(int key, int size, int shmflg)
     }
     int id = -1;
 
-    if (shmflg == IPC_CREAT)
+    if (shmflg == SHM_IPC_CREAT)
     {                      //1.查看key的是否已经创造来共享内存，如果是，就返回id
                            //2.key并没有创建，就找一个空闲的id和key建立关系。
         id = id_exist(key); //不存在返回-1，存在返回id号
@@ -148,7 +148,7 @@ PUBLIC int kern_shmget(int key, int size, int shmflg)
 
         //disp_int(id);
     }
-    if (shmflg == IPC_FIND) //寻找key试图与之链接，key如果没有创建物理内存，就返回-1;
+    if (shmflg == SHM_IPC_FIND) //寻找key试图与之链接，key如果没有创建物理内存，就返回-1;
     {
         //disp_str("FIND");
         id = id_exist(key); //不存在返回-1，存在返回id号
@@ -157,7 +157,7 @@ PUBLIC int kern_shmget(int key, int size, int shmflg)
             disp_str("\nthis key possessed");
         }
     }
-    if ((shmflg != IPC_FIND) && (shmflg != IPC_CREAT))
+    if ((shmflg != SHM_IPC_FIND) && (shmflg != SHM_IPC_CREAT))
     {
         disp_str("need_priority");
     }
@@ -268,7 +268,7 @@ PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf)
     }
     if (cmd == INFO)
     {
-        int shmidsys = do_shmget(ids.in_use + 3, 16, IPC_CREAT);
+        int shmidsys = do_shmget(ids.in_use + 3, 16, SHM_IPC_CREAT);
         struct ipc_shm *psys = do_shmat(shmidsys, NULL, 0);
         ids.perms[shmidsys].state = AVAILABLE;
         ids.in_use--;

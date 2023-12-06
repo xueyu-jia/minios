@@ -1,4 +1,8 @@
 // 缓冲块头部，记录了缓冲块的信息
+#ifndef BUFFER_H
+#define BUFFER_H
+#include "type.h"
+#include "spinlock.h"
 typedef struct buf_head
 {
     u32 count;                 // 为以后优化预留
@@ -24,3 +28,4 @@ buf_head *bread(int dev, int block);
 void mark_buff_dirty(buf_head *bh);
 void brelse(buf_head *bh);
 
+#endif

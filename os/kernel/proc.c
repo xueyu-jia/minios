@@ -15,12 +15,22 @@
 */
 #include "../include/type.h"
 #include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
+// #include "../include/protect.h"
+// #include "../include/string.h"
 #include "../include/proc.h"
 #include "../include/global.h"
 #include "../include/proto.h"
-
+u32 cr3_ready;
+int     u_proc_sum;
+PROCESS*	p_proc_current;
+PROCESS*	p_proc_next;
+PUBLIC	PROCESS			cpu_table[NR_CPUS];
+PUBLIC	PROCESS			proc_table[NR_PCBS];
+PUBLIC	TASK	task_table[NR_TASKS] = {//{TestA, STACK_SIZE_TASK, "TestA"},	//edit by visual 2016.4.5	//deleted by mingxuan 2019-5-19
+										//{TestB, STACK_SIZE_TASK, "TestB"},	//deleted by mingxuan 2019-5-19
+										//{TestC, STACK_SIZE_TASK, "TestC"},	//deleted by mingxuan 2019-5-19
+										{hd_service, STACK_SIZE_TASK, "hd_service"},
+										{task_tty, STACK_SIZE_TASK, "task_tty"}};
 /*======================================================================*
                               schedule
  *======================================================================*/

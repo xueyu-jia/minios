@@ -16,16 +16,18 @@
 #include "../include/type.h"
 // #include "../include/stdio.h"
 #include "../include/const.h"
-#include "../include/protect.h"
+// #include "../include/protect.h"
 #include "../include/string.h"
-#include "../include/fs.h"
-#include "../include/proc.h"
+// #include "../include/fs.h"
+// #include "../include/proc.h"
 #include "../include/tty.h"
 #include "../include/console.h"
-#include "../include/global.h"
-#include "../include/keyboard.h"
-#include "../include/proto.h"
+// #include "../include/global.h"
+// #include "../include/keyboard.h"
+// #include "../include/proto.h"
 
+int		disp_pos;
+CONSOLE     console_table[];
 #define __TTY_DEBUG__
 
 /* local routines */

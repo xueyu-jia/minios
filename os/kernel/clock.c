@@ -15,13 +15,13 @@
 */
 #include "../include/type.h"
 #include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
+// #include "../include/protect.h"
+// #include "../include/string.h"
 #include "../include/proc.h"
 #include "../include/global.h"
-#include "../include/proto.h"
+// #include "../include/proto.h"
 
-
+int		ticks;
 /*======================================================================*
                            clock_handler
  *======================================================================*/

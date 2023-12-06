@@ -9,7 +9,10 @@
 
 #ifndef	_ORANGES_HD_H_
 #define	_ORANGES_HD_H_
-
+#include "type.h"
+#include "const.h"
+#include "fs_const.h"
+#include "proc.h"
 /**
  * @struct part_ent
  * @brief  Partition Entry struct.

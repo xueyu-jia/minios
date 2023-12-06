@@ -5,8 +5,8 @@
 #include "spinlock.h"
 #include "type.h"
 #define SHM_SIZE 10
-#define IPC_CREAT 0x200
-#define IPC_FIND 0x12
+#define SHM_IPC_CREAT 0x200
+#define SHM_IPC_FIND 0x12
 
 #define DELETE 0x41
 #define INFO 0x42
@@ -40,6 +40,6 @@ struct key2id_form
     int id;
     struct key2id_form *next;
 } Key_TO_Id_Form;*/
-struct spinlock lock_shmmemcpy;
+extern struct spinlock lock_shmmemcpy;
 u32 phy_free_4k(u32 phy_addr);
 #endif

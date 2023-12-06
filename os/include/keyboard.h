@@ -9,7 +9,7 @@
 
 #ifndef	_ORANGES_KEYBOARD_H_
 #define	_ORANGES_KEYBOARD_H_
-
+#include "type.h"
 
 /************************************************************************/
 /*                          Macros Declaration                          */

@@ -222,7 +222,13 @@ typedef struct s_task {
 
 #define STACK_SIZE_TASK		0x1000	//add by visual 2016.4.5
 //#define STACK_SIZE_TOTAL	(STACK_SIZE_TASK*NR_PCBS)	//edit by visual 2016.4.5
-
+extern	u32 cr3_ready;
+extern  int     u_proc_sum;
+extern	PROCESS*	p_proc_current;
+extern	PROCESS*	p_proc_next;
+extern	PROCESS		cpu_table[];
+extern	PROCESS		proc_table[];
+extern  TASK	task_table[NR_TASKS];
 //added by zcr
 #define proc2pid(x) (x - proc_table)
 

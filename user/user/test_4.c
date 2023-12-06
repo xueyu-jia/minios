@@ -12,7 +12,7 @@ void main(int arg, char *argv[])
 	{
 		int shmidA = -1;
 		udisp_str("\nchirldA: ");
-		shmidA = shmget(key, 80, IPC_CREAT);
+		shmidA = shmget(key, 80, SHM_IPC_CREAT);
 		int *p = NULL;
 
 		p = shmat(shmidA, NULL, 0);
@@ -37,7 +37,7 @@ void main(int arg, char *argv[])
 			int shmidB = -1;
 			sleep(500);
 			udisp_str("\nchirldB: ");
-			shmidB = shmget(key, 80, IPC_CREAT);
+			shmidB = shmget(key, 80, SHM_IPC_CREAT);
 			int *pp = NULL;
 			pp = shmat(shmidB, NULL, 0);
 
@@ -90,7 +90,7 @@ void main(int arg, char *argv[])
 // // 	{
 // // 		int shmidA = -1;
 // // 		udisp_str("\nchirldA: ");
-// // 		shmidA = shmget(key, 4, IPC_CREAT);
+// // 		shmidA = shmget(key, 4, SHM_IPC_CREAT);
 // // 		int *p = NULL;
 
 // // 		p = shmat(shmidA, NULL, 0);
@@ -123,7 +123,7 @@ void main(int arg, char *argv[])
 // 			int shmidB = -1;
 // 			sleep(500);
 // 			udisp_str("\nchirldB: ");
-// 			shmidB = shmget(key, 4, IPC_CREAT);
+// 			shmidB = shmget(key, 4, SHM_IPC_CREAT);
 // 			int *pp = NULL;
 // 			pp = shmat(shmidB, NULL, 0);
 

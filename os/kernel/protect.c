@@ -16,10 +16,17 @@
 #include "../include/const.h"
 #include "../include/protect.h"
 #include "../include/proc.h"
-#include "../include/global.h"
+// #include "../include/global.h"
 #include "../include/proto.h"
-
-
+#include "../include/console.h"
+// #include "../include/syscall.h"
+u32		k_reenter;
+TSS		tss;
+irq_handler	irq_table[];
+u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
+DESCRIPTOR	gdt[GDT_SIZE];
+u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
+GATE		idt[IDT_SIZE];
 /* 本文件内函数声明 */
 PRIVATE void init_idt_desc(unsigned char vector, u8 desc_type, int_handler handler, unsigned char privilege);
 //PRIVATE void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attribute);

@@ -10,49 +10,50 @@
 /* equal to 1 if kernel is initializing, equal to 0 if done.
  * added by xw, 18/5/31
  */
-EXTERN	int		kernel_initial;
+#include "type.h"
+extern	int		kernel_initial;
 
-EXTERN	int		ticks;
+extern	int		ticks; // defined in clock.c
 
-EXTERN	int		disp_pos;
-EXTERN	u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
-EXTERN	DESCRIPTOR	gdt[GDT_SIZE];
-EXTERN	u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
-EXTERN	GATE		idt[IDT_SIZE];
+// extern	int		disp_pos;
+// extern	u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
+// extern	DESCRIPTOR	gdt[GDT_SIZE];
+// extern	u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
+// extern	GATE		idt[IDT_SIZE];
 
-EXTERN	u32		k_reenter;
-EXTERN  int     u_proc_sum; 		//内核中用户进程/线程数量 add by visual 2016.5.25
+// extern	u32		k_reenter;
+// extern  int     u_proc_sum; 		//内核中用户进程/线程数量 add by visual 2016.5.25
 
-EXTERN	TSS		tss;
-EXTERN	PROCESS*	p_proc_current;
-EXTERN	PROCESS*	p_proc_next;	//the next process that will run. added by xw, 18/4/26
+// extern	TSS		tss;
+// extern	PROCESS*	p_proc_current;
+// extern	PROCESS*	p_proc_next;	//the next process that will run. added by xw, 18/4/26
 
-extern	PROCESS		cpu_table[];	//added by xw, 18/6/1
-extern	PROCESS		proc_table[];
-extern	char		task_stack[];
-extern  TASK        task_table[];
-extern	irq_handler	irq_table[];
+// extern	PROCESS		cpu_table[];	//added by xw, 18/6/1 ==> proc.h
+// extern	PROCESS		proc_table[];
+// extern	char		task_stack[]; unnused
+// extern  TASK        task_table[];
+// extern	irq_handler	irq_table[]; ==> irq.h
 
 /* tty */
 //added by mingxuan 2019-5-19
-#include "tty.h"
-#include "console.h"
+// #include "tty.h"
+// #include "console.h"
 
-extern  TTY         tty_table[];
-extern  CONSOLE     console_table[];
-extern	int			current_console;
+// extern  TTY         tty_table[]; ==> tty.h
+// extern  CONSOLE     console_table[]; ==> console.h
+// extern	int			current_console;
 
 //EXTERN	u32 PageTblNum;		//页表数量		add by visual 2016.4.5
-EXTERN	u32 cr3_ready;		//当前进程的页目录		add by visual 2016.4.5
+// extern	u32 cr3_ready;		//当前进程的页目录		add by visual 2016.4.5
 
-
-extern 	struct  Semaphore	proc_table_sem; 
+// #include "semaphore.h"
+// extern 	struct  Semaphore	proc_table_sem; 
 
 struct memfree{
 	u32	addr;
 	u32	size;
 };
 
-#include "fs_const.h"
+
 #include "hd.h"
 extern struct hd_info hd_info[12];   //added by mingxuan 2020-10-27

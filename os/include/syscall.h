@@ -1,12 +1,12 @@
 #ifndef USER_SYSCALL_H
 #define USER_SYSCALL_H
 
-#include "type.h"
-#include "const.h"
-#include "../include/signal.h"
-#include "../include/shm.h"
-#include "../include/msg.h"
-#include "../include/spinlock.h"
+// #include "type.h"
+// #include "const.h"
+// #include "../include/signal.h"
+// #include "../include/shm.h"
+// #include "../include/msg.h"
+// #include "../include/spinlock.h"
 
 #define _NR_get_ticks       0
 #define _NR_get_pid         1

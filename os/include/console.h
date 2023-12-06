@@ -36,6 +36,6 @@ typedef struct s_console
 #define DEFAULT_CHAR_COLOR	(MAKE_COLOR(BLACK, WHITE))
 #define GRAY_CHAR		(MAKE_COLOR(BLACK, BLACK) | BRIGHT)
 #define RED_CHAR		(MAKE_COLOR(BLUE, RED) | BRIGHT)
-
-
+extern	int		disp_pos;
+extern  CONSOLE     console_table[];
 #endif /* _ORANGES_CONSOLE_H_ */

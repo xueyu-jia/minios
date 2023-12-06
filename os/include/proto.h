@@ -5,9 +5,13 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 //#include <signal/signal.h>  //added by mingxuan 2021-2-28
+#ifndef PROTO_H
+#define PROTO_H
+#include "type.h"
+#include "const.h"
 #include "signal.h"  //modified by mingxuan 2021-8-7
 #include "msg.h" //added by yingchi 2022.01.07
-#include "spinlock.h"
+// #include "spinlock.h"
 #include "tty.h"
 #include "proc.h"
 
@@ -346,3 +350,5 @@ PUBLIC int sys_init_block_dev();
 void *kmalloc(u32 size);
 int kfree(u32 object);
 PUBLIC int sys_init_char_dev();
+
+#endif

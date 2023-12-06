@@ -3,7 +3,12 @@
 #include "disk.h"
 #include "string.h"
 #define MIN(x,y)	(x>y ? y : x)
-
+struct BPB bpb;
+u32 fat_start_sec;
+u32 data_start_sec;
+u32 elf_off; 
+u32 fat_now_sec;
+u32 elf_first;
 void fat32_init();
 // int  fat32_read_file(char *filename,void *dst);
 

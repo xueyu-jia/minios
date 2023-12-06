@@ -25,5 +25,5 @@ int ksem_post(struct Semaphore *sem, int count);
 int ksem_trywait(struct Semaphore *sem,int count);
 int ksem_getvalue(struct Semaphore *sem);
 
-
+extern struct 	Semaphore	proc_table_sem;
 #endif  /* SEMAPHORE_H */
