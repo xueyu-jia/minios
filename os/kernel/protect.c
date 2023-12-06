@@ -22,7 +22,7 @@
 // #include "../include/syscall.h"
 u32		k_reenter;
 TSS		tss;
-irq_handler	irq_table[];
+irq_handler	irq_table[NR_IRQ];
 u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
 DESCRIPTOR	gdt[GDT_SIZE];
 u8		idt_ptr[6];	// 0~15:Limit  16~47:Base
