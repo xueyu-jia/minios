@@ -1,24 +1,8 @@
 //added by mingxuan 2021-2-28
-/*
+
 #include "ksignal.h"
-
 #include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
 #include "proc.h"
-#include "global.h"
-#include "proto.h"
-*/
-
-#include "../include/ksignal.h"
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
 
 /*  //deleted by mingxuan 2021-8-20
 int do_signal(int sig, void *handler, void* _Handler) {

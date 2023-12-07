@@ -3,16 +3,7 @@
 ***********************************************************/
 // Mutual exclusion spin locks.
 
-//#include "types.h"
-//#include "defs.h"
-//#include "x86.h"
-//#include "mmu.h"
-//#include "param.h"
-//#include "proc.h"
-
-
-//#include "spinlock.h"
-#include "../include/spinlock.h"
+#include "spinlock.h"
 
 
 //extern int use_console_lock;

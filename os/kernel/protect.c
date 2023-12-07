@@ -4,22 +4,14 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-/*
-#include "type.h"
+
 #include "const.h"
 #include "protect.h"
 #include "proc.h"
-#include "global.h"
 #include "proto.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/proc.h"
-// #include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/console.h"
-// #include "../include/syscall.h"
+#include "console.h"
+
+
 u32		k_reenter;
 TSS		tss;
 irq_handler	irq_table[NR_IRQ];
@@ -414,7 +406,8 @@ PUBLIC void exception_handler(int vec_no, int err_code, int eip, int cs, int efl
 	disp_int(cs);
 	disp_color_str("EIP:", text_color);
 	disp_int(eip);
-
+	disp_str("pid=");
+	disp_int(proc2pid(p_proc_current));
 	if(err_code != 0xFFFFFFFF){
 		disp_color_str("Error code:", text_color);
 		disp_int(err_code);

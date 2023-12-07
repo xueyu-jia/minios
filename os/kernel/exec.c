@@ -1,30 +1,12 @@
 ﻿/**********************************************
 *			exec.c 		add by visual 2016.5.23
 *************************************************/
-/*
+
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
 #include "elf.h"
-#include "fs.h" //added by mingxuan 2019-5-19
-*/
-
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/elf.h"
-#include "../include/fs.h" //added by mingxuan 2019-5-19
-#include "../include/vfs.h"//added by xyx && wjh 2021-12-31
-
-#include "../include/buddy.h"// added by wang 2021.8.27
+#include "vfs.h"//added by xyx && wjh 2021-12-31
+#include "buddy.h"// added by wang 2021.8.27
 
 PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);

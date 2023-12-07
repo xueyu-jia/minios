@@ -2,23 +2,11 @@
 *			pthread.c //add by visual 2016.5.26
 *系统调用pthread()
 *******************************************************************/
-/*
-#include "type.h"
+
+// #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
 #include "proc.h"
-#include "global.h"
-#include "proto.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/pthread.h"
+#include "pthread.h"
 
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);

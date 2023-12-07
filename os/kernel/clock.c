@@ -4,22 +4,11 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-/*
+
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
 #include "proc.h"
 #include "global.h"
-#include "proto.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-// #include "../include/protect.h"
-// #include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-// #include "../include/proto.h"
 
 int		ticks;
 /*======================================================================*

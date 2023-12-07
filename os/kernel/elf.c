@@ -1,24 +1,5 @@
-/*
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
 #include "elf.h"
 #include "fs.h"		//added by mingxuan 2019-5-23
-*/
-
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/elf.h"
-#include "../include/fs.h"		//added by mingxuan 2019-5-23
 
 
 void read_Ehdr(u32 fd,Elf32_Ehdr *File_Ehdr,u32 offset)

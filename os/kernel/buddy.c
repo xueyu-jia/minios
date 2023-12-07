@@ -2,9 +2,9 @@
 * 内存管理-buddy系统相关代码     add by wang   2021.3.3
 **************************************************************/
 
-#include "../include/buddy.h"
-#include "../include/type.h"
-#include "../include/kmalloc.h"
+#include "buddy.h"
+#include "kmalloc.h"
+
 struct page mem_map[ALL_PAGES];
 buddy kbuddy, ubuddy;
 buddy *kbud = &kbuddy;

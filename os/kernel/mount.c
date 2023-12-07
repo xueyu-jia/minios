@@ -1,16 +1,7 @@
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/fs.h"
-#include "../include/fs_misc.h"
-#include "../include/vfs.h"
-#include "../include/mount.h"
+#include "const.h"
+#include "fs_misc.h"
+#include "vfs.h"
+#include "mount.h"
 
 PRIVATE void update_mnttable();
 PUBLIC mount_table mnt_table[MAX_mnt_table_length];

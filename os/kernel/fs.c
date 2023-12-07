@@ -1,30 +1,12 @@
 /// zcr copy from chapter9/d fs/main.c and modified it.
-/*
-#include "type.h"
+
 #include "const.h"
-#include "protect.h"
 #include "string.h"
-#include "proc.h"
 #include "global.h"
 #include "proto.h"
 #include "fs_const.h"
 #include "hd.h"
-#include "fs.h"
-#include "fs_misc.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/fs.h"
-#include "../include/fs_misc.h"
-#include "../include/mount.h"
-#include "../include/buffer.h" 
+#include "buffer.h" 
 
 /* FSBUF_SIZE is defined as macro in fs_const.h.
  * The physical address space 6MB~7MB is used as fs buffer in Orange's, but we can't use this

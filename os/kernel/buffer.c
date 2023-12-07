@@ -1,14 +1,7 @@
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/kmalloc.h"
-#include "../include/fs_misc.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/buffer.h"
+#include "const.h"
+#include "fs_const.h"
+#include "fs_misc.h"
+#include "buffer.h"
 
 
 /*用于记录LRU链表的数据结构*/

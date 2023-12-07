@@ -1,7 +1,7 @@
 //#include "memman.h"
 //#include "buddy.h"
-#include "../include/buddy.h" //added by mingxuan 2021-3-8
-#include "../include/shm.h"
+#include "buddy.h" //added by mingxuan 2021-3-8
+#include "shm.h"
 /*
 u32 MemInfo[256] = {0};			//存放FMIBuff后1k内容
 void init()

@@ -102,7 +102,7 @@ int do_msgctl(int msqid, int cmd, msqid_ds *buf)
 
 int sys_msgctl()
 {
-	return do_msgctl(get_arg(1), get_arg(2), get_arg(3));
+	return do_msgctl(get_arg(1), get_arg(2), (msqid_ds *)get_arg(3));
 }
 
 // real functions
@@ -353,7 +353,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 	case IPC_SET:
 		//复制信息
 		q_list[msqid].info.msg_qbytes = (*(msqid_ds *)buf).msg_qbytes;
-		q_list[msqid].info.msg_ctime = kern_get_ticks();
+		q_list[msqid].info.msg_ctime = sys_get_ticks();
 		ret = 0;
 		break;
 	default:
@@ -394,10 +394,10 @@ void rm_msg_node(int msqid, list_item *head)
 	kern_kfree(target->msg.buf);
 	kern_kfree(target);
 	//修改队列信息
-	q_list[msqid].info.msg_lrpid = kern_get_pid();
+	q_list[msqid].info.msg_lrpid = sys_get_pid();
 	q_list[msqid].info.msg_qnum--;
 	q_list[msqid].info.__msg_cbytes -= size;
-	q_list[msqid].info.msg_rtime = kern_get_ticks();
+	q_list[msqid].info.msg_rtime = sys_get_ticks();
 	return;
 }
 

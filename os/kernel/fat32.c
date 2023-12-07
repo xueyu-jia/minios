@@ -1,41 +1,15 @@
 /**********************************************************
 *	fat32.c       //added by mingxuan 2019-5-17
 ***********************************************************/
-/*
+
 #include "fat32.h"
-#include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "tty.h"
-#include "console.h"
 #include "global.h"
-#include "proto.h"
-#include "fs_const.h"
 #include "hd.h"
-#include "fs.h"
 #include "fs_misc.h"
 #include "vfs.h"
 #include "spinlock.h" // added by ran
-*/
 
-#include "../include/fat32.h"
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/tty.h"
-#include "../include/console.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/fs.h"
-#include "../include/fs_misc.h"
-#include "../include/vfs.h"
-#include "../include/spinlock.h" // added by ran
 
 void disp_int(int);
 //extern DWORD FAT_END;

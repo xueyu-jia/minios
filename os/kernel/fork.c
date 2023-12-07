@@ -2,23 +2,9 @@
 *			fork.c			//add by visual 2016.5.25
 *系统调用fork()功能实现部分sys_fork()
 ********************************************************/
-/*
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-*/
 
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
+#include "const.h"
+#include "proc.h"
 
 PRIVATE int fork_mem_cpy(u32 ppid,u32 pid);
 PRIVATE int fork_pcb_cpy(PROCESS* p_child);

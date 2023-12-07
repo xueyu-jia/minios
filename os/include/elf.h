@@ -4,7 +4,8 @@
 #ifndef ELF_H
 #define ELF_H
 #define	EI_NIDENT 		16
-
+#include "type.h"
+#include "const.h"
 /************************************
 *		elf 头
 *****************************************/

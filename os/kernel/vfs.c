@@ -1,35 +1,15 @@
 /**********************************************************
 *	vfs.c       //added by mingxuan 2019-5-17
 ***********************************************************/
-/*
-#include "type.h"
+
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
 #include "global.h"
-#include "proto.h"
 #include "fs_const.h"
 #include "hd.h"
-#include "fs.h"
-#include "fs_misc.h"
 #include "vfs.h"
 #include "fat32.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/fs.h"
-#include "../include/fs_misc.h"
-#include "../include/vfs.h"
-#include "../include/fat32.h"
-#include "../include/mount.h"
+#include "mount.h"
+
 //PRIVATE struct device  device_table[NR_DEV];  //deleted by mingxuan 2020-10-18
 //PRIVATE struct vfs  vfs_table[NR_FS];   //modified by mingxuan 2020-10-18
 PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran

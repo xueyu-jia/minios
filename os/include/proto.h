@@ -171,7 +171,7 @@ int deletedir(const char* dirname);
 int readdir(const char* dirname, unsigned int dir[3], char* filename);
 int chdir(const char* path);
 char* getcwd(char* buf, int size);
-int wait_();
+int wait();
 void exit(int status);
 int _signal(int sig, void* handler, void* _Handler);    //"user/ulib/signal.c" 中提供了上层封装
 int sigsend(int pid, Sigaction* sigaction_p);

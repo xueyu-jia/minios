@@ -12,8 +12,8 @@
 extern	cstart
 extern	kernel_main
 extern	exception_handler
-extern	spurious_irq
-extern	clock_handler
+; extern	spurious_irq 
+; extern	clock_handler
 extern	disp_str
 extern	delay
 extern	irq_table
@@ -21,7 +21,7 @@ extern	page_fault_handler
 extern	divide_error_handler	;added by xw, 18/12/22
 extern	disp_int
 extern  schedule
-extern  switch_pde
+; extern  switch_pde
 extern 	process_signal	;added by mingxuan 2021-2-28
 
 ; 导入全局变量

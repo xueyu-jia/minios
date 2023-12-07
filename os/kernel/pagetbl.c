@@ -2,7 +2,6 @@
 *页式管理相关代码 add by visual 2016.4.19
 **************************************************************/
 
-/*
 #include "type.h"
 #include "const.h"
 #include "protect.h"
@@ -10,15 +9,7 @@
 #include "proc.h"
 #include "global.h"
 #include "proto.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/buddy.h"
+#include "buddy.h"
 
 
 //to determine if a page fault is reparable. added by xw, 18/6/11

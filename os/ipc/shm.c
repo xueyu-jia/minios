@@ -33,7 +33,7 @@ PUBLIC struct spinlock lock_msg = {
 static char key_available(key)
 {
 
-    if (ids.perms[key].state == AVAILABLE)
+    if (ids.perms[key].state == SHM_AVAILABLE)
     {
         return 1;
     }
@@ -88,7 +88,7 @@ PUBLIC int find_out()
     int i = 0;
     for (; i < sum; i++)
     {
-        if (ids.perms[i].state == AVAILABLE)
+        if (ids.perms[i].state == SHM_AVAILABLE)
         {
             id = i;
             break;
@@ -254,12 +254,12 @@ PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf)
 {
     if (cmd == DELETE)
     {
-        if(ids.perms[shmid].phy_address == NULL || ids.perms[shmid].state == AVAILABLE)
+        if(ids.perms[shmid].phy_address == NULL || ids.perms[shmid].state == SHM_AVAILABLE)
         {
             disp_str("memmory has freed before\n");
             return (struct ipc_shm *)buf;
         }
-        ids.perms[shmid].state = AVAILABLE; //代表这个通道可用
+        ids.perms[shmid].state = SHM_AVAILABLE; //代表这个通道可用
         // int size = ids.perms[shmid].size;
         ids.in_use--;
 
@@ -270,7 +270,7 @@ PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf)
     {
         int shmidsys = do_shmget(ids.in_use + 3, 16, SHM_IPC_CREAT);
         struct ipc_shm *psys = do_shmat(shmidsys, NULL, 0);
-        ids.perms[shmidsys].state = AVAILABLE;
+        ids.perms[shmidsys].state = SHM_AVAILABLE;
         ids.in_use--;
         buf = psys;
 

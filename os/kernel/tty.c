@@ -1,25 +1,9 @@
-/*
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
 #include "tty.h"
 #include "console.h"
-#include "global.h"
-#include "proto.h"
 #include "keyboard.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/tty.h"
-#include "../include/console.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/keyboard.h"
+
 
 TTY         tty_table[];
 PUBLIC  int current_console;  //当前显示在屏幕上的console

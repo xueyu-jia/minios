@@ -8,7 +8,8 @@
 #define	FS_MISC_H
 
 #include "spinlock.h"
-
+#include "fs_const.h"
+#include "proc.h"
 /**
  * @struct dev_drv_map fs.h "include/sys/fs.h"
  * @brief  The Device_nr.\ - Driver_nr.\ MAP.

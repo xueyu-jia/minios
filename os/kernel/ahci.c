@@ -1,10 +1,11 @@
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/ahci.h"
+#include "type.h"
+#include "const.h"
+#include "string.h"
+#include "protect.h"
+#include "proc.h"
+#include "global.h"
+#include "proto.h"
+#include "ahci.h"
 
 // 0: free;  1: waiting
 PUBLIC volatile int sata_wait_flag = 1;
@@ -124,7 +125,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	probe_port(HBA);
 	// disp_str("\nprobe_port");
 	// disp_int(HBA->pi);
-	int i=0;
+	u32 i=0;
 	for(i=0;i<ahci_info[0].satadrv_num;i++){
 		port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
 	}

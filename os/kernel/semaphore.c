@@ -3,19 +3,7 @@
 *   信号量实现。有函数定义。
 */
 
-
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs_const.h"
-#include "../include/hd.h"
-#include "../include/fs.h"
-#include "../include/buddy.h"
-#include "../include/semaphore.h"
+#include "semaphore.h"
 
 struct 	Semaphore	proc_table_sem;
 

@@ -1,26 +1,6 @@
-/*
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
 #include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "fs.h"
-#include "fs_misc.h"
-#include "spinlock.h"
-*/
-
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs.h"
-#include "../include/fs_misc.h"
-#include "../include/spinlock.h"
 
 // added by mingxuan 2021-8-13
 PUBLIC void sys_exit()

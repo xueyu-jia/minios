@@ -3,26 +3,14 @@
  * work normally with new features added.
  * added by xw, 18/4/27
  */
-/*
+
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "global.h"
 #include "proto.h"
 #include "fs.h"
-*/
+
 
 //modified by mingxuan 2021-4-2
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/fs.h"
 
 /*======================================================================*
                          Interrupt Handling Test
@@ -413,151 +401,151 @@ void TestC()
  * Borrowed from GNU `tar'
  */
 //added by mingxuan 2019-5-18
-struct posix_tar_header
-{						/* byte offset */
-	char name[100];		/*   0 */
-	char mode[8];		/* 100 */
-	char uid[8];		/* 108 */
-	char gid[8];		/* 116 */
-	char size[12];		/* 124 */
-	char mtime[12];		/* 136 */
-	char chksum[8];		/* 148 */
-	char typeflag;		/* 156 */
-	char linkname[100]; /* 157 */
-	char magic[6];		/* 257 */
-	char version[2];	/* 263 */
-	char uname[32];		/* 265 */
-	char gname[32];		/* 297 */
-	char devmajor[8];	/* 329 */
-	char devminor[8];	/* 337 */
-	char prefix[155];	/* 345 */
-						/* 500 */
-};
+// struct posix_tar_header
+// {						/* byte offset */
+// 	char name[100];		/*   0 */
+// 	char mode[8];		/* 100 */
+// 	char uid[8];		/* 108 */
+// 	char gid[8];		/* 116 */
+// 	char size[12];		/* 124 */
+// 	char mtime[12];		/* 136 */
+// 	char chksum[8];		/* 148 */
+// 	char typeflag;		/* 156 */
+// 	char linkname[100]; /* 157 */
+// 	char magic[6];		/* 257 */
+// 	char version[2];	/* 263 */
+// 	char uname[32];		/* 265 */
+// 	char gname[32];		/* 297 */
+// 	char devmajor[8];	/* 329 */
+// 	char devminor[8];	/* 337 */
+// 	char prefix[155];	/* 345 */
+// 						/* 500 */
+// };
 
-/*****************************************************************************
- *                                untar
- * added by mingxuan 2019-5-18
- *****************************************************************************/
-/**
- * Extract the tar file and store them.
- *
- * @param filename The tar file.
- *****************************************************************************/
-PRIVATE void untar(const char *filename)
-{
-	//printf("[extract %s \n", filename);
-	//modified by mingxuan 2021-4-3
-	disp_str("[extract %s");
-	disp_str(filename);
-	disp_str("\n");
+// /*****************************************************************************
+//  *                                untar
+//  * added by mingxuan 2019-5-18
+//  *****************************************************************************/
+// /**
+//  * Extract the tar file and store them.
+//  *
+//  * @param filename The tar file.
+//  *****************************************************************************/
+// PRIVATE void untar(const char *filename)
+// {
+// 	//printf("[extract %s \n", filename);
+// 	//modified by mingxuan 2021-4-3
+// 	disp_str("[extract %s");
+// 	disp_str(filename);
+// 	disp_str("\n");
 
-	//int fd = open(filename, O_RDWR);	//deleted by mingxuan 2019-5-20
-	//int fd = do_vopen(filename, O_RDWR);//modified by mingxuan 2019-5-20
-	int fd = kern_vopen(filename, O_RDWR); //modified by mingxuan 2021-8-20
+// 	//int fd = open(filename, O_RDWR);	//deleted by mingxuan 2019-5-20
+// 	//int fd = do_vopen(filename, O_RDWR);//modified by mingxuan 2019-5-20
+// 	int fd = kern_vopen(filename, O_RDWR); //modified by mingxuan 2021-8-20
 
-	// assert(fd != -1);
+// 	// assert(fd != -1);
 
-	char buf[512 * 16];
-	int chunk = sizeof(buf);
-	int i = 0;
-	int bytes = 0;
+// 	char buf[512 * 16];
+// 	int chunk = sizeof(buf);
+// 	int i = 0;
+// 	int bytes = 0;
 
-	while (1)
-	{
-		//bytes = read(fd, buf, 512);	//deleted by mingxuan 2019-5-21
-		//bytes = do_vread(fd, buf, 512); //modified by mingxuan 2019-5-21
-		bytes = kern_vread(fd, buf, 512); //modified by mingxuan 2021-8-20
+// 	while (1)
+// 	{
+// 		//bytes = read(fd, buf, 512);	//deleted by mingxuan 2019-5-21
+// 		//bytes = do_vread(fd, buf, 512); //modified by mingxuan 2019-5-21
+// 		bytes = kern_vread(fd, buf, 512); //modified by mingxuan 2021-8-20
 
-		// assert(bytes == 512); /* size of a TAR file must be multiple of 512 */
-		if (buf[0] == 0)
-		{
-			if (i == 0)
-				//printf("    need not unpack the file.\n");
-				disp_str("    need not unpack the file.\n"); //modified by mingxuan 2021-4-3
-			break;
-		}
-		i++;
+// 		// assert(bytes == 512); /* size of a TAR file must be multiple of 512 */
+// 		if (buf[0] == 0)
+// 		{
+// 			if (i == 0)
+// 				//printf("    need not unpack the file.\n");
+// 				disp_str("    need not unpack the file.\n"); //modified by mingxuan 2021-4-3
+// 			break;
+// 		}
+// 		i++;
 
-		struct posix_tar_header *phdr = (struct posix_tar_header *)buf;
+// 		struct posix_tar_header *phdr = (struct posix_tar_header *)buf;
 
-		/* calculate the file size */
-		char *p = phdr->size;
-		int f_len = 0;
-		while (*p)
-			f_len = (f_len * 8) + (*p++ - '0'); /* octal */
+// 		/* calculate the file size */
+// 		char *p = phdr->size;
+// 		int f_len = 0;
+// 		while (*p)
+// 			f_len = (f_len * 8) + (*p++ - '0'); /* octal */
 
-		int bytes_left = f_len;
-		char full_name[30] = "orange/";
-		strcat(full_name, phdr->name);
-		//int fdout = open(full_name, O_CREAT | O_RDWR );	//deleted by mingxuan 2019-5-20
-		//int fdout = do_vopen(full_name, O_CREAT | O_RDWR );	//modified by mingxuan 2019-5-20
-		int fdout = kern_vopen(full_name, O_CREAT | O_RDWR); //modified by mingxuan 2021-8-20
+// 		int bytes_left = f_len;
+// 		char full_name[30] = "orange/";
+// 		strcat(full_name, phdr->name);
+// 		//int fdout = open(full_name, O_CREAT | O_RDWR );	//deleted by mingxuan 2019-5-20
+// 		//int fdout = do_vopen(full_name, O_CREAT | O_RDWR );	//modified by mingxuan 2019-5-20
+// 		int fdout = kern_vopen(full_name, O_CREAT | O_RDWR); //modified by mingxuan 2021-8-20
 
-		if (fdout == -1)
-		{
-			//printf("    failed to extract file: %s\n", phdr->name);
-			//printf(" aborted]\n");
-			disp_str("    failed to extract file. \n"); //modified by mingxuan 2021-4-3
+// 		if (fdout == -1)
+// 		{
+// 			//printf("    failed to extract file: %s\n", phdr->name);
+// 			//printf(" aborted]\n");
+// 			disp_str("    failed to extract file. \n"); //modified by mingxuan 2021-4-3
 
-			//close(fd);	//deleted by mingxuan 2019-5-20
-			//do_vclose(fd);	//modified by mingxuan 2019-5-20
-			kern_vclose(fd); //modified by mingxuan 2021-8-20
+// 			//close(fd);	//deleted by mingxuan 2019-5-20
+// 			//do_vclose(fd);	//modified by mingxuan 2019-5-20
+// 			kern_vclose(fd); //modified by mingxuan 2021-8-20
 
-			return;
-		}
-		//printf("    %s \n", phdr->name);	//deleted by mingxuan 2019-5-22
-		disp_str("    ");
-		disp_str(phdr->name);
-		disp_str("\n");
+// 			return;
+// 		}
+// 		//printf("    %s \n", phdr->name);	//deleted by mingxuan 2019-5-22
+// 		disp_str("    ");
+// 		disp_str(phdr->name);
+// 		disp_str("\n");
 
-		while (bytes_left)
-		{
-			int iobytes = min(chunk, bytes_left);
+// 		while (bytes_left)
+// 		{
+// 			int iobytes = min(chunk, bytes_left);
 
-			//read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//deleted by mingxuan 2019-5-21
-			//do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//modified by mingxuan 2019-5-21
-			kern_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512); //modified by mingxuan 2021-8-20
+// 			//read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//deleted by mingxuan 2019-5-21
+// 			//do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//modified by mingxuan 2019-5-21
+// 			kern_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512); //modified by mingxuan 2021-8-20
 
-			//bytes = write(fdout, buf, iobytes);	//deleted by mingxuan 2019-5-21
-			//bytes = do_vwrite(fdout, buf, iobytes); //modified by mingxuan 2019-5-21
-			bytes = kern_vwrite(fdout, buf, iobytes); //modified by mingxuan 2021-8-20
-			//bytes = real_write(fdout, buf, iobytes);
+// 			//bytes = write(fdout, buf, iobytes);	//deleted by mingxuan 2019-5-21
+// 			//bytes = do_vwrite(fdout, buf, iobytes); //modified by mingxuan 2019-5-21
+// 			bytes = kern_vwrite(fdout, buf, iobytes); //modified by mingxuan 2021-8-20
+// 			//bytes = real_write(fdout, buf, iobytes);
 
-			//测试
-			//real_lseek(fd,0,SEEK_SET);
-			//do_vread(fdout, buf, iobytes);
-			//real_read(fdout, buf, iobytes);
+// 			//测试
+// 			//real_lseek(fd,0,SEEK_SET);
+// 			//do_vread(fdout, buf, iobytes);
+// 			//real_read(fdout, buf, iobytes);
 
-			// assert(bytes == iobytes);
-			bytes_left -= iobytes;
-		}
-		//close(fdout);		//deleted by mingxuan 2019-5-20
-		//do_vclose(fdout);	//modified by mingxuan 2019-5-20
-		kern_vclose(fdout); //modified by mingxuan 2021-8-20
-	}
+// 			// assert(bytes == iobytes);
+// 			bytes_left -= iobytes;
+// 		}
+// 		//close(fdout);		//deleted by mingxuan 2019-5-20
+// 		//do_vclose(fdout);	//modified by mingxuan 2019-5-20
+// 		kern_vclose(fdout); //modified by mingxuan 2021-8-20
+// 	}
 
-	if (i)
-	{
-		//lseek(fd, 0, SEEK_SET);	//deleted by mingxuan 2019-5-20
-		//do_vlseek(fd, 0, SEEK_SET); //modified by mingxuan 2019-5-20
-		kern_vlseek(fd, 0, SEEK_SET); //modified by mingxuan 2021-8-20
+// 	if (i)
+// 	{
+// 		//lseek(fd, 0, SEEK_SET);	//deleted by mingxuan 2019-5-20
+// 		//do_vlseek(fd, 0, SEEK_SET); //modified by mingxuan 2019-5-20
+// 		kern_vlseek(fd, 0, SEEK_SET); //modified by mingxuan 2021-8-20
 
-		buf[0] = 0;
-		//bytes = write(fd, buf, 1);//deleted by mingxuan 2019-5-20
-		//bytes = do_vwrite(fd, buf, 1);	//modified by mingxuan 2019-5-20
-		bytes = kern_vwrite(fd, buf, 1); //modified by mingxuan 2021-8-20
-	}
+// 		buf[0] = 0;
+// 		//bytes = write(fd, buf, 1);//deleted by mingxuan 2019-5-20
+// 		//bytes = do_vwrite(fd, buf, 1);	//modified by mingxuan 2019-5-20
+// 		bytes = kern_vwrite(fd, buf, 1); //modified by mingxuan 2021-8-20
+// 	}
 
-	//close(fd);	//deleted by mingxuan 2019-5-21
-	//do_vclose(fd);	//modified by mingxuan 2019-5-21
-	kern_vclose(fd); //modified by mingxuan 2021-8-20
+// 	//close(fd);	//deleted by mingxuan 2019-5-21
+// 	//do_vclose(fd);	//modified by mingxuan 2019-5-21
+// 	kern_vclose(fd); //modified by mingxuan 2021-8-20
 
-	//printf(" done, %d files extracted]\n", i);
-	//modified by mingxuan 2021-4-3
-	disp_str(" done, ");
-	disp_int(i);
-	disp_str(" files extracted]\n");
-}
+// 	//printf(" done, %d files extracted]\n", i);
+// 	//modified by mingxuan 2021-4-3
+// 	disp_str(" done, ");
+// 	disp_int(i);
+// 	disp_str(" files extracted]\n");
+// }
 
 
 void initial()

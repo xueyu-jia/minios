@@ -7,8 +7,8 @@
 #include "buddy.h"
 #include "memman.h"
 */
-#include "../include/kmalloc.h"
-#include "../include/buddy.h"
+#include "kmalloc.h"
+#include "buddy.h"
 //#include "../include/memman.h"    //deleted by mingxuan 2021-8-13
 
 malloced mal;

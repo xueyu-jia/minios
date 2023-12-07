@@ -4,33 +4,15 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-/*
+
 #include "type.h"
 #include "const.h"
-#include "protect.h"
-#include "string.h"
 #include "proc.h"
-#include "global.h"
 #include "proto.h"
-#include "fs_const.h"
-#include "hd.h"
-#include "fs.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-// #include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-// #include "../include/proto.h"
-// #include "../include/fs_const.h"
-// #include "../include/hd.h"
-// #include "../include/fs.h"
-#include "../include/console.h"
-#include "../include/buddy.h"
-#include "../include/semaphore.h"
-#include "../include/ahci.h"
-#include "../include/buffer.h"
+#include "global.h"
+#include "console.h"
+#include "buddy.h"
+#include "ahci.h"
 #include "../gdbstub/gdbstub.h"
 
 //added by lcy, 2023.10.22

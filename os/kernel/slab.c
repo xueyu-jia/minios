@@ -1,6 +1,6 @@
-#include "../include/slab.h"
-#include "../include/buddy.h"
-#include "../include/proto.h"
+#include "slab.h"
+#include "buddy.h"
+#include "proto.h"
 
 // cache数组下标从0开始，对应对象是8B。
 // 该系统最大可存储2048B大小的字节，更大的直接分配一个页。所以 KMEM_CACHES_NUM 最大为 9

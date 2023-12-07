@@ -9,40 +9,38 @@
  * the variable will be defined here.
  * added by xw, 18/6/17
  */
+// THE SKILL MAKES VARIABLES COUPLING BETWEEN MODULES
 // #define GLOBAL_VARIABLES_HERE
-/*
-#include "const.h"
-#undef	EXTERN	//EXTERN could have been defined as extern in const.h
-#define	EXTERN	//redefine EXTERN as nothing
-#include "type.h"
-#include "protect.h"
-#include "proc.h"
-#include "global.h"
-#include "proto.h"
-#include "fs_const.h"
-#include "hd.h"
-#include "fs.h"
-#include "fat32.h"	//added by mingxuan 2019-5-17
-#include "vfs.h"	//added by mingxuan 2019-5-17
-#include "./signal/ksignal.h"	//added by mingxuan 2021-2-28
-*/
-//modified by mingxuan 2021-4-2
-#include "../include/const.h"
+
 // #undef	EXTERN	//EXTERN could have been defined as extern in const.h
 // #define	EXTERN	//redefine EXTERN as nothing
-#include "../include/type.h"
-// #include "../include/protect.h"
-#include "../include/proc.h"
-#include "../include/global.h"
+#include "const.h"
+#include "type.h"
+#include "global.h"
+#include "proto.h"
+// #include "fs_const.h"
+// #include "hd.h"
+// #include "fs.h"
+// #include "fat32.h"	//added by mingxuan 2019-5-17
+#include "vfs.h"	//added by mingxuan 2019-5-17
+#include "ksignal.h"	//added by mingxuan 2021-2-28
+//modified by mingxuan 2021-4-2
+// #include "../include/const.h"
+// #undef	EXTERN	//EXTERN could have been defined as extern in const.h
+// #define	EXTERN	//redefine EXTERN as nothing
+// #include "../include/type.h"
+// // #include "../include/protect.h"
+// #include "../include/proc.h"
+// #include "global.h"
 // #include "../include/proto.h"
 // #include "../include/fs_const.h"
 // #include "../include/hd.h"
 // #include "../include/fs.h"
 // #include "../include/fat32.h"	//added by mingxuan 2019-5-17
-#include "../include/vfs.h"	//added by mingxuan 2019-5-17
-#include "../include/ksignal.h"	//added by mingxuan 2021-2-28
+// #include "../include/vfs.h"	//added by mingxuan 2019-5-17
+// #include "ksignal.h"	//added by mingxuan 2021-2-28
 
-#include "../include/semaphore.h"
+// #include "semaphore.h"
 /* save the execution environment of each cpu, which doesn't belong to any process.
  * added by xw, 18/6/1
  */

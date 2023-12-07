@@ -4,26 +4,13 @@
 *
 *
 **********************************************************/
-/*
-#include "type.h"
+
 #include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
+// #include "string.h"
 #include "global.h"
-#include "proto.h"
 #include "buddy.h"
-*/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/buddy.h"
-#include "../include/kmalloc.h"
-#include "../include/semaphore.h"
+#include "kmalloc.h"
+#include "semaphore.h"
 
 struct memfree *memarg = 0;
 
@@ -54,16 +41,16 @@ PUBLIC int sys_get_ticks()
 	return ticks;
 }
 */
+PUBLIC int do_get_ticks()
+{
+	return kern_get_ticks();
+}
 
 PUBLIC int sys_get_ticks()
 {
 	return do_get_ticks();
 }
 
-PUBLIC int do_get_ticks()
-{
-	return kern_get_ticks();
-}
 
 //added by mingxuan 2021-8-14
 PUBLIC int kern_get_ticks()

@@ -24,7 +24,7 @@ void main(int arg, char *argv[]){
     else {
         int x;
         int s = -1;
-        x = wait_(&s);
+        x = wait(&s);
         printf("wait() send back:%d", x);
         printf("parentpid:%d\n", get_pid());
         printf("exit code:%d ", s);

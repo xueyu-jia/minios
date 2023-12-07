@@ -1,10 +1,10 @@
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/syscall.h"
-#include "../include/protect.h"
-#include "../include/proc.h"
-#include "../include/msg.h"
-#include "../include/signal.h"
+#include "type.h"
+#include "const.h"
+#include "syscall.h"
+#include "protect.h"
+#include "proc.h"
+#include "msg.h"
+#include "signal.h"
 
 PUBLIC u32 get_arg(int order)
 {
@@ -124,7 +124,7 @@ char* getcwd(char* buf, int size) {
 	return _syscall2(_NR_getcwd, buf, size);
 }
 
-int wait_() {
+int wait() {
 	return _syscall0(_NR_wait);
 }
 
