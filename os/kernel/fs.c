@@ -1,11 +1,15 @@
 /// zcr copy from chapter9/d fs/main.c and modified it.
 
+#include "type.h"
 #include "const.h"
 #include "string.h"
 #include "global.h"
 #include "proto.h"
-#include "fs_const.h"
+#include "fs.h"
+#include "fs_misc.h"
 #include "hd.h"
+#include "protect.h"
+#include "mount.h"
 #include "buffer.h" 
 
 /* FSBUF_SIZE is defined as macro in fs_const.h.
@@ -3565,7 +3569,7 @@ static int ora_opendir(MESSAGE *fs_msg)
 /*add by xkx 2023-1-3*/
 static int ora_createdir(MESSAGE *fs_msg)
 {
-
+	
 	char pathname[MAX_PATH] = {0};
 
 	int name_len = fs_msg->NAME_LEN; /* length of filename */

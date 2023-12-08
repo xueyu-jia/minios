@@ -12,9 +12,15 @@
 
 #include "type.h"
 #include "const.h"
+#include "protect.h"
 #include "string.h"
+#include "proc.h"
 #include "global.h"
+#include "proto.h"
+#include "fs_const.h"
 #include "hd.h"
+#include "fs.h"
+#include "fs_misc.h"
 #include "ahci.h"
 #include "semaphore.h"
 

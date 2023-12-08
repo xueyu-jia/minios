@@ -58,11 +58,11 @@ ORANGESKERNEL	= kernel.bin
 # 			os/kernel/buffer.o os/kernel/slab.o \
 # 			os/gdbstub/gdbstub_x86_int.o
 
-OBJS = $(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c)) os/gdbstub/gdbstub_x86_int.o os/klib/klib.a os/kernel/kernel.o
+OBJS =  os/kernel/kernel.o $(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c)) os/klib/klib.a os/gdbstub/gdbstub_x86_int.o 
 			
 #added by mingxuan 2021-2-28
 
-OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/stringc.o os/klib/stringasm.o os/klib/string.o
+OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
 
 GDBBIN = kernel.gdb.bin
 
@@ -147,7 +147,7 @@ os/klib/stringc.o:	os/klib/string.c
 
 # string.o	added by mingxuan 2019-5-19
 os/klib/string.o : os/klib/stringasm.o os/klib/stringc.o
-	$(LD) -m elf_i386 -r -o $@ $<
+	$(LD) -m elf_i386 -r -o $@ $^
 
 os/klib/%.o: os/klib/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
