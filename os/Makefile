@@ -121,7 +121,7 @@ os/kernel/spinlock.o: os/kernel/spinlock.c os/include/spinlock.h
 os/kernel/%.o : os/kernel/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
 
-os/ipc/%.o : os/kernel/%.c
+os/ipc/%.o : os/ipc/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
