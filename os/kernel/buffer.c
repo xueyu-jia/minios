@@ -1,6 +1,7 @@
 #include "const.h"
 #include "fs_const.h"
 #include "fs_misc.h"
+#include "hd.h"
 #include "buffer.h"
 
 
