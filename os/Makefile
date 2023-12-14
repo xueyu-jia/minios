@@ -76,7 +76,7 @@ clean_os :
 	rm -f $(OBJS) $(OBJSKLIB)
 
 realclean_os :
-	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS) # modified by mingxuan 2021-2-7
+	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS) os/klib/stringasm.o os/klib/stringc.o # modified by mingxuan 2021-2-7
 
 disasm :
 	$(DASM) $(DASMFLAGS) $(ORANGESKERNEL) > $(DASMOUTPUT)
@@ -131,23 +131,23 @@ os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 os/klib/klib.a:  $(OBJSKLIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSKLIB)
 
-os/klib/klib.o: os/klib/klib.c 
-	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
+# os/klib/klib.o: os/klib/klib.c 
+# 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
 
 os/klib/kliba.o : os/klib/kliba.asm
 	$(ASM) $(ASMKFLAGS) -o $@ $<
 
-# stringasm.o	added by mingxuan 2019-5-19
-os/klib/stringasm.o: os/klib/string.asm
-	$(ASM) $(ASMKFLAGS) -o $@ $<
+# # stringasm.o	added by mingxuan 2019-5-19
+# os/klib/stringasm.o: os/klib/string.asm
+# 	$(ASM) $(ASMKFLAGS) -o $@ $<
 
-# stringc.o	added by mingxuan 2019-5-19
-os/klib/stringc.o:	os/klib/string.c
-	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
+# # stringc.o	added by mingxuan 2019-5-19
+# os/klib/stringc.o:	os/klib/string.c
+# 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
 
-# string.o	added by mingxuan 2019-5-19
-os/klib/string.o : os/klib/stringasm.o os/klib/stringc.o
-	$(LD) -m elf_i386 -r -o $@ $^
+# # string.o	added by mingxuan 2019-5-19
+# os/klib/string.o : os/klib/stringasm.o os/klib/stringc.o
+# 	$(LD) -m elf_i386 -r -o $@ $^
 
 os/klib/%.o: os/klib/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<

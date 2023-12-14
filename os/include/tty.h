@@ -13,7 +13,7 @@
 
 #ifndef	_ORANGES_TTY_H_
 #define	_ORANGES_TTY_H_
-
+#include "console.h"
 
 #define TTY_IN_BYTES		256	/* tty input queue size */
 #define TTY_OUT_BUF_LEN		2	/* tty output buffer size */
@@ -27,8 +27,6 @@
 #define TTY_STATE_WAIT_SPACE  2  /*010*/
 #define TTY_STATE_DISPLAY     1  /*001*/
 
-struct s_tty;
-struct s_console;
 
 /* TTY */
 typedef struct s_tty

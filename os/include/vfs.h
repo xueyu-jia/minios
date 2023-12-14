@@ -24,60 +24,7 @@ struct device{
 };
 */
 // Replace struct device, added by mingxuan 2020-10-18
-struct vfs{
-    char * fs_name; 			//设备名
-    struct file_op * op;        //指向操作表的一项
-    //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
 
-	struct super_block *sb;		//added by mingxuan 2020-10-29
-	struct sb_op *s_op;			//added by mingxuan 2020-10-29
-	int used;                   //added by ran
-};
-
-PUBLIC int sys_open();
-PUBLIC int sys_close();
-PUBLIC int sys_read();
-PUBLIC int sys_write();
-PUBLIC int sys_lseek();
-PUBLIC int sys_unlink();
-PUBLIC int sys_create();
-PUBLIC int sys_delete();
-PUBLIC int sys_opendir();
-PUBLIC int sys_createdir();
-PUBLIC int sys_deletedir();
-PUBLIC int sys_readdir();
-PUBLIC int sys_chdir(); //added by ran
-PUBLIC int sys_getcwd(); //added by ran
-
-PUBLIC int do_vopen(const char *path, int flags);
-PUBLIC int do_vclose(int fd);
-PUBLIC int do_vread(int fd, char *buf, int count);
-PUBLIC int do_vwrite(int fd, const char *buf, int count);
-PUBLIC int do_vunlink(const char *path);
-PUBLIC int do_vlseek(int fd, int offset, int whence);
-PUBLIC int do_vcreate(char *pathname);
-PUBLIC int do_vdelete(char *path);
-PUBLIC int do_vopendir(char *dirname);
-PUBLIC int do_vcreatedir(char *dirname);
-PUBLIC int do_vdeletedir(char *dirname);
-PUBLIC int do_vchdir(const char *path); //added by ran
-//PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
-PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
-
-PUBLIC int set_vfstable(u32 device, char *target);
-PUBLIC struct vfs* vfs_alloc_vfs_entity();
-PUBLIC int get_index(char path[]);
-PUBLIC void init_vfs();
-int sys_CreateFile();
-int sys_DeleteFile();
-int sys_OpenFile();
-int sys_CloseFile();
-int sys_WriteFile();
-int sys_ReadFile();
-int sys_OpenDir();
-int sys_CreateDir();
-int sys_DeleteDir();
-int sys_ListDir();
 
 //文件系统的操作函数
 //modified by sundong 2023.5.19 部分接口中添加了superblock参数
@@ -133,4 +80,82 @@ struct sb_op{
 	void (*read_super_block) (int);
 	struct super_block* (*get_super_block) (int);
 };
+
+struct vfs{
+    char * fs_name; 			//设备名
+    struct file_op * op;        //指向操作表的一项
+    //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
+
+	struct super_block *sb;		//added by mingxuan 2020-10-29
+	struct sb_op *s_op;			//added by mingxuan 2020-10-29
+	int used;                   //added by ran
+};
+
+typedef struct vfs_inode{
+	u32 i_no;
+	struct super_block* i_sb;
+	u32 i_count;
+	u32 i_size;
+	int i_type;
+	u32 i_mnt_index;
+	struct vfs* i_fs;
+	void* private;
+	struct vfs_inode* lru_nxt;
+	struct vfs_inode* lru_pre;
+	struct spinlock lock;
+}vfs_inode;
+
+typedef struct vfs_dentry{
+	char d_name[32];
+	struct vfs_inode* d_inode;
+	struct vfs_dentry* d_nxt;
+	struct vfs_dentry* d_pre;
+	struct vfs_dentry* d_subdirs;
+}vfs_dentry;
+
+PUBLIC int sys_open();
+PUBLIC int sys_close();
+PUBLIC int sys_read();
+PUBLIC int sys_write();
+PUBLIC int sys_lseek();
+PUBLIC int sys_unlink();
+PUBLIC int sys_create();
+PUBLIC int sys_delete();
+PUBLIC int sys_opendir();
+PUBLIC int sys_createdir();
+PUBLIC int sys_deletedir();
+PUBLIC int sys_readdir();
+PUBLIC int sys_chdir(); //added by ran
+PUBLIC int sys_getcwd(); //added by ran
+
+PUBLIC int do_vopen(const char *path, int flags);
+PUBLIC int do_vclose(int fd);
+PUBLIC int do_vread(int fd, char *buf, int count);
+PUBLIC int do_vwrite(int fd, const char *buf, int count);
+PUBLIC int do_vunlink(const char *path);
+PUBLIC int do_vlseek(int fd, int offset, int whence);
+PUBLIC int do_vcreate(char *pathname);
+PUBLIC int do_vdelete(char *path);
+PUBLIC int do_vopendir(char *dirname);
+PUBLIC int do_vcreatedir(char *dirname);
+PUBLIC int do_vdeletedir(char *dirname);
+PUBLIC int do_vchdir(const char *path); //added by ran
+//PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
+PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
+
+PUBLIC int set_vfstable(u32 device, char *target);
+PUBLIC struct vfs* vfs_alloc_vfs_entity();
+PUBLIC int get_index(char path[]);
+PUBLIC void init_vfs();
+int sys_CreateFile();
+int sys_DeleteFile();
+int sys_OpenFile();
+int sys_CloseFile();
+int sys_WriteFile();
+int sys_ReadFile();
+int sys_OpenDir();
+int sys_CreateDir();
+int sys_DeleteDir();
+int sys_ListDir();
+
 #endif

@@ -114,18 +114,18 @@ PUBLIC void init_fileop_table(){
     // f_op_table[2].ReadDir = ReadDir;
 
     // table[2] for fat32 //added by ran
-    f_op_table[2].create = create_adapter;
-    f_op_table[2].delete = delete_adapter;
-    f_op_table[2].open = open_adapter;
-    f_op_table[2].close = close_adapter;
-    f_op_table[2].write = write_adapter;
-    f_op_table[2].read = read_adapter;
-    f_op_table[2].lseek = LSeek;
-    f_op_table[2].opendir = opendir_adapter;
-    f_op_table[2].createdir = createdir_adapter;
-    f_op_table[2].deletedir = deletedir_adapter;
-    f_op_table[2].readdir = readdir_adapter;
-    f_op_table[2].chdir = chdir_adapter;
+    // f_op_table[2].create = create_adapter;
+    // f_op_table[2].delete = delete_adapter;
+    // f_op_table[2].open = open_adapter;
+    // f_op_table[2].close = close_adapter;
+    // f_op_table[2].write = write_adapter;
+    // f_op_table[2].read = read_adapter;
+    // f_op_table[2].lseek = LSeek;
+    // f_op_table[2].opendir = opendir_adapter;
+    // f_op_table[2].createdir = createdir_adapter;
+    // f_op_table[2].deletedir = deletedir_adapter;
+    // f_op_table[2].readdir = readdir_adapter;
+    // f_op_table[2].chdir = chdir_adapter;
     //f_op_table[2].tag = 1;
 
 }
@@ -269,7 +269,7 @@ PUBLIC int set_vfstable(u32 device, char *target)
     }
     else if(fs_type== FAT32_TYPE)
     {
-        sb_index = init_fat32fs(device);
+        // sb_index = init_fat32fs(device);
         pvfs->op = &f_op_table[2];
         pvfs->s_op = &sb_op_table[1];
     }

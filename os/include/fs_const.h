@@ -81,34 +81,10 @@
 #define	MAX_PRIM			(MAX_DRIVES * NR_PRIM_PER_DRIVE - 1)	// MAX_PRIM = 2 * 4 - 1 = 9
 #define	MAX_SUBPARTITIONS	(NR_SUB_PER_DRIVE * MAX_DRIVES) 		// MAX_SUBPARTITIONS = 64 * 2 = 128
 
-/*	name of drives	*/
-//	added by mingxuan 2020-10-27
-#define PRIMARY_MASTER		0x0
-#define PRIMARY_SLAVE		0x1
-#define SECONDARY_MASTER	0x2
-#define SECONDARY_SLAVE		0x3
-
-// /* device numbers of hard disk */
-// #define MINOR_hd0		0x0	// added by mingxuan 2020-10-9
-// #define MINOR_hd1		0x1	// added by mingxuan 2020-10-12
-// #define MINOR_hd2		0x2	// added by mingxuan 2020-10-12
-
-// #define	MINOR_hd1a		0x10
-// #define	MINOR_hd2a		(MINOR_hd1a + NR_SUB_PER_PART) // MINOR_hd2a = 16 + 16
-
-// //#define MAJOR_FAT		0x3		//added by mingxuan 2019-5-17
-// #define MAJOR_FAT		0x4		//modified by mingxuan 2020-10-22	
-
-// //#define	MINOR_BOOT		MINOR_hd2a	/// added by zcr
-// #define	MINOR_BOOT		MINOR_hd2		//modified by mingxuan 2020-10-12
-
-// //#define	ROOT_DEV		MAKE_DEV(DEV_HD, MINOR_BOOT)	//deleted by mingxuan 2020-10-27
-// //#define FAT_DEV			MAKE_DEV(DEV_HD, MAJOR_FAT)	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-27
-
 #define	P_PRIMARY	0
 #define	P_EXTENDED	1
 
-#define ORANGES_PART	0x99	/* Orange'S partition */
+// #define ORANGES_PART	0x99	/* Orange'S partition */
 #define NO_PART		0x00	/* unused entry */
 #define EXT_PART	0x05	/* extended partition */
 
@@ -132,13 +108,13 @@
 #define	is_special(m)	((((m) & I_TYPE_MASK) == I_BLOCK_SPECIAL) ||	\
 			 (((m) & I_TYPE_MASK) == I_CHAR_SPECIAL))
 
-#define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
+// #define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
 //add by sundong 2023.5.26
 #define NR_DEFAULT_FILE_BLOCKS	256
 
 //deleted by xw, 18/12/27
 //#define FSBUF_SIZE	0x100000	//added by xw, 18/6/17
-#define FSBUF_SIZE	0x100000		//added by mingxuan 2019-5-17
+// #define FSBUF_SIZE	0x100000		//added by mingxuan 2019-5-17
 
 
 #define	IDE_BASE		0
