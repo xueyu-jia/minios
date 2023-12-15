@@ -7,6 +7,7 @@
 
 #include "const.h"
 // #include "string.h"
+#include "time.h"
 #include "global.h"
 #include "buddy.h"
 #include "kmalloc.h"
@@ -420,6 +421,21 @@ PUBLIC u32 sys_total_mem_size()
 	return do_total_mem_size();
 }
 
+PUBLIC int kern_get_time(struct tm* time)
+{
+	get_rtc_datetime(time);
+	return 0;
+}
+
+PUBLIC int do_get_time(struct tm* time)
+{
+	return kern_get_time(time);
+}
+
+PUBLIC int sys_get_time()
+{
+	return do_get_time((struct tm*)get_arg(1));
+}
 #define TEST_FOR_SEMAPHORE
 #ifdef TEST_FOR_SEMAPHORE
 // #define TEST1

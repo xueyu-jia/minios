@@ -185,6 +185,7 @@ typedef struct s_tss {
 #define	XT_WINI_IRQ	5	/* xt winchester */
 #define	FLOPPY_IRQ	6	/* floppy disk */
 #define	PRINTER_IRQ	7
+#define RTC_IRQ 8 /* realtime clock */
 #define	AT_WINI_IRQ	14	/* at winchester */
 #define	MOUSE_IRQ 12    //added by mingxuan 2019-5-19
 /* 宏 */

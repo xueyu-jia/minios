@@ -14,6 +14,7 @@
 // #include "spinlock.h"
 #include "tty.h"
 #include "proc.h"
+#include "time.h"
 
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
@@ -96,7 +97,7 @@ PUBLIC void spurious_irq(int irq);
 
 /* clock.c */
 PUBLIC void clock_handler(int irq);
-
+void get_rtc_datetime(struct tm *time);
 /***************************************************************
 * 以下是系统调用相关函数的声明
 ****************************************************************/
@@ -351,4 +352,5 @@ void *kmalloc(u32 size);
 int kfree(u32 object);
 PUBLIC int sys_init_char_dev();
 
+PUBLIC int sys_get_time();
 #endif

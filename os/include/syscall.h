@@ -72,6 +72,7 @@
 #define _NR_pthread_join                61
 
 #define _NR_init_char_dev				62
+#define _NR_get_time					63
 #define INT_VECTOR_SYS_CALL             0x90
 
 /* 无参数的系统调用 */

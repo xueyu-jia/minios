@@ -25,5 +25,6 @@
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
+-rtc base=localtime \
 -boot menu=on \
 -monitor stdio

@@ -42,12 +42,3 @@ PUBLIC void init_8259A()
 	}
 }
 
-
-/*======================================================================*
-                           put_irq_handler
- *======================================================================*/
-PUBLIC void put_irq_handler(int irq, irq_handler handler)
-{
-	disable_irq(irq);
-	irq_table[irq] = handler;
-}

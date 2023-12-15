@@ -280,3 +280,7 @@ int pthread_join(pthread_t thread, void **retval){
 int init_char_dev(int drive){
 	return _syscall1(_NR_init_char_dev,drive);
 }
+
+void get_time(struct tm* time){
+	return _syscall1(_NR_get_time, time);
+}

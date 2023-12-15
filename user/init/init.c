@@ -306,7 +306,8 @@ void main(int arg,char *argv[])
 // added by rzr, pgw, 2020
 
 #include "util.h"
-
+#include "time.h"
+#include "syscall.h"
 #define O_CREAT 1
 #define O_RDWR 2
 #define PATH_DEL '\\'
@@ -763,7 +764,11 @@ void main(int arg,char *argv[])
 	int stderr= open("/dev/tty0",O_RDWR);
 
 	printf("init:toatal_mem_size=%x\n",total_mem_size());
-
+	struct tm time;
+	get_time(&time);
+	// time.tm_hour = (time.tm_hour + 8)%24;
+	printf("time:%d-%02d-%02d %02d:%02d:%02d\n", 
+	time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
 	//char filename[30] = "fat0/shell_0.bin";
 	//printf("hello world!\n");
 	if(0!=fork())

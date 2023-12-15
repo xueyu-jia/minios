@@ -30,12 +30,6 @@ PUBLIC char *itoa(int num, char *str, int radix)
 	else
 		unum = (unsigned)num; // 若是num为正，直接赋值给unum
 
-	if(radix == 16){
-		str[i++] = '0';
-		str[i++] = 'X';
-		k = 2;
-	}
-
 	// 转换部分，注意转换后是逆序的
 	do
 	{

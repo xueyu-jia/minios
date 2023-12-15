@@ -250,3 +250,7 @@ void pthread_exit(void *retval){
 int pthread_join(pthread_t thread, void **retval){
 	return _syscall2(_NR_pthread_join, thread, retval);
 }
+
+int get_time(struct tm* time){
+	return _syscall1(_NR_get_time, time);
+}

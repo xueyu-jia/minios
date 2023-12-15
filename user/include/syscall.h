@@ -3,6 +3,7 @@
 
 #include "type.h"
 #include "const.h"
+#include "time.h"
 #include "../include/signal.h"
 #include "../include/ushm.h"
 #include "../include/msg.h"
@@ -70,6 +71,7 @@
 #define _NR_init_block_dev				59
 #define _NR_pthread_exit                60
 #define _NR_pthread_join                61
+#define _NR_get_time					63
 
 #define INT_VECTOR_SYS_CALL             0x90
 
@@ -207,5 +209,6 @@ int umount(const char *target);
 int init_block_dev(int drive);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
+int get_time(struct tm* time);
 
 #endif
