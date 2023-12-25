@@ -217,14 +217,14 @@ csinit:		; “这个跳转指令强制使用刚刚初始化的结构”——<<O
 	out	INT_M_CTLMASK, al	; /
 
 	cmp	    dword [k_reenter], 0			;Added by xw, 18/4/19
-	jnz		restart_restore
+	jnz		restore
 ;	ret
 ;restart_int:
 ;	mov		eax, [p_proc_current]
 ;	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
     pop     esp
 	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
-	jnz		restart_restore
+	jnz		restore
 	call	sched							;save current process's context, invoke schedule(), and then
 											;switch to the chosen process's kernel stack and restore it's context
 											;added by xw, 18/4/19
@@ -300,14 +300,14 @@ hwint07:		; Interrupt routine for irq 7 (printer)
 	out	INT_S_CTLMASK, al		; /
 
 	cmp	    dword [k_reenter], 0			;Added by xw, 18/4/19
-	jnz		restart_restore
+	jnz		restore
 ;	ret
 ;restart_int:
 ;	mov		eax, [p_proc_current]
 ;	mov 	esp, [eax + ESP_SAVE_INT]		;switch back to the kernel stack from the irq-stack
 	pop     esp
 	cmp	    dword [kernel_initial], 0		;added by xw, 18/6/10
-	jnz		restart_restore
+	jnz		restore
 	call	sched							;save current process's context, invoke schedule(), and then
 											;switch to the chosen process's kernel stack and restore it's context
 											;added by xw, 18/4/19
@@ -650,7 +650,7 @@ save_syscall:			;can't modify EAX, for it contains syscall number
         push    fs      ;  |
         push    gs      ; /
 		mov		edx,  [p_proc_current]				;xw
-		mov		dword [edx + ESP_SAVE_SYSCALL], esp	;xw save esp position in the kernel-stack of the process
+		mov		dword [edx + ESP_SAVE_INT], esp	;xw save esp position in the kernel-stack of the process
 ;		mov		dword [edx + ESP_SAVE_SYSCALL_ARG], esp	;added by zhenhao 2023.3.5
 ;		or		dword [edx + SAVE_TYPE], 4			;set 3rd-bit of save_type, added by xw, 17/12/04
         mov     dx, ss
@@ -715,7 +715,7 @@ renew_env:
 		lea		ebx, [eax + INIT_STACK_SIZE]
 		mov		dword [tss + TSS3_S_SP0], ebx	;renew esp0
 
-		call 	process_signal		;added by mingxuan 2021-2-28
+		;call 	process_signal		;added by mingxuan 2021-2-28
 
 		ret
 
@@ -750,14 +750,14 @@ sys_call:
 	; add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
 	cli
 	mov		edx, [p_proc_current]
-	mov 	esi, [edx + ESP_SAVE_SYSCALL]
+	mov 	esi, [edx + ESP_SAVE_INT]
 	mov     [esi + EAXREG - P_STACKBASE], eax	;the return value of C function is in EAX
 	;ret
 ;restart_syscall:
 ;	sub 	ebx, 4							;ebx gets its value from judge
 ;	mov		dword [eax + SAVE_TYPE], ebx	;clear 3rd-bit of save_type
 	mov		eax, [p_proc_current]
-	mov 	esp, [eax + ESP_SAVE_SYSCALL]	;xw	restore esp position
+	mov 	esp, [eax + ESP_SAVE_INT]	;xw	restore esp position
 	call	sched							;added by xw, 18/4/26
 	jmp 	restart_restore
 ; ====================================================================================
@@ -792,6 +792,8 @@ sys_call:
 ;xw	restart_reenter:
 restart_restore:
 ;	dec		dword [k_reenter]
+	call 	process_signal
+restore:
 	pop		gs
 	pop		fs
 	pop		es
