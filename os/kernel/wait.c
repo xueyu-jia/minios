@@ -53,7 +53,9 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 				child_pid = proc_table[p_proc_current->task.info.child_process[i]].task.pid;
 
 				//exit status通过*status传递
-				*status = p_proc_current->task.child_exit_status;
+				if(status != NULL){
+					*status = p_proc_current->task.child_exit_status;
+				}
 
 
 				//释放子进程的进程表项

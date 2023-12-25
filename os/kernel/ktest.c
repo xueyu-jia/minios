@@ -8,8 +8,11 @@
 #include "const.h"
 #include "proto.h"
 #include "fs.h"
+#include "ksignal.h"
 
-
+void sigint(){
+	exit(-1);
+}
 //modified by mingxuan 2021-4-2
 
 /*======================================================================*

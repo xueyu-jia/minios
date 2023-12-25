@@ -13,5 +13,5 @@ void main(int argc,char *argv[])
 		printf(argv[i]);
 		printf("\n");
 	}
-	while(1);
+	// while(1);
 }

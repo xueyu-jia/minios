@@ -13,8 +13,8 @@ global _start
 
 _start:
 	;push 	eax
-	push 	edx
-	push	ecx
+	; push 	edx
+	; push	ecx
 	call	main
 	
 	hlt

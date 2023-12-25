@@ -156,12 +156,3 @@ PUBLIC void disp_Elf(Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr Echo_Phdr[])
 	return;
 }
 
-
-
-
-
-
-
-
-
-

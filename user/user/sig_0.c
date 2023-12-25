@@ -1,9 +1,9 @@
 //#include "stdio.h"
 //#include <signal/signal.h>
-#include "../include/stdio.h"
-#include "../include/signal.h"
+#include "stdio.h"
+#include "signal.h"
 
-void handler(int sig, uint32_t arg) {
+void handler(int sig, u32 arg) {
     printf("hanlder %d %d", sig, arg);
     for(int i = 0; i < 100; i++) {
         ;

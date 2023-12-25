@@ -4,6 +4,7 @@
 
 #include "type.h"
 #include "const.h"
+#include "string.h"
 #include "elf.h"
 #include "vfs.h"//added by xyx && wjh 2021-12-31
 #include "buddy.h"// added by wang 2021.8.27
@@ -131,54 +132,68 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	/*************获取elf信息**************/
 	read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
 
-    /*    added by xyx&&wjh   2021-12-31  */
-    char **p = argv;
+    /*    added by xyx&&wjh   2021-12-31  */ //目前这个execve传参算是完全搞不懂了，自己写一个吧
+    // char **p = argv;
 	
-	char arg_stack[num_4B];
-	int stack_len = 0;
+	// char arg_stack[num_4B];
+	// int stack_len = 0;
 
-	if (p != NULL)
-	{
-		while (*p++)
-		{
-			stack_len += sizeof(char *);
-		}
+	// if (p != NULL)
+	// {
+	// 	while (*p++)
+	// 	{
+	// 		stack_len += sizeof(char *);
+	// 	}
 
-		//disp_int(stack_len,0x71);
+	// 	//disp_int(stack_len,0x71);
 
-		*((int*)(&arg_stack[stack_len])) = 0;
-		stack_len += sizeof(char*);
-		//disp_int(stack_len,0x74);
+	// 	*((int*)(&arg_stack[stack_len])) = 0;
+	// 	stack_len += sizeof(char*);
+	// 	//disp_int(stack_len,0x74);
 		
-		int tmp;
-		char **q = (char**)arg_stack;
-		for (p = argv; *p != 0; p++) {
-			*q++ = &arg_stack[stack_len];
-			strcpy(&arg_stack[stack_len], *p);
-			tmp = strlen(*p);
-			//disp_int(tmp,0x74);
-			stack_len += tmp;
+	// 	int tmp;
+	// 	char **q = (char**)arg_stack;
+	// 	for (p = argv; *p != 0; p++) {
+	// 		*q++ = &arg_stack[stack_len];
+	// 		strcpy(&arg_stack[stack_len], *p);
+	// 		tmp = strlen(*p);
+	// 		//disp_int(tmp,0x74);
+	// 		stack_len += tmp;
 
-			arg_stack[stack_len] = 0;
-			stack_len++;
-			//disp_int(stack_len,0x74);
-		}
-		u8* orig_stack = (u8*)(ArgLinBase);
+	// 		arg_stack[stack_len] = 0;
+	// 		stack_len++;
+	// 		//disp_int(stack_len,0x74);
+	// 	}
+	// 	u8* orig_stack = (u8*)(ArgLinBase);
 
-		//disp_int(orig_stack);
+	// 	//disp_int(orig_stack);
 
-		int delta = (int)(void*)arg_stack - (int)orig_stack;
-		//disp_int(delta, 0x71);
-		int argc = 0;
-		if (stack_len) {	// has args
-			char **q = (char**)arg_stack;
-			for (; *q != 0; q++,argc++)
-				*q -= delta;
-		}
+	// 	int delta = (int)(void*)arg_stack - (int)orig_stack;
+	// 	//disp_int(delta, 0x71);
+	// 	int argc = 0;
+	// 	if (stack_len) {	// has args
+	// 		char **q = (char**)arg_stack;
+	// 		for (; *q != 0; q++,argc++)
+	// 			*q -= delta;
+	// 	}
+	// }
+	// 处理参数 argc 放在 ebp + 4 (ArgLinBase); argv 放在 esp + 8
+	// err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+	int argc = 0, len = 0;
+	for(char** p = argv; p != 0 && *p != 0; p++){
+		argc++;
 	}
-
-	
-
+	char** args_base = (char**)(ArgLinBase + 4);
+	char* args_raw_base = ((char*)args_base) + num_4B * (argc + 1);
+	*(int*)(ArgLinBase-4) = argc;
+	*(char***)(ArgLinBase) = args_base;
+	for(char** p = argv; p != 0 && *p != 0; p++){
+		len = strlen(*p);
+		strcpy(args_raw_base, *p);
+		*(args_base++) = args_raw_base;
+		args_raw_base += len + 1;
+	}
+	*args_base = 0;
 	
      /*   end added   */
 
@@ -490,7 +505,7 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Ech
 		{ //.text .rodata .eh_frame
 
 			//added by mingxuan 2020-12-25
-			if (p_proc_current->task.pid > 0x4) //前4个是系统进程,pid大于4的是用户进程
+			if (p_proc_current->task.pid >= NR_K_PCBS) //前4个是系统进程,pid大于4的是用户进程 此处应使用宏，硬编码之后进程数都变了也找不到位置改
 			{
 				//清空子进程对代码段的映射的所有页表项
 				//modified by mingxuan 2021-1-4
@@ -502,10 +517,6 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Ech
 			}
 
 			exec_elfcpy(fd, &Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); //进程代码段
-
-			//deleted by mingxuan 2021-1-30
-			//p_proc_current->task.memmap.text_lin_base = Echo_Phdr[ph_num].p_vaddr;
-			//p_proc_current->task.memmap.text_lin_limit = Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
 
 			//modified by mingxuan 2021-1-30
 			//如果存在多个段(.text .rodata .eh_frame),text_lin_base一定是最低端地址
@@ -551,14 +562,6 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.ldts[0].attr1 = DA_C | PRIVILEGE_USER << 5;   //特权级修改为用户级
 	p_proc_current->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_USER << 5; //特权级修改为用户级
 
-	/*p_proc_current->task.regs.cs = ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-	p_proc_current->task.regs.ds = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-	p_proc_current->task.regs.es = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-	p_proc_current->task.regs.fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-	p_proc_current->task.regs.ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-	p_proc_current->task.regs.gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
-	p_proc_current->task.regs.eflags = 0x202;   */ /* IF=1,bit2 永远是1 */
-
 	/***************copy registers data****************************/
 	//copy registers data to the bottom of the new kernel stack
 	//added by xw, 17/12/11
@@ -571,7 +574,7 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.esp_save_int->fs = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.esp_save_int->ss = ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
 	p_proc_current->task.esp_save_int->gs = (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
-	p_proc_current->task.esp_save_int->eflags = 0x202;
+	p_proc_current->task.esp_save_int->eflags = 0x202; /* IF=1,bit2 永远是1 */
 	//memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 
 	//进程表线性地址布局部分，text、data已经在前面初始化了

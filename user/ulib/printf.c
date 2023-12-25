@@ -6,14 +6,14 @@
  * @date   Wed May 14 15:50:08 2008
  *****************************************************************************
  *****************************************************************************/
-/*
+
 #include "type.h"
 #include "stdio.h"
 #include "const.h"
-*/
-#include "../include/type.h"
-#include "../include/stdio.h"
-#include "../include/const.h"
+
+// #include "../include/type.h"
+// #include "../include/stdio.h"
+// #include "../include/const.h"
 
 
 int tty;

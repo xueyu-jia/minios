@@ -29,7 +29,7 @@
 #define MAKE_COLOR(x,y)	((x<<4) | y) /* MAKE_COLOR(Background,Foreground) */
 
 /* EXTERN */
-#define	EXTERN	extern	/* EXTERN is defined as extern except in global.c */
+// #define	EXTERN	extern	/* EXTERN is defined as extern except in global.c */
 
 /* 函数类型 */
 #define	PUBLIC		/* PUBLIC is the opposite of PRIVATE */

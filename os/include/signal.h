@@ -4,7 +4,7 @@
 
 #ifndef SIGNAL_H
 #define SIGNAL_H 
-
+#define SIGINT 2
 //#include <stdint.h>
 //#include <stdbool.h>
 #include "type.h"

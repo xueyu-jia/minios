@@ -53,7 +53,7 @@
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
 #define NR_TASKS	2	//task_tty + hd_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
-
+#define PID_INIT NR_K_PCBS
 //~xw
 
 #define NR_CPUS		1		//numbers of cpu. added by xw, 18/6/1

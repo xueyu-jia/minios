@@ -340,7 +340,7 @@ PRIVATE int get_fs_len(const char *path) {
     
 
 } */
-//PRIVATE int get_index(char path[]){
+
 int get_index(char path[]){
 
   int pathlen = strlen(path);

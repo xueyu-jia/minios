@@ -54,27 +54,6 @@ PUBLIC void init_screen(TTY* tty)
 		//tty->console->cursor = disp_pos / 2;
 		out_char(tty->console, *p == '?' ? nr_tty + '0' : *p);
 	}
-
-
-	/*
-	if (nr_tty == 0) {
-		tty->console->cursor = disp_pos / 2;
-		//disp_pos = 0;
-	}
-	else {
-		const char prompt[] = "[TTY #?]\n";
-
-		const char * p = prompt;
-		for (; *p; p++){
-			//disp_str("a");
-			//tty->console->cursor = disp_pos / 2;
-			out_char(tty->console, *p == '?' ? nr_tty + '0' : *p);
-
-		}
-
-	}
-	*/
-	
 	
 	set_cursor(tty->console->cursor);
 }
@@ -108,18 +87,6 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	 */
 	int cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
 	int cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
-	
-	/*
-	disp_pos =  con->cursor * 2;
-	//char s[2] = {ch,'\0'};
-	//disp_str(s);
-	write_char(ch);
-	//disp_pos+=2;
-	con->cursor+=1;
-	*/
-
-
-	
 	
 	switch(ch) {
 	case '\n':
@@ -166,7 +133,9 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 
 		clear_screen(con->cursor, SCR_WIDTH);
 	}
-
+	if(con == console_table){
+		disp_pos = con->cursor*2;
+	}
 	flush(con);
 
 	enable_int();

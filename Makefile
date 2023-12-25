@@ -218,51 +218,54 @@ build_fs:
 	sudo $(ORANGE_CP)  user/init/init.bin $(ROOT_FS_PART)/init.bin
 
 # 在此处添加用户程序的文件
-	sudo $(ORANGE_CP)  user/user/shell_0.bin $(ROOT_FS_PART)/shell_0.bin
-	sudo $(ORANGE_CP)  user/user/shell_1.bin $(ROOT_FS_PART)/shell_1.bin
-	sudo $(ORANGE_CP)  user/user/shell_2.bin $(ROOT_FS_PART)/shell_2.bin
+	$(foreach USER_TEST,$(ORANGESUSER),\
+		sudo $(ORANGE_CP)  $(USER_TEST) $(ROOT_FS_PART)/$(notdir $(USER_TEST));\
+	)
+# 	sudo $(ORANGE_CP)  user/user/shell_0.bin $(ROOT_FS_PART)/shell_0.bin
+# 	sudo $(ORANGE_CP)  user/user/shell_1.bin $(ROOT_FS_PART)/shell_1.bin
+# 	sudo $(ORANGE_CP)  user/user/shell_2.bin $(ROOT_FS_PART)/shell_2.bin
 
-	sudo $(ORANGE_CP)  user/user/test_0.bin $(ROOT_FS_PART)/test_0.bin
-	sudo $(ORANGE_CP)  user/user/test_1.bin $(ROOT_FS_PART)/test_1.bin
-	sudo $(ORANGE_CP)  user/user/test_2.bin $(ROOT_FS_PART)/test_2.bin	# added by mingxuan 2021-2-28
-	sudo $(ORANGE_CP)  user/user/test_3.bin $(ROOT_FS_PART)/test_3.bin
-	sudo $(ORANGE_CP)  user/user/test_4.bin $(ROOT_FS_PART)/test_4.bin
-	sudo $(ORANGE_CP)  user/user/test_5.bin $(ROOT_FS_PART)/test_5.bin
-	sudo $(ORANGE_CP)  user/user/test_6.bin $(ROOT_FS_PART)/test_6.bin
-	sudo $(ORANGE_CP)  user/user/test_7.bin $(ROOT_FS_PART)/test_7.bin
+# 	sudo $(ORANGE_CP)  user/user/test_0.bin $(ROOT_FS_PART)/test_0.bin
+# 	sudo $(ORANGE_CP)  user/user/test_1.bin $(ROOT_FS_PART)/test_1.bin
+# 	sudo $(ORANGE_CP)  user/user/test_2.bin $(ROOT_FS_PART)/test_2.bin	# added by mingxuan 2021-2-28
+# 	sudo $(ORANGE_CP)  user/user/test_3.bin $(ROOT_FS_PART)/test_3.bin
+# 	sudo $(ORANGE_CP)  user/user/test_4.bin $(ROOT_FS_PART)/test_4.bin
+# 	sudo $(ORANGE_CP)  user/user/test_5.bin $(ROOT_FS_PART)/test_5.bin
+# 	sudo $(ORANGE_CP)  user/user/test_6.bin $(ROOT_FS_PART)/test_6.bin
+# 	sudo $(ORANGE_CP)  user/user/test_7.bin $(ROOT_FS_PART)/test_7.bin
 
-	sudo $(ORANGE_CP)  user/user/ptest1.bin $(ROOT_FS_PART)/ptest1.bin
-	sudo $(ORANGE_CP)  user/user/ptest2.bin $(ROOT_FS_PART)/ptest2.bin
-	sudo $(ORANGE_CP)  user/user/ptest3.bin $(ROOT_FS_PART)/ptest3.bin
-	sudo $(ORANGE_CP)  user/user/ptest4.bin $(ROOT_FS_PART)/ptest4.bin
-	sudo $(ORANGE_CP)  user/user/ptest5.bin $(ROOT_FS_PART)/ptest5.bin
-	sudo $(ORANGE_CP)  user/user/ptest6.bin $(ROOT_FS_PART)/ptest6.bin
-	sudo $(ORANGE_CP)  user/user/ptest7.bin $(ROOT_FS_PART)/ptest7.bin
-	sudo $(ORANGE_CP)  user/user/ptest8.bin $(ROOT_FS_PART)/ptest8.bin
-	sudo $(ORANGE_CP)  user/user/ptest9.bin $(ROOT_FS_PART)/ptest9.bin
-	sudo $(ORANGE_CP)  user/user/ptest10.bin $(ROOT_FS_PART)/ptest10.bin
-	sudo $(ORANGE_CP)  user/user/ptest11.bin $(ROOT_FS_PART)/ptest11.bin
-	sudo $(ORANGE_CP)  user/user/ptest12.bin $(ROOT_FS_PART)/ptest12.bin
-	sudo $(ORANGE_CP)  user/user/ptest13.bin $(ROOT_FS_PART)/ptest13.bin
-	sudo $(ORANGE_CP)  user/user/fstest.bin $(ROOT_FS_PART)/fstest.bin
-# added by dzq 2023-4-12
-	sudo $(ORANGE_CP)  user/user/t_exit01.bin $(ROOT_FS_PART)/t_exit01.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest1.bin $(ROOT_FS_PART)/ptest1.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest2.bin $(ROOT_FS_PART)/ptest2.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest3.bin $(ROOT_FS_PART)/ptest3.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest4.bin $(ROOT_FS_PART)/ptest4.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest5.bin $(ROOT_FS_PART)/ptest5.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest6.bin $(ROOT_FS_PART)/ptest6.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest7.bin $(ROOT_FS_PART)/ptest7.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest8.bin $(ROOT_FS_PART)/ptest8.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest9.bin $(ROOT_FS_PART)/ptest9.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest10.bin $(ROOT_FS_PART)/ptest10.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest11.bin $(ROOT_FS_PART)/ptest11.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest12.bin $(ROOT_FS_PART)/ptest12.bin
+# 	sudo $(ORANGE_CP)  user/user/ptest13.bin $(ROOT_FS_PART)/ptest13.bin
+# 	sudo $(ORANGE_CP)  user/user/fstest.bin $(ROOT_FS_PART)/fstest.bin
+# # added by dzq 2023-4-12
+# 	sudo $(ORANGE_CP)  user/user/t_exit01.bin $(ROOT_FS_PART)/t_exit01.bin
 
 
-# added by dzq
-	sudo $(ORANGE_CP)  user/user/t_pthr01.bin $(ROOT_FS_PART)/t_pthr01.bin
-	sudo $(ORANGE_CP)  user/user/t_pthr02.bin $(ROOT_FS_PART)/t_pthr02.bin
-	sudo $(ORANGE_CP)  user/user/t_pthr03.bin $(ROOT_FS_PART)/t_pthr03.bin
+# # added by dzq
+# 	sudo $(ORANGE_CP)  user/user/t_pthr01.bin $(ROOT_FS_PART)/t_pthr01.bin
+# 	sudo $(ORANGE_CP)  user/user/t_pthr02.bin $(ROOT_FS_PART)/t_pthr02.bin
+# 	sudo $(ORANGE_CP)  user/user/t_pthr03.bin $(ROOT_FS_PART)/t_pthr03.bin
 
-# added by yingchi 2022.01.05
-#	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
+# # added by yingchi 2022.01.05
+# #	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
 	
-	# added by mingxuan 2021-2-28
-	sudo $(ORANGE_CP)  user/user/sig_0.bin $(ROOT_FS_PART)/sig_0.bin
-	sudo $(ORANGE_CP)  user/user/sig_1.bin $(ROOT_FS_PART)/sig_1.bin
+# 	# added by mingxuan 2021-2-28
+# 	sudo $(ORANGE_CP)  user/user/sig_0.bin $(ROOT_FS_PART)/sig_0.bin
+# 	sudo $(ORANGE_CP)  user/user/sig_1.bin $(ROOT_FS_PART)/sig_1.bin
 
-	sudo $(ORANGE_CP)  user/user/sema1.bin $(ROOT_FS_PART)/sema1.bin
-	sudo $(ORANGE_CP)  user/user/rwtest1.bin $(ROOT_FS_PART)/rwtest1.bin
+# 	sudo $(ORANGE_CP)  user/user/sema1.bin $(ROOT_FS_PART)/sema1.bin
+# 	sudo $(ORANGE_CP)  user/user/rwtest1.bin $(ROOT_FS_PART)/rwtest1.bin
 
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo umount $(BOOT_PART_MOUNTPOINT) ; \

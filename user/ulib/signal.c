@@ -3,8 +3,8 @@
 #include <stddef.h>
 #include <stdarg.h>
 */
-#include "../include/signal.h"
-#include "../include/syscall.h"
+#include "signal.h"
+#include "syscall.h"
 #include <stddef.h>
 #include <stdarg.h>
 
@@ -27,7 +27,7 @@ int kill(int pid, int sig, ...) {
     Sigaction sigaction = {
         .sig = sig,             //信号的编号
         .handler = NULL,        //handler函数指针
-        .arg = *((uint32_t*)ap) //传给 handler 的参数
+        .arg = *((u32*)ap) //传给 handler 的参数
     };
     return sigsend(pid, &sigaction);
 }

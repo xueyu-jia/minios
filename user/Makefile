@@ -99,18 +99,6 @@ user/init/initstart.o: user/init/initstart.asm
 user/ulib/ulib.a:  $(OBJSULIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSULIB)
 
-# stringasm.o	added by mingxuan 2019-5-19
-user/ulib/stringasm.o: user/ulib/string.asm
-	$(ASM) $(ASMKFLAGS) -o $@ $<
-
-# stringc.o	added by mingxuan 2019-5-19
-user/ulib/stringc.o:	user/ulib/string.c
-	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
-
-# string.o	added by mingxuan 2019-5-19
-user/ulib/string.o : user/ulib/stringasm.o user/ulib/stringc.o
-	$(LD) -m elf_i386 -r -o $@ $<
-
 user/ulib/%.o: user/ulib/%.c
 	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
 

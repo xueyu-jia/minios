@@ -3,7 +3,6 @@
 #ifndef KSIGNAL_H
 #define KSIGNAL_H
 
-//#include <signal/signal.h>
 #include "signal.h" //modified by mingxuan 2021-4-2
 
 int sys_signal();

@@ -2,6 +2,7 @@
 //#include "buddy.h"
 #include "buddy.h" //added by mingxuan 2021-3-8
 #include "shm.h"
+#include "proto.h"
 /*
 u32 MemInfo[256] = {0};			//存放FMIBuff后1k内容
 void init()
