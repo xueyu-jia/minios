@@ -13,7 +13,7 @@
 
 #ifndef	_ORANGES_CONSOLE_H_
 #define	_ORANGES_CONSOLE_H_
-
+#include "spinlock.h"
 
 /* CONSOLE */
 typedef struct s_console
@@ -33,9 +33,10 @@ typedef struct s_console
 #define SCR_SIZE		(80 * 25)
 #define SCR_WIDTH		 80
 
-#define DEFAULT_CHAR_COLOR	(MAKE_COLOR(BLACK, WHITE))
+#define DEFAULT_CHAR_COLOR	(MAKE_COLOR(BLACK, WHITE) | BRIGHT)
 #define GRAY_CHAR		(MAKE_COLOR(BLACK, BLACK) | BRIGHT)
 #define RED_CHAR		(MAKE_COLOR(BLUE, RED) | BRIGHT)
 extern	int		disp_pos;
 extern  CONSOLE     console_table[];
+extern SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 #endif /* _ORANGES_CONSOLE_H_ */

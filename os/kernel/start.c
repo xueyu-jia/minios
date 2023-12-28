@@ -7,6 +7,8 @@
 
 #include "type.h"
 #include "const.h"
+#include "global.h"
+#include "proto.h"
 #include "protect.h"
 #include "proc.h"
 #include "buddy.h"
@@ -75,7 +77,7 @@ PUBLIC void init_gdt()
 
 	//显存描述符 //add by visual 2016.5.12
 	init_descriptor(&gdt[INDEX_VIDEO],
-					K_PHY2LIN(0x0B8000),
+					K_PHY2LIN(V_MEM_BASE), // fix: 硬编码修改为线性地址而没有对应更改console相应访问地址参数
 					0x0ffff,
 					DA_DRW | DA_DPL3);
 
@@ -113,6 +115,7 @@ PUBLIC void init_gdt()
  *======================================================================*/
 PUBLIC void cstart()
 {
+	kernel_initial = 1;
 	disp_str("\n\n\n\n\n\n-----\"cstart\" begins-----\n");
 
 	memory_init(); //moved from kernel_main, mingxuan 2021-8-25

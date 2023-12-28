@@ -48,6 +48,8 @@ PUBLIC int kernel_main()
     //gdb_sys_init();
 	int error;
 
+	// kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31 
+	// moved to cstart begin
 	//zcr added(清屏)
 	disp_pos = 0;
 	for (int i = 0; i < 25; i++)
@@ -61,7 +63,6 @@ PUBLIC int kernel_main()
     
 
 	disp_str("-----Kernel Initialization Begins-----\n");
-	kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 
 	//init();//内存管理模块的初始化  add by liang
 	//buddy_init();	//modified by mingxuan 2021-3-8	//moved to kernel_main, mingxuan 2021-8-25
@@ -157,9 +158,8 @@ PUBLIC int kernel_main()
 	//clear_kernel_pagepte_low(); //delete by sundong 2023.3.8 因为kernel重新初始化页表的时候就删掉了低端页表
 
 	// p_proc_current = proc_table;
-	p_proc_current = &proc_table[16];
+	p_proc_current = &proc_table[PID_INIT];
 	cr3_ready=p_proc_current->task.cr3;
-	kernel_initial = 0; //kernel initialization is done. added by xw, 18/5/31
 
 	//test_alloc_pages();      //test memory management functions    added by wang 2021.3.25
 	//test_free_pages();
@@ -170,6 +170,8 @@ PUBLIC int kernel_main()
 	disp_str("main:total_mem_size=");
 	disp_int(kern_total_mem_size());
 	disp_str("\n");
+	initlock(&video_mem_lock, "vmem");
+	kernel_initial = 0; //kernel initialization is done. added by xw, 18/5/31
 
 	//test_kbud_mem_size();
 	//test_kfree();

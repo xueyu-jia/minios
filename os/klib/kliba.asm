@@ -8,14 +8,14 @@
 %include "os/include/sconst.inc"	
 
 ; 导入全局变量
-extern	disp_pos
+; extern	disp_pos
 
 
 [SECTION .text]
 
 ; 导出函数
-global	disp_str
-global	disp_color_str
+; global	disp_str
+global	_disp_color_str
 global	out_byte
 global	out_dword
 ; global	out_mem_32
@@ -33,61 +33,63 @@ global  write_char	; added by mingxuan 2019-5-19
 ; ========================================================================
 ;                  void disp_str(char * info);
 ; ========================================================================
-disp_str:
-	push	ebp
-	mov	ebp, esp
-	pushad
+; disp_str:
+; 	push	ebp
+; 	mov	ebp, esp
+; 	pushad
 
 
-	mov	esi, [ebp + 8]	; pszInfo
-	mov	edi, [disp_pos]
-	mov	ah, 0Fh
-.1:
-	lodsb
-	test	al, al
-	jz	.2
-	cmp	al, 0Ah	; 是回车吗?
-	jnz	.3
-	push	eax
-	mov	eax, edi
-	mov	bl, 160
-	div	bl
-	and	eax, 0FFh
-	inc	eax
-	mov	bl, 160
-	mul	bl
-	mov	edi, eax
-	pop	eax
-	jmp	.1
-.3:
-;added by xw, 17/12/11
-;added begin
-	cmp edi, 1F40h
-	jnz .4
-	mov edi, 0FA0h
-.4:
-;added end
-	mov	[gs:edi], ax
-	add	edi, 2
-	jmp	.1
+; 	mov	esi, [ebp + 8]	; pszInfo
+; 	mov	edi, [disp_pos]
+; 	mov	ah, 0Fh
+; .1:
+; 	lodsb
+; 	test	al, al
+; 	jz	.2
+; 	cmp	al, 0Ah	; 是回车吗?
+; 	jnz	.3
+; 	push	eax
+; 	mov	eax, edi
+; 	mov	bl, 160
+; 	div	bl
+; 	and	eax, 0FFh
+; 	inc	eax
+; 	mov	bl, 160
+; 	mul	bl
+; 	mov	edi, eax
+; 	pop	eax
+; 	jmp	.1
+; .3:
+; ;added by xw, 17/12/11
+; ;added begin
+; 	cmp edi, 1F40h
+; 	jnz .4
+; 	mov edi, 0FA0h
+; .4:
+; ;added end
+; 	mov	[gs:edi], ax
+; 	add	edi, 2
+; 	jmp	.1
 
-.2:
-	mov	[disp_pos], edi
+; .2:
+; 	mov	[disp_pos], edi
 
-	popad
-	pop ebp
-	ret
+; 	popad
+; 	pop ebp
+; 	ret
 
 ; ========================================================================
-;                  void disp_color_str(char * info, int color);
+;                  int _disp_color_str(char * info, int color, int pos)=>new pos;
 ; ========================================================================
-disp_color_str:
+_disp_color_str:
 	push	ebp
 	mov	ebp, esp
-	pushad
+	push esi
+	push edi
+	push ebx
 
 	mov	esi, [ebp + 8]	; pszInfo
-	mov	edi, [disp_pos]
+	mov	edi, [ebp + 16] ; pos
 	mov	ah, [ebp + 12]	; color
 .1:
 	lodsb
@@ -107,14 +109,21 @@ disp_color_str:
 	pop	eax
 	jmp	.1
 .3:
+; ;added begin
+; 	cmp edi, 1F40h
+; 	jnz .4
+; 	mov edi, 0FA0h
+; .4:
 	mov	[gs:edi], ax
 	add	edi, 2
 	jmp	.1
 
 .2:
-	mov	[disp_pos], edi
+	mov	eax, edi
 
-	popad
+	pop ebx
+	pop edi
+	pop esi
 	pop ebp
 	ret
 
@@ -335,7 +344,7 @@ enable_int:
 ; added by zcr end
 
 ; ========================================================================
-;		   void write_char(char ch);
+;		   void write_char(char ch, int pos);
 ; ========================================================================
 write_char:
 	push 	ebp
@@ -343,7 +352,7 @@ write_char:
 	pushad
 	
 	mov esi,[ebp+8] 
-	mov edi,[disp_pos]
+	mov edi,[ebp+12]
 	
 	mov eax,esi
 	mov	ah, 0Fh

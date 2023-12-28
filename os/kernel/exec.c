@@ -16,7 +16,7 @@ PRIVATE int exec_pcb_init(char *path);
 //PUBLIC u32 do_execve(char *path);  deleted by xyx&&wjh 2021-12-31
 //PUBLIC u32 kern_execve(char *path); deleted by xyx&&wjh 2021-12-31
 
-PRIVATE char *exec_path(char* path);//added by xyx&&wjh 2021.12.31
+// PRIVATE char *exec_path(char* path);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 
@@ -93,7 +93,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
 		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
 		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
@@ -120,7 +120,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
 		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
 		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
@@ -177,8 +177,11 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	// 			*q -= delta;
 	// 	}
 	// }
-	// 处理参数 argc 放在 ebp + 4 (ArgLinBase); argv 放在 esp + 8
+	// 处理参数 argc 放在 ebp + 8 (ArgLinBase - 4); argv 放在 ebp + 12
 	// err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+	// low<--               ---stack---           -->high(base)
+	//  | user main ebp | _start rt |        argc           |  argv    | argv[0]... argv[argc-1]|... argv raw data
+	//  |               |           | StackLinBase(pcb esp) |ArgLinBase|
 	int argc = 0, len = 0;
 	for(char** p = argv; p != 0 && *p != 0; p++){
 		argc++;
@@ -212,7 +215,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
 		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
 		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
@@ -325,33 +328,33 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 /*    added by xyx&&wjh  2021-12-31  */
 
-PRIVATE char *exec_path(char* path) 
-{
-	u32 arg_type = FILE_ATTR;
-	char default_fs_name[DEV_NAME_LEN] = DEFAULT_PATH;
-	int fsname_len = strlen(default_fs_name);
+// PRIVATE char *exec_path(char* path) 此函数已无引用，故注释
+// {
+// 	u32 arg_type = FILE_ATTR;
+// 	char default_fs_name[DEV_NAME_LEN] = DEFAULT_PATH;
+// 	int fsname_len = strlen(default_fs_name);
 	
-	int pathlen = strlen(path);
-	int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
-	//disp_int(len);
-	int i;
-    for(i=0;i<len;i++){
-        if( path[i] == '/'){
-            arg_type = PATH_ATTR;
-            break;
-        }
-    }
+// 	int pathlen = strlen(path);
+// 	int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
+// 	//disp_int(len);
+// 	int i;
+//     for(i=0;i<len;i++){
+//         if( path[i] == '/'){
+//             arg_type = PATH_ATTR;
+//             break;
+//         }
+//     }
 
-	if(arg_type == FILE_ATTR)
-	{
-		for(i=len - 1; i>=0; i--)
-        	path[i + fsname_len] = path[i];
-		for(i=0; i<fsname_len; i++)
-        	path[i] = default_fs_name[i];
-    	path[len + fsname_len] = '\0';
-	}
-	return path;
-}
+// 	if(arg_type == FILE_ATTR)
+// 	{
+// 		for(i=len - 1; i>=0; i--)
+//         	path[i + fsname_len] = path[i];
+// 		for(i=0; i<fsname_len; i++)
+//         	path[i] = default_fs_name[i];
+//     	path[len + fsname_len] = '\0';
+// 	}
+// 	return path;
+// }
 /*   end added   */
 
 /*======================================================================*

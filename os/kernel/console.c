@@ -1,11 +1,14 @@
 #include "type.h"
 #include "const.h"
 #include "string.h"
+#include "global.h"
 #include "tty.h"
 #include "console.h"
+#include "spinlock.h"
 
 int		disp_pos;
 CONSOLE     console_table[NR_CONSOLES];
+SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 #define __TTY_DEBUG__
 
 /* local routines */
@@ -14,7 +17,7 @@ PRIVATE void	set_video_start_addr(u32 addr);
 PRIVATE void	flush(CONSOLE* con);
 PRIVATE	void	w_copy(unsigned int dst, const unsigned int src, int size);
 PRIVATE void	clear_screen(int pos, int len);
-
+PUBLIC int _disp_color_str(char * info, int color, int pos);// return new pos
 /*****************************************************************************
  *                                init_screen
  *****************************************************************************/
@@ -71,6 +74,7 @@ PUBLIC void init_screen(TTY* tty)
 
 PUBLIC void out_char(CONSOLE* con, char ch)
 {
+	acquire(&video_mem_lock);
 	disable_int();
 	
 
@@ -90,6 +94,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	
 	switch(ch) {
 	case '\n':
+		clear_screen(con->cursor, SCR_WIDTH - cursor_x);
 		con->cursor = con->orig + SCR_WIDTH * (cursor_y + 1);
 		break;
 	case '\b':
@@ -97,21 +102,21 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 			con->cursor--;
 			//*(pch - 2) = ' ';
 			//*(pch - 1) = DEFAULT_CHAR_COLOR;
-			disp_pos = con->cursor*2;
-			write_char(' ');
+			// disp_pos = con->cursor*2;
+			write_char(' ', con->cursor*2);
 		}
 		break;
 	default:
 		//*pch++ = ch;
 		//*pch++ = DEFAULT_CHAR_COLOR;
-		disp_pos = con->cursor*2;
-		write_char(ch);
+		// disp_pos = con->cursor*2;
+		write_char(ch, con->cursor*2);
 		con->cursor++;
 		
 		break;
 	}
 	
-	
+
 
 	if (con->cursor - con->orig >= con->con_size) {
 		cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
@@ -133,12 +138,13 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 
 		clear_screen(con->cursor, SCR_WIDTH);
 	}
-	if(con == console_table){
-		disp_pos = con->cursor*2;
-	}
+	// if(con == console_table){
+	// 	disp_pos = con->cursor*2;
+	// }
 	flush(con);
 
 	enable_int();
+	release(&video_mem_lock);
 }
 
 
@@ -153,7 +159,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
  *****************************************************************************/
 PRIVATE void clear_screen(int pos, int len)
 {
-	u8 * pch = (u8*)(V_MEM_BASE + pos * 2);
+	u8 * pch = (u8*)(K_PHY2LIN(V_MEM_BASE) + pos * 2);
 	while (--len >= 0) {
 		*pch++ = ' ';
 		*pch++ = DEFAULT_CHAR_COLOR;
@@ -347,7 +353,22 @@ PRIVATE void flush(CONSOLE* con)
  *****************************************************************************/
 PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 {
-	phys_copy((void*)(V_MEM_BASE + (dst << 1)),
-		  (void*)(V_MEM_BASE + (src << 1)),
+	phys_copy((void*)(K_PHY2LIN(V_MEM_BASE) + (dst << 1)),
+		  (void*)(K_PHY2LIN(V_MEM_BASE) + (src << 1)),
 		  size << 1);
+}
+
+PUBLIC void disp_color_str(char* info, int color){
+	if(kernel_initial == 1){
+		disp_pos = _disp_color_str(info, color, disp_pos);
+	}else{
+		acquire(&video_mem_lock);
+		CONSOLE* con = &console_table[current_console];
+		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
+		release(&video_mem_lock);
+	}
+}
+
+PUBLIC void disp_str(char* info){
+	disp_color_str(info, DEFAULT_CHAR_COLOR);
 }

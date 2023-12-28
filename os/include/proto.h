@@ -24,9 +24,9 @@ PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglon
 // PUBLIC u32	in_mem_32(u32 phy_addr); 
 // PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
 
-PUBLIC void	disp_str(char* info);
+PUBLIC void	disp_str(char* info); // implement in tty 
 PUBLIC void	disp_color_str(char* info, int color);
-PUBLIC void write_char(char ch);    //added by mingxuan 2019-5-19
+PUBLIC void write_char(char ch, int pos);    //added by mingxuan 2019-5-19
 
 //added by zcr
 PUBLIC void	disable_irq(int irq);
@@ -80,8 +80,8 @@ PUBLIC int  tty_read(TTY* tty, char* buf, int len);
 
 /* shell.c */
 //added by mingxuan 2019-5-19
-PUBLIC void shell(char* s);
-PUBLIC void init_shell();
+// PUBLIC void shell(char* s);
+// PUBLIC void init_shell();
 
 /* printf.c */
 //added by mingxuan 2019-5-19

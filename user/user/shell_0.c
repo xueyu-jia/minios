@@ -51,7 +51,7 @@ void main(int arg,char *argv[])
 				if(execve(buf, args, NULL)!=0)
 				{
 					printf("exec failed: file not found!");
-                	continue;
+                	exit(-1);
             	}
 			}	
             // if(execve(buf)!=0){
