@@ -1,73 +1,196 @@
 /**
- * fs.h
- * This file contains APIs of filesystem, it's used inside the kernel.
- * There is a seperate header file for user program's use. 
- * This file is added by xw. 18/6/17
+ * fs_misc.h
+ * This file contains miscellaneous defines and declarations associated with filesystem.
+ * The code is added by zcr, and the file is added by xw. 18/6/17
  */
 
 #ifndef	FS_H
 #define	FS_H
+
 #include "type.h"
-#include "const.h"
-/* APIs of file operation */
-#define	O_CREAT		1
-#define	O_RDWR		2
+#include "spinlock.h"
+#include "fs_const.h"
+#include "proc.h"
+#include "vfs.h"
 
-#define SEEK_SET	1
-#define SEEK_CUR	2
-#define SEEK_END	3
-// mark 路径最大长度
-#define	MAX_PATH	128
-#define	MAX_FILENAME_LEN	12
-
-
-/* Error types of dir option*/
-#define DIR_PATH_INEXISTE -1
-#define DIR_PATH_REPEATED -2
-#define DIR_FILE_OCCUPIYED -3
-
-/* //deleted by mingxuan 2019-5-17
-PUBLIC int open(const char *pathname, int flags);
-PUBLIC int close(int fd);
-PUBLIC int read(int fd, void *buf, int count);
-PUBLIC int write(int fd, const void *buf, int count);
-PUBLIC int lseek(int fd, int offset, int whence);
-PUBLIC int unlink(const char *pathname);
+/**
+ * structure for fs common ***文件系统公共数据结构***
+ * 
+ * 
 */
+#include "orangefs.h"
+#include "fat32.h"
+typedef struct vfs_inode{
+	u32 i_no;
+	struct super_block* i_sb;
+	u32 i_dev; // for char special inode
+	u32 i_count; // reference count
+	u32 i_size;  // file size in byte
+	int i_type;  // char/blk/mnt/dir...
+	int i_mode;  // permission ==> I_R/W/X
+	u32 i_mnt_index;
+	struct inode_operations *i_op;
+	struct file_operations *i_fop;
+	union {
+		struct orange_inode_info orange_inode;
+	};
+	struct vfs_inode* lru_nxt;
+	struct vfs_inode* lru_pre;
+	struct spinlock lock;
+}vfs_inode;
 
-//added by xw, 18/6/18
-/* //deleted by mingxuan 2019-5-17
-PUBLIC int sys_open(void *uesp);
-PUBLIC int sys_close(void *uesp);
-PUBLIC int sys_read(void *uesp);
-PUBLIC int sys_write(void *uesp);
-PUBLIC int sys_lseek(void *uesp);	//~xw
-PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
-*/
-#include "fs_misc.h" // todo: remerge fs headers by dependencies
-PUBLIC void init_rootfs(int device);
-PUBLIC int init_orangefs(int device);
-PUBLIC void create_mountpoint(const char *pathname, u32 dev,u8 index_mnt_table);
-PUBLIC void free_mountpoint(const char *pathname, u32 dev);
-PUBLIC int vfs_path_transfer(char* path,int* fs_index);
+// **** dentry 的本质是树形cache !!! ****
+struct vfs_dentry{
+	char d_name[32];
+	struct vfs_inode* d_inode;
+	struct vfs_dentry* d_nxt;
+	struct vfs_dentry* d_pre;
+	struct vfs_dentry* d_subdirs;
+	struct spinlock lock;
+};
+/**
+ * @struct super_block fs.h "include/fs.h"
+ * @brief  The 2nd sector of the FS
+ *
+ * Remember to change SUPER_BLOCK_SIZE if the members are changed.
+ */
+ //modified by sundong 2023.5.26
+struct super_block {
+	union {
+    	struct {
+			u32	magic;		  /**< Magic number */
+			u32	nr_inodes;	  /**< How many inodes */
+			u32	nr_blocks;	  /**< How many blocks */
+			u32	nr_imap_blocks;	  /**< How many inode-map blocks */
+			u32	nr_smap_blocks;	  /**< How many sector-map blocks */
+			u32	n_1st_block;	  /**< Number of the 1st data block */
+			u32	nr_inode_blocks;   /**< How many inode blocks */
+			u32	root_inode;       /**< Inode nr of root directory */
+			u32	inode_size;       /**< INODE_SIZE */
+			u32	inode_isize_off;  /**< Offset of `struct inode::i_size' */
+			u32	inode_start_off;  /**< Offset of `struct inode::i_start_sect' */
+			u32	dir_ent_size;     /**< DIR_ENTRY_SIZE */
+			u32	dir_ent_inode_off;/**< Offset of `struct dir_entry::inode_nr' */
+			u32	dir_ent_fname_off;/**< Offset of `struct dir_entry::name' */
+    	};
+    	struct {
+			u32 TotalSectors;//总扇区数，当载入磁盘时，才从DBR中读取。
+			u16  Bytes_Per_Sector;//每个扇区的字节数，当载入磁盘时，才从DBR中读取。
+			u8  Sectors_Per_Cluster;//每个簇的扇区数，当载入磁盘时，才从DBR中读取。
+			u16  Reserved_Sector;//保留扇区数，当载入磁盘时，才从DBR中读取。
+			u32 Sectors_Per_FAT;//每个FAT所占的扇区数，当载入磁盘时，才从DBR中读取。
+			u32 Position_Of_RootDir;//根目录的位置。
+			u32 Position_Of_FAT1;//FAT1的位置。
+			u32 Position_Of_FAT2;//FAT2的位置。
+    	};
+	};
+
+  /*
+   * the following item(s) are only present in memory
+   */
+	int	sb_dev; 	/**< the super block's home device */
+	int fs_type;	//added by mingxuan 2020-10-30
+	int used;
+	SPIN_LOCK lock;
+};
+
+/**
+ * @struct file_desc
+ * @brief  File Descriptor
+ */
 
 //added by mingxuan 2019-5-17
-PUBLIC int real_open(struct super_block *sb,const char *pathname, int flags);
-PUBLIC int real_close(int fd);
-PUBLIC int real_read(int fd, char *buf, int count);
-PUBLIC int real_write(int fd, const char *buf, int count);
-PUBLIC int real_unlink(struct super_block *sb,const char *pathname);
-PUBLIC int real_lseek(int fd, int offset, int whence);
+union ptr_node{
+	struct inode*	fd_inode;	/**< Ptr to the i-node */
+	//struct FILE* 	fd_file; // modified by ran
+	struct File* 	fd_file;	//指向fat32的file结构体
+};
 
-PUBLIC int real_createdir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_opendir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_deletedir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_showdir(const char *pathname,char* dir_content);/*add by gfx 2023-2-13*/
+struct file_desc {
+	int		fd_mode;	/**< R or W */
+	int		fd_pos;		/**< Current position for R/W. */
+	//struct inode*	fd_inode;	/**< Ptr to the i-node */	//deleted by mingxuan 2019-5-17
+	
+	//added by mingxuan 2019-5-17
+	union 	ptr_node fd_node;
+	struct vfs_inode *fd_inode;
+	int 	flag;	//用于标志描述符是否被使用
+	int 	dev_index;
+};
 
-//added by mingxuan 2020-10-30
-PUBLIC void read_super_block(int dev);
-PUBLIC struct super_block* get_super_block(int dev);
+struct inode_operations{
+	struct vfs_dentry * (*lookup)(struct vfs_inode *dir, char *filename);
+	int (*create)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*rename)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*readdir)(struct vfs_inode *dir);
+	int (*put_inode)(struct vfs_inode* inode);
+};
+
+struct dentry_operations{
+	int (*compare)(struct vfs_dentry *dentry, char *filename);
+};
+
+struct file_operations{
+	int (*read)(struct file_desc *, unsigned int, char *);
+	int (*write)(struct file_desc *, unsigned int, char *);
+};
+
+struct superblock_operations{
+	int (*fill_superblock)(struct super_block *, int);
+};
+
+struct fs{
+	char * fstype_name;
+	struct file_operations * fs_fop;
+	struct inode_operations * fs_iop;
+	struct super_operations * fs_sop;
+};
+
+//added by mingxuan 2020-10-29
+struct vfs{
+    char * fs_name; 			//设备名
+    struct file_op * op;        //指向操作表的一项
+	struct sb_op *s_op;			//added by mingxuan 2020-10-29
+    //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
+	struct file_operations * fs_fop;
+	struct inode_operations * fs_iop;
+	struct super_operations * fs_sop;
+	struct super_block *sb;		//added by mingxuan 2020-10-29
+	int used;                   //added by ran
+};
+
 //~xw
-PUBLIC int get_fs_dev(int drive, int fs_type);	// added by mingxuan 2020-10-27
-PUBLIC int get_blockfile_dev(char *path); //add by sundong 2023.5.28
-#endif /* FS_H */
+//硬盘中数据块的读写
+//added by sundong 2023.5.26
+#define RD_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_READ, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* read one block */ \
+				       proc2pid(p_proc_current),/*current task id*/			\
+				       fsbuf);
+//added by sundong 2023.5.26
+#define WR_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_WRITE, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* write one block */ \
+				       proc2pid(p_proc_current),				\
+				       fsbuf);
+					
+#define RD_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_READ, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* read one block */ \
+				       proc2pid(p_proc_current),/*current task id*/			\
+				       fsbuf);
+//added by sundong 2023.5.26
+#define WR_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_WRITE, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* write one block */ \
+				       proc2pid(p_proc_current),				\
+				       fsbuf);
+
+#endif /* FS_MISC_H */

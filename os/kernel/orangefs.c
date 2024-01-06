@@ -5,8 +5,9 @@
 #include "string.h"
 #include "global.h"
 #include "proto.h"
+#include "vfs.h"
 #include "fs.h"
-#include "fs_misc.h"
+#include "orangefs.h"
 #include "hd.h"
 #include "protect.h"
 #include "mount.h"
@@ -36,13 +37,13 @@ PRIVATE struct inode *root_inode;
 // PRIVATE struct file_desc f_desc_table[NR_FILE_DESC];	//deleted by mingxuan 2020-10-30
 extern struct file_desc f_desc_table[NR_FILE_DESC]; // modified by mingxuan 2020-10-30
 
-PRIVATE struct inode inode_table[NR_INODE];
+PRIVATE struct inode inode_table[NR_ORANGE_INODE];
 
 // PRIVATE struct super_block super_block[NR_SUPER_BLOCK];	//deleted by mingxuan 2020-10-30
-extern struct super_block super_block[NR_SUPER_BLOCK]; // modified by mingxuan 2020-10-30
+extern struct super_block super_blocks[NR_SUPER_BLOCK]; // modified by mingxuan 2020-10-30
 
 /* functions */
-PRIVATE void mkfs(int device);
+// PRIVATE void mkfs(int device);
 // PRIVATE void read_super_block(int dev);
 PUBLIC void read_super_block(int dev); // modified by mingxuan 2020-10-30
 // PRIVATE struct super_block* get_super_block(int dev);
@@ -91,7 +92,7 @@ PRIVATE int alloc_imap_bit(int dev);
 PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc);
 
 PRIVATE int memcmp(const void *s1, const void *s2, int n);
-PRIVATE int strcmp(const char *s1, const char *s2);
+// PRIVATE int strcmp(const char *s1, const char *s2);
 
 PRIVATE int create_tty_file(char *path,int tty_dev);//add by sundong 2023.5.18
 PRIVATE int create_blockdev_file(char *path, int block_dev_id);//add by sundong 2023.5.28
@@ -207,70 +208,6 @@ PUBLIC int get_blockfile_dev(char *path){
 	}
 	return p_inode->i_start_block;
 }
-
-
-// int create_devfile(int drive, int major, int minor)
-// {
-// 	char devname[10];
-// 	memset(devname, 0, sizeof(devname));
-
-// 	if (major < SATA_BASE)
-// 	{
-// 		strcpy(devname, "dev_hd");
-// 		devname[strlen(devname)] = 'a' + major - IDE_BASE;
-// 	}
-// 	else if (major < SCSI_BASE)
-// 	{
-// 		strcpy(devname, "dev_sd");
-// 		devname[strlen(devname)] = 'a' + major - SATA_BASE;
-// 	}
-// 	else if (major < 12)
-// 	{
-// 		disp_str("SCSI devices are temporarily not supported\n");
-// 		return -1;
-// 	}
-// 	else
-// 	{
-// 		disp_str("major num out of limit\n");
-// 		return -1;
-// 	}
-
-// 	if (minor != 0)
-// 	{
-// 		itoa(minor, devname + strlen(devname), 10);
-// 	}
-
-// 	// int fd = real_open(devname, O_CREAT);
-// 	// real_close(fd);
-
-// 	int inode_nr = search_file(devname);
-
-// 	if (inode_nr != 0)
-// 	{
-// 		int orange_dev = get_fs_dev(drive, ORANGE_TYPE);
-// 		struct inode *dev_inode = get_inode_sched(orange_dev, inode_nr);
-
-// 		if (dev_inode->i_mode == I_BLOCK_SPECIAL)
-// 		{
-// 			return 0;
-// 		}
-// 		else
-// 		{
-// 			disp_str("Conflicting file name with dev name");
-// 			return -1;
-// 		}
-// 	}
-
-// 	create_file(devname, I_BLOCK_SPECIAL);
-
-// 	inode_nr = search_file(devname);
-// 	int orange_dev = get_fs_dev(drive, ORANGE_TYPE);
-// 	struct inode *dev_inode = get_inode_sched(orange_dev, inode_nr);
-
-// 	dev_inode->i_mode = I_BLOCK_SPECIAL;
-// 	sync_inode(dev_inode);
-// 	return 0;
-// }
 
 int kern_init_block_dev(int drive)
 {
@@ -562,7 +499,7 @@ PRIVATE int get_free_superblock()
 	int sb_index = 0;
 	for (sb_index = 0; sb_index < NR_SUPER_BLOCK; sb_index++)
 	{
-		if (super_block[sb_index].used == 0)
+		if (super_blocks[sb_index].used == 0)
 		{
 			break;
 		}
@@ -607,7 +544,7 @@ PUBLIC int read_super_block_to_empty(int dev)
 		return -1;
 	}
 
-	read_super_block_to_target(dev, &super_block[sb_index]);
+	read_super_block_to_target(dev, &super_blocks[sb_index]);
 
 	return 0;
 }
@@ -632,7 +569,7 @@ PUBLIC int init_orangefs(int device)
 		while (1);
 	}
 
-	return sb - super_block;
+	return sb - super_blocks;
 }
 
 /// zcr added
@@ -648,9 +585,9 @@ PUBLIC void init_rootfs(int device)
 	// for (i = 0; i < NR_FILE_DESC; i++)						//deleted by mingxuan 2020-10-30
 	//	memset(&f_desc_table[i], 0, sizeof(struct file_desc));	//deleted by mingxuan 2020-10-30
 
-	for (i = 0; i < NR_INODE; i++)
+	for (i = 0; i < NR_ORANGE_INODE; i++)
 		memset(&inode_table[i], 0, sizeof(struct inode));
-	struct super_block *sb = super_block; // deleted by mingxuan 2020-10-30
+	struct super_block *sb = super_blocks; // deleted by mingxuan 2020-10-30
 	// for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)				//deleted by mingxuan 2020-10-30
 	//	sb->sb_dev = NO_DEV;										//deleted by mingxuan 2020-10-30
 	int orange_dev = get_fs_dev(device, ORANGE_TYPE); // added by mingxuan 2020-10-27
@@ -1808,7 +1745,7 @@ PUBLIC void read_super_block(int dev) // modified by mingxuan 2020-10-30
 	// find orange's superblock in super_block[]
 	// added by mingxuan 2020-10-30
 	for (i = 0; i < NR_SUPER_BLOCK; i++)
-		if (super_block[i].fs_type == ORANGE_TYPE)
+		if (super_blocks[i].fs_type == ORANGE_TYPE)
 			break;
 	if (i == NR_SUPER_BLOCK)
 		disp_str("Cannot find orange's superblock!");
@@ -1817,10 +1754,10 @@ PUBLIC void read_super_block(int dev) // modified by mingxuan 2020-10-30
 
 	struct super_block *psb = (struct super_block *)fsbuf;
 
-	super_block[i] = *psb;
+	super_blocks[i] = *psb;
 
-	super_block[i].sb_dev = dev;
-	super_block[i].fs_type = ORANGE_TYPE; // added by mingxuan 2020-10-30
+	super_blocks[i].sb_dev = dev;
+	super_blocks[i].fs_type = ORANGE_TYPE; // added by mingxuan 2020-10-30
 	kern_kfree(fsbuf);
 }
 
@@ -1852,8 +1789,8 @@ PUBLIC void read_super_block(int dev) // modified by mingxuan 2020-10-30
 // PRIVATE struct super_block * get_super_block(int dev)
 PUBLIC struct super_block *get_super_block(int dev) // modified by mingxuan 2020-10-30
 {
-	struct super_block *sb = super_block;
-	for (; sb < &super_block[NR_SUPER_BLOCK]; sb++)
+	struct super_block *sb = super_blocks;
+	for (; sb < &super_blocks[NR_SUPER_BLOCK]; sb++)
 	{
 		if (sb->sb_dev == dev)
 			return sb;
@@ -1885,7 +1822,7 @@ PRIVATE struct inode *get_inode(int dev, int num)
 	// 从现有的inode中查找inode
 	/* 	if (flag == FIND_INODE)
 		{
-			for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++)
+			for (p = &inode_table[0]; p < &inode_table[NR_ORANGE_INODE]; p++)
 			{
 				if (p->i_cnt)
 				{
@@ -1903,7 +1840,7 @@ PRIVATE struct inode *get_inode(int dev, int num)
 		{
 
 		} */
-	for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++)
+	for (p = &inode_table[0]; p < &inode_table[NR_ORANGE_INODE]; p++)
 	{
 		if (p->i_cnt)
 		{ /* not a free slot */
@@ -1957,7 +1894,7 @@ PRIVATE struct inode *get_inode_sched(int dev, int num)
 	/* // 从现有的inode中查找inode
 	if (flag == FIND_INODE)
 	{
-		for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++)
+		for (p = &inode_table[0]; p < &inode_table[NR_ORANGE_INODE]; p++)
 		{
 			if (p->i_cnt)
 			{
@@ -1973,7 +1910,7 @@ PRIVATE struct inode *get_inode_sched(int dev, int num)
 	// 创建新的inode
 	else if (flag == CREATE_INODE)
 	{
-		for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++)
+		for (p = &inode_table[0]; p < &inode_table[NR_ORANGE_INODE]; p++)
 		{
 			if (p->i_cnt)
 			{
@@ -2012,7 +1949,7 @@ PRIVATE struct inode *get_inode_sched(int dev, int num)
 		q->i_nr_sects = pinode->i_nr_sects;
 		return q;
 	} */
-	for (p = &inode_table[0]; p < &inode_table[NR_INODE]; p++)
+	for (p = &inode_table[0]; p < &inode_table[NR_ORANGE_INODE]; p++)
 	{
 		if (p->i_cnt)
 		{ /* not a free slot */

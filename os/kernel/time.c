@@ -1,6 +1,7 @@
 #include "time.h"
 #include "const.h"
 #include "protect.h"
+#include "proto.h"
 
 
 PUBLIC void RTC_handler(){
@@ -9,12 +10,12 @@ PUBLIC void RTC_handler(){
 void NMI_enable() {
     out_byte(0x70, in_byte(0x70) & 0x7F);
     in_byte(0x71);
- }
+}
  
- void NMI_disable() {
+void NMI_disable() {
     out_byte(0x70, in_byte(0x70) | 0x80);
     in_byte(0x71);
- }
+}
 
 void initRTC(){
 	put_irq_handler(RTC_IRQ, RTC_handler);

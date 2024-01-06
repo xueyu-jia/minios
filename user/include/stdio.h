@@ -33,13 +33,16 @@ void udisp_str(char* arg);
 
 //added by xw
 /* file system */
-#define	MAX_FILENAME_LEN	12
+#define	MAX_FILENAME_LEN	12 //? only orange limit this
 #define	MAX_PATH	128
-#define	O_CREAT		1
-#define	O_RDWR		2
-#define SEEK_SET	1
-#define SEEK_CUR	2
-#define SEEK_END	3
+// octol
+#define	O_CREAT		040
+#define O_RDONLY	000
+#define O_WRONLY	001
+#define	O_RDWR		002
+#define SEEK_SET	0
+#define SEEK_CUR	1
+#define SEEK_END	2
 
 #define  PRINT_BUF_LEN  1024
 

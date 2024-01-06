@@ -253,11 +253,56 @@ struct hd_cmd {
 	u8	command;
 };
 
-// added by mingxuan 2020-10-27
-# define NO_FS_TYPE		0x0	//added by mingxuan 2020-10-30
-# define ORANGE_TYPE 	0x1
-# define FAT32_TYPE	 	0x2
-# define TTY_FS_TYPE	0x3	//added by mingxuan 2020-10-30
+/* macros for messages */
+#define	FD			u.m3.m3i1 
+#define	PATHNAME	u.m3.m3p1 
+#define	FLAGS		u.m3.m3i1 
+#define	NAME_LEN	u.m3.m3i2 
+#define	CNT			u.m3.m3i2
+#define	REQUEST		u.m3.m3i2
+#define	PROC_NR		u.m3.m3i3
+#define	DEVICE		u.m3.m3i4
+#define	POSITION	u.m3.m3l1
+#define	BUF			u.m3.m3p2
+#define	OFFSET		u.m3.m3i2 
+#define	WHENCE		u.m3.m3i3 
+
+/* #define	PID		u.m3.m3i2 */
+/* #define	STATUS		u.m3.m3i1 */
+#define	RETVAL		u.m3.m3i1
+/* #define	STATUS		u.m3.m3i1 */
+
+
+#define	DIOCTL_GET_GEO	1
+/* Hard Drive */
+#define SECTOR_SIZE		512
+#define SECTOR_BITS		(SECTOR_SIZE * 8)
+#define SECTOR_SIZE_SHIFT	9
+
+#define	MAX_DRIVES			2
+#define	NR_PART_PER_DRIVE	4	// 每块硬盘(驱动器)只能有4个主分区, mingxuan
+#define	NR_SUB_PER_PART		11	// 扩展分区最多有11个逻辑分区, mingxuan
+#define	NR_SUB_PER_DRIVE	(NR_SUB_PER_PART * NR_PART_PER_DRIVE) //每块硬盘(驱动器)最多有16 * 4 = 64个逻辑分区, mingxuan
+#define	NR_PRIM_PER_DRIVE	(NR_PART_PER_DRIVE + 1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待, mingxuan
+
+/**
+ * @def MAX_PRIM
+ * Defines the max minor number of the primary partitions.
+ * If there are 2 disks, prim_dev ranges in hd[0-9], this macro will
+ * equals 9.
+ */
+// MAX_PRIM定义的是主分区的最大值，比如若有两块硬盘，那第一块硬盘的主分区为hd[1～4]，第二块硬盘的主分区为hd[6～9]
+// 所以MAX_PRIM为9，我们定义的hd1a的设备号应大于它，这样通过与MAX_PRIM比较，我们就可以知道一个设备是主分区还是逻辑分区
+// mingxuan
+#define	MAX_PRIM			(MAX_DRIVES * NR_PRIM_PER_DRIVE - 1)	// MAX_PRIM = 2 * 4 - 1 = 9
+#define	MAX_SUBPARTITIONS	(NR_SUB_PER_DRIVE * MAX_DRIVES) 		// MAX_SUBPARTITIONS = 64 * 2 = 128
+
+#define	P_PRIMARY	0
+#define	P_EXTENDED	1
+
+// #define ORANGES_PART	0x99	/* Orange'S partition */
+#define NO_PART		0x00	/* unused entry */
+#define EXT_PART	0x05	/* extended partition */
 
 struct part_info {
 	u32	base;		/* # of start sector (NOT byte offset, but SECTOR) */

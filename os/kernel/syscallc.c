@@ -6,7 +6,7 @@
 **********************************************************/
 
 #include "const.h"
-// #include "string.h"
+#include "string.h"
 #include "time.h"
 #include "global.h"
 #include "buddy.h"
@@ -15,24 +15,6 @@
 
 struct memfree *memarg = 0;
 
-
-PRIVATE int strcmp(const char * s1, const char *s2)
-{
-	if ((s1 == 0) || (s2 == 0)) { /* for robustness */
-		return (s1 - s2);
-	}
-
-	const char * p1 = s1;
-	const char * p2 = s2;
-
-	for (; *p1 && *p2; p1++,p2++) {
-		if (*p1 != *p2) {
-			break;
-		}
-	}
-
-	return (*p1 - *p2);
-}
 /*======================================================================*
                            get_ticks		add by visual 2016.4.6
  *======================================================================*/

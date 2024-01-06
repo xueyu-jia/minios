@@ -1,5 +1,5 @@
 #include "type.h"
-
+#include "vfs.h"
 #define MAX_mnt_table_length   10
 //deleted by sundong 2023.5.19 vfs用于区分路径属于哪个文件系统，mountopen不再使用
 //extern int mount_open(char *pathname, int flags);
@@ -13,3 +13,9 @@ typedef struct
     u32 used;//free=0
     /* data */
 }mount_table;
+struct vfs_mount{
+	struct vfs_dentry * mnt_root;
+	u32 vfs_index;
+    u32 dev;		//added by mingxuan 2020-10-29
+	int used;                   //added by ran
+};

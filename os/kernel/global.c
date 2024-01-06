@@ -22,7 +22,7 @@
 // #include "hd.h"
 // #include "fs.h"
 // #include "fat32.h"	//added by mingxuan 2019-5-17
-#include "vfs.h"	//added by mingxuan 2019-5-17
+#include "fs.h"	//added by mingxuan 2019-5-17
 #include "ksignal.h"	//added by mingxuan 2021-2-28
 //modified by mingxuan 2021-4-2
 // #include "../include/const.h"

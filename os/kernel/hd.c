@@ -20,7 +20,6 @@
 #include "fs_const.h"
 #include "hd.h"
 #include "fs.h"
-#include "fs_misc.h"
 #include "ahci.h"
 #include "semaphore.h"
 
