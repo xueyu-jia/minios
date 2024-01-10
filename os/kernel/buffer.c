@@ -1,5 +1,6 @@
 #include "const.h"
 #include "fs_const.h"
+#include "global.h"
 #include "fs.h"
 #include "hd.h"
 #include "buffer.h"
@@ -183,7 +184,11 @@ static void put_bh_hashtbl(buf_head *bh)
 
 }
 static inline void sync_buff(buf_head *bh){
-    WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
+	if(kernel_initial){
+		WR_BLOCK(bh->dev, bh->block, bh->buffer);
+	}else{
+		WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
+	}
     bh->dirty = 0;
 
 }
@@ -290,7 +295,11 @@ buf_head *bread(int dev, int block)
     if (!bh->used)
     {
         // 该buf head是一个新分配的，此时应该从硬盘读数据进来
-        RD_BLOCK_SCHED(dev, block, bh->buffer);
+		if(kernel_initial){
+			RD_BLOCK(dev, block, bh->buffer);
+		}else{
+			RD_BLOCK_SCHED(dev, block, bh->buffer);
+		}
         // 标记为已被使用
         bh->used = 1;
         bh->count = 1;

@@ -477,22 +477,6 @@ PUBLIC void free_mountpoint(const char *pathname, u32 dev)
 }
 
 // modified by ran
-int get_fs_dev(int drive, int fs_type)
-{
-	int i;
-	for (i = 1; i < NR_PRIM_PER_DRIVE; i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
-	{
-		if (hd_info[drive].part[i].fs_type == fs_type)
-			return ((drive << MAJOR_SHIFT) | i);
-	}
-
-	// added by mingxuan 2020-10-29
-	for (i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
-	{
-		if (hd_info[drive].part[i].fs_type == fs_type)
-			return ((drive << MAJOR_SHIFT) | i);
-	}
-}
 
 PRIVATE int get_free_superblock()
 {
@@ -1871,8 +1855,10 @@ PRIVATE struct inode *get_inode(int dev, int num)
 	//char fsbuf[SECTOR_SIZE];	 // local array, to substitute global fsbuf. added by xw, 18/12/27
 	//RD_SECT(dev, blk_nr, fsbuf); // added by xw, 18/12/27
 
-	char *fsbuf = kern_kmalloc(BLOCK_SIZE);	 // local array, to substitute global fsbuf. added by xw, 18/12/27
-	RD_BLOCK(dev, blk_nr, fsbuf);
+	// char *fsbuf = kern_kmalloc(BLOCK_SIZE);	 // local array, to substitute global fsbuf. added by xw, 18/12/27
+	// RD_BLOCK(dev, blk_nr, fsbuf);
+	buf_head * bh = bread(dev, blk_nr);
+	char *fsbuf = bh->buffer;
 	struct inode *pinode =
 		(struct inode *)((u8 *)fsbuf +
 						 ((num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE);
@@ -1880,7 +1866,8 @@ PRIVATE struct inode *get_inode(int dev, int num)
 	q->i_size = pinode->i_size;
 	q->i_start_block = pinode->i_start_block;
 	q->i_nr_blocks = pinode->i_nr_blocks;
-	kern_kfree(fsbuf);
+	// kern_kfree(fsbuf);
+	brelse(bh);
 	return q;
 }
 

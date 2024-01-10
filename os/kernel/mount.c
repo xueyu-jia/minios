@@ -1,8 +1,13 @@
 #include "const.h"
 #include "string.h"
+#include "vfs.h"
 #include "fs.h"
 #include "mount.h"
 
+struct mount_options{
+	char target[MAX_PATH];
+	int fs_type;
+};
 // PRIVATE void update_mnttable();
 PUBLIC mount_table mnt_table[MAX_mnt_table_length];
 extern struct vfs vfs_table[NR_FS];
@@ -184,6 +189,9 @@ PUBLIC int get_fs_index(u8 index_mnt_table)
 
     return fd;
 } */
+PUBLIC void mount_root(){
+
+}
 
 PUBLIC int kern_mount(const char *source, const char *target,
                       const char *filesystemtype, unsigned long mountflags, const void *data)

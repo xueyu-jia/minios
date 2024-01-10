@@ -164,7 +164,7 @@ PUBLIC void init_fs(){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
-
+	mount_root();
 }
 
 
@@ -190,7 +190,7 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	}
 	return 0;
 }
-// 上锁规则: 上层->下层目录:持有上层inode锁获取下层inode锁,已经持有下层inode锁的不允许获取上层锁
+// 上锁规则: 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁
 // dir lock must held, return entry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
 PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name){

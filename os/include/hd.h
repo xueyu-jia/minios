@@ -370,4 +370,35 @@ int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 
+//~xw
+//硬盘中数据块的读写
+//added by sundong 2023.5.26
+#define RD_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_READ, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* read one block */ \
+				       proc2pid(p_proc_current),/*current task id*/			\
+				       fsbuf);
+//added by sundong 2023.5.26
+#define WR_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_WRITE, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* write one block */ \
+				       proc2pid(p_proc_current),				\
+				       fsbuf);
+					
+#define RD_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_READ, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* read one block */ \
+				       proc2pid(p_proc_current),/*current task id*/			\
+				       fsbuf);
+//added by sundong 2023.5.26
+#define WR_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_WRITE, \
+				       dev,				\
+				       (u64)(block_nr) * BLOCK_SIZE,		\
+				       BLOCK_SIZE, /* write one block */ \
+				       proc2pid(p_proc_current),				\
+				       fsbuf);
+
 #endif /* _ORANGES_HD_H_ */

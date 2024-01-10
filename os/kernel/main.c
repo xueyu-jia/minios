@@ -129,6 +129,7 @@ PUBLIC int kernel_main()
 	// hd_open(SECONDARY_MASTER);
 	// hd_open(SECONDARY_SLAVE);
 
+	init_buffer(64);
 	init_vfs(); //added by mingxuan 2020-10-30
 	init_rootfs(SATA_BASE);
 	// init_all_fat(SATA_BASE);
@@ -146,7 +147,6 @@ PUBLIC int kernel_main()
 	disable_int();
 
 	//get_pde(10);         //added by wang 2021.7.7
-	init_buffer(64);
 
 	disp_str("-----Processes Begin-----\n");
 

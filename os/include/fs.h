@@ -26,6 +26,7 @@ typedef struct vfs_inode{
 	u32 i_dev; // for char special inode
 	u32 i_count; // reference count
 	u32 i_size;  // file size in byte
+	u32 i_nlink; // file refered by inode
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
 	u32 i_mnt_index;
@@ -46,6 +47,7 @@ struct vfs_dentry{
 	struct vfs_dentry* d_nxt;
 	struct vfs_dentry* d_pre;
 	struct vfs_dentry* d_subdirs;
+	struct dentry_operations * d_op;
 	struct spinlock lock;
 };
 /**
@@ -147,6 +149,7 @@ struct fs{
 	struct file_operations * fs_fop;
 	struct inode_operations * fs_iop;
 	struct super_operations * fs_sop;
+	struct dentry_operations * fs_dop;
 };
 
 //added by mingxuan 2020-10-29
@@ -158,39 +161,13 @@ struct vfs{
 	struct file_operations * fs_fop;
 	struct inode_operations * fs_iop;
 	struct super_operations * fs_sop;
+	struct dentry_operations * fs_dop;
 	struct super_block *sb;		//added by mingxuan 2020-10-29
 	int used;                   //added by ran
 };
 
-//~xw
-//硬盘中数据块的读写
-//added by sundong 2023.5.26
-#define RD_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_READ, \
-				       dev,				\
-				       (u64)(block_nr) * BLOCK_SIZE,		\
-				       BLOCK_SIZE, /* read one block */ \
-				       proc2pid(p_proc_current),/*current task id*/			\
-				       fsbuf);
-//added by sundong 2023.5.26
-#define WR_BLOCK_SCHED(dev,block_nr,fsbuf) rw_blocks_sched(DEV_WRITE, \
-				       dev,				\
-				       (u64)(block_nr) * BLOCK_SIZE,		\
-				       BLOCK_SIZE, /* write one block */ \
-				       proc2pid(p_proc_current),				\
-				       fsbuf);
-					
-#define RD_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_READ, \
-				       dev,				\
-				       (u64)(block_nr) * BLOCK_SIZE,		\
-				       BLOCK_SIZE, /* read one block */ \
-				       proc2pid(p_proc_current),/*current task id*/			\
-				       fsbuf);
-//added by sundong 2023.5.26
-#define WR_BLOCK(dev,block_nr,fsbuf) rw_blocks(DEV_WRITE, \
-				       dev,				\
-				       (u64)(block_nr) * BLOCK_SIZE,		\
-				       BLOCK_SIZE, /* write one block */ \
-				       proc2pid(p_proc_current),				\
-				       fsbuf);
+int get_fs_dev(int drive, int fs_type);
+
+
 
 #endif /* FS_MISC_H */
