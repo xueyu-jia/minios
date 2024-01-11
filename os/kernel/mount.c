@@ -4,12 +4,10 @@
 #include "fs.h"
 #include "mount.h"
 
-struct mount_options{
-	char target[MAX_PATH];
-	int fs_type;
-};
 // PRIVATE void update_mnttable();
 PUBLIC mount_table mnt_table[MAX_mnt_table_length];
+PUBLIC struct vfs_mount vfs_mnt_table[MAX_mnt_table_length];
+SPIN_LOCK mnt_table_lock;
 extern struct vfs vfs_table[NR_FS];
 
 PUBLIC int kern_mount(const char *source, const char *target,
@@ -189,8 +187,30 @@ PUBLIC int get_fs_index(u8 index_mnt_table)
 
     return fd;
 } */
-PUBLIC void mount_root(){
 
+PRIVATE struct vfs_mount* get_free_vfsmount()
+{
+    int i;
+    for (i = 0; i < MAX_mnt_table_length; i++)
+    {
+        if (mnt_table[i].used == 0)
+        {
+            return i;
+        }
+    }
+    return NULL;
+}
+
+PUBLIC struct vfs_mount* add_vfsmount(char* dev_path, char* dir, struct vfs_dentry* mnt_root, int dev){
+	acquire(&mnt_table_lock);
+	struct vfs_mount* mnt = get_free_vfsmount();
+	strcpy(mnt->dev_path, dev_path);
+	strcpy(mnt->dir_path, dir);
+	mnt->dev = dev;
+	mnt->mnt_root = mnt_root;
+	mnt->used = 1;
+	release(&mnt_table_lock);
+	return mnt;
 }
 
 PUBLIC int kern_mount(const char *source, const char *target,

@@ -96,6 +96,7 @@ PUBLIC int set_vfstable(u32 device, char *target);
 PUBLIC struct vfs* vfs_alloc_vfs_entity();
 // PUBLIC int get_index(char path[]);
 PUBLIC void init_vfs();
+PUBLIC void init_fs();
 // int sys_CreateFile();
 // int sys_DeleteFile();
 // int sys_OpenFile();

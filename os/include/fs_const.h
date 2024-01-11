@@ -10,7 +10,7 @@
 
 #define BLOCK_SIZE		4096  //add by sundong 2023.5.26
 #define BLOCK_SIZE_SHIFT   12
-#define	MAX_PATH	128
+#define	MAX_PATH	256
 
 /* major device numbers (corresponding to kernel/global.c::dd_map[]) */
 #define	NO_DEV			0

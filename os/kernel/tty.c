@@ -1,6 +1,7 @@
 #include "type.h"
 #include "const.h"
 #include "tty.h"
+#include "fs.h"
 #include "console.h"
 #include "keyboard.h"
 
@@ -306,3 +307,27 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len){
 
     return i;
 }
+
+PUBLIC int tty_file_write(struct file_desc* file, unsigned int count, char* buf){
+	int dev = file->fd_inode->i_dev;
+	int nr_tty = MINOR(dev);
+	if (MAJOR(dev) != DEV_CHAR_TTY){
+		disp_str("Error: MAJOR(dev) != DEV_CHAR_TTY\n");
+	}
+	tty_write(&tty_table[nr_tty], buf, count);
+	return count;
+}
+
+PUBLIC int tty_file_read(struct file_desc* file, unsigned int count, char* buf){
+	int dev = file->fd_inode->i_dev;
+	int nr_tty = MINOR(dev);
+	if (MAJOR(dev) != DEV_CHAR_TTY){
+		disp_str("Error: MAJOR(dev) != DEV_CHAR_TTY\n");
+	}
+	return tty_read(&tty_table[nr_tty], buf, count);
+}
+
+struct file_operations tty_file_ops = {
+.read = tty_file_read,
+.write = tty_file_write,
+};

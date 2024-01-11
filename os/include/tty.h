@@ -14,6 +14,7 @@
 #ifndef	_ORANGES_TTY_H_
 #define	_ORANGES_TTY_H_
 #include "console.h"
+#include "fs.h"
 
 #define TTY_IN_BYTES		256	/* tty input queue size */
 #define TTY_OUT_BUF_LEN		2	/* tty output buffer size */
@@ -49,4 +50,5 @@ typedef struct s_tty
 
 extern  TTY         tty_table[];
 extern int current_console; 
+extern struct file_operations tty_file_ops;
 #endif /* _ORANGES_TTY_H_ */

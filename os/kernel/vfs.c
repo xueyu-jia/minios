@@ -7,6 +7,7 @@
 #include "string.h"
 #include "proto.h"
 #include "fs.h"
+#include "tty.h"
 #include "vfs.h"
 #include "hd.h"
 #include "mount.h"
@@ -24,6 +25,7 @@ PUBLIC char vfs_bmap[INODE_BMAP_SIZE];
 struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
+PRIVATE SPIN_LOCK superblock_lock;
 // PRIVATE struct file_op f_op_table[NR_fs]; //文件系统操作表
 PRIVATE struct file_op f_op_table[NR_FS_OP]; //modified by mingxuan 2020-10-18
 PRIVATE struct sb_op   sb_op_table[NR_SB_OP];   //added by mingxuan 2020-10-30
@@ -79,6 +81,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(){
 }
 
 // 如果引用计数归0，释放资源, 调用此函数必须持有inode锁,除非inode还没有加入目录树
+// 如果引用计数归0，且引用的文件数也为0，执行删除文件
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(--inode->i_count == 0){
 		acquire(&inode_alloc_lock);
@@ -91,8 +94,11 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 // require mutex: dir, ent
 PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
 	ent->d_nxt = dir->d_subdirs;
-	dir->d_subdirs->d_pre = ent;
+	if(dir->d_subdirs){
+		dir->d_subdirs->d_pre = ent;
+	}
 	dir->d_subdirs = ent;
+	ent->d_parent = dir;
 }
 
 // require mutex: dir, ent
@@ -106,6 +112,7 @@ PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
 	if(ent->d_nxt){
 		ent->d_nxt->d_pre = ent->d_pre;
 	}
+	ent->d_parent = NULL;
 }
 
 PRIVATE struct vfs_dentry * alloc_dentry(char* name, struct vfs_inode* inode){
@@ -114,6 +121,9 @@ PRIVATE struct vfs_dentry * alloc_dentry(char* name, struct vfs_inode* inode){
 	initlock(&entry->lock, NULL);
 	strcpy(entry->d_name, name);
 	entry->d_inode = inode;
+	entry->d_covers = entry;
+	entry->d_mounts = entry;
+	entry->d_parent = NULL;
 	inode->i_count++;
 	entry->d_nxt = entry->d_pre = entry->d_subdirs = NULL;
 	return entry;
@@ -131,12 +141,13 @@ PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* dir, struct 
 		par = alloc_dentry("..", dir);
 		insert_sub_dentry(entry, par);
 	}
+	return entry;
 }
 
 // delete dentry in dir
 // require mutex: dir, dentry, dentry.inode
 PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
-	if(dentry->d_subdirs){
+	if(dentry->d_subdirs || dentry->d_mounts != dentry){
 		// check empty
 		// disp_str("try to delete non empty dentry");
 		// for dir, you must delete . and .. in dentry
@@ -152,25 +163,19 @@ PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 PRIVATE void register_fs_type(char* fstype_name, int fs_type, 
 	struct file_operations* f_op, 
 	struct inode_operations* i_op,
+	struct dentry_operations* d_op,
 	struct superblock_operations* s_op){
 	struct fs* fs = &fs_table[fs_type];
 	fs->fstype_name = fstype_name;
 	fs->fs_fop = f_op;
 	fs->fs_iop = i_op;
+	fs->fs_dop = d_op;
 	fs->fs_sop = s_op;
 }
 
-PUBLIC void init_fs(){
-	initlock(&inode_alloc_lock, "");
-	initlock(&file_desc_lock, "");
-	init_file_desc_table();
-	mount_root();
-}
-
-
 PRIVATE void strip_base_path(char *path, char** file_name){
 	int len = strlen(path), flag = 0;
-	char *p = path + len;
+	char *p = path + len - 1;
 	while(*p){
 		if(*p == '/'){
 			*file_name = p + 1;
@@ -190,16 +195,25 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	}
 	return 0;
 }
-// 上锁规则: 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁
+// 上锁规则: 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁,
+//(todo:对于访问..可能产生的顺序是否存在死锁的可能,有待探究)
 // dir lock must held, return entry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
 PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name){
 	// acquire(&dir->lock);
-	struct vfs_dentry* entry = dir->d_subdirs;
-	// int new_dentry = 0;
-	for( ;entry; entry = entry->d_nxt){
-		if(!strcmp(entry->d_name, name)){
-			break;
+	struct vfs_dentry* entry = NULL;
+	if(!strcmp(dir->d_name, ".")){
+		entry = dir;
+	}else if(!strcmp(dir->d_name, "..")){
+		entry = dir->d_covers->d_parent; // 对于挂载点下的dentry，上层是挂载前的
+	}
+	if(!entry){
+		entry = dir->d_subdirs;
+		// int new_dentry = 0;
+		for( ;entry; entry = entry->d_nxt){
+			if(!strcmp(entry->d_name, name)){
+				break;
+			}
 		}
 	}
 	if(!entry){
@@ -228,16 +242,21 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name){
 		 */
 		release(&dir->d_inode->lock);
 	}
-	if(entry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
-		acquire(&entry->lock);
+	if(entry != entry->d_mounts){
+		entry = entry->d_mounts;// 对于普通目录项应相等，挂载点更新到对应文件系统的dentry
 	}
-	release(&dir->lock);
+	if(entry != dir){ // 排除当前目录
+		if(entry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
+			acquire(&entry->lock);
+		}
+		release(&dir->lock);
+	}
 	return entry;
 }
 
 // 输入：根dentry base (已获得锁)
 PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
-	if(!path || !(*path) || !base || !(base->d_inode)){
+	if(!path || !base || !(base->d_inode)){
 		return NULL;
 	}
 	char d_name[32];
@@ -267,26 +286,108 @@ PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
 	return dir;
 }
 
-PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
-	char full_path[MAX_PATH] = {0};
-	char* file_name, *base_path = full_path;
-	strcpy(full_path, path);
-	int fd = -1, i;
-	for (i = 0; i < NR_FILES; i++)
-	{ // modified by mingxuan 2019-5-20
-		if (p_proc_current->task.filp[i] == 0)
-		{
-			fd = i;
+PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
+	if(hd_info[MAJOR(dev)].part[MINOR(dev)].fs_type != fstype){
+		// dismatch fstype
+		return NULL;
+	}
+	struct fs* file_sys = &fs_table[fstype];
+	acquire(&superblock_lock);
+	struct super_block* sb = &super_blocks[get_free_superblock()];
+	if(!(file_sys->fs_sop && file_sys->fs_sop->fill_superblock)){
+		release(&superblock_lock);
+		return NULL;
+	}
+	int state = file_sys->fs_sop->fill_superblock(sb, dev);
+	if(state){
+		//error
+		release(&superblock_lock);
+		return NULL;
+	}
+	sb->used = 1;
+	release(&superblock_lock);
+	return sb;
+}
+
+PUBLIC void mount_root(){
+	int root_dev = SATA_BASE;
+	int root_fstype = ORANGE_TYPE;
+	int dev = get_fs_dev(root_dev, ORANGE_TYPE);
+	struct super_block *sb = vfs_read_super(dev, root_fstype);
+	vfs_root = sb->root;
+}
+
+PUBLIC void init_fs(){
+	initlock(&inode_alloc_lock, "");
+	initlock(&file_desc_lock, "");
+	init_file_desc_table();
+	register_fs_type("orangefs", ORANGE_TYPE,
+		&orange_file_ops, 
+		&orange_inode_ops,
+		NULL,
+		&orange_sb_ops);
+	
+	mount_root();
+}
+
+PUBLIC int get_fstype_by_name(char* fstype_name){
+	int fstype = NO_FS_TYPE;
+	for(;fstype < NR_FS_TYPE; fstype++){
+		if(!strcmp(fstype_name, fs_table[fstype].fstype_name)){
 			break;
 		}
 	}
-	if ((fd < 0) || (fd >= NR_FILES))
-	{
-		disp_str("filp[] is full (PID:");
-		disp_int(proc2pid(p_proc_current));
-		disp_str(")\n");
+	if(fstype == NR_FS_TYPE){
+		// unknown fs type
+		return NO_FS_TYPE;
+	}
+	return fstype;
+}
+
+PUBLIC int kern_vfs_mount(const char *source, const char *target,
+                      const char *filesystemtype, unsigned long mountflags, const void *data)
+{
+	//将字符串从用户空间复制到内核空间
+    char block_filepath[MAX_PATH];
+    char mntpoint_path[MAX_PATH];
+    memset(mntpoint_path,0,MAX_PATH);
+    memset(block_filepath,0,MAX_PATH);
+    strcpy(block_filepath,source);
+    strcpy(mntpoint_path,target);
+
+    // modified by sundong 2023.5.28
+    //int device = get_dev_from_name(source);
+    //从根文件系统中获取块设备的设备号
+	acquire(&vfs_root->lock);
+	struct vfs_dentry* block_dev = vfs_lookup(vfs_root, block_filepath);
+	acquire(&block_dev->d_inode->lock);
+	int dev = block_dev->d_inode->i_dev;
+	if(block_dev->d_inode->i_type != I_BLOCK_SPECIAL){
+		// 不是块设备，挂载失败
+		dev = -1;
+	}
+	release(&block_dev->d_inode->lock);
+	release(&block_dev->lock);
+	if(dev == -1){
 		return -1;
 	}
+	
+	acquire(&vfs_root->lock);
+	struct vfs_dentry* dir_d = vfs_lookup(vfs_root, mntpoint_path);
+	int fstype = get_fstype_by_name(filesystemtype);
+	struct super_block *sb = vfs_read_super(dev, fstype);
+	add_vfsmount(block_filepath, mntpoint_path, sb->root, dev);
+	sb->root->d_covers = dir_d;
+	dir_d->d_mounts = sb->root;
+	release(&dir_d->lock);
+	return 0;
+}
+
+PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
+	int i;
+	char full_path[MAX_PATH] = {0};
+	char* file_name, *base_path = full_path;
+	strcpy(full_path, path);
 	strip_base_path(base_path, &file_name);
 	acquire(&vfs_root->lock);
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
@@ -294,18 +395,21 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 	if(dir){
 		entry = _do_lookup(dir, file_name);
 	}
-	if(!entry && (flags & O_CREAT)){//此处不调用createAPI,避免锁的一致性问题	
+	if(!entry && (flags & O_CREAT)){
+		//此处不调用createAPI,避免锁的一致性问题,
+		//同时根据POSIX应将creat实现为open的特殊情况	
 		if(dir){
 			struct vfs_inode* inode = NULL;
 			struct inode_operations * i_ops = NULL;
 			acquire(&dir->d_inode->lock);
 			int type = dir->d_inode->i_type;
-			if(type == I_MOUNTPOINT || type == I_DIRECTORY){
+			if(type == I_DIRECTORY){
 				i_ops = dir->d_inode->i_op;
 			}
 			if(i_ops){
 				inode = vfs_get_inode();
-				inode->i_mode = mode;
+				inode->i_mode = mode&(~I_TYPE_MASK);
+				inode->i_type = I_REGULAR;
 				struct vfs_dentry * dentry = alloc_dentry(file_name, inode);
 				int state = i_ops->create(dir->d_inode, dentry);
 				if(state == 0){
@@ -323,7 +427,7 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 		}
 	}
 	if(!entry){
-		return -1;
+		return NULL;
 	}
 	inode = entry->d_inode;
 	acquire(&inode->lock);
@@ -331,7 +435,7 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 		disp_str("error: try to open a dir");
 		release(&inode->lock);
 		release(&entry->lock);
-		return -1;
+		return NULL;
 	}
 	acquire(&file_desc_lock);
 	/* find a free slot in f_desc_table[] */
@@ -344,18 +448,44 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 		disp_str("f_desc_table[] is full (PID:");
 		disp_int(proc2pid(p_proc_current));
 		disp_str(")\n");
-		return  -1;
+		return  NULL;
 	}
 	f_desc_table[i].flag = 1;
 	release(&file_desc_lock);
-	/* connects proc with file_descriptor */
-	p_proc_current->task.filp[fd] = &f_desc_table[i];
 	inode->i_count++;
 	f_desc_table[i].fd_inode = inode;
 	f_desc_table[i].fd_mode = flags;
 	f_desc_table[i].fd_pos = 0;	
 	release(&inode->lock);
 	release(&entry->lock);
+	return &f_desc_table[i];
+}
+
+PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
+	
+	int fd = -1, i;
+	for (i = 0; i < NR_FILES; i++)
+	{ // modified by mingxuan 2019-5-20
+		if (p_proc_current->task.filp[i] == 0)
+		{
+			fd = i;
+			break;
+		}
+	}
+	if ((fd < 0) || (fd >= NR_FILES))
+	{
+		disp_str("filp[] is full (PID:");
+		disp_int(proc2pid(p_proc_current));
+		disp_str(")\n");
+		return -1;
+	}
+	//此处拆解开始是因为 某些情况下用户对底层filp应当不可见(如opendir)
+	struct file_desc* filp = vfs_file_open(path, flags, mode);
+	if(filp == NULL){
+		return -1;
+	}
+	/* connects proc with file_descriptor */
+	p_proc_current->task.filp[fd] = filp;
     return fd;
 }
 
@@ -442,6 +572,105 @@ PUBLIC int kern_vfs_creat(char* path, int mode){
 
 PUBLIC int kern_vfs_unlink(){
 
+}
+PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
+	char full_path[MAX_PATH] = {0};
+	char* file_name, *base_path = full_path;
+	strcpy(full_path, path);
+	strip_base_path(base_path, &file_name);
+	acquire(&vfs_root->lock);
+	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
+	struct vfs_inode *inode = NULL;
+	if(dir){
+		entry = _do_lookup(dir, file_name);
+	}
+	if(entry){
+		release(&entry->lock);
+		return -1;
+	}
+	if(dir){
+		struct vfs_inode* inode = NULL;
+		struct inode_operations * i_ops = NULL;
+		acquire(&dir->d_inode->lock);
+		int type = dir->d_inode->i_type;
+		if(type == I_DIRECTORY){
+			i_ops = dir->d_inode->i_op;
+		}
+		if(i_ops){
+			inode = vfs_get_inode();
+			struct vfs_dentry * dentry = alloc_dentry(file_name, inode);
+			int state = i_ops->create(dir->d_inode, dentry);
+			inode->i_mode = mode&(~I_TYPE_MASK);
+			inode->i_type = mode&I_TYPE_MASK;
+			inode->i_dev = dev;
+			switch (inode->i_type)
+			{
+			case I_CHAR_SPECIAL:
+				inode->i_fop = &tty_file_ops;
+				break;
+			
+			default:
+				break;
+			}
+			if(state == 0){
+				insert_sub_dentry(dir, dentry);
+				entry = dentry;
+				acquire(&entry->lock);
+			}else{
+				// create error
+				vfs_put_inode(inode);
+				inode = NULL;
+			}
+		}
+		release(&dir->d_inode->lock);
+		release(&dir->lock);
+	}
+	return 0;
+}
+
+PUBLIC int kern_vfs_mkdir(char* path, int mode){
+	char full_path[MAX_PATH] = {0};
+	char* file_name, *base_path = full_path;
+	strcpy(full_path, path);
+	strip_base_path(base_path, &file_name);
+	acquire(&vfs_root->lock);
+	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
+	struct vfs_inode *inode = NULL;
+	if(dir){
+		entry = _do_lookup(dir, file_name);
+	}
+	if(entry){
+		release(&entry->lock);
+		return -1;
+	}
+	if(dir){
+		struct vfs_inode* inode = NULL;
+		struct inode_operations * i_ops = NULL;
+		acquire(&dir->d_inode->lock);
+		int type = dir->d_inode->i_type;
+		if(type == I_DIRECTORY){
+			i_ops = dir->d_inode->i_op;
+		}
+		if(i_ops){
+			inode = vfs_get_inode();
+			inode->i_mode = mode&(~I_TYPE_MASK);
+			inode->i_type = I_DIRECTORY;
+			struct vfs_dentry * dentry = alloc_dentry(file_name, inode);
+			int state = i_ops->mkdir(dir->d_inode, dentry);
+			if(state == 0){
+				insert_sub_dentry(dir, dentry);
+				entry = dentry;
+				acquire(&entry->lock);
+			}else{
+				// create error
+				vfs_put_inode(inode);
+				inode = NULL;
+			}
+		}
+		release(&dir->d_inode->lock);
+		release(&dir->lock);
+	}
+	return 0;
 }
 
 PUBLIC void init_vfs(){
@@ -847,6 +1076,9 @@ PUBLIC int sys_getcwd() {
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vopen(const char *path, int flags, int mode) {
+	#ifdef NEW_VFS
+	return kern_vfs_open(path, flags, mode);
+	#endif
     return kern_vopen(path, flags);
 }
 
@@ -913,6 +1145,9 @@ PUBLIC int kern_vopen(const char *path, int flags) {    //modified by mingxuan 2
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vclose(int fd) {
+	#ifdef NEW_VFS
+	return kern_vfs_close(fd);
+	#endif
     return kern_vclose(fd);
 }
 
@@ -945,6 +1180,9 @@ PUBLIC int kern_vclose(int fd) {    //modified by mingxuan 2021-8-15
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vread(int fd, char *buf, int count) {
+	#ifdef NEW_VFS
+	return kern_vfs_read(fd, buf, count);
+	#endif
     return kern_vread(fd, buf, count);
 }
 
@@ -980,6 +1218,9 @@ PUBLIC int kern_vread(int fd, char *buf, int count) {   //modified by mingxuan 2
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vwrite(int fd, const char *buf, int count) {
+	#ifdef NEW_VFS
+	return kern_vfs_write(fd, buf, count);
+	#endif
     return kern_vwrite(fd, buf, count);
 }
 
@@ -1091,6 +1332,9 @@ PUBLIC int kern_vunlink(const char *path) {   //modified by mingxuan 2021-8-15
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vlseek(int fd, int offset, int whence) {
+	#ifdef NEW_VFS
+	return kern_vfs_lseek(fd, offset, whence);
+	#endif
     return kern_vlseek(fd, offset, whence);
 }
 
@@ -1290,6 +1534,9 @@ PUBLIC int kern_vopendir(char *path) {  //modified by mingxuan 2021-8-15
 
 //added by mingxuan 2021-8-15
 PUBLIC int do_vcreatedir(char *path) {
+	#ifdef NEW_VFS
+	return kern_vfs_mkdir(path, I_RWX);
+	#endif
     return kern_vcreatedir(path);
 }
 

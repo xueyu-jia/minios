@@ -94,8 +94,8 @@ PRIVATE int alloc_smap_bit(int dev, int nr_sects_to_alloc);
 PRIVATE int memcmp(const void *s1, const void *s2, int n);
 // PRIVATE int strcmp(const char *s1, const char *s2);
 
-PRIVATE int create_tty_file(char *path,int tty_dev);//add by sundong 2023.5.18
-PRIVATE int create_blockdev_file(char *path, int block_dev_id);//add by sundong 2023.5.28
+PUBLIC int create_tty_file(char *path,int tty_dev);//add by sundong 2023.5.18
+PUBLIC int create_blockdev_file(char *path, int block_dev_id);//add by sundong 2023.5.28
 // PRIVATE int create_devfile(int drive, int major, int minor);
 
 /*
@@ -207,99 +207,6 @@ PUBLIC int get_blockfile_dev(char *path){
 
 	}
 	return p_inode->i_start_block;
-}
-
-int kern_init_block_dev(int drive)
-{
-	for (int i = 0; i < 12; i++)
-	{
-		if (hd_info[i].open_cnt > 0)
-		{
-			for (int j = 0; j < 16; j++)
-			{
-				if (hd_info[i].part[j].size > 0)
-				{
-					int major = i,minor=j;
-					char dev_pathname[MAX_PATH];
-					memset(dev_pathname, 0, sizeof(dev_pathname));
-
-					if (major < SATA_BASE)
-					{
-						strcpy(dev_pathname, "dev/hd");
-						dev_pathname[strlen(dev_pathname)] = 'a' + major - IDE_BASE;
-					}
-					else if (major < SCSI_BASE)
-					{
-						strcpy(dev_pathname, "dev/sd");
-						dev_pathname[strlen(dev_pathname)] = 'a' + major - SATA_BASE;
-					}
-					else if (major < 12)
-					{
-						disp_str("SCSI devices are temporarily not supported\n");
-						return -1;
-					}
-					else
-					{
-						disp_str("major num out of limit\n");
-						return -1;
-					}
-
-					if (minor != 0)
-					{
-						itoa(minor, dev_pathname + strlen(dev_pathname), 10);
-					}
-					if(create_blockdev_file(dev_pathname,MAKE_DEV(major,minor))!=0){
-						disp_str("\ninit_block_dev error!\n");
-						return -1;
-					}
-
-					/* if (create_devfile(drive, i, j) != 0)
-					{
-						disp_str("\ninit_block_dev error!\n");
-						return -1;
-					} */
-				}
-			}
-		}
-	}
-	return 0;
-}
-
-int do_init_block_dev(int drive)
-{
-	return kern_init_block_dev(drive);
-}
-
-int sys_init_block_dev()
-{
-	return do_init_block_dev(get_arg(1));
-}
-// add by sundong 2023.5.19 
-//在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
-PRIVATE int kern_init_char_dev(int drive)
-{
-	// struct super_block *sb = get_super_block(drive);
-	//real_createdir(sb, "dev");
-	char ttypath[MAX_PATH] = {"dev/tty0"};
-	for (int i = 0; i < NR_CONSOLES; ++i)
-	{
-		ttypath[strlen(ttypath) - 1] = '0' + i;
-		if (create_tty_file(ttypath, i) != 0){
-			disp_str("\ninit_char_dev error!\n");
-			return -1;
-		}
-			
-	}
-}
-// add by sundong 2023.5.19
-int do_init_char_dev(int drive)
-{
-	return kern_init_char_dev(drive);
-}
-// add by sundong 2023.5.19
-int sys_init_char_dev()
-{
-	return do_init_char_dev(get_arg(1));
 }
 
 /* void orangefs_test()
@@ -477,24 +384,6 @@ PUBLIC void free_mountpoint(const char *pathname, u32 dev)
 }
 
 // modified by ran
-
-PRIVATE int get_free_superblock()
-{
-	int sb_index = 0;
-	for (sb_index = 0; sb_index < NR_SUPER_BLOCK; sb_index++)
-	{
-		if (super_blocks[sb_index].used == 0)
-		{
-			break;
-		}
-	}
-	if (sb_index == NR_SUPER_BLOCK)
-	{
-		disp_str("there is no free superblock in array\n");
-		return -1;
-	}
-	return sb_index;
-}
 
 PUBLIC void read_super_block_to_target(int dev, struct super_block *target_sb)
 {
@@ -1300,7 +1189,7 @@ PRIVATE int ora_open(MESSAGE *fs_msg) // modified by mingxuan 2021-8-20
  *
  * @return           0 success; -1 error .
 */
-PRIVATE int create_blockdev_file(char *path, int block_dev_id){
+PUBLIC int create_blockdev_file(char *path, int block_dev_id){
 	char filename[MAX_FILENAME_LEN];
 	int inode_nr;
 	struct inode *dir_inode;
@@ -1341,7 +1230,7 @@ PRIVATE int create_blockdev_file(char *path, int block_dev_id){
  *
  * @return           0 success; -1 error .
 */
-PRIVATE int create_tty_file(char *path, int tty_dev)
+PUBLIC int create_tty_file(char *path, int tty_dev)
 {
 	char filename[MAX_FILENAME_LEN];
 	int inode_nr;
@@ -3117,6 +3006,109 @@ static int search_file_in_dir(char *name, struct inode *dir_inode) /*added by gf
 	//kern_kfree(fsbuf);
 	return 0;
 }
+/*****************************************************************************
+ *                                free_imap_bit
+ *****************************************************************************/
+/**
+ * free bits in inode-map.
+ *
+ * @param dev  In which device the inode-map is located.
+ * @param inode_nr inode number
+ * @return  0, as it will success under most of the circumstance
+ *****************************************************************************/
+/*add by xkx 2023-1-3*/
+
+PRIVATE int free_imap_bit(int dev, int inode_nr)
+{
+	int i, j, k;
+
+	int imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
+	struct super_block *sb = get_super_block(dev);
+
+	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	// (i * SECTOR_SIZE + j) * 8 + k = inode_nr ;
+	k = inode_nr % 8;
+	j = ((inode_nr - k) / 8) % BLOCK_SIZE;
+	i = (((inode_nr - k) / 8) - j) / BLOCK_SIZE;
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
+	bh = bread(dev, imap_blk0_nr + i);
+	fsbuf = bh->buffer;
+	//BUF_RD_BLOCK(dev, imap_blk0_nr + i, fsbuf);
+	fsbuf[j] &= ~(1 << k);
+	mark_buff_dirty(bh);
+	brelse(bh);
+	//BUF_WR_BLOCK(dev, imap_blk0_nr + i, fsbuf);
+
+	return 0;
+}
+
+/*****************************************************************************
+ *                                free_smap_bit
+ *****************************************************************************/
+/**
+ * free bits in sector-map.
+ *
+ * @param dev  In which device the sector-map is located.
+ * @param start_sect_nr the number of start sector
+ * @param nr_sects_to_free number of sector to free
+ * @return  if successful return 0, else return -1.
+ *****************************************************************************/
+PRIVATE int free_smap_bit(int dev, int start_sect_nr, int nr_sects_to_free)
+{
+	// free_sect_nr = (i * SECTOR_SIZE + j) * 8 + k - 1 + sb->n_1st_sect;
+	int i; /* sector index */
+	int j; /* byte index */
+	int k; /* bit index */
+
+	struct super_block *sb = get_super_block(dev);
+
+	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
+
+	k = (start_sect_nr - sb->n_1st_block + 1) % 8;
+	j = ((start_sect_nr - sb->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
+	i = (((start_sect_nr - sb->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
+
+	for (; i < sb->nr_smap_blocks; i++)
+	{ /* smap_blk0_nr + i :
+current sect nr. */
+		// RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		//BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		bh = bread(dev, smap_blk0_nr + i);
+		fsbuf = bh->buffer;
+
+		/* byte offset in current sect */
+		for (; j < BLOCK_SIZE && nr_sects_to_free > 0; j++)
+		{
+
+			for (; k < 8; k++)
+			{ /* repeat till enough bits are set */
+
+				fsbuf[j] &= (~(1 << k));
+				if (--nr_sects_to_free == 0)
+					break;
+			}
+			k = 0;
+		}
+		mark_buff_dirty(bh);
+		brelse(bh);
+
+		//BUF_WR_BLOCK(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan 2019-5-20
+
+		if (nr_sects_to_free == 0)
+			break;
+	}
+	if (!nr_sects_to_free)
+		//kern_kfree(fsbuf);
+		return -1;
+
+	//kern_kfree(fsbuf);
+	return 0;
+}
 /*add by gfx 2022-1-14*/
 /*****************************************************************************
  *                                find_max_i_cnt
@@ -3599,109 +3591,6 @@ static int ora_showdir(MESSAGE *fs_msg)
 
 	return 0;
 }
-/*****************************************************************************
- *                                free_imap_bit
- *****************************************************************************/
-/**
- * free bits in inode-map.
- *
- * @param dev  In which device the inode-map is located.
- * @param inode_nr inode number
- * @return  0, as it will success under most of the circumstance
- *****************************************************************************/
-/*add by xkx 2023-1-3*/
-
-static int free_imap_bit(int dev, int inode_nr)
-{
-	int i, j, k;
-
-	int imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
-	struct super_block *sb = get_super_block(dev);
-
-	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
-	//char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
-	// (i * SECTOR_SIZE + j) * 8 + k = inode_nr ;
-	k = inode_nr % 8;
-	j = ((inode_nr - k) / 8) % BLOCK_SIZE;
-	i = (((inode_nr - k) / 8) - j) / BLOCK_SIZE;
-	char *fsbuf = NULL;
-	buf_head *bh = NULL;
-	bh = bread(dev, imap_blk0_nr + i);
-	fsbuf = bh->buffer;
-	//BUF_RD_BLOCK(dev, imap_blk0_nr + i, fsbuf);
-	fsbuf[j] &= ~(1 << k);
-	mark_buff_dirty(bh);
-	brelse(bh);
-	//BUF_WR_BLOCK(dev, imap_blk0_nr + i, fsbuf);
-
-	return 0;
-}
-
-/*****************************************************************************
- *                                free_smap_bit
- *****************************************************************************/
-/**
- * free bits in sector-map.
- *
- * @param dev  In which device the sector-map is located.
- * @param start_sect_nr the number of start sector
- * @param nr_sects_to_free number of sector to free
- * @return  if successful return 0, else return -1.
- *****************************************************************************/
-static int free_smap_bit(int dev, int start_sect_nr, int nr_sects_to_free)
-{
-	// free_sect_nr = (i * SECTOR_SIZE + j) * 8 + k - 1 + sb->n_1st_sect;
-	int i; /* sector index */
-	int j; /* byte index */
-	int k; /* bit index */
-
-	struct super_block *sb = get_super_block(dev);
-
-	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
-	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
-	char* fsbuf = NULL;
-	buf_head *bh = NULL;
-
-	k = (start_sect_nr - sb->n_1st_block + 1) % 8;
-	j = ((start_sect_nr - sb->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
-	i = (((start_sect_nr - sb->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
-
-	for (; i < sb->nr_smap_blocks; i++)
-	{ /* smap_blk0_nr + i :
-current sect nr. */
-		// RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
-		//BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
-		bh = bread(dev, smap_blk0_nr + i);
-		fsbuf = bh->buffer;
-
-		/* byte offset in current sect */
-		for (; j < BLOCK_SIZE && nr_sects_to_free > 0; j++)
-		{
-
-			for (; k < 8; k++)
-			{ /* repeat till enough bits are set */
-
-				fsbuf[j] &= (~(1 << k));
-				if (--nr_sects_to_free == 0)
-					break;
-			}
-			k = 0;
-		}
-		mark_buff_dirty(bh);
-		brelse(bh);
-
-		//BUF_WR_BLOCK(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan 2019-5-20
-
-		if (nr_sects_to_free == 0)
-			break;
-	}
-	if (!nr_sects_to_free)
-		//kern_kfree(fsbuf);
-		return -1;
-
-	//kern_kfree(fsbuf);
-	return 0;
-}
 
 /*****************************************************************************
  *                                set_dir_entry
@@ -3816,3 +3705,532 @@ int real_showdir(const char *pathname, char *dir_content)
 	int flag = ora_showdir(&fs_msg);
 	return flag;
 }
+
+
+
+/*****************************************************************************
+ *                                alloc_imap_bit
+ *****************************************************************************/
+/**
+ * Allocate a bit in inode-map.
+ *
+ * @param dev  In which device the inode-map is located.
+ *
+ * @return  I-node nr.
+ *****************************************************************************/
+PRIVATE int orange_alloc_imap_bit(struct super_block* sb)
+{
+	int inode_nr = 0;
+	int i, j, k;
+	int imap_blk0_nr = 1 + 1;
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
+	for (i = 0; i < sb->nr_imap_blocks; i++)
+	{
+		bh = bread(sb->sb_dev, imap_blk0_nr + i);
+		fsbuf = bh->buffer;
+		for (j = 0; j < BLOCK_SIZE; j++)
+		{
+			/* skip `11111111' bytes */
+			// if (fsbuf[j] == 0xFF)
+			if (fsbuf[j] == '\xFF') // modified by xw, 18/12/28
+				continue;
+
+			/* skip `1' bits */
+			for (k = 0; ((fsbuf[j] >> k) & 1) != 0; k++)
+			{
+			}
+
+			/* i: sector index; j: byte index; k: bit index */
+			inode_nr = (i * BLOCK_SIZE + j) * 8 + k;
+			fsbuf[j] |= (1 << k);
+			mark_buff_dirty(bh);
+			break;
+		}
+		brelse(bh);
+		if(inode_nr)goto alloc_end;
+		
+	}
+alloc_end:
+	if(!inode_nr)disp_str("Panic: inode-map is probably full.\n");/* no free bit in imap */
+	return inode_nr;
+}
+/*****************************************************************************
+ *                                alloc_smap_bit
+ *****************************************************************************/
+/**
+ * Allocate a bit in sector-map.
+ *
+ * @param dev  In which device the sector-map is located.
+ * @param nr_sects_to_alloc  How many sectors are allocated.
+ *
+ * @return  The 1st sector nr allocated.
+ *****************************************************************************/
+PRIVATE int orange_alloc_smap_bit(struct super_block* sb, int nr_sects_to_alloc)
+{
+	/* int nr_sects_to_alloc = NR_DEFAULT_FILE_SECTS; */
+
+	int i; /* sector index */
+	int j; /* byte index */
+	int k; /* bit index */
+	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
+	int free_sect_nr = 0;
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
+	for (i = 0; i < sb->nr_smap_blocks; i++)
+	{												 
+		bh = bread(sb->sb_dev, smap_blk0_nr + i);
+		fsbuf = bh->buffer;
+
+		/* byte offset in current sect */
+		for (j = 0; j < BLOCK_SIZE && nr_sects_to_alloc > 0; j++)
+		{
+			k = 0;
+			if (!free_sect_nr)
+			{
+				/* loop until a free bit is found */
+				// if (fsbuf[j] == 0xFF) continue;
+				if (fsbuf[j] == '\xFF')
+					continue; // modified by xw, 18/12/28
+				for (; ((fsbuf[j] >> k) & 1) != 0; k++)
+				{
+				}
+				free_sect_nr = (i * BLOCK_SIZE + j) * 8 +
+							   k - 1 + sb->n_1st_block;
+			}
+
+			for (; k < 8; k++)
+			{ /* repeat till enough bits are set */
+				// assert(((fsbuf[j] >> k) & 1) == 0);
+				fsbuf[j] |= (1 << k);
+				if (--nr_sects_to_alloc == 0)
+					break;
+			}
+		}
+
+		if (free_sect_nr)mark_buff_dirty(bh);
+		brelse(bh);
+		if (nr_sects_to_alloc == 0)
+			break;
+	}
+
+	return free_sect_nr;
+}
+
+
+/*****************************************************************************
+ *                                free_imap_bit
+ *****************************************************************************/
+/**
+ * free bits in inode-map.
+ *
+ * @param dev  In which device the inode-map is located.
+ * @param inode_nr inode number
+ * @return  0, as it will success under most of the circumstance
+ *****************************************************************************/
+/*add by xkx 2023-1-3*/
+
+PRIVATE int orange_free_imap_bit(struct super_block* sb, int inode_nr)
+{
+	int i, j, k;
+
+	int imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
+
+	//char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf. added by xw, 18/12/27
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local array, to substitute global fsbuf. added by xw, 18/12/27
+	// (i * SECTOR_SIZE + j) * 8 + k = inode_nr ;
+	k = inode_nr % 8;
+	j = ((inode_nr - k) / 8) % BLOCK_SIZE;
+	i = (((inode_nr - k) / 8) - j) / BLOCK_SIZE;
+	char *fsbuf = NULL;
+	buf_head *bh = NULL;
+	bh = bread(sb->sb_dev, imap_blk0_nr + i);
+	fsbuf = bh->buffer;
+	//BUF_RD_BLOCK(dev, imap_blk0_nr + i, fsbuf);
+	fsbuf[j] &= ~(1 << k);
+	mark_buff_dirty(bh);
+	brelse(bh);
+	//BUF_WR_BLOCK(dev, imap_blk0_nr + i, fsbuf);
+
+	return 0;
+}
+
+/*****************************************************************************
+ *                                free_smap_bit
+ *****************************************************************************/
+/**
+ * free bits in sector-map.
+ *
+ * @param dev  In which device the sector-map is located.
+ * @param start_sect_nr the number of start sector
+ * @param nr_sects_to_free number of sector to free
+ * @return  if successful return 0, else return -1.
+ *****************************************************************************/
+PRIVATE int orange_free_smap_bit(struct super_block* sb, int start_sect_nr, int nr_sects_to_free)
+{
+	// free_sect_nr = (i * SECTOR_SIZE + j) * 8 + k - 1 + sb->n_1st_sect;
+	int i; /* sector index */
+	int j; /* byte index */
+	int k; /* bit index */
+	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
+	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
+	char* fsbuf = NULL;
+	buf_head *bh = NULL;
+
+	k = (start_sect_nr - sb->n_1st_block + 1) % 8;
+	j = ((start_sect_nr - sb->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
+	i = (((start_sect_nr - sb->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
+
+	for (; i < sb->nr_smap_blocks; i++)
+	{ /* smap_blk0_nr + i :
+current sect nr. */
+		// RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
+		//BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		bh = bread(sb->sb_dev, smap_blk0_nr + i);
+		fsbuf = bh->buffer;
+
+		/* byte offset in current sect */
+		for (; j < BLOCK_SIZE && nr_sects_to_free > 0; j++)
+		{
+
+			for (; k < 8; k++)
+			{ /* repeat till enough bits are set */
+
+				fsbuf[j] &= (~(1 << k));
+				if (--nr_sects_to_free == 0)
+					break;
+			}
+			k = 0;
+		}
+		mark_buff_dirty(bh);
+		brelse(bh);
+
+		//BUF_WR_BLOCK(dev, smap_blk0_nr + i, fsbuf); // added by mingxuan 2019-5-20
+
+		if (nr_sects_to_free == 0)
+			break;
+	}
+	if (!nr_sects_to_free)
+		//kern_kfree(fsbuf);
+		return -1;
+
+	//kern_kfree(fsbuf);
+	return 0;
+}
+
+// return inode num otherwise INVALID_INODE
+PRIVATE int lookup_inode_in_dir(struct vfs_inode* dir, char* filename)
+{
+	if (filename == 0)
+	{
+		return INVALID_INODE;
+	}
+	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+	int dir_blk0_nr = dir->orange_inode.i_start_block;
+	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+
+	int m = 0;
+	struct dir_entry *pde;
+	int i, j;
+	char * fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = 0; i < nr_dir_blks; i++)
+	{
+		//RD_SECT_SCHED((*cur_dir_inode)->i_dev, dir_blk0_nr + i, fsbuf); // modified by mingxuan 2019-5-20
+		//BUF_RD_BLOCK((*cur_dir_inode)->i_dev, dir_blk0_nr + i, fsbuf);
+		bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
+		pde = (struct dir_entry *)fsbuf;
+		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
+		{
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
+			}
+			if (++m > nr_dir_entries)
+			{
+				return INVALID_INODE;
+			}
+
+			if (!strcmp(pde->name, filename))
+			{
+				int inode_nr = pde->inode_nr;
+				brelse(bh);
+				//kern_kfree(fsbuf);
+				return inode_nr;
+			}
+		}
+		brelse(bh);
+		
+	}
+	return INVALID_INODE;
+}
+
+PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, int num){
+	inode->i_sb = sb;
+	inode->i_dev = sb->sb_dev;
+	inode->i_no = num;
+	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
+	buf_head *bh = bread(sb->sb_dev,blk_nr);
+	char *fsbuf = bh->buffer;
+	struct inode *pinode =  
+		(struct inode *)((u8 *)fsbuf +
+						 ((num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE);
+	inode->i_type = pinode->i_mode;
+	inode->i_size = pinode->i_size;
+	inode->i_mode = I_RWX;
+	inode->i_op = sb->sb_iop;
+	inode->i_fop = sb->sb_fop;
+	inode->orange_inode.i_start_block = pinode->i_start_block;
+	inode->orange_inode.i_nr_blocks = pinode->i_nr_blocks;
+	brelse(bh);
+}
+
+PRIVATE void orange_sync_inode(struct vfs_inode* inode){
+	struct inode *pinode;
+	struct super_block *sb = inode->i_sb;
+	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((inode->i_no - 1) / (BLOCK_SIZE / INODE_SIZE));
+	buf_head *bh = bread(sb->sb_dev, blk_nr);
+	char * fsbuf = bh->buffer;
+	pinode = (struct inode *)((u8 *)fsbuf +
+							  (((inode->i_no - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE));
+	pinode->i_mode = inode->i_type;
+	pinode->i_size = inode->i_size;
+	pinode->i_start_block = inode->orange_inode.i_start_block;
+	pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
+	mark_buff_dirty(bh);
+	brelse(bh);		
+}
+
+/*****************************************************************************
+ *                                new_dir_entry
+ *****************************************************************************/
+/**
+ * Write a new entry into the directory.
+ *
+ * @param dir_inode  I-node of the directory.
+ * @param inode_nr   I-node nr of the new file.
+ * @param filename   Filename of the new file.
+ *****************************************************************************/
+PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, char *filename)
+{
+	/* write the dir_entry */
+	int dir_blk0_nr = dir_inode->orange_inode.i_start_block;
+	int nr_dir_blks = (dir_inode->i_size-1+ BLOCK_SIZE) / BLOCK_SIZE;
+	int nr_dir_entries =
+		dir_inode->i_size / DIR_ENTRY_SIZE; /**
+											 * including unused slots
+											 * (the file has been
+											 * deleted but the slot
+											 * is still there)
+											 */
+	int m = 0;
+	struct dir_entry *pde;
+	struct dir_entry *new_de = 0;
+
+	int i, j;
+	char *fsbuf =NULL;
+	buf_head *bh = NULL;
+	// find free slot in disk
+	for (i = 0; i < nr_dir_blks; i++)
+	{
+		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
+		pde = (struct dir_entry *)fsbuf;
+		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
+		{
+			if (++m > nr_dir_entries)
+				break;
+
+			if (pde->inode_nr == 0)
+			{ /* it's a free slot */
+				new_de = pde;
+				break;
+			}
+		}
+		if (m > nr_dir_entries || new_de)	/* all entries have been iterated or free slot is found */
+			break;
+		brelse(bh);
+
+	}
+	if (!new_de)
+	{ /* reached the end of the dir */
+		new_de = pde;
+		dir_inode->i_size += DIR_ENTRY_SIZE;
+	}
+	new_de->inode_nr = inode_nr;
+	strcpy(new_de->name, filename);
+	new_de->name[strlen(filename)] = 0;
+
+	/* write dir block -- ROOT dir block */
+	mark_buff_dirty(bh);
+	brelse(bh);
+	orange_sync_inode(dir_inode);
+}
+
+PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, char* filename){
+	int inode_nr = lookup_inode_in_dir(dir, filename);
+	if(inode_nr != INVALID_INODE){
+		struct vfs_inode * new_inode = vfs_get_inode();
+		orange_fill_inode(new_inode, dir->i_sb, inode_nr);
+		struct vfs_dentry * dentry = new_dentry(filename, dir, new_inode);
+		return dentry;
+	}
+	return NULL;
+}
+
+PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
+	int pos = file->fd_pos;
+	struct vfs_inode *pin = file->fd_inode;
+	int pos_end = min(pos + count, pin->i_size);
+		// if (fs_msg->type == READ)
+		// 	pos_end = min(pos + len, pin->i_size);
+		// else /* WRITE */
+		// 	pos_end = min(pos + len, pin->i_nr_blocks * BLOCK_SIZE);
+
+	int off = pos % BLOCK_SIZE;
+	int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
+	int rw_sect_max = pin->orange_inode.i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
+	int chunk = min(rw_sect_max - rw_sect_min + 1,BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
+	int bytes_rw = 0;
+	int bytes_left = count;
+	int i;
+	char *fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = rw_sect_min; i <= rw_sect_max; i += chunk){
+		/* read/write this amount of bytes every time */
+		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
+		bh = bread(pin->i_dev,i);
+		fsbuf = bh->buffer;
+		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+			bytes = pos_end - pos;
+		}
+		phys_copy((void *)(buf + bytes_rw), (void*)(fsbuf + off), bytes);
+		off = 0;
+		bytes_rw += bytes;
+		pos += bytes;
+		bytes_left -= bytes;
+		brelse(bh);
+	}
+	file->fd_pos = pos;
+	return bytes_rw;
+}
+
+PUBLIC int orange_write(struct file_desc* file, unsigned int count, char* buf){
+	int pos = file->fd_pos;
+	struct vfs_inode *pin = file->fd_inode;
+	int pos_end = min(pos + count, pin->orange_inode.i_nr_blocks * BLOCK_SIZE);
+	int off = pos % BLOCK_SIZE;
+	int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
+	int rw_sect_max = pin->orange_inode.i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
+	int chunk = min(rw_sect_max - rw_sect_min + 1,BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
+	int bytes_rw = 0;
+	int bytes_left = count;
+	int i;
+	char *fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = rw_sect_min; i <= rw_sect_max; i += chunk){
+		/* read/write this amount of bytes every time */
+		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
+		bh = bread(pin->i_dev,i);
+		fsbuf = bh->buffer;
+		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+			bytes = pos_end - pos;
+		}
+		phys_copy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
+		mark_buff_dirty(bh);
+		off = 0;
+		bytes_rw += bytes;
+		pos += bytes;
+		bytes_left -= bytes;
+		brelse(bh);
+	}
+	file->fd_pos = pos;
+	if (file->fd_pos > pin->i_size)
+	{
+		/* update inode::size */
+		pin->i_size = file->fd_pos;
+
+		/* write the updated i-node back to disk */
+		orange_sync_inode(pin);
+	}
+	return bytes_rw;
+}
+
+int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry){
+	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
+	if(inode_nr == INVALID_INODE){
+		return -1;
+	}
+	int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
+	struct vfs_inode *newino = dentry->d_inode;
+	newino->i_no = inode_nr;
+	newino->i_sb = dir->i_sb;
+	newino->i_dev = dir->i_dev;
+	newino->i_size = 0;
+	newino->orange_inode.i_start_block = free_sect_nr;
+	newino->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
+	newino->i_mode = I_RWX;
+	newino->i_type = I_REGULAR;
+	newino->i_op = dir->i_sb->sb_iop;
+	newino->i_fop = dir->i_sb->sb_fop;
+	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
+	orange_sync_inode(newino);
+	return 0;
+}
+
+int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
+	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
+	if(inode_nr == INVALID_INODE){
+		return -1;
+	}
+	int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
+	struct vfs_inode *newino = dentry->d_inode;
+	newino->i_no = inode_nr;
+	newino->i_sb = dir->i_sb;
+	newino->i_dev = dir->i_dev;
+	newino->i_size = 0;
+	newino->orange_inode.i_start_block = free_sect_nr;
+	newino->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
+	newino->i_mode = I_RWX;
+	newino->i_type = I_DIRECTORY;
+	newino->i_op = dir->i_sb->sb_iop;
+	newino->i_fop = dir->i_sb->sb_fop;
+	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
+	orange_sync_inode(newino);
+	return 0;
+}
+
+int orange_fill_superblock(struct super_block* sb, int dev){
+	buf_head * bh = bread(dev, 1);
+	struct super_block *psb = (struct super_block *)bh->buffer;
+
+	*sb = *psb;
+	sb->sb_dev = dev;
+	sb->fs_type = ORANGE_TYPE;
+	sb->sb_iop = &orange_inode_ops;
+	sb->sb_fop = &orange_file_ops;
+	sb->sb_dop = 0;
+	sb->sb_sop = &orange_sb_ops;
+	struct vfs_inode * orange_root = vfs_get_inode();
+	orange_fill_inode(orange_root, sb, sb->root_inode);
+	sb->root = new_dentry("/", orange_root, orange_root);
+	brelse(bh);
+	return 0;
+}
+
+struct superblock_operations orange_sb_ops = {
+.fill_superblock = orange_fill_superblock,
+};
+
+struct inode_operations orange_inode_ops = {
+.lookup = orange_lookup,
+.create = orange_create,
+.mkdir = orange_mkdir,
+};
+
+struct file_operations orange_file_ops = {
+.read = orange_read,
+.write = orange_write,
+};

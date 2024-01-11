@@ -26,7 +26,6 @@ typedef struct vfs_inode{
 	u32 i_dev; // for char special inode
 	u32 i_count; // reference count
 	u32 i_size;  // file size in byte
-	u32 i_nlink; // file refered by inode
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
 	u32 i_mnt_index;
@@ -47,6 +46,9 @@ struct vfs_dentry{
 	struct vfs_dentry* d_nxt;
 	struct vfs_dentry* d_pre;
 	struct vfs_dentry* d_subdirs;
+	struct vfs_dentry* d_parent;
+	struct vfs_dentry* d_covers;
+	struct vfs_dentry* d_mounts;
 	struct dentry_operations * d_op;
 	struct spinlock lock;
 };
@@ -90,6 +92,11 @@ struct super_block {
   /*
    * the following item(s) are only present in memory
    */
+  	struct vfs_dentry* root;
+	struct file_operations * sb_fop;
+	struct inode_operations * sb_iop;
+	struct super_operations * sb_sop;
+	struct dentry_operations * sb_dop;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
@@ -136,8 +143,8 @@ struct dentry_operations{
 };
 
 struct file_operations{
-	int (*read)(struct file_desc *, unsigned int, char *);
-	int (*write)(struct file_desc *, unsigned int, char *);
+	int (*read)(struct file_desc *file, unsigned int count, char * buf);
+	int (*write)(struct file_desc *file, unsigned int count, char * buf);
 };
 
 struct superblock_operations{
@@ -148,7 +155,7 @@ struct fs{
 	char * fstype_name;
 	struct file_operations * fs_fop;
 	struct inode_operations * fs_iop;
-	struct super_operations * fs_sop;
+	struct superblock_operations * fs_sop;
 	struct dentry_operations * fs_dop;
 };
 
@@ -158,16 +165,13 @@ struct vfs{
     struct file_op * op;        //指向操作表的一项
 	struct sb_op *s_op;			//added by mingxuan 2020-10-29
     //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
-	struct file_operations * fs_fop;
-	struct inode_operations * fs_iop;
-	struct super_operations * fs_sop;
-	struct dentry_operations * fs_dop;
 	struct super_block *sb;		//added by mingxuan 2020-10-29
 	int used;                   //added by ran
 };
 
+extern struct super_block super_blocks[NR_SUPER_BLOCK];
 int get_fs_dev(int drive, int fs_type);
-
+int get_free_superblock();
 
 
 #endif /* FS_MISC_H */
