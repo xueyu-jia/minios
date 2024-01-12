@@ -186,6 +186,18 @@ PRIVATE void strip_base_path(char *path, char** file_name){
 	}
 }
 
+// this may modify content in path
+PUBLIC void vfs_get_abspath(char* path){
+	char tmp[MAX_PATH];
+	if(path[0] == '/'){
+		return; //skip abspath
+	}
+	int pwd_len = strlen(p_proc_current->task.cwd);
+	strcpy(tmp, p_proc_current->task.cwd);
+	strcpy(tmp + pwd_len, path);
+	strcpy(path, tmp);
+}
+
 PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	acquire(&inode->lock);
 	int mode = inode->i_mode;
@@ -273,6 +285,9 @@ PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
 				if(!dir){
 					return NULL;
 				}
+				if(*p == 0){//最后一项也查找完毕
+					break;
+				}
 			}
 		}else if(!flag_name){
 			flag_name = 1;
@@ -353,7 +368,9 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
     memset(mntpoint_path,0,MAX_PATH);
     memset(block_filepath,0,MAX_PATH);
     strcpy(block_filepath,source);
+	vfs_get_abspath(block_filepath);
     strcpy(mntpoint_path,target);
+	vfs_get_abspath(mntpoint_path);
 
     // modified by sundong 2023.5.28
     //int device = get_dev_from_name(source);
@@ -388,6 +405,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	char full_path[MAX_PATH] = {0};
 	char* file_name, *base_path = full_path;
 	strcpy(full_path, path);
+	vfs_get_abspath(full_path);
 	strip_base_path(base_path, &file_name);
 	acquire(&vfs_root->lock);
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
@@ -577,6 +595,7 @@ PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
 	char full_path[MAX_PATH] = {0};
 	char* file_name, *base_path = full_path;
 	strcpy(full_path, path);
+	vfs_get_abspath(full_path);
 	strip_base_path(base_path, &file_name);
 	acquire(&vfs_root->lock);
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
@@ -615,7 +634,7 @@ PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
 			if(state == 0){
 				insert_sub_dentry(dir, dentry);
 				entry = dentry;
-				acquire(&entry->lock);
+				// acquire(&entry->lock);
 			}else{
 				// create error
 				vfs_put_inode(inode);
@@ -632,6 +651,7 @@ PUBLIC int kern_vfs_mkdir(char* path, int mode){
 	char full_path[MAX_PATH] = {0};
 	char* file_name, *base_path = full_path;
 	strcpy(full_path, path);
+	vfs_get_abspath(full_path);
 	strip_base_path(base_path, &file_name);
 	acquire(&vfs_root->lock);
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
@@ -660,7 +680,7 @@ PUBLIC int kern_vfs_mkdir(char* path, int mode){
 			if(state == 0){
 				insert_sub_dentry(dir, dentry);
 				entry = dentry;
-				acquire(&entry->lock);
+				// acquire(&entry->lock);
 			}else{
 				// create error
 				vfs_put_inode(inode);

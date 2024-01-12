@@ -351,6 +351,7 @@ PRIVATE int initialize_processes()
 		{
 			p_proc->task.filp[j] = 0;
 		}
+		strcpy(p_proc->task.cwd, "/");
 		p_proc++;
 		selector_ldt += 1 << 3;
 	}

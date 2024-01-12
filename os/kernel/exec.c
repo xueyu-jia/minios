@@ -107,7 +107,11 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	/*******************打开文件************************/
 	// u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19
 	//u32 fd = do_vopen(path, O_RDWR);	//deleted by mingxuan 2019-5-19
+	#ifdef NEW_VFS
+	u32 fd = kern_vfs_open(path, O_RDONLY);
+	#else
 	u32 fd = kern_vopen(path, O_RDWR); //modified by mingxuan 2021-8-19
+	#endif
 
 	if (fd == -1)
 	{
@@ -314,8 +318,11 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 	//real_close(fd);	//added by mingxuan 2019-5-23
 	//do_vclose(fd); //modified by mingxuan 2020-12-18
+	#ifdef NEW_VFS
+	kern_vfs_close(fd);
+	#else
 	kern_vclose(fd); //modified by mingxuan 2021-8-19
-
+	#endif
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
 	//disp_color_str("]",0x72);//灰底绿字
@@ -431,27 +438,29 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 		//if( lin_limit-lin_addr >= num_4K )	// modified by mingxuan 2020-12-14
 		if (lin_file_limit - lin_addr >= num_4K) // modified by mingxuan 2021-3-16
 		{										 //以4K个字节为一个单位进行拷贝，正常拷贝
-
-			//do_vlseek(fd, file_offset, SEEK_SET);	//modified by mingxuan 2019-5-24
+			#ifdef NEW_VFS
+			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
+			kern_vfs_read(fd, buf, num_4K);
+			#else
 			kern_vlseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
-			//do_vread(fd, buf, num_4K);
 			kern_vread(fd, buf, num_4K); //modified by mingxuan 2021-8-19
-
+			#endif
 			memcpy(lin_addr, buf, num_4K); //modified by mingxuan 2020-12-14
 		}
 		else
 		{ //剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
 
 			//do_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2020-12-14
-			kern_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2021-8-19
 
 			//memcpy(buf, 0, num_4K);	//给buf清除脏数据,清0	// added by mingxuan 2020-12-14 //deleted by mingxuan 2020-12-18
 			u32 left_size = file_limit - file_offset; //added by mingxuan 2021-3-16
-
-			//do_vread(fd, buf, file_limit-file_offset);	// added by mingxuan 2020-12-14
-			//memcpy(lin_addr, buf, file_limit-file_offset);	//modified by mingxuan 2020-12-14
-			//do_vread(fd, buf, left_size);	//modified by mingxuan 2021-3-16
+			#ifdef NEW_VFS
+			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
+			kern_vfs_read(fd, buf, left_size);
+			#else
+			kern_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2021-8-19
 			kern_vread(fd, buf, left_size);	  //modified by mingxuan 2021-8-19
+			#endif
 			memcpy(lin_addr, buf, left_size); //modified by mingxuan 2021-3-16
 
 			file_offset = file_offset + left_size; //added by mingxuan 2021-3-16

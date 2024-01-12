@@ -4016,7 +4016,9 @@ PRIVATE void orange_sync_inode(struct vfs_inode* inode){
 PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, char *filename)
 {
 	/* write the dir_entry */
+	// 原orange逻辑存在问题：当目录项使用至Blk边界时,对于仍有空间的目录没有正确分配空间
 	int dir_blk0_nr = dir_inode->orange_inode.i_start_block;
+	int dir_blk_total = dir_inode->orange_inode.i_nr_blocks;
 	int nr_dir_blks = (dir_inode->i_size-1+ BLOCK_SIZE) / BLOCK_SIZE;
 	int nr_dir_entries =
 		dir_inode->i_size / DIR_ENTRY_SIZE; /**
@@ -4033,7 +4035,7 @@ PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, cha
 	char *fsbuf =NULL;
 	buf_head *bh = NULL;
 	// find free slot in disk
-	for (i = 0; i < nr_dir_blks; i++)
+	for (i = 0; i <= nr_dir_blks && i < dir_blk_total; i++)// 此处取等,允许多读取一块
 	{
 		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
 		fsbuf = bh->buffer;
