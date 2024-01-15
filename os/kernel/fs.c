@@ -78,7 +78,7 @@ int kern_init_block_dev(int drive)
 						itoa(minor, dev_pathname + strlen(dev_pathname), 10);
 					}
 					#ifdef NEW_VFS
-					kern_vfs_mknod(dev_pathname, I_BLOCK_SPECIAL, MAKE_DEV(major,minor));
+					kern_vfs_mknod(dev_pathname, I_BLOCK_SPECIAL|I_R|I_W, MAKE_DEV(major,minor));
 					// 根据一般的语义,重复创建应该报错,此处不判断
 					// if(kern_vfs_mknod(dev_pathname, I_BLOCK_SPECIAL, MAKE_DEV(major,minor))!=0){
 					// 	disp_str("\ninit_block_dev error!\n");
@@ -123,7 +123,7 @@ PRIVATE int kern_init_char_dev(int drive)
 	{
 		ttypath[strlen(ttypath) - 1] = '0' + i;
 		#ifdef NEW_VFS
-		kern_vfs_mknod(ttypath, I_CHAR_SPECIAL, MAKE_DEV(DEV_CHAR_TTY, i));
+		kern_vfs_mknod(ttypath, I_CHAR_SPECIAL|I_R|I_W, MAKE_DEV(DEV_CHAR_TTY, i));
 		// if(kern_vfs_mknod(ttypath, I_CHAR_SPECIAL, MAKE_DEV(DEV_CHAR_TTY, i))!=0){
 		// 	disp_str("\ninitchar_dev error!\n");
 		// 	return -1;

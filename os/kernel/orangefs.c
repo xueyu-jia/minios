@@ -4182,6 +4182,10 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	return 0;
 }
 
+int orange_unlink(struct vfs_inode *dir, struct vfs_dentry*dentry){
+
+}
+
 int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
@@ -4204,10 +4208,13 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	return 0;
 }
 
+int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
+	
+}
+
 int orange_fill_superblock(struct super_block* sb, int dev){
 	buf_head * bh = bread(dev, 1);
 	struct super_block *psb = (struct super_block *)bh->buffer;
-
 	*sb = *psb;
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
@@ -4229,7 +4236,10 @@ struct superblock_operations orange_sb_ops = {
 struct inode_operations orange_inode_ops = {
 .lookup = orange_lookup,
 .create = orange_create,
+.unlink = orange_unlink,
 .mkdir = orange_mkdir,
+.rmdir = orange_rmdir,
+.put_inode = NULL,
 };
 
 struct file_operations orange_file_ops = {

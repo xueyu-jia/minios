@@ -139,12 +139,13 @@ struct inode_operations{
 };
 
 struct dentry_operations{
-	int (*compare)(struct vfs_dentry *dentry, char *filename);
+	int (*compare)(const char *dentryname, const char *filename);
 };
 
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, char * buf);
+	int (*readdir)(struct file_desc *file );// dirp structure todo
 };
 
 struct superblock_operations{

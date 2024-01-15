@@ -49,9 +49,9 @@
 
 // permission
 #define I_RWX	7
-#define I_R	4
+#define I_R	1
 #define I_W	2
-#define I_X	1
+#define I_X	4
 
 /* INODE::i_mode (octal, lower 12 bits reserved) */
 #define I_TYPE_MASK     0170000
