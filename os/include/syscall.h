@@ -1,13 +1,6 @@
 #ifndef USER_SYSCALL_H
 #define USER_SYSCALL_H
 
-// #include "type.h"
-// #include "const.h"
-// #include "../include/signal.h"
-// #include "../include/shm.h"
-// #include "../include/msg.h"
-// #include "../include/spinlock.h"
-
 #define _NR_get_ticks       0
 #define _NR_get_pid         1
 #define _NR_malloc_4k       2
@@ -25,11 +18,11 @@
 #define _NR_write			14
 #define _NR_lseek			15
 #define _NR_unlink			16
-#define _NR_create			17
-#define _NR_delete 			18
+#define _NR_creat			17
+#define _NR_closedir 		18
 #define _NR_opendir 		19
-#define _NR_createdir  		20
-#define _NR_deletedir   	21
+#define _NR_mkdir  			20
+#define _NR_rmdir   		21
 #define _NR_readdir         22
 #define _NR_chdir           23
 #define _NR_getcwd          24

@@ -10,6 +10,7 @@
 #include "global.h"
 #include "proto.h"
 #include "protect.h"
+#include "pagetable.h"
 #include "proc.h"
 #include "buddy.h"
 

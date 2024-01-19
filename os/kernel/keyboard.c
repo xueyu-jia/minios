@@ -112,18 +112,6 @@ PUBLIC void init_kb(){
 
 	init_mouse();
 	set_mouse_leds();
-	
-	//
-	// init mouse
-	// put_irq_handler(MOUSE_IRQ,mouse_handler);
-	// enable_irq(MOUSE_IRQ);
-
-	// wait_KBC_sendready();
-	// out_byte(KB_CMD,KEYCMD_WRITE_MODE);
-	// wait_KBC_sendready();
-	// out_byte(KB_DATA,KBC_MODE);
-	// enable_mouse();
-
 }
 
 PUBLIC void init_mouse(){

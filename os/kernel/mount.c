@@ -212,7 +212,7 @@ PUBLIC struct vfs_mount* add_vfsmount(char* dev_path, char* dir, struct vfs_dent
 	release(&mnt_table_lock);
 	return mnt;
 }
-
+#ifndef NEW_VFS
 PUBLIC int kern_mount(const char *source, const char *target,
                       const char *filesystemtype, unsigned long mountflags, const void *data)
 {
@@ -263,24 +263,29 @@ PUBLIC int kern_mount(const char *source, const char *target,
 
     return 0;
 }
-
+#endif
 PUBLIC int do_mount(const char *source, const char *target,
                     const char *filesystemtype, unsigned long mountflags, const void *data)
 {
+	#ifdef NEW_VFS
+	return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
+	#else
     return kern_mount(source, target, filesystemtype, mountflags, data);
+	#endif
 }
 
-PUBLIC int kern_umount(const char *target)
-{
-    free_mnttable(target);
-    free_mountpoint(target, vfs_table[3].sb->sb_dev);
-    // vfs_table[4].op ->unlink(target);
-    return 0;
-}
+// PUBLIC int kern_umount(const char *target)
+// {
+//     free_mnttable(target);
+//     free_mountpoint(target, vfs_table[3].sb->sb_dev);
+//     // vfs_table[4].op ->unlink(target);
+//     return 0;
+// }
 
 PUBLIC int do_umount(const char *target)
 {
-    kern_umount(target);
+    // kern_umount(target);
+	kern_vfs_umount(target);
 }
 
 /*======================================================================*

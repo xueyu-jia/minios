@@ -2,6 +2,8 @@
 * 内存管理-buddy系统相关代码     add by wang   2021.3.3
 **************************************************************/
 
+#include "string.h"
+#include "console.h"
 #include "buddy.h"
 #include "kmalloc.h"
 
@@ -27,13 +29,15 @@ PRIVATE void set_page_order(page *page, u32 order);
 PRIVATE void set_buddy_order(page *page, u32 order);
 PRIVATE page* get_page_from_free_area(struct free_area *area);
 PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
+void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr);
 
 void memory_init()
 {
     memcpy(MemInfo, (u32 *)FMIBuff, 1024); //复制内存
 
     test_phy_mem_size = MemInfo[MemInfo[0]];
-    int t, i, j;
+    // int t, i, j;
+	u32 i;
     // disp_str("memtest got memory available:\n");
     // disp_str("base_addr     end_addr\n");
     // for (t = 1; t <= MemInfo[0]; t++)
@@ -48,7 +52,7 @@ void memory_init()
     disp_str("\n");
 
     u32 bsize = num_4K;
-    for (i = 0; i < 11; i++) {
+    for (i = 0; i < MAX_ORDER; i++) {
         block_size[i] = bsize;
         bsize = 2 * bsize;
     }

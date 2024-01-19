@@ -39,4 +39,6 @@ typedef struct s_console
 extern	int		disp_pos;
 extern  CONSOLE     console_table[];
 extern SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
+PUBLIC void disp_color_str(char* info, int color);
+PUBLIC void disp_str(char* info);
 #endif /* _ORANGES_CONSOLE_H_ */

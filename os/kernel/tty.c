@@ -7,17 +7,20 @@
 
 
 TTY         tty_table[NR_CONSOLES];
+
 PUBLIC  int current_console;  //当前显示在屏幕上的console
-PUBLIC  void	tty_write	(TTY* tty, char* buf, int len);
-PUBLIC  int     tty_read    (TTY* tty, char* buf, int len);
 
-PRIVATE void	init_tty	(TTY* tty);
-PRIVATE void	tty_mouse	(TTY* tty);
-PRIVATE void	tty_dev_read	(TTY* tty);
-PRIVATE void	tty_dev_write	(TTY* tty);
-PRIVATE void	put_key		(TTY* tty, u32 key);
-
-
+PRIVATE void put_key(TTY* tty, u32 key)
+{
+	if (tty->ibuf_cnt < TTY_IN_BYTES) {
+		*(tty->ibuf_head) = key;
+		tty->ibuf_head++;
+		if (tty->ibuf_head == tty->ibuf + TTY_IN_BYTES)
+			tty->ibuf_head = tty->ibuf;
+		tty->ibuf_cnt++;
+        tty->ibuf_read_cnt++;
+	}
+}
 
 PUBLIC void in_process(TTY* p_tty , u32 key){
     int real_line = p_tty->console->orig / SCR_WIDTH;
@@ -83,40 +86,6 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
                 select_console(raw_code - F1);
 			    break;
         }
-    }
-
-}
-
-#define TTY_FIRST (tty_table)
-#define TTY_END (tty_table+NR_CONSOLES)
-
-PUBLIC void task_tty(){
-    TTY* p_tty;
-    for(p_tty = TTY_FIRST ; p_tty<TTY_END;p_tty++){
-            init_tty(p_tty);
-    }
-    p_tty = tty_table;
-
-    select_console(0);
-    
-    //设置第一个tty光标位置，第一个tty需要特殊处理
-    disable_int( );
-    out_byte(CRTC_ADDR_REG,CURSOR_H);
-    out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
-    out_byte(CRTC_ADDR_REG,CURSOR_L);
-    out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
-    enable_int( );
-    
-    //轮询
-    while(1){
-        for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
-			do {
-                tty_mouse(p_tty);   /* tty判断鼠标操作 */
-				tty_dev_read(p_tty); /* 从键盘输入缓冲区读到这个tty自己的缓冲区 */
-                tty_dev_write(p_tty); /* 把tty缓存区的数据写到这个tty占有的显存 */
-
-			} while (p_tty->ibuf_cnt);
-		}
     }
 
 }
@@ -188,27 +157,7 @@ PRIVATE void tty_dev_read(TTY* tty)
 		
 }
 
-
-/*
 PRIVATE void tty_dev_write(TTY* tty){
-    
-    
-    //if(tty->ibuf_cnt){
-    if(tty->ibuf_tail != tty->ibuf_head){
-        char ch = *(tty->ibuf_tail);
-        tty->ibuf_tail++;
-        if(tty->ibuf_tail == tty->ibuf+TTY_IN_BYTES){
-            tty->ibuf_tail = tty->ibuf;
-        }
-        //tty->ibuf_cnt--;
-        out_char(tty->console,ch);
-    }
-}
-*/
-
-PRIVATE void tty_dev_write(TTY* tty){
-    
-    
     if(tty->ibuf_cnt){
         char ch = *(tty->ibuf_tail);
         tty->ibuf_tail++;
@@ -236,29 +185,44 @@ PRIVATE void tty_dev_write(TTY* tty){
                     tty->ibuf_head--;
                     tty->ibuf_tail--;
                 }
-
-            }
-            
-            
-
-            
+            }   
         }
         out_char(tty->console,ch);
         
     }
 }
 
-PRIVATE void put_key(TTY* tty, u32 key)
-{
-	if (tty->ibuf_cnt < TTY_IN_BYTES) {
-		*(tty->ibuf_head) = key;
-		tty->ibuf_head++;
-		if (tty->ibuf_head == tty->ibuf + TTY_IN_BYTES)
-			tty->ibuf_head = tty->ibuf;
-		tty->ibuf_cnt++;
-        tty->ibuf_read_cnt++;
-	}
+PUBLIC void task_tty(){
+    TTY* p_tty;
+    for(p_tty = TTY_FIRST ; p_tty<TTY_END;p_tty++){
+            init_tty(p_tty);
+    }
+    p_tty = tty_table;
+
+    select_console(0);
+    
+    //设置第一个tty光标位置，第一个tty需要特殊处理
+    disable_int( );
+    out_byte(CRTC_ADDR_REG,CURSOR_H);
+    out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
+    out_byte(CRTC_ADDR_REG,CURSOR_L);
+    out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
+    enable_int( );
+    
+    //轮询
+    while(1){
+        for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
+			do {
+                tty_mouse(p_tty);   /* tty判断鼠标操作 */
+				tty_dev_read(p_tty); /* 从键盘输入缓冲区读到这个tty自己的缓冲区 */
+                tty_dev_write(p_tty); /* 把tty缓存区的数据写到这个tty占有的显存 */
+
+			} while (p_tty->ibuf_cnt);
+		}
+    }
+
 }
+
 
 
 

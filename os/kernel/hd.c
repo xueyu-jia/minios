@@ -23,6 +23,10 @@
 #include "ahci.h"
 #include "semaphore.h"
 
+struct memfree{
+	u32	addr;
+	u32	size;
+};
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
 PRIVATE volatile int hd_int_waiting_flag = 1;
@@ -30,7 +34,7 @@ PRIVATE	u8 hd_status;
 PRIVATE	u8 hdbuf[SECTOR_SIZE * 2];
 PRIVATE u8 *satabuf=NULL;
 PRIVATE u8 hd_LBA48_sup[4]={0};
-PUBLIC	struct hd_info hd_info[12];		//modified by xiaofeng 2022-8-6
+PUBLIC	struct hd_info hd_infos[12];		//modified by xiaofeng 2022-8-6
 PRIVATE struct Semaphore hdque_mutex;
 PRIVATE struct Semaphore hdque_empty;
 PRIVATE struct Semaphore hdque_full;
@@ -70,9 +74,9 @@ PUBLIC void init_hd()
 	enable_irq(CASCADE_IRQ);
 	enable_irq(AT_WINI_IRQ);
 
-	for (i = 0; i < (sizeof(hd_info) / sizeof(hd_info[0])); i++)
-		memset(&hd_info[i], 0, sizeof(hd_info[0]));
-	hd_info[0].open_cnt = 0;
+	for (i = 0; i < (sizeof(hd_infos) / sizeof(hd_infos[0])); i++)
+		memset(&hd_infos[i], 0, sizeof(hd_infos[0]));
+	hd_infos[0].open_cnt = 0;
 	
 	//init hd rdwt queue. added by xw, 18/8/27
 	init_hd_queue(&hdque);
@@ -114,16 +118,16 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 		// print_identify_info((u16*)buf);
 		u16* hdinfo = (u16*)buf;
 		int cmd_set_supported = hdinfo[83];
-		hd_info[drive].part[0].base = 0;
+		hd_infos[drive].part[0].base = 0;
 		/* Total Nr of User Addressable Sectors */
-		hd_info[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+		hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
 		kern_kfree(buf);
 	}
 	else if(drive < SATA_BASE)
 	{
 		hd_identify(drive);
 	}
-	if (hd_info[drive].open_cnt++ == 0) {
+	if (hd_infos[drive].open_cnt++ == 0) {
 		partition(drive << 20, P_PRIMARY);
 		//print_hdinfo(&hd_info[drive]);	//deleted by mingxuan 2021-2-7
 	}
@@ -141,7 +145,7 @@ PUBLIC void hd_close(int device)
 {
 	int drive = DRV_OF_DEV(device);
 
-	hd_info[drive].open_cnt--;
+	hd_infos[drive].open_cnt--;
 }
 
 
@@ -183,7 +187,7 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 	// 	hd_info[drive].primary[p->DEVICE].base :
 	// 	hd_info[drive].logical[logidx].base;
 
-	sect_nr += hd_info[drive].part[p->DEVICE & 0x0F].base;
+	sect_nr += hd_infos[drive].part[p->DEVICE & 0x0F].base;
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
@@ -283,7 +287,7 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 	// 	hd_info[drive].primary[p->msg->DEVICE].base :
 	// 	hd_info[drive].logical[logidx].base;
 
-	sect_nr += hd_info[drive].part[p->msg->DEVICE & 0x0F].base;
+	sect_nr += hd_infos[drive].part[p->msg->DEVICE & 0x0F].base;
 
 	struct hd_cmd cmd;
 	cmd.features	= 0;
@@ -415,7 +419,7 @@ PUBLIC void hd_ioctl(MESSAGE * p)
 	int drive = DRV_OF_DEV(p->DEVICE);
 
 
-	struct hd_info * hdi = &hd_info[drive];
+	struct hd_info * hdi = &hd_infos[drive];
 
 	if (p->REQUEST == DIOCTL_GET_GEO) {
 		void * dst = va2la(p->PROC_NR, p->BUF);
@@ -593,7 +597,7 @@ PRIVATE void partition(int device, int style)
 {
 	int i;
 	int drive = DRV_OF_DEV(device);
-	struct hd_info * hdi = &hd_info[drive];
+	struct hd_info * hdi = &hd_infos[drive];
 	int no_part_count = 0;
 
 	// added by ran
@@ -740,7 +744,7 @@ PRIVATE void partition(int device, int style)
 PRIVATE void print_hdinfo(struct hd_info * hdi)
 {
 	disp_str("Drive num : ");
-	disp_int(hdi - hd_info);
+	disp_int(hdi - hd_infos);
 	int i;
 	for (i = 0; i < NR_PART_PER_DRIVE + 1; i++) {
 		// printl("%sPART_%d: base %d(0x%x), size %d(0x%x) (in sector)\n",
@@ -815,9 +819,9 @@ PRIVATE void hd_identify(int drive)
 		// disp_str("YES  ");
 	}//by zql 2022.4.26
 
-	hd_info[drive].part[0].base = 0;
+	hd_infos[drive].part[0].base = 0;
 	/* Total Nr of User Addressable Sectors */
-	hd_info[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+	hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
 }
 
 /*****************************************************************************
@@ -1043,7 +1047,7 @@ PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
 	u64 pos = p->POSITION;
 	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
 
-	sect_nr += hd_info[drive].part[p->DEVICE & 0x0FFFFF].base;
+	sect_nr += hd_infos[drive].part[p->DEVICE & 0x0FFFFF].base;
 
 	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
  

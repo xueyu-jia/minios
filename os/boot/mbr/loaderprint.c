@@ -6,7 +6,7 @@ int video_col = 0;
 // 清除屏幕
 void clear_screen() {
   char *video_memory = (char *)(VIDEO_MEM_START);
-  for (int i = 0; i < TERMINAL_ROW; i++)
+  for (int i = 0; i < TERMINAL_ROW; i++){
     for (int j = 0; j < TERMINAL_COLUMN; j++) {
       // 设置颜色,在清理屏幕的时候使用
       *video_memory = 0x0;
@@ -14,8 +14,9 @@ void clear_screen() {
       *video_memory = 0xf;
       video_memory = video_memory + 1;
     }
-    video_col = 0;
-    video_row = 0;
+  }
+  video_col = 0;
+  video_row = 0;
 }
 
 void lprintf(char *s, ...)  // 传入输出的行与列,然后输入需要输出的字符串,根据字符串输出后面的信息

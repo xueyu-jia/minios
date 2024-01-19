@@ -5,6 +5,7 @@
 
 #include "const.h"
 #include "proc.h"
+#include "string.h"
 
 PRIVATE int fork_mem_cpy(u32 ppid,u32 pid);
 PRIVATE int fork_pcb_cpy(PROCESS* p_child);

@@ -11,7 +11,7 @@
 #include "const.h"
 #include "signal.h"  //modified by mingxuan 2021-8-7
 #include "msg.h" //added by yingchi 2022.01.07
-// #include "spinlock.h"
+#include "vfs.h"
 #include "tty.h"
 #include "proc.h"
 #include "time.h"
@@ -166,10 +166,11 @@ int lseek(int fd, int offset, int whence);
 int unlink(const char* pathname);
 int create(char* pathname);
 int delete(const char* pathname);
-int opendir(const char* dirname);
-int createdir(const char* dirname);
-int deletedir(const char* dirname);
-int readdir(const char* dirname, unsigned int dir[3], char* filename);
+DIR* opendir(const char* dirname);
+int closedir(DIR* dirp);
+int mkdir(const char* dirname);
+int rmdir(const char* dirname);
+struct dirent* readdir(DIR* dirp);
 int chdir(const char* path);
 char* getcwd(char* buf, int size);
 int wait();
@@ -233,7 +234,7 @@ PUBLIC void sys_udisp_int();       //modified by mingxuan 2021-8-13
 PUBLIC void sys_udisp_str();       //modified by mingxuan 2021-8-13
 
 PUBLIC u32 sys_total_mem_size();            //modified by wang 2021.8.26
-PUBLIC void sys_test();//added by cjj 2021-12-25
+// PUBLIC void sys_test();//added by cjj 2021-12-25
 
 /*pthread.c*/
 

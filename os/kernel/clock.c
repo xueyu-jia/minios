@@ -11,7 +11,6 @@
 #include "global.h"
 #include "string.h"
 #include "proto.h"
-#include "time.h"
 
 int		ticks;
 /*======================================================================*
@@ -54,11 +53,19 @@ PUBLIC void clock_handler(int irq)
 }
 
 /*======================================================================*
-                              milli_delay
+                           get_ticks		add by visual 2016.4.6
  *======================================================================*/
-PUBLIC void milli_delay(int milli_sec)
+PUBLIC int kern_get_ticks()
 {
-        int t = get_ticks();
+	return ticks;
+}
 
-        while(((get_ticks() - t) * 1000 / HZ) < milli_sec) {}
+PUBLIC int do_get_ticks()
+{
+	return kern_get_ticks();
+}
+
+PUBLIC int sys_get_ticks()
+{
+	return do_get_ticks();
 }

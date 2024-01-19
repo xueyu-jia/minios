@@ -352,6 +352,8 @@ typedef struct
 	RWInfo *rear;
 } HDQueue;
 
+extern struct hd_info hd_infos[12];
+
 PUBLIC void init_hd();
 PUBLIC void hd_open(int device);
 PUBLIC void hd_close(int device);

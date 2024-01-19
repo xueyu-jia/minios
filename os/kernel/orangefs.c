@@ -32,6 +32,7 @@
 
 // added by xw, 18/8/28
 /* data */
+#ifndef NEW_VFS
 PRIVATE struct inode *root_inode;
 
 // PRIVATE struct file_desc f_desc_table[NR_FILE_DESC];	//deleted by mingxuan 2020-10-30
@@ -3706,6 +3707,7 @@ int real_showdir(const char *pathname, char *dir_content)
 	return flag;
 }
 
+#else
 
 
 /*****************************************************************************
@@ -4246,3 +4248,4 @@ struct file_operations orange_file_ops = {
 .read = orange_read,
 .write = orange_write,
 };
+#endif

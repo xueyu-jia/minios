@@ -1,8 +1,9 @@
 #include "const.h"
 #include "fs_const.h"
 #include "global.h"
-#include "fs.h"
+#include "vfs.h"
 #include "hd.h"
+#include "string.h"
 #include "buffer.h"
 
 

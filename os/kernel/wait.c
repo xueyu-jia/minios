@@ -1,17 +1,6 @@
 #include "const.h"
 #include "proc.h"
 
-
-PUBLIC int sys_wait() //wait返回的为子进程pid modified by dongzhangqi 2023-4-20
-{
-	return do_wait(get_arg(1));
-}
-
-PUBLIC int do_wait(int *status) //wait返回的为子进程pid,子进程退出状态通过*status传递 modified by dongzhangqi 2023-4-20
-{
-	return kern_wait(status);
-}
-
 /*======================================================================*
                       sys_wait            added by mingxuan 2021-1-6
  *======================================================================*/
@@ -86,4 +75,14 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 
     //return p_proc_current->task.child_exit_status;;
 	return child_pid;;
+}
+
+PUBLIC int do_wait(int *status) //wait返回的为子进程pid,子进程退出状态通过*status传递 modified by dongzhangqi 2023-4-20
+{
+	return kern_wait(status);
+}
+
+PUBLIC int sys_wait() //wait返回的为子进程pid modified by dongzhangqi 2023-4-20
+{
+	return do_wait(get_arg(1));
 }

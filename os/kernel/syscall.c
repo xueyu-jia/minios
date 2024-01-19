@@ -68,8 +68,8 @@ void sleep(int n) {
 	return _syscall1(_NR_sleep, n);
 }
 
-int open(const char* pathname, int flags) {
-	return _syscall2(_NR_open, pathname, flags);
+int open(const char* pathname, int flags, int mode) {
+	return _syscall3(_NR_open, pathname, flags, mode);
 }
 
 int close(int fd) {
@@ -92,28 +92,28 @@ int unlink(const char* pathname) {
 	return _syscall1(_NR_unlink, pathname);
 }
 
-int create(char* pathname) {
-	return _syscall1(_NR_create, pathname);
+int creat(const char* pathname) {
+	return _syscall1(_NR_creat, pathname);
 }
 
-int delete(const char* pathname) {
-	return _syscall1(_NR_delete, pathname);
+int closedir(DIR* dirp) {
+	return _syscall1(_NR_closedir, dirp);
 }
 
-int opendir(const char* dirname) {
+DIR* opendir(const char* dirname) {
 	return _syscall1(_NR_opendir, dirname);
 }
 
-int createdir(const char* dirname) {
-	return _syscall1(_NR_createdir, dirname);
+int mkdir(const char* dirname) {
+	return _syscall1(_NR_mkdir, dirname);
 }
 
-int deletedir(const char* dirname) {
-	return _syscall1(_NR_deletedir, dirname);
+int rmdir(const char* dirname) {
+	return _syscall1(_NR_rmdir, dirname);
 }
 
-int readdir(const char* dirname, unsigned int dir[3], char* filename) {
-	return _syscall3(_NR_readdir, dirname, dir, filename);
+struct dirent* readdir(DIR* dirp) {
+	return _syscall1(_NR_readdir, dirp);
 }
 
 int chdir(const char* path) {

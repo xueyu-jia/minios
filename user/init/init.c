@@ -361,322 +361,322 @@ char* strchrs(char *s1, char *s2)
 	return 0;
 }
 
-void builtin_cat()
-{
-	if (argc == 1)
-	{
-		write(tty, "cat: cat [file]\n", 17);
-		return;
-	}
-	int total;
-	int len;
-	char fullpath[256];
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, workdir);
-	len = strlen(fullpath);
-	if (fullpath[len - 1] != PATH_DEL)
-	{
-		fullpath[len++] = PATH_DEL;
-	}
-	strcpy(fullpath + len, argv[1]);
-	char buf[512];
-	int fd = fat_open(fullpath, O_RDWR);
-	if (fd <= 0)
-	{
-		write(tty, "ERROR: file not exists\n", 24);
-		return;
-	}
-	total = 0;
-	len = read(fd, buf, 512);
-	while (len > 0)
-	{
-		total += len;
-		write(tty, buf, len);
-		len = read(fd, buf, 512);
-	}
-	fprintf(tty, "cat: read %d bytes\n", total);
-	close(fd);
-}
+// void builtin_cat()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "cat: cat [file]\n", 17);
+// 		return;
+// 	}
+// 	int total;
+// 	int len;
+// 	char fullpath[256];
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, workdir);
+// 	len = strlen(fullpath);
+// 	if (fullpath[len - 1] != PATH_DEL)
+// 	{
+// 		fullpath[len++] = PATH_DEL;
+// 	}
+// 	strcpy(fullpath + len, argv[1]);
+// 	char buf[512];
+// 	int fd = fat_open(fullpath, O_RDWR);
+// 	if (fd <= 0)
+// 	{
+// 		write(tty, "ERROR: file not exists\n", 24);
+// 		return;
+// 	}
+// 	total = 0;
+// 	len = read(fd, buf, 512);
+// 	while (len > 0)
+// 	{
+// 		total += len;
+// 		write(tty, buf, len);
+// 		len = read(fd, buf, 512);
+// 	}
+// 	fprintf(tty, "cat: read %d bytes\n", total);
+// 	close(fd);
+// }
 
-void buildin_chdev()
-{
-	if (argc == 1)
-	{
-		fprintf(tty, "chdev: chdev [dev]\n");
-		return;
-	}
-	char olddev[16];
-	strcpy(olddev, workdev);
-	strcpy(workdev, argv[1]);
-	if (!fat_chdir("V:\\"))
-	{
-		strcpy(workdev, olddev);
-		fprintf(tty, "ERROR: dev not exists\n");
-		return;
-	}
-	strcpy(workdir, "\\");
-}
+// void buildin_chdev()
+// {
+// 	if (argc == 1)
+// 	{
+// 		fprintf(tty, "chdev: chdev [dev]\n");
+// 		return;
+// 	}
+// 	char olddev[16];
+// 	strcpy(olddev, workdev);
+// 	strcpy(workdev, argv[1]);
+// 	if (!fat_chdir("V:\\"))
+// 	{
+// 		strcpy(workdev, olddev);
+// 		fprintf(tty, "ERROR: dev not exists\n");
+// 		return;
+// 	}
+// 	strcpy(workdir, "\\");
+// }
 
-void builtin_chdir()
-{
-	if (argc == 1)
-	{
-		write(tty, "cd: cd [dir]\n", 14);
-		return;
-	}
-	if (!strcmp(argv[1], "."))
-	{
-		return;
-	}
-	char pathname[256];
-	char fullpath[256];
-	char wbuf[256];
-	int len = strlen(workdir);
-	strcpy(pathname, workdir);
-	if (!strcmp(argv[1], ".."))
-	{
-		char *trunc = strrchr(pathname + 1, PATH_DEL);
-		if (trunc)
-		{
-			*trunc = 0;
-		}
-		else
-		{
-			pathname[1] = 0;
-		}
-		strcpy(fullpath, "V:");
-		strcpy(fullpath + 2, pathname);
-		//opendir(fullpath);
-		fat_chdir(fullpath);
-		strcpy(workdir, pathname);
-		return;
-	}
-	if (pathname[len - 1] != PATH_DEL)
-	{
-		pathname[len++] = PATH_DEL;
-	}
-	strcpy(pathname + len, argv[1]);
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, pathname);
-	//if (opendir(fullpath) != 1)
-	if (fat_chdir(fullpath) != 1)
-	{
-		write(tty, "ERROR: no such directory\n", 26);
-		return;
-	}
-	strcpy(workdir, pathname);
-}
+// void builtin_chdir()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "cd: cd [dir]\n", 14);
+// 		return;
+// 	}
+// 	if (!strcmp(argv[1], "."))
+// 	{
+// 		return;
+// 	}
+// 	char pathname[256];
+// 	char fullpath[256];
+// 	char wbuf[256];
+// 	int len = strlen(workdir);
+// 	strcpy(pathname, workdir);
+// 	if (!strcmp(argv[1], ".."))
+// 	{
+// 		char *trunc = strrchr(pathname + 1, PATH_DEL);
+// 		if (trunc)
+// 		{
+// 			*trunc = 0;
+// 		}
+// 		else
+// 		{
+// 			pathname[1] = 0;
+// 		}
+// 		strcpy(fullpath, "V:");
+// 		strcpy(fullpath + 2, pathname);
+// 		//opendir(fullpath);
+// 		fat_chdir(fullpath);
+// 		strcpy(workdir, pathname);
+// 		return;
+// 	}
+// 	if (pathname[len - 1] != PATH_DEL)
+// 	{
+// 		pathname[len++] = PATH_DEL;
+// 	}
+// 	strcpy(pathname + len, argv[1]);
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, pathname);
+// 	//if (opendir(fullpath) != 1)
+// 	if (fat_chdir(fullpath) != 1)
+// 	{
+// 		write(tty, "ERROR: no such directory\n", 26);
+// 		return;
+// 	}
+// 	strcpy(workdir, pathname);
+// }
 
-void builtin_lsdir()
-{
-	char fullpath[256];
-	int len = strlen(workdev);
-	strcpy(fullpath, workdev);
-	strcpy(fullpath + len, "V:");
-	len += 2;
-	strcpy(fullpath + len, workdir);
-	listdir(fullpath);
-}
+// void builtin_lsdir()
+// {
+// 	char fullpath[256];
+// 	int len = strlen(workdev);
+// 	strcpy(fullpath, workdev);
+// 	strcpy(fullpath + len, "V:");
+// 	len += 2;
+// 	strcpy(fullpath + len, workdir);
+// 	listdir(fullpath);
+// }
 
-void builtin_find()
-{
-    if (argc == 1)
-    {
-        fprintf(tty, "find: find [filename]\n");
-        return;
-    }
-    findfile(argv[1]);
-}
+// void builtin_find()
+// {
+//     if (argc == 1)
+//     {
+//         fprintf(tty, "find: find [filename]\n");
+//         return;
+//     }
+//     findfile(argv[1]);
+// }
 
-void builtin_mkdir()
-{
-	if (argc == 1)
-	{
-		write(tty, "mkdir: mkdir [dir]\n", 14);
-		return;
-	}
-	char pathname[256];
-	char fullpath[256];
-	int len = strlen(workdir);
-	strcpy(pathname, workdir);
-	if (strchrs(argv[1], "<>:,*?/\\"))
-	{
-		write(tty, "ERROR: not a valid name\n", 25);
-		return;
-	}
-	if (pathname[len - 1] != PATH_DEL)
-	{
-		pathname[len++] = PATH_DEL;
-	}
-	strcpy(pathname + len, argv[1]);
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, pathname);
-	int state = fat_createdir(fullpath);
-	if (state != 1)
-	{
-		write(tty, "ERROR: directory exists\n", 25);
-	}
-	//fat_opendir(workdir);
-}
+// void builtin_mkdir()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "mkdir: mkdir [dir]\n", 14);
+// 		return;
+// 	}
+// 	char pathname[256];
+// 	char fullpath[256];
+// 	int len = strlen(workdir);
+// 	strcpy(pathname, workdir);
+// 	if (strchrs(argv[1], "<>:,*?/\\"))
+// 	{
+// 		write(tty, "ERROR: not a valid name\n", 25);
+// 		return;
+// 	}
+// 	if (pathname[len - 1] != PATH_DEL)
+// 	{
+// 		pathname[len++] = PATH_DEL;
+// 	}
+// 	strcpy(pathname + len, argv[1]);
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, pathname);
+// 	int state = fat_createdir(fullpath);
+// 	if (state != 1)
+// 	{
+// 		write(tty, "ERROR: directory exists\n", 25);
+// 	}
+// 	//fat_opendir(workdir);
+// }
 
-void builtin_pwd()
-{
-	char wbuf[256];
-	getcwd(wbuf, 256);
-	strcpy(wbuf, wbuf + 2);
-	int len = strlen(wbuf);
-	wbuf[len++] = '\n';
-	write(tty, wbuf, len);
-}
+// void builtin_pwd()
+// {
+// 	char wbuf[256];
+// 	getcwd(wbuf, 256);
+// 	strcpy(wbuf, wbuf + 2);
+// 	int len = strlen(wbuf);
+// 	wbuf[len++] = '\n';
+// 	write(tty, wbuf, len);
+// }
 
-void builtin_rm()
-{
-	if (argc == 1)
-	{
-		write(tty, "rm: rm [file]\n", 14);
-		return;
-	}
-	char pathname[256];
-	char fullpath[256];
-	int len = strlen(workdir);
-	strcpy(pathname, workdir);
-	if (pathname[len - 1] != PATH_DEL)
-	{
-		pathname[len++] = PATH_DEL;
-	}
-	strcpy(pathname + len, argv[1]);
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, pathname);
-	int state = fat_delete(fullpath);
-	if (state != 1)
-	{
-		write(tty, "ERROR: file not exists\n", 23);
-	}
-}
+// void builtin_rm()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "rm: rm [file]\n", 14);
+// 		return;
+// 	}
+// 	char pathname[256];
+// 	char fullpath[256];
+// 	int len = strlen(workdir);
+// 	strcpy(pathname, workdir);
+// 	if (pathname[len - 1] != PATH_DEL)
+// 	{
+// 		pathname[len++] = PATH_DEL;
+// 	}
+// 	strcpy(pathname + len, argv[1]);
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, pathname);
+// 	int state = fat_delete(fullpath);
+// 	if (state != 1)
+// 	{
+// 		write(tty, "ERROR: file not exists\n", 23);
+// 	}
+// }
 
-void builtin_rmdir()
-{
-	if (argc == 1)
-	{
-		write(tty, "rmdir: rmdir [dir]\n", 14);
-		return;
-	}
-	char pathname[256];
-	char fullpath[256];
-	int len = strlen(workdir);
-	strcpy(pathname, workdir);
-	if (pathname[len - 1] != PATH_DEL)
-	{
-		pathname[len++] = PATH_DEL;
-	}
-	strcpy(pathname + len, argv[1]);
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, pathname);
-	int state = fat_deletedir(fullpath);
-	if (state != 1)
-	{
-		write(tty, "ERROR: directory not exists\n", 29);
-	}
-}
+// void builtin_rmdir()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "rmdir: rmdir [dir]\n", 14);
+// 		return;
+// 	}
+// 	char pathname[256];
+// 	char fullpath[256];
+// 	int len = strlen(workdir);
+// 	strcpy(pathname, workdir);
+// 	if (pathname[len - 1] != PATH_DEL)
+// 	{
+// 		pathname[len++] = PATH_DEL;
+// 	}
+// 	strcpy(pathname + len, argv[1]);
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, pathname);
+// 	int state = fat_deletedir(fullpath);
+// 	if (state != 1)
+// 	{
+// 		write(tty, "ERROR: directory not exists\n", 29);
+// 	}
+// }
 
-void write_test()
-{
-	fprintf(tty, "FAT32 write test start\n");
-	char buf[9000];
-	char *optr = buf;
-	int len;
-	for (int i = 1; i <= 2000; i++)
-	{
-		len = sprintf(optr, "%d\n", i);
-		optr += len;
-	}
-	int total;
-	total = optr - buf;
-	optr = buf;
-	chdir("fat1/V:\\");
-	createdir("fat1/b");
-	chdir("fat1/b");
-	int fd;
-	fd = open("fat1/2000.txt", O_RDWR | O_CREAT);
-	len = 512;
-	while (optr < buf + total)
-	{
-		if (optr + len > buf + total)
-		{
-			len = buf + total - optr;
-		}
-		write(fd, optr, len);
-		optr += len;
-	}
-	close(fd);
-	chdir("fat1/V:\\");
-	fprintf(tty, "write %d bytes\n", total);
-	fprintf(tty, "FAT32 write test finish\n");
-}
+// void write_test()
+// {
+// 	fprintf(tty, "FAT32 write test start\n");
+// 	char buf[9000];
+// 	char *optr = buf;
+// 	int len;
+// 	for (int i = 1; i <= 2000; i++)
+// 	{
+// 		len = sprintf(optr, "%d\n", i);
+// 		optr += len;
+// 	}
+// 	int total;
+// 	total = optr - buf;
+// 	optr = buf;
+// 	chdir("fat1/V:\\");
+// 	createdir("fat1/b");
+// 	chdir("fat1/b");
+// 	int fd;
+// 	fd = open("fat1/2000.txt", O_RDWR | O_CREAT);
+// 	len = 512;
+// 	while (optr < buf + total)
+// 	{
+// 		if (optr + len > buf + total)
+// 		{
+// 			len = buf + total - optr;
+// 		}
+// 		write(fd, optr, len);
+// 		optr += len;
+// 	}
+// 	close(fd);
+// 	chdir("fat1/V:\\");
+// 	fprintf(tty, "write %d bytes\n", total);
+// 	fprintf(tty, "FAT32 write test finish\n");
+// }
 
-void fat32_test()
-{
-	fprintf(tty, "FAT32 test begin\n");
-	int pid_child = fork();
-	int buf[256];
-	int fd;
-	int i = 0;
-	chdir("fat0/V:\\");
-	if (!pid_child)
-	{
-		getcwd(buf, 256);
-		fprintf(tty, "child cwd is: %s\n", buf);
-		createdir("fat0/child");
-		chdir("fat0/child");
-		getcwd(buf, 256);
-		fprintf(tty, "child cwd changes to: %s\n", buf);
-		fd = open("fat0/path.txt", O_RDWR | O_CREAT);
-		write(fd, buf, strlen(buf));
-		close(fd);
-		fprintf(tty, "child process exit\n");
-		while (1);
-	}
-	getcwd(buf, 256);
-	fprintf(tty, "parent cwd is: %s\n", buf);
-	createdir("fat0/parent");
-	chdir("fat0/parent");
-	getcwd(buf, 256);
-	fprintf(tty, "parent cwd changes to: %s\n", buf);
-	fd = open("fat0/path.txt", O_RDWR | O_CREAT);
-	write(fd, buf, strlen(buf));
-	close(fd);
-	fprintf(tty, "parent process exit\n");
-	while (1);
-}
+// void fat32_test()
+// {
+// 	fprintf(tty, "FAT32 test begin\n");
+// 	int pid_child = fork();
+// 	int buf[256];
+// 	int fd;
+// 	int i = 0;
+// 	chdir("fat0/V:\\");
+// 	if (!pid_child)
+// 	{
+// 		getcwd(buf, 256);
+// 		fprintf(tty, "child cwd is: %s\n", buf);
+// 		createdir("fat0/child");
+// 		chdir("fat0/child");
+// 		getcwd(buf, 256);
+// 		fprintf(tty, "child cwd changes to: %s\n", buf);
+// 		fd = open("fat0/path.txt", O_RDWR | O_CREAT);
+// 		write(fd, buf, strlen(buf));
+// 		close(fd);
+// 		fprintf(tty, "child process exit\n");
+// 		while (1);
+// 	}
+// 	getcwd(buf, 256);
+// 	fprintf(tty, "parent cwd is: %s\n", buf);
+// 	createdir("fat0/parent");
+// 	chdir("fat0/parent");
+// 	getcwd(buf, 256);
+// 	fprintf(tty, "parent cwd changes to: %s\n", buf);
+// 	fd = open("fat0/path.txt", O_RDWR | O_CREAT);
+// 	write(fd, buf, strlen(buf));
+// 	close(fd);
+// 	fprintf(tty, "parent process exit\n");
+// 	while (1);
+// }
 
-void builtin_tee()
-{
-	if (argc == 1)
-	{
-		write(tty, "tee: tee [file]\n", 17);
-		return;
-	}
-	int len;
-	char fullpath[256];
-	strcpy(fullpath, "V:");
-	strcpy(fullpath + 2, workdir);
-	len = strlen(fullpath);
-	if (fullpath[len - 1] != PATH_DEL)
-	{
-		fullpath[len++] = PATH_DEL;
-	}
-	strcpy(fullpath + len, argv[1]);
-	char buf[512];
-	int fd = fat_open(fullpath, O_RDWR | O_CREAT);
-	if (fd <= 0)
-	{
-		write(tty, "ERROR: file not exists\n", 24);
-		return;
-	}
-	len = read(tty, buf, 512);
-	write(fd, buf, len);
-	close(fd);
-}
+// void builtin_tee()
+// {
+// 	if (argc == 1)
+// 	{
+// 		write(tty, "tee: tee [file]\n", 17);
+// 		return;
+// 	}
+// 	int len;
+// 	char fullpath[256];
+// 	strcpy(fullpath, "V:");
+// 	strcpy(fullpath + 2, workdir);
+// 	len = strlen(fullpath);
+// 	if (fullpath[len - 1] != PATH_DEL)
+// 	{
+// 		fullpath[len++] = PATH_DEL;
+// 	}
+// 	strcpy(fullpath + len, argv[1]);
+// 	char buf[512];
+// 	int fd = fat_open(fullpath, O_RDWR | O_CREAT);
+// 	if (fd <= 0)
+// 	{
+// 		write(tty, "ERROR: file not exists\n", 24);
+// 		return;
+// 	}
+// 	len = read(tty, buf, 512);
+// 	write(fd, buf, len);
+// 	close(fd);
+// }
 
 
 /*======================================================================*

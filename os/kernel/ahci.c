@@ -5,6 +5,7 @@
 #include "proc.h"
 #include "global.h"
 #include "proto.h"
+#include "pagetable.h"
 #include "ahci.h"
 
 // 0: free;  1: waiting
@@ -19,6 +20,7 @@ PUBLIC	AHCI_INFO ahci_info[MAX_AHCI_NUM] ;//可能存在多个AHCI控制器，�
 PRIVATE int check_type(HBA_PORT *port);
 PRIVATE	void probe_port(HBA_MEM *abar);
 PRIVATE void sata_handler(int irq);
+void port_rebase(HBA_PORT *port);
 
 PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 {
@@ -76,30 +78,38 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 										read_cr3(),
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-	
-	int hd_service_pid = kern_get_pid_byname("hd_service");
-
-	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	for(int pid = 0; pid <= NR_K_PCBS; pid++){
+		if(proc_table[pid].task.stat == READY){
+			err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
-										hd_service_pid,
+										pid,
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）
+		}
+	}
+	// int hd_service_pid = kern_get_pid_byname("hd_service");
 
-	int task_tty_pid = kern_get_pid_byname("task_tty");
+	// err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	// 									ahci_info[0].ABAR, //物理地址
+	// 									hd_service_pid,
+	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
-	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
-										ahci_info[0].ABAR, //物理地址
-										task_tty_pid,
-										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+	// int task_tty_pid = kern_get_pid_byname("task_tty");
 
-	int initial_pid = kern_get_pid_byname("initial");
+	// err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	// 									ahci_info[0].ABAR, //物理地址
+	// 									task_tty_pid,
+	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
-	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
-										ahci_info[0].ABAR, //物理地址
-										initial_pid,
-										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
+	// int initial_pid = kern_get_pid_byname("initial");
+
+	// err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	// 									ahci_info[0].ABAR, //物理地址
+	// 									initial_pid,
+	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
 	if (err_temp != 0)
 	{
@@ -251,7 +261,7 @@ PRIVATE	void probe_port(HBA_MEM *abar)
 			{
 				disp_str("\nPM drive found at port: ");disp_int(i);
 			}
-			else;
+			else{};
 		}
  
 		pi >>= 1;

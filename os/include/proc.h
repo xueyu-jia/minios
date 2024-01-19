@@ -7,7 +7,7 @@
 #ifndef KERNEL_PROC_H
 #define KERNEL_PROC_H
 
-#include "fs.h" //added by ran
+#include "vfs.h" //added by ran
 #include "pthread.h"
 #include "protect.h"
 

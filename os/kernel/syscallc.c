@@ -11,139 +11,12 @@
 #include "global.h"
 #include "buddy.h"
 #include "kmalloc.h"
+#include "ksignal.h"
 #include "semaphore.h"
-
-struct memfree *memarg = 0;
-
-/*======================================================================*
-                           get_ticks		add by visual 2016.4.6
- *======================================================================*/
-PUBLIC int do_get_ticks()
-{
-	return kern_get_ticks();
-}
-
-PUBLIC int sys_get_ticks()
-{
-	return do_get_ticks();
-}
-
-
-//added by mingxuan 2021-8-14
-PUBLIC int kern_get_ticks()
-{
-	return ticks;
-}
-
-/*======================================================================*
-                           get_pid		add by visual 2016.4.6
- *======================================================================*/
-PUBLIC int sys_get_pid()
-{
-	return do_get_pid();
-}
-
-PUBLIC int do_get_pid()
-{
-	return kern_get_pid();
-}
-
-//added by mingxuan 2021-8-14
-PUBLIC int kern_get_pid()
-{
-	return p_proc_current->task.pid;
-}
-
-PUBLIC int sys_get_pid_byname()
-{
-	return do_get_pid_byname(get_arg(1));
-}
-
-PUBLIC int do_get_pid_byname(char *name)
-{
-	return kern_get_pid_byname(name);
-}
-
-PUBLIC int kern_get_pid_byname(char *name)
-{
-	for(PROCESS *proc = proc_table; proc < proc_table+NR_PCBS;proc++)
-	{
-		if(strcmp(proc->task.p_name, name)==0)
-		{
-			return proc->task.pid;
-		}
-	}
-	return -1;
-}
+#include "syscall.h"
 
 //modified by mingxuan 2021-8-14
 //PUBLIC u32 do_malloc_4k()
-PUBLIC u32 kern_malloc_4k() //modified by mingxuan 2021-8-19
-{
-
-	u32 AddrLin;
-
-	AddrLin = get_heap_limit(p_proc_current->task.pid);
-
-	update_heap_limit(p_proc_current->task.pid, 1);
-
-	//AddrLin = p_proc_current->task.memmap.heap_lin_limit;
-	//AddrLin = *(u32 *)p_proc_current->task.memmap.heap_lin_limit;	//modified by mingxuan 2021-8-19
-	//disp_int(p_proc_current->task.memmap.heap_lin_base);
-	//disp_str("limit=");
-	//disp_int(p_proc_current->task.memmap.heap_lin_limit);
-	//p_proc_current->task.memmap.heap_lin_limit += num_4K;
-
-	lin_mapping_phy(AddrLin,				  //线性地址					//add by visual 2016.5.9
-					MAX_UNSIGNED_INT,		  //物理地址
-					p_proc_current->task.pid, //进程pid					//edit by visual 2016.5.19
-					PG_P | PG_USU | PG_RWW,	  //页目录的属性位
-					PG_P | PG_USU | PG_RWW);  //页表的属性位
-
-	//update_heap_ptr(vaddr, 1);
-	//        Scan_free_area(ubud);
-	return AddrLin;
-}
-
-//added by mingxuan 2021-8-19
-PUBLIC u32 do_malloc_4k()
-{
-	kern_malloc_4k();
-}
-
-//added by mingxuan 2021-8-11
-PUBLIC u32 sys_malloc_4k()
-{
-	return do_malloc_4k();
-}
-
-// syscall free
-//
-PUBLIC int sys_free_4k()
-{
-	return do_free_4k(get_arg(1));
-}
-
-PUBLIC int do_free_4k(void *AddrLin)
-{
-	return kern_free_4k(AddrLin);
-}
-
-//PUBLIC int do_free_4k(void* AddrLin)
-PUBLIC int kern_free_4k(void *AddrLin) //modified by mingxuan 2021-8-19
-{
-
-	int phy_addr;
-
-	phy_addr = get_page_phy_addr(p_proc_current->task.pid, (int)AddrLin); //获取物理页的物理地址
-
-	clear_pte(p_proc_current->task.pid, AddrLin);
-
-	//    update_heap_ptr(AddrLin,-1); //update heap pointer
-	update_heap_limit(p_proc_current->task.pid, -1); //update heap limit edited by wang 2021.8.26
-
-	return phy_free_4k(phy_addr);
-}
 
 /*======================================================================*
 *                          sys_fork		add by visual 2016.4.8
@@ -214,26 +87,77 @@ PUBLIC u32 sys_total_mem_size()
 	return do_total_mem_size();
 }
 
-PUBLIC int kern_get_time(struct tm* time)
-{
-	get_rtc_datetime(time);
-	return 0;
-}
+PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
+	[_NR_get_ticks] =	sys_get_ticks,
+	[_NR_get_pid]	= 	sys_get_pid,
+	[_NR_malloc_4k] = 	sys_malloc_4k,		
+	[_NR_free_4k] 	= 	sys_free_4k,
+	[_NR_fork] 		=	sys_fork,
+	[_NR_pthread_create] = sys_pthread_create,
+	[_NR_udisp_int] =	sys_udisp_int,
+	[_NR_udisp_str] = 	sys_udisp_str,
+	[_NR_execve]	=	sys_execve,	
+	[_NR_yield]		=	sys_yield,
+	[_NR_sleep]		=	sys_sleep,
+	[_NR_open]		=	sys_open,
+	[_NR_close]		=	sys_close,
+	[_NR_read]		= 	sys_read,
+	[_NR_write]		=	sys_write,
+	[_NR_lseek]		=	sys_lseek,
+	[_NR_unlink]	=	sys_unlink,
+	[_NR_creat]		=	sys_creat,
+	[_NR_closedir]	=	sys_closedir,
+	[_NR_opendir]	=	sys_opendir,
+	[_NR_mkdir]		=	sys_mkdir,
+	[_NR_rmdir]		=	sys_rmdir,
+	[_NR_readdir]	=	sys_readdir,
+	[_NR_chdir]		=	sys_chdir, 
+	[_NR_getcwd]	=	sys_getcwd,
+	[_NR_wait]		=	sys_wait,
+	[_NR_exit]		=	sys_exit,
+	[_NR_signal]	=	sys_signal,
+	[_NR_sigsend]	=	sys_sigsend,
+	[_NR_sigreturn]	=	sys_sigreturn,	
+	[_NR_total_mem_size]	=	sys_total_mem_size,
+	[_NR_shmget]	=	sys_shmget,
+	[_NR_shmat]		=	sys_shmat,
+	[_NR_shmdt]		=	sys_shmdt,
+	[_NR_shmctl]	=	sys_shmctl,
+	[_NR_shmmemcpy]	=	sys_shmmemcpy,
+	[_NR_ftok]		=	sys_ftok,
+	[_NR_msgget]	=	sys_msgget,	
+	[_NR_msgsnd]	=	sys_msgsnd,	
+	[_NR_msgrcv]	=	sys_msgrcv,
+	[_NR_msgctl]	=	sys_msgctl,	
+		// sys_test,
+	[_NR_execvp]	=	sys_execvp,	
+	[_NR_execv]		=	sys_execv,
+	[_NR_pthread_self]	=	sys_pthread_self,
+	[_NR_pthread_mutex_init]	=	sys_pthread_mutex_init,
+	[_NR_pthread_mutex_destroy]	=	sys_pthread_mutex_destroy,
+	[_NR_pthread_mutex_lock]	=	sys_pthread_mutex_lock,
+	[_NR_pthread_mutex_unlock]	=	sys_pthread_mutex_unlock,
+	[_NR_pthread_mutex_trylock]	=	sys_pthread_mutex_trylock,
+	[_NR_pthread_cond_init]	=	sys_pthread_cond_init,
+	[_NR_pthread_cond_wait]	=	sys_pthread_cond_wait,
+	[_NR_pthread_cond_signal]	=	sys_pthread_cond_signal,
+	[_NR_pthread_cond_timewait]	=	sys_pthread_cond_timewait,
+	[_NR_pthread_cond_broadcast]=	sys_pthread_cond_broadcast,
+	[_NR_pthread_cond_destroy]	=	sys_pthread_cond_destroy,
+	[_NR_get_pid_byname]		=	sys_get_pid_byname,
+	[_NR_mount]					=	sys_mount,
+	[_NR_umount]				=	sys_umount,
+	[_NR_init_block_dev]		=	sys_init_block_dev,
+	[_NR_pthread_exit]			=	sys_pthread_exit,
+	[_NR_pthread_join]			=	sys_pthread_join,
+	[_NR_init_char_dev]			=	sys_init_char_dev,
+	[_NR_get_time]				=	sys_get_time
+	};
 
-PUBLIC int do_get_time(struct tm* time)
-{
-	return kern_get_time(time);
-}
-
-PUBLIC int sys_get_time()
-{
-	return do_get_time((struct tm*)get_arg(1));
-}
-#define TEST_FOR_SEMAPHORE
+// #define TEST_FOR_SEMAPHORE
 #ifdef TEST_FOR_SEMAPHORE
 // #define TEST1
-#define TEST2
-// struct memfree *memarg = 0;
+// #define TEST2
 static int i = 0;
 static int tmp = 0;
 static int acc=0;

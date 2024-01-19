@@ -2,11 +2,6 @@
 *内核地址空间小内存管理相关代码    add by wang  2021.3.3
 **************************************************************/
 
-/*
-#include "kmalloc.h"
-#include "buddy.h"
-#include "memman.h"
-*/
 #include "kmalloc.h"
 #include "buddy.h"
 //#include "../include/memman.h"    //deleted by mingxuan 2021-8-13
@@ -487,6 +482,8 @@ static u32 do_kfree_static(u32 addr,u32 size)   //modified by mingxuan 2021-3-25
 }*/
 
 //test
+// #define KMALLOC_TEST
+#ifdef KMALLOC_TEST
 void scan_ktable()
 {
     u32 i;
@@ -774,3 +771,4 @@ void test_kfree()
     scan_malloc_table();
 */
 }
+#endif

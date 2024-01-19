@@ -12,10 +12,7 @@
 #include "hd.h"
 #include "mount.h"
 
-// PRIVATE struct device  device_table[NR_DEV];  //deleted by mingxuan 2020-10-18
-// PRIVATE struct vfs  vfs_table[NR_FS];   //modified by mingxuan 2020-10-18
-PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
-extern mount_table mnt_table[MAX_mnt_table_length];
+// PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs fs_table[NR_FS_TYPE];
@@ -26,33 +23,12 @@ struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
-// PRIVATE struct file_op f_op_table[NR_fs]; //文件系统操作表
-PRIVATE struct file_op f_op_table[NR_FS_OP]; //modified by mingxuan 2020-10-18
-PRIVATE struct sb_op   sb_op_table[NR_SB_OP];   //added by mingxuan 2020-10-30
 
-
-//PRIVATE void init_dev_table();//deleted by mingxuan 2020-10-30
-PRIVATE void init_vfs_table();  //modified by mingxuan 2020-10-30
-PUBLIC void init_file_desc_table();   //added by mingxuan 2020-10-30
-PUBLIC void init_fileop_table();
-PUBLIC void init_super_block_table();  //added by mingxuan 2020-10-30
-
-//added by ran
-PUBLIC struct vfs* vfs_alloc_vfs_entity()
-{
+PUBLIC void init_file_desc_table(){
     int i;
-    for (int i = 0; i < NR_FS; i++)
-    {
-        if (!vfs_table[i].used)
-        {
-            return &vfs_table[i];
-        }
-    }
-    return 0;
+	for (i = 0; i < NR_FILE_DESC; i++)
+		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
 }
-
-//PRIVATE int get_index(char path[]);
-PUBLIC int get_index(char path[]); //modified by ran
 
 // get and alloc an inode, 调用此函数分配新的inode, 
 PUBLIC struct vfs_inode * vfs_get_inode(){
@@ -82,6 +58,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(){
 
 // 如果引用计数归0，释放资源, 调用此函数必须持有inode锁,除非inode还没有加入目录树
 // 如果引用计数归0，且引用的文件数也为0，执行删除文件
+// put inode之后自动解锁
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(--inode->i_count == 0){
 		acquire(&inode_alloc_lock);
@@ -89,6 +66,7 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 		vfs_bmap[i >> 3] &= ~(1 << (i%8));
 		release(&inode_alloc_lock);
 	}
+	release(&inode->lock);
 }
 
 // require mutex: dir, ent
@@ -203,7 +181,7 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	acquire(&inode->lock);
 	int mode = inode->i_mode;
 	release(&inode->lock);
-	if(!(mode & 1)){
+	if(!(mode & 4)){
 		return -1;
 	}
 	return 0;
@@ -212,7 +190,7 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 //(todo:对于访问..可能产生的顺序是否存在死锁的可能,有待探究)
 // dir lock must held, return entry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
-PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name){
+PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int release_origin){
 	// acquire(&dir->lock);
 	struct vfs_dentry* entry = NULL;
 	if(!strcmp(dir->d_name, ".")){
@@ -266,7 +244,9 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name){
 		if(entry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
 			acquire(&entry->lock);
 		}
-		release(&dir->lock);
+		if(release_origin){
+			release(&dir->lock);
+		}
 	}
 	return entry;
 }
@@ -286,7 +266,7 @@ PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
 			if(flag_name){
 				*p_name = 0;
 				flag_name = 0;
-				dir = _do_lookup(dir, d_name);
+				dir = _do_lookup(dir, d_name, 1);
 				if(!dir){
 					return NULL;
 				}
@@ -307,7 +287,7 @@ PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
 }
 
 PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
-	if(hd_info[MAJOR(dev)].part[MINOR(dev)].fs_type != fstype){
+	if(hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type != fstype){
 		// dismatch fstype
 		return NULL;
 	}
@@ -350,7 +330,7 @@ PUBLIC void init_fs(){
 	mount_root();
 }
 
-PUBLIC int get_fstype_by_name(char* fstype_name){
+PUBLIC int get_fstype_by_name(const char* fstype_name){
 	int fstype = NO_FS_TYPE;
 	for(;fstype < NR_FS_TYPE; fstype++){
 		if(!strcmp(fstype_name, fs_table[fstype].fstype_name)){
@@ -406,10 +386,31 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 	}
 	int fstype = get_fstype_by_name(filesystemtype);
 	struct super_block *sb = vfs_read_super(dev, fstype);
+	if(!sb){
+		release(&dir_d->lock);
+		return -1;
+	}
 	add_vfsmount(block_filepath, mntpoint_path, sb->root, dev);
 	sb->root->d_covers = dir_d;
 	dir_d->d_mounts = sb->root;
 	release(&dir_d->lock);
+	return 0;
+}
+
+PUBLIC int kern_vfs_umount(const char *target){
+	char full_path[MAX_PATH] = {0};
+	// char* file_name, *base_path = full_path;
+	strcpy(full_path, target);
+	vfs_get_abspath(full_path);
+	// strip_base_path(base_path, &file_name);
+	acquire(&vfs_root->lock);
+	struct vfs_dentry *mnt = vfs_lookup(vfs_root, full_path);
+	if(mnt->d_covers == mnt){
+		release(&mnt->lock);
+		return -1;
+	}
+
+	release(&mnt->lock);
 	return 0;
 }
 
@@ -424,7 +425,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(dir){
-		entry = _do_lookup(dir, file_name);
+		entry = _do_lookup(dir, file_name, 0);
 	}
 	if(!entry && (flags & O_CREAT)){
 		//此处不调用createAPI,避免锁的一致性问题,
@@ -454,7 +455,6 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 				}
 			}
 			release(&dir->d_inode->lock);
-			release(&dir->lock);
 		}
 	}
 	if(!entry){
@@ -462,18 +462,14 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	}
 	inode = entry->d_inode;
 	acquire(&inode->lock);
-	if(inode->i_type == I_DIRECTORY){
+	if((!(flags & O_DIRECTORY)) && inode->i_type == I_DIRECTORY){
 		disp_str("error: try to open a dir");
-		release(&inode->lock);
-		release(&entry->lock);
-		return NULL;
+		goto err;
 	}
 	int rmode = (flags + 1) & O_ACC;
 	if((rmode & (~inode->i_mode))&O_ACC){
 		disp_str("error: no permission");
-		release(&inode->lock);
-		release(&entry->lock);
-		return NULL;
+		goto err;
 	}
 	acquire(&file_desc_lock);
 	/* find a free slot in f_desc_table[] */
@@ -486,7 +482,8 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 		disp_str("f_desc_table[] is full (PID:");
 		disp_int(proc2pid(p_proc_current));
 		disp_str(")\n");
-		return  NULL;
+		release(&file_desc_lock);
+		goto err;
 	}
 	f_desc_table[i].flag = 1;
 	release(&file_desc_lock);
@@ -496,7 +493,13 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	f_desc_table[i].fd_pos = 0;	
 	release(&inode->lock);
 	release(&entry->lock);
+	release(&dir->lock);
 	return &f_desc_table[i];
+err:
+	release(&inode->lock);
+	release(&entry->lock);
+	release(&dir->lock);
+	return NULL;
 }
 
 PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
@@ -531,12 +534,12 @@ PUBLIC int kern_vfs_close(int fd) {    //modified by mingxuan 2021-8-15
     struct vfs_inode* inode = p_proc_current->task.filp[fd]->fd_inode;
 	acquire(&inode->lock);
 	vfs_put_inode(inode);
-	release(&inode->lock);
 	p_proc_current->task.filp[fd]->fd_inode = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
 	p_proc_current->task.filp[fd]->flag = 0;
 	release(&file_desc_lock);			 // added by mingxuan 2019-5-17
 	p_proc_current->task.filp[fd] = 0;
+	return 0;
 }
 
 PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
@@ -593,7 +596,7 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count){
 	return cnt;
 }
 
-PUBLIC int kern_vfs_write(int fd, char *buf, int count){
+PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
 	struct file_desc * file = p_proc_current->task.filp[fd];
 	if(!file || count<0){
 		return -1;
@@ -612,15 +615,49 @@ PUBLIC int kern_vfs_write(int fd, char *buf, int count){
 	return cnt;
 }
 
-PUBLIC int kern_vfs_creat(char* path, int mode){
-	return kern_vfs_open(path, O_CREAT, mode);
+PUBLIC int kern_vfs_creat(const char* path, int mode){
+	return kern_vfs_open(path, O_CREAT|O_RDWR, mode);
 }
 
-PUBLIC int kern_vfs_unlink(){
-
+PUBLIC int kern_vfs_unlink(const char *path){
+	char full_path[MAX_PATH] = {0};
+	char* file_name, *base_path = full_path;
+	strcpy(full_path, path);
+	vfs_get_abspath(full_path);
+	strip_base_path(base_path, &file_name);
+	acquire(&vfs_root->lock);
+	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry= NULL;
+	if(!dir){
+		release(&dir->lock);
+		return -1;
+	}
+	entry = _do_lookup(dir, file_name, 0);
+	if(!entry){
+		release(&dir->lock);
+		return -1;
+	}
+	struct vfs_inode *inode = entry->d_inode;
+	acquire(&inode->lock);
+	if(inode->i_type == I_DIRECTORY){
+		goto err;	
+	}
+	if(inode->i_op && inode->i_op->unlink){
+		acquire(&dir->d_inode->lock);
+		inode->i_op->unlink(dir->d_inode, entry);
+		release(&dir->d_inode->lock);
+	}
+	vfs_put_inode(inode);
+	release(&entry->lock);
+	release(&dir->lock);
+	return 0;
+err:
+	release(&inode->lock);
+	release(&entry->lock);
+	release(&dir->lock);
+	return -1;
 }
 
-PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
+PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 	char full_path[MAX_PATH] = {0};
 	char* file_name, *base_path = full_path;
 	strcpy(full_path, path);
@@ -630,10 +667,11 @@ PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(dir){
-		entry = _do_lookup(dir, file_name);
+		entry = _do_lookup(dir, file_name, 0);
 	}
 	if(entry){
 		release(&entry->lock);
+		release(&dir->lock);
 		return -1;
 	}
 	if(dir){
@@ -676,7 +714,7 @@ PUBLIC int kern_vfs_mknod(char* path, int mode, int dev){
 	return 0;
 }
 
-PUBLIC int kern_vfs_mkdir(char* path, int mode){
+PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 	char full_path[MAX_PATH] = {0};
 	char* file_name, *base_path = full_path;
 	strcpy(full_path, path);
@@ -686,10 +724,11 @@ PUBLIC int kern_vfs_mkdir(char* path, int mode){
 	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(dir){
-		entry = _do_lookup(dir, file_name);
+		entry = _do_lookup(dir, file_name, 0);
 	}
 	if(entry){
 		release(&entry->lock);
+		release(&dir->lock);
 		return -1;
 	}
 	if(dir){
@@ -722,645 +761,82 @@ PUBLIC int kern_vfs_mkdir(char* path, int mode){
 	return 0;
 }
 
-PUBLIC void init_vfs(){
-
-    init_file_desc_table();
-    init_fileop_table();
-
-    init_super_block_table();
-    init_sb_op_table(); //added by mingxuan 2020-10-30
-
-    //init_dev_table(); //deleted by mingxuan 2020-10-30
-    init_vfs_table();   //modified by mingxuan 2020-10-30
-}
-
-//added by mingxuan 2020-10-30
-PUBLIC void init_file_desc_table(){
-    int i;
-	for (i = 0; i < NR_FILE_DESC; i++)
-		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
-}
-
-PUBLIC void init_fileop_table(){
-    // table[0] for tty
-    f_op_table[0].open = real_open;
-    f_op_table[0].close = real_close;
-    f_op_table[0].write = real_write;
-    f_op_table[0].lseek = real_lseek;
-    f_op_table[0].unlink = real_unlink;
-    f_op_table[0].read = real_read;
-    //f_op_table[0].tag = 0;
-
-    // table[1] for orange
-    f_op_table[1].open = real_open;
-    f_op_table[1].close = real_close;
-    f_op_table[1].write = real_write;
-    f_op_table[1].lseek = real_lseek;
-    f_op_table[1].unlink = real_unlink;
-    f_op_table[1].read = real_read;
-    f_op_table[1].createdir = real_createdir;
-    f_op_table[1].deletedir = real_deletedir;
-    //f_op_table[1].tag = 0;
-
-    // table[2] for fat32
-    // f_op_table[2].create = CreateFile;
-    // f_op_table[2].delete = DeleteFile;
-    // f_op_table[2].open = OpenFile;
-    // f_op_table[2].close = CloseFile;
-    // f_op_table[2].write = WriteFile;
-    // f_op_table[2].read = ReadFile;
-    // f_op_table[2].lseek = LSeek;
-    // f_op_table[2].opendir = OpenDir;
-    // f_op_table[2].createdir = CreateDir;
-    // f_op_table[2].deletedir = DeleteDir;
-    // f_op_table[2].chdir = fat32_chdir;
-
-    // table[2] for fat32
-    // f_op_table[2].CreateFile = CreateFile;
-    // f_op_table[2].DeleteFile = DeleteFile;
-    // f_op_table[2].OpenFile = OpenFile;
-    // f_op_table[2].CloseFile = CloseFile;
-    // f_op_table[2].WriteFile = WriteFile;
-    // f_op_table[2].ReadFile = ReadFile;
-    // f_op_table[2].LSeek = LSeek;
-    // f_op_table[2].OpenDir = OpenDir;
-    // f_op_table[2].CreateDir = CreateDir;
-    // f_op_table[2].DeleteDir = DeleteDir;
-    // f_op_table[2].ChangeDir = fat32_chdir;
-    // f_op_table[2].ReadDir = ReadDir;
-
-    // table[2] for fat32 //added by ran
-    // f_op_table[2].create = create_adapter;
-    // f_op_table[2].delete = delete_adapter;
-    // f_op_table[2].open = open_adapter;
-    // f_op_table[2].close = close_adapter;
-    // f_op_table[2].write = write_adapter;
-    // f_op_table[2].read = read_adapter;
-    // f_op_table[2].lseek = LSeek;
-    // f_op_table[2].opendir = opendir_adapter;
-    // f_op_table[2].createdir = createdir_adapter;
-    // f_op_table[2].deletedir = deletedir_adapter;
-    // f_op_table[2].readdir = readdir_adapter;
-    // f_op_table[2].chdir = chdir_adapter;
-    //f_op_table[2].tag = 1;
+PUBLIC int kern_vfs_rmdir(const char* path){
 
 }
 
-//added by mingxuan 2020-10-30
-PUBLIC void init_super_block_table(){
-    struct super_block * sb = super_blocks;						//deleted by mingxuan 2020-10-30
-
-    //super_block[0] is tty0, super_block[1] is tty1, uper_block[2] is tty2
-    for(; sb < &super_blocks[3]; sb++) {
-        sb->sb_dev =  DEV_CHAR_TTY;
-        // sb->fs_type = TTY_FS_TYPE;
-        sb->used = 1;
-    }
-
-    //super_block[3] is orange's superblock
-    sb->sb_dev = DEV_HD;
-    sb->fs_type = ORANGE_TYPE;
-    sb->used = 1;
-    sb++;
-
-    //deleted by ran
-    //super_block[4] is fat32's superblock
-    // sb->sb_dev = DEV_HD;
-    // sb->fs_type = FAT32_TYPE;
-    // sb++;
-
-    //another super_block are free
-    for (; sb < &super_blocks[NR_SUPER_BLOCK]; sb++)			//deleted by mingxuan 2020-10-30
-	{
-    	sb->sb_dev = NO_DEV;
-        sb->fs_type = NO_FS_TYPE;
-        sb->used = 0;
-    }
+PUBLIC DIR* kern_vfs_opendir(const char* path){
+	struct file_desc * file = vfs_file_open(path, O_DIRECTORY|O_RDONLY, I_RWX);
+	if(!file){
+		return NULL;
+	}
+	DIR* dirp = kern_kmalloc_4k();
+	dirp->file = file;
+	dirp->count = 0;
+	dirp->total = 0;
+	dirp->init = 0;
+	return dirp;
 }
 
-//added by mingxuan 2020-10-30
-PUBLIC void init_sb_op_table(){
-    //orange
-    sb_op_table[0].read_super_block = read_super_block;
-    sb_op_table[0].get_super_block = get_super_block;
-
-    // //fat32 and tty
-    sb_op_table[1].read_super_block = NULL;
-    sb_op_table[1].get_super_block = NULL;
+PUBLIC int kern_vfs_closedir(DIR* dirp){
+	struct vfs_inode* inode = dirp->file->fd_inode;
+	acquire(&inode->lock);
+	vfs_put_inode(inode);
+	dirp->file->fd_inode = 0; // modified by mingxuan 2019-5-17
+	acquire(&file_desc_lock);
+	dirp->file->flag = 0;
+	release(&file_desc_lock);
+	kern_kfree_4k(dirp);
+	return 0;
 }
 
-//PRIVATE void init_dev_table(){
-PRIVATE void init_vfs_table(){  // modified by mingxuan 2020-10-30
-
-
-    // 我们假设每个tty就是一个文件系统
-    // tty0
-    // device_table[0].dev_name="dev_tty0";
-    // device_table[0].op = &f_op_table[0];
-    vfs_table[0].fs_name = "dev_tty0"; //modifed by mingxuan 2020-10-18
-    vfs_table[0].op = &f_op_table[0];
-    vfs_table[0].sb = &super_blocks[0];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[0].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
-    vfs_table[0].used = 1;
-
-    // tty1
-    //device_table[1].dev_name="dev_tty1";
-    //device_table[1].op =&f_op_table[0];
-    vfs_table[1].fs_name = "dev_tty1"; //modifed by mingxuan 2020-10-18
-    vfs_table[1].op = &f_op_table[0];
-    vfs_table[1].sb = &super_blocks[1];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[1].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
-    vfs_table[1].used = 1;
-
-    // tty2
-    //device_table[2].dev_name="dev_tty2";
-    //device_table[2].op=&f_op_table[0];
-    vfs_table[2].fs_name = "dev_tty2"; //modifed by mingxuan 2020-10-18
-    vfs_table[2].op = &f_op_table[0];
-    vfs_table[2].sb = &super_blocks[2];  //每个tty都有一个superblock //added by mingxuan 2020-10-30
-    vfs_table[2].s_op = &sb_op_table[1];    //added by mingxuan 2020-10-30
-    vfs_table[2].used = 1;
-
-    // // orangefs
-    vfs_table[3].fs_name = "orange";
-    vfs_table[3].op = &f_op_table[1];
-    vfs_table[3].sb = &super_blocks[3];
-    vfs_table[3].s_op = &sb_op_table[0];
-    vfs_table[3].used = 1;
-
-    // fat32 //added by ran
-    // vfs_table[4].fs_name = "fat0";
-    // vfs_table[4].op = &f_op_table[2];
-    // vfs_table[4].sb = &super_block[4];
-    // vfs_table[4].s_op = &sb_op_table[1];
-    // vfs_table[4].used = 0; //动态绑定
-
-    // fat32 //added by ran
-    // vfs_table[5].fs_name = "fat1";
-    // vfs_table[5].op = &f_op_table[2];
-    // vfs_table[5].sb = &super_block[5];
-    // vfs_table[5].s_op = &sb_op_table[1];
-    // vfs_table[5].used = 0; //动态绑定
-
-    for(int i=4;i<NR_FS;i++)
-    {
-        vfs_table[i].fs_name = "";
-        vfs_table[i].op = &f_op_table[0];
-        vfs_table[i].sb = &super_blocks[i];
-        vfs_table[i].s_op = &sb_op_table[0];
-        vfs_table[i].used = 0; //动态绑定
-    }
+struct dirent* kern_vfs_readdir(DIR* dirp){
+	if(!dirp->init){
+		struct vfs_inode* inode = dirp->file->fd_inode;
+		acquire(&inode->lock);
+		if(inode->i_fop && inode->i_fop->readdir){
+			inode->i_fop->readdir(dirp->file, DIR_DATA(dirp));
+		}
+		release(&inode->lock);
+	}
+	struct dirent* ent = NULL;
+	if(dirp->count < dirp->total){
+		ent = &DIR_DATA(dirp)[dirp->count++];
+	}
+	return ent;
 }
 
-PUBLIC int set_vfstable(u32 device, char *target)
-{
-    int fs_type = hd_info[MAJOR(device)].part[MINOR(device)].fs_type;
-
-    int vfs_index;
-    struct vfs *pvfs = vfs_table;
-
-    for(vfs_index = 0; vfs_index<NR_FS;vfs_index++,pvfs++)
-    {
-        if(pvfs->used == 1 && pvfs->sb->sb_dev == device)
-        {
-            break;
-        }
-    }
-
-    if(pvfs == vfs_table+NR_FS)
-    {
-        pvfs = vfs_alloc_vfs_entity();
-    }
-    
-    
-    pvfs->fs_name = (char*)kern_kmalloc(12);
-    strcpy(pvfs->fs_name, target);
-
-    int sb_index;
-
-    if( fs_type== ORANGE_TYPE)
-    {
-        sb_index = init_orangefs(device);
-        pvfs->op = &f_op_table[1];
-        pvfs->s_op = &sb_op_table[0];
-    }
-    else if(fs_type== FAT32_TYPE)
-    {
-        // sb_index = init_fat32fs(device);
-        pvfs->op = &f_op_table[2];
-        pvfs->s_op = &sb_op_table[1];
-    }
-    else 
-    {
-        disp_color_str("not support this fs foramt\n", 0x74);
-        return -1;
-    }
-
-    if(pvfs-vfs_table != sb_index)
-    {
-        disp_str("Warning!!!, vfstable index not equal with sb_index\n");
-    }
-
-    pvfs->sb = &super_blocks[sb_index];
-    pvfs->used = 1;
-
-    return pvfs - vfs_table;
+PUBLIC int kern_vfs_chdir(const char* path){
+	char full_path[MAX_PATH] = {0};
+	strcpy(full_path, path);
+	vfs_get_abspath(full_path);
+	acquire(&vfs_root->lock);
+	struct vfs_dentry *dir = vfs_lookup(vfs_root, full_path);
+	if(!dir){
+		return -1;
+	}
+	struct vfs_inode* inode = dir->d_inode;
+	int err = -1;
+	acquire(&inode->lock);
+	if(inode->i_type == I_DIRECTORY){
+		strcpy(p_proc_current->task.cwd, full_path);
+		err = 0;
+	}
+	release(&inode->lock);
+	release(&dir->lock);
+	return err;
 }
+// PUBLIC void init_vfs(){
 
-// mark 限制了文件名长度。函数功能与名字不符
-PRIVATE int get_fs_len(const char *path) {
-  int pathlen = strlen(path);
-  //char dev_name[DEV_NAME_LEN];
-  char fs_name[DEV_NAME_LEN] = {0};   //modified by mingxuan 2020-10-18
-  int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
-  int i,a=0;
-  for(i=0;i<len;i++){
-    if( path[i] == '/'){
-      a=i;
-      a++;
-      break;
-    }
-    else {
-      //dev_name[i] = path[i];
-      fs_name[i] = path[i];   //modified by mingxuan 2020-10-18
-    }
-  }
-  return strlen(fs_name);
-}
-/*根据绝对路径名获取该路径描述的文件所在的文件系统在vfs_table中的index
-并且将绝对路径转化为该文件系统的相对路径
-*/
-/* int getIndex_and_stripPath(char* path){
-    //遍历所有挂载点，查看path中是否包含挂载点的路径
-    //若包含则返回挂载点挂载的文件系统在vfs_table的索引
-    //若不包含则返回orangefs(根文件系统)在vfs_table的索引
-    int index = 3;//默认是orangefs 根文件系统
-    int mnt_point_len = 0;
-    for (int i = 0; i < MAX_mnt_table_length; i++)
-    {
-         mnt_point_len = strlen(mnt_table[i].filename);
-        if(strncmp(mnt_table[i].filename,path,strlen) == 0){
-            index = i;
-            break;
-        }
-    }
-    //将绝对地址转化为文件系统内的相对地址
-    if(index!=3){
-        char backupPath[MAX_FILENAME_LEN];
-        memset(backupPath,0,MAX_FILENAME_LEN);
-        int pathlen = strlen(path);
-        memcpy(backupPath,path,pathlen);  
-        memset(path,0,pathlen+1);
-        memcpy(path,backupPath+mnt_point_len+1,pathlen-mnt_point_len-1);
-    }
-    return index;
-    
+//     init_file_desc_table();
+//     init_fileop_table();
 
-} */
+//     init_super_block_table();
+//     init_sb_op_table(); //added by mingxuan 2020-10-30
 
-int get_index(char path[]){
-
-  int pathlen = strlen(path);
-    //char dev_name[DEV_NAME_LEN];
-    char fs_name[DEV_NAME_LEN];   //modified by mingxuan 2020-10-18
-    int len = (pathlen < DEV_NAME_LEN) ? pathlen : DEV_NAME_LEN;
-
-    int i,a=0;
-    for(i=0;i<len;i++){
-        if( path[i] == '/'){
-            a=i;
-            a++;
-            break;
-        }
-        else {
-            //dev_name[i] = path[i];
-            fs_name[i] = path[i];   //modified by mingxuan 2020-10-18
-        }
-    }
-    //dev_name[i] = '\0';
-    fs_name[i] = '\0';  //modified by mingxuan 2020-10-18
-    for(i=0;i<pathlen-a;i++)
-        path[i] = path[i+a];
-    path[pathlen-a] = '\0';
-
-    //for(i=0;i<NR_DEV;i++)
-    for(i=0;i<NR_FS;i++)    //modified by mingxuan 2020-10-29
-    {
-        // if(!strcmp(dev_name, device_table[i].dev_name))
-        if(!strcmp(fs_name, vfs_table[i].fs_name)) //modified by mingxuan 2020-10-18
-            return i;
-    }
-
-    return -1;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vopen(const char *path, int flags, int mode) {
-	#ifdef NEW_VFS
-	return kern_vfs_open(path, flags, mode);
-	#endif
-    return kern_vopen(path, flags);
-}
-
-PUBLIC int kern_vopen(const char *path, int flags) {
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH] = {0};
-    strcpy(pathname, path);
-
-    int index,i;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        return -1;
-    }
-    int fd = -1;
-    fd = vfs_table[index].op->open(vfs_table[index].sb,pathname, flags);
-    //若file中的dev_index 未被设置 则在此赋值
-    //tty设备已经设置了dev_index ，常规文件dev_index 为-1
-    //add by sundong 2023.5.18
-    if(fd>=0 && p_proc_current -> task.filp[fd] -> dev_index == -1){
-        p_proc_current -> task.filp[fd] -> dev_index = index;
-    }
-    return fd;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vclose(int fd) {
-	#ifdef NEW_VFS
-	return kern_vfs_close(fd);
-	#endif
-    return kern_vclose(fd);
-}
-
-//PUBLIC int do_vclose(int fd) {
-PUBLIC int kern_vclose(int fd) {    //modified by mingxuan 2021-8-15
-    int index = p_proc_current->task.filp[fd]->dev_index;
-    struct vfs* pvfs = &vfs_table[index];
-
-    int result;
-    result = pvfs->op->close(fd);
-    return result;
-}
-
-PUBLIC int do_vread(int fd, char *buf, int count) {
-	#ifdef NEW_VFS
-	return kern_vfs_read(fd, buf, count);
-	#endif
-    return kern_vread(fd, buf, count);
-}
-
-//PUBLIC int do_vread(int fd, char *buf, int count) {
-PUBLIC int kern_vread(int fd, char *buf, int count) {   //modified by mingxuan 2021-8-15
-    //disp_int(fd);
-    int index = p_proc_current->task.filp[fd]->dev_index;
-    struct vfs* pvfs = &vfs_table[index];
-
-    int result;
-    result = pvfs->op->read(fd, buf, count);
-
-    return result;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vwrite(int fd, const char *buf, int count) {
-	#ifdef NEW_VFS
-	return kern_vfs_write(fd, buf, count);
-	#else
-    return kern_vwrite(fd, buf, count);
-	#endif
-}
-
-//PUBLIC int do_vwrite(int fd, const char *buf, int count) {
-PUBLIC int kern_vwrite(int fd, const char *buf, int count) {    //modified by mingxuan 2021-8-15
-    char s[512];
-    int index = p_proc_current->task.filp[fd]->dev_index;
-    struct vfs* pvfs = &vfs_table[index];
-    int fs_type = pvfs->sb->fs_type;
-    char *fsbuf = buf;
-    int f_len = count;
-    int bytes;
-    int success_bytes = 0; //表示成功写入的字节数   //added by mingxuan 2021-8-31
-    while(f_len)
-    {
-        int iobytes = min(512, f_len);  // iobytes是期望写入的字节数
-        int i=0;
-        for(i=0; i<iobytes; i++)
-        {
-            s[i] = *fsbuf;
-            fsbuf++;
-        }
-        bytes = pvfs->op->write(fd, s, iobytes); //bytes是文件系统返回的实际写入的字节数
-       //added by mingxuan 2021-8-31
-       if(bytes != iobytes || bytes == 0) //说明发生了写入异常
-       {
-           return success_bytes;    //返回已经成功写入的字节数
-       }
-
-        success_bytes += bytes;
-        f_len -= bytes;
-    }
-    //return count;
-    return success_bytes;   //modified by mingxuan 2021-8-31
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vunlink(const char *path) {
-    return kern_vunlink(path);
-}
-
-//PUBLIC int do_vunlink(const char *path) {
-PUBLIC int kern_vunlink(const char *path) {   //modified by mingxuan 2021-8-15
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    //index = get_index(pathname);
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        disp_str("pathname error!\n");
-        return -1;
-    }
-    //return device_table[index].op->unlink(pathname);
-    return vfs_table[index].op->unlink(vfs_table[index].sb,pathname);   //modified by mingxuan 2020-10-18
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vlseek(int fd, int offset, int whence) {
-	#ifdef NEW_VFS
-	return kern_vfs_lseek(fd, offset, whence);
-	#endif
-    return kern_vlseek(fd, offset, whence);
-}
-
-PUBLIC int kern_vlseek(int fd, int offset, int whence) {
-    int index = p_proc_current->task.filp[fd]->dev_index;
-    struct vfs *pvfs = &vfs_table[index];
-
-    int result;
-    result = pvfs->op->lseek(fd, offset, whence);
-    return result;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vcreate(char *filepath)
-{
-    return kern_vcreate(filepath);
-}
-
-PUBLIC int kern_vcreate(char *filepath) {
-    int state;
-    const char *path = filepath;
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        disp_str("pathname error!\n");
-        disp_str(path);
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-    state = pvfs->op->create(pvfs->sb,pathname);
-    return state;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vdelete(char *path)
-{
-    return kern_vdelete(path);
-}
-
-PUBLIC int kern_vdelete(char *path) {
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        disp_str("pathname error!\n");
-        disp_str(path);
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-
-    int result;
-    result = pvfs->op->delete(pvfs->sb,pathname);
-    return result;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vopendir(char *path) {
-    return kern_vopendir(path);
-}
-
-//PUBLIC int do_vopendir(char *path) {
-PUBLIC int kern_vopendir(char *path) {  //modified by mingxuan 2021-8-15
-    int state;
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-
-    //index = get_index(pathname);
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        return -1;
-    }
-    state = vfs_table[index].op->opendir(vfs_table[index].sb,pathname);
-
-    return state;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vcreatedir(char *path) {
-	#ifdef NEW_VFS
-	return kern_vfs_mkdir(path, I_RWX);
-	#endif
-    return kern_vcreatedir(path);
-}
-
-//PUBLIC int do_vcreatedir(char *path) {
-PUBLIC int kern_vcreatedir(char *path) {  //modified by mingxuan 2021-8-15
-    int state;
-
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    //index = (int)(pathname[1]-'0');
-    //int fs_len = get_fs_len(path) + 1;
-    //index = get_index(pathname);
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        disp_str("pathname error!\n");
-        disp_str(path);
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-    state = pvfs->op->createdir(pvfs->sb,pathname);
-    return state;
-}
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vdeletedir(char *path) {
-    return kern_vdeletedir(path);
-}
-
-PUBLIC int kern_vdeletedir(char *path) {
-    int state;
-    int pathlen = strlen(path);
-    char pathname[MAX_PATH];
-
-    strcpy(pathname,path);
-    pathname[pathlen] = 0;
-
-    int index;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-    state = pvfs->op->deletedir(pvfs->sb,pathname);
-    return state;
-}
-
-
-//added by mingxuan 2021-8-15
-PUBLIC int do_vchdir(const char *path) {
-    return kern_vchdir(path);
-}
-
-PUBLIC int kern_vchdir(const char *path) {
-    char pathname[MAX_PATH];
-    strcpy(pathname, path);
-    int index;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-    int state = pvfs->op->chdir(pvfs->sb,pathname);
-    return state;
-}
+//     //init_dev_table(); //deleted by mingxuan 2020-10-30
+//     init_vfs_table();   //modified by mingxuan 2020-10-30
+// }
 
 
 PUBLIC char* kern_vgetcwd(char *buf, int size) {
@@ -1372,29 +848,95 @@ PUBLIC char* kern_vgetcwd(char *buf, int size) {
     return buf;
 }
 
+//// do_xx
+PUBLIC int do_vopen(const char *path, int flags, int mode) {
+	#ifdef NEW_VFS
+	return kern_vfs_open(path, flags, mode);
+	#else
+    return kern_vopen(path, flags);
+	#endif
+}
+
+PUBLIC int do_vclose(int fd) {
+	#ifdef NEW_VFS
+	return kern_vfs_close(fd);
+	#else
+    return kern_vclose(fd);
+	#endif
+}
+
+PUBLIC int do_vread(int fd, char *buf, int count) {
+	#ifdef NEW_VFS
+	return kern_vfs_read(fd, buf, count);
+	#else
+    return kern_vread(fd, buf, count);
+	#endif
+}
+
+PUBLIC int do_vwrite(int fd, const char *buf, int count) {
+	#ifdef NEW_VFS
+	return kern_vfs_write(fd, buf, count);
+	#else
+    return kern_vwrite(fd, buf, count);
+	#endif
+}
+
+PUBLIC int do_vlseek(int fd, int offset, int whence) {
+	#ifdef NEW_VFS
+	return kern_vfs_lseek(fd, offset, whence);
+	#else
+    return kern_vlseek(fd, offset, whence);
+	#endif
+}
+
+PUBLIC int do_vunlink(const char *path) {
+	#ifdef NEW_VFS
+	return kern_vfs_unlink(path);
+	#else
+    return kern_vunlink(path);
+	#endif
+}
+
+PUBLIC int do_vcreat(const char *filepath)
+{
+	#ifdef NEW_VFS
+	return kern_vfs_creat(filepath, I_RWX);
+	#else
+    return kern_vcreate(filepath);
+	#endif
+}
+
+PUBLIC int do_vopendir(const char* path)
+{
+    return kern_vfs_opendir(path);
+}
+
+PUBLIC int do_vclosedir(DIR* dirp){
+
+}
+
+PUBLIC int do_vmkdir(const char *path) {
+	#ifdef NEW_VFS
+	return kern_vfs_mkdir(path, I_RWX);
+	#else
+    return kern_vcreatedir(path);
+	#endif
+}
+
+PUBLIC int do_vrmdir(const char *path) {
+    return kern_vfs_rmdir(path);
+}
+
+PUBLIC struct dirent* do_vreaddir(DIR* dirp){
+	return kern_vfs_readdir(dirp);
+}
+PUBLIC int do_vchdir(const char *path) {
+    return kern_vfs_chdir(path);
+}
+
 PUBLIC int do_vgetcwd(char *buf, int size) {
     return (int)kern_vgetcwd(buf, size);
 }
-
-
-PUBLIC int do_vreaddir(PCHAR dirname, DWORD dir[3], PCHAR filename)
-{
-    return kern_vreaddir(dirname, dir, filename);
-}
-
-PUBLIC int kern_vreaddir(PCHAR dirname, DWORD dir[3], PCHAR filename)
-{
-    char pathname[MAX_PATH];
-    strcpy(pathname, dirname);
-    int index;
-    int ret = vfs_path_transfer(pathname,&index);
-    if(ret < 0){
-        return -1;
-    }
-    struct vfs *pvfs = &vfs_table[index];
-    pvfs->op->readdir(pvfs->sb,pathname, dir, filename);
-}
-
 /*======================================================================*
                               sys_* 系列函数
  *======================================================================*/
@@ -1428,37 +970,36 @@ PUBLIC int sys_unlink() {
     return do_vunlink(get_arg(1));
 }
 
-PUBLIC int sys_create() {
-    return do_vcreate(get_arg(1));
+PUBLIC int sys_creat() {
+    return do_vcreat(get_arg(1));
 }
 
-PUBLIC int sys_delete() {
-    return do_vdelete(get_arg(1));
+PUBLIC int sys_closedir() {
+    return do_vclosedir((DIR*)get_arg(1));
 }
 
 PUBLIC int sys_opendir() {
-    return do_vopendir(get_arg(1));
+    return do_vopendir((const char*)get_arg(1));
 }
 
-PUBLIC int sys_createdir() {
-    return do_vcreatedir(get_arg(1));
+PUBLIC int sys_mkdir() {
+    return do_vmkdir(get_arg(1));
 }
 
-PUBLIC int sys_deletedir() {
-    return do_vdeletedir(get_arg(1));
+PUBLIC int sys_rmdir() {
+    return do_vrmdir(get_arg(1));
 }
 
 PUBLIC int sys_readdir() {
-    return do_vreaddir(get_arg(1), get_arg(2), get_arg(3));
-    //return ReadDir((PCHAR)get_arg(1), (PDWORD)get_arg(2), (PCHAR)get_arg(3));
+    return do_vreaddir(get_arg(1));
 }
 
 //added by ran
 PUBLIC int sys_chdir() {
-  return do_vchdir((PCHAR)get_arg(1));
+  return do_vchdir((const char*)get_arg(1));
 }
 
 //added by ran
 PUBLIC int sys_getcwd() {
-  return (int)do_vgetcwd((PCHAR)get_arg(1), (PDWORD)get_arg(2));
+  return (int)do_vgetcwd((char*)get_arg(1), (int)get_arg(2));
 }

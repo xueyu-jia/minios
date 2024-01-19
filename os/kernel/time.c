@@ -43,3 +43,19 @@ void get_rtc_datetime(struct tm* time){
 	NMI_enable();
 	enable_int();
 }
+
+PUBLIC int kern_get_time(struct tm* time)
+{
+	get_rtc_datetime(time);
+	return 0;
+}
+
+PUBLIC int do_get_time(struct tm* time)
+{
+	return kern_get_time(time);
+}
+
+PUBLIC int sys_get_time()
+{
+	return do_get_time((struct tm*)get_arg(1));
+}

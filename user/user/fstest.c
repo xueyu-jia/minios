@@ -26,7 +26,7 @@ void main(int argc,char *argv[])
 		path[i++] = 'a' + (i % 26);
 		path[i++] = 'a' + (i % 26);
 		path[i] = 'a' + (i % 26);
-		createdir(path);
+		mkdir(path);
 	}
 	printf("path:%s\n", path);
 	printf("path length :%d\n", strlen(path));
@@ -56,11 +56,11 @@ void main(int argc,char *argv[])
 	printf("content length :%d\n", strlen(buff));
 
 	// 删除不存在的目录
-	ret = deletedir("error");
+	ret = rmdir("error");
 	printf("delete error path ret:%d\n", ret);
 
 	// 删除有文件的目录
-	ret = deletedir(path);
+	ret = rmdir(path);
 	for(int j = 0; j < 100000000; j++);
 	printf("delete 1 ret:%d\n", ret);
 	
@@ -69,7 +69,7 @@ void main(int argc,char *argv[])
 	for(int j = 0; j < 100000000; j++);
 	printf("delete file ret:%d\n", ret);
 	
-	ret = deletedir(path);
+	ret = rmdir(path);
 	for(int j = 0; j < 100000000; j++);
 	printf("delete 2 ret:%d\n", ret);
 	

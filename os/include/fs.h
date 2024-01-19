@@ -41,7 +41,7 @@ typedef struct vfs_inode{
 
 // **** dentry 的本质是树形cache !!! ****
 struct vfs_dentry{
-	char d_name[32];
+	char d_name[MAX_DNAME_LEN];
 	struct vfs_inode* d_inode;
 	struct vfs_dentry* d_nxt;
 	struct vfs_dentry* d_pre;
@@ -109,23 +109,41 @@ struct super_block {
  */
 
 //added by mingxuan 2019-5-17
-union ptr_node{
-	struct inode*	fd_inode;	/**< Ptr to the i-node */
-	//struct FILE* 	fd_file; // modified by ran
-	struct File* 	fd_file;	//指向fat32的file结构体
-};
+// union ptr_node{
+// 	struct inode*	fd_inode;	/**< Ptr to the i-node */
+// 	//struct FILE* 	fd_file; // modified by ran
+// 	struct File* 	fd_file;	//指向fat32的file结构体
+// };
 
 struct file_desc {
+	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
 	int		fd_pos;		/**< Current position for R/W. */
-	//struct inode*	fd_inode;	/**< Ptr to the i-node */	//deleted by mingxuan 2019-5-17
-	
-	//added by mingxuan 2019-5-17
-	union 	ptr_node fd_node;
+// #ifdef NEW_VFS
 	struct vfs_inode *fd_inode;
-	int 	flag;	//用于标志描述符是否被使用
-	int 	dev_index;
+// #else
+// 	union 	ptr_node fd_node;
+// 	int 	dev_index;
+// #endif
 };
+
+struct dirent{
+	int d_ino;
+	char d_name[MAX_DNAME_LEN];
+};
+
+// opendir mallock a page and take beginning as dirstream struct, remaining data as dir raw dirent
+// | ------4K-------------|
+// |dirstream|dirent[]... |
+struct dirstream{
+	struct file_desc* file;
+	int init;
+	int count;
+	int total;
+};
+#define DIR_DATA(dirp) ((struct dirent*)((dirp) + 1))
+
+typedef struct dirstream DIR;
 
 struct inode_operations{
 	struct vfs_dentry * (*lookup)(struct vfs_inode *dir, char *filename);
@@ -134,8 +152,8 @@ struct inode_operations{
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rename)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*readdir)(struct vfs_inode *dir);
 	int (*put_inode)(struct vfs_inode* inode);
+	int (*delete_inode)(struct vfs_inode* inode);
 };
 
 struct dentry_operations{
@@ -145,7 +163,7 @@ struct dentry_operations{
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, char * buf);
-	int (*readdir)(struct file_desc *file );// dirp structure todo
+	int (*readdir)(struct file_desc *file, struct dirent* start);
 };
 
 struct superblock_operations{
@@ -160,7 +178,7 @@ struct fs{
 	struct dentry_operations * fs_dop;
 };
 
-//added by mingxuan 2020-10-29
+#ifndef NEW_VFS
 struct vfs{
     char * fs_name; 			//设备名
     struct file_op * op;        //指向操作表的一项
@@ -169,9 +187,10 @@ struct vfs{
 	struct super_block *sb;		//added by mingxuan 2020-10-29
 	int used;                   //added by ran
 };
+#endif
 
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
-int get_fs_dev(int drive, int fs_type);
+int get_fs_dev(int drive, u32 fs_type);
 int get_free_superblock();
 
 

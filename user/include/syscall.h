@@ -4,6 +4,7 @@
 #include "type.h"
 #include "const.h"
 #include "time.h"
+#include "fcntl.h"
 #include "../include/signal.h"
 #include "../include/ushm.h"
 #include "../include/msg.h"
@@ -26,11 +27,11 @@
 #define _NR_write			14
 #define _NR_lseek			15
 #define _NR_unlink			16
-#define _NR_create			17
-#define _NR_delete 			18
+#define _NR_creat			17
+#define _NR_closedir 		18
 #define _NR_opendir 		19
-#define _NR_createdir  		20
-#define _NR_deletedir   	21
+#define _NR_mkdir  			20
+#define _NR_rmdir   		21
 #define _NR_readdir         22
 #define _NR_chdir           23
 #define _NR_getcwd          24
@@ -158,18 +159,19 @@ void udisp_str(char* arg);
 u32 execve(char* path, char* argv[], char* envp[]);
 void yield();
 void sleep(int n);
-int open(const char* pathname, int flags);
+int open(const char* pathname, int flags, int mode);
+#define open(path, flag) open(path, flag, I_RWX)
 int close(int fd);
 int read(int fd, void* buf, int count);
 int write(int fd, const void* buf, int count);
 int lseek(int fd, int offset, int whence);
 int unlink(const char* pathname);
-int create(char* pathname);
-int delete(const char* pathname);
-int opendir(const char* dirname);
-int createdir(const char* dirname);
-int deletedir(const char* dirname);
-int readdir(const char* dirname, unsigned int dir[3], char* filename);
+int creat(const char* pathname);
+DIR* opendir(const char* dirname);
+int closedir(DIR* dirp);
+int mkdir(const char* dirname);
+int rmdir(const char* dirname);
+struct dirent* readdir(DIR* dirp);
 int chdir(const char* path);
 char* getcwd(char* buf, int size);
 int wait(int *status);
