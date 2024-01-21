@@ -3950,6 +3950,7 @@ PRIVATE int lookup_inode_in_dir(struct vfs_inode* dir, char* filename)
 			}
 			if (++m > nr_dir_entries)
 			{
+				brelse(bh);
 				return INVALID_INODE;
 			}
 
@@ -3992,6 +3993,7 @@ PRIVATE int remove_name_in_dir(struct vfs_inode* dir, int nr_inode)
 			}
 			if (++m > nr_dir_entries)
 			{
+				brelse(bh);
 				return -1;
 			}
 
@@ -4008,6 +4010,49 @@ PRIVATE int remove_name_in_dir(struct vfs_inode* dir, int nr_inode)
 		
 	}
 	return -1;
+}
+
+PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
+{
+	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+	int dir_blk0_nr = dir->orange_inode.i_start_block;
+	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+
+	int m = 0;
+	struct dir_entry *pde;
+	int i, j;
+	char * fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = 0; i < nr_dir_blks; i++)
+	{
+		bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
+		fsbuf = bh->buffer;
+		pde = (struct dir_entry *)fsbuf;
+		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
+		{
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
+			}
+			if (++m > nr_dir_entries)
+			{
+				brelse(bh);
+				return 0;
+			}
+
+			if ((!strcmp(pde->name, ".")) || (!strcmp(pde->name, "..")))
+			{
+				continue;
+			}
+			brelse(bh);
+			return -1;
+
+		}
+		brelse(bh);
+		
+	}
+	return 0;
 }
 
 PUBLIC int orange_readdir(struct vfs_inode* dir, struct dirent* start)
@@ -4292,7 +4337,9 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 }
 
 int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
-
+	if(orange_check_dir_empty(dir) != 0){
+		return -1;
+	}
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 
