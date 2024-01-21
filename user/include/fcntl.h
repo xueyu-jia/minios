@@ -2,7 +2,7 @@
 #define FCNTL_H
 
 #define MAX_DNAME_LEN 32
-#define	MAX_PATH	128
+#define	MAX_PATH	256
 // octol
 #define	O_CREAT		004
 #define O_RDONLY	000

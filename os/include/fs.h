@@ -24,6 +24,7 @@ typedef struct vfs_inode{
 	u32 i_no;
 	struct super_block* i_sb;
 	u32 i_dev; // for char special inode
+	u32 i_nlink; // file linked
 	u32 i_count; // reference count
 	u32 i_size;  // file size in byte
 	int i_type;  // char/blk/mnt/dir...
@@ -119,12 +120,7 @@ struct file_desc {
 	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
 	int		fd_pos;		/**< Current position for R/W. */
-// #ifdef NEW_VFS
 	struct vfs_inode *fd_inode;
-// #else
-// 	union 	ptr_node fd_node;
-// 	int 	dev_index;
-// #endif
 };
 
 struct dirent{
@@ -152,6 +148,7 @@ struct inode_operations{
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rename)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*readdir)(struct vfs_inode* dir, struct dirent* start);
 	int (*put_inode)(struct vfs_inode* inode);
 	int (*delete_inode)(struct vfs_inode* inode);
 };
@@ -163,7 +160,6 @@ struct dentry_operations{
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, char * buf);
-	int (*readdir)(struct file_desc *file, struct dirent* start);
 };
 
 struct superblock_operations{
@@ -177,17 +173,6 @@ struct fs{
 	struct superblock_operations * fs_sop;
 	struct dentry_operations * fs_dop;
 };
-
-#ifndef NEW_VFS
-struct vfs{
-    char * fs_name; 			//设备名
-    struct file_op * op;        //指向操作表的一项
-	struct sb_op *s_op;			//added by mingxuan 2020-10-29
-    //int  dev_num;             //设备号	//deleted by mingxuan 2020-10-29
-	struct super_block *sb;		//added by mingxuan 2020-10-29
-	int used;                   //added by ran
-};
-#endif
 
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
 int get_fs_dev(int drive, u32 fs_type);

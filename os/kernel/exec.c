@@ -105,13 +105,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
     //path = exec_path(path);//added by xyx&&wjh 2021.12.31
 
 	/*******************打开文件************************/
-	// u32 fd = open(path,"r");	//deleted by mingxuan 2019-5-19
-	//u32 fd = do_vopen(path, O_RDWR);	//deleted by mingxuan 2019-5-19
-	#ifdef NEW_VFS
 	u32 fd = kern_vfs_open(path, O_RDONLY);
-	#else
-	u32 fd = kern_vopen(path, O_RDWR); //modified by mingxuan 2021-8-19
-	#endif
 
 	if (fd == -1)
 	{
@@ -300,7 +294,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 			//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
 			//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-			p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+			// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
 			//因proc_stat和we_flag的改动而改动
 
 			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
@@ -316,13 +310,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 	//堆    用户还没有申请，所以没有分配，只在PCB表里标示了线性起始位置
 
-	//real_close(fd);	//added by mingxuan 2019-5-23
-	//do_vclose(fd); //modified by mingxuan 2020-12-18
-	#ifdef NEW_VFS
 	kern_vfs_close(fd);
-	#else
-	kern_vclose(fd); //modified by mingxuan 2021-8-19
-	#endif
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
 	//disp_color_str("]",0x72);//灰底绿字
@@ -437,14 +425,9 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 		//以4K个字节为一个单位进行拷贝. 剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
 		//if( lin_limit-lin_addr >= num_4K )	// modified by mingxuan 2020-12-14
 		if (lin_file_limit - lin_addr >= num_4K) // modified by mingxuan 2021-3-16
-		{										 //以4K个字节为一个单位进行拷贝，正常拷贝
-			#ifdef NEW_VFS
+		{					
 			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
 			kern_vfs_read(fd, buf, num_4K);
-			#else
-			kern_vlseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
-			kern_vread(fd, buf, num_4K); //modified by mingxuan 2021-8-19
-			#endif
 			memcpy(lin_addr, buf, num_4K); //modified by mingxuan 2020-12-14
 		}
 		else
@@ -453,14 +436,9 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 			//do_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2020-12-14
 
 			//memcpy(buf, 0, num_4K);	//给buf清除脏数据,清0	// added by mingxuan 2020-12-14 //deleted by mingxuan 2020-12-18
-			u32 left_size = file_limit - file_offset; //added by mingxuan 2021-3-16
-			#ifdef NEW_VFS
+			u32 left_size = file_limit - file_offset;
 			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
 			kern_vfs_read(fd, buf, left_size);
-			#else
-			kern_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2021-8-19
-			kern_vread(fd, buf, left_size);	  //modified by mingxuan 2021-8-19
-			#endif
 			memcpy(lin_addr, buf, left_size); //modified by mingxuan 2021-3-16
 
 			file_offset = file_offset + left_size; //added by mingxuan 2021-3-16

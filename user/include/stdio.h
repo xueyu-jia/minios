@@ -61,11 +61,6 @@ int free_4k(void* AdddrLin);
 //    const char *filesystemtype, unsigned long mountflags, const void *data);
 // int umount(const char *target);
 
-/*string.asm*/
-void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
-void memset(void* p_dst, char ch, int size);
-char* strcpy(char* p_dst, char* p_src);
-int strlen(char* p_str);	//added by xw, 18/6/19
 
 /*printf.c*/
 //added by mingxuan 2019-5-19

@@ -773,7 +773,9 @@ void main(int arg,char *argv[])
 	//printf("hello world!\n");
 	if(0!=fork())
 	{//father
-		while(1);
+		while(1){
+			wait(NULL);
+		}
 	}
 	else
 	{//child

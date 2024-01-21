@@ -5,22 +5,22 @@
 #include "mount.h"
 
 // PRIVATE void update_mnttable();
-PUBLIC mount_table mnt_table[MAX_mnt_table_length];
+// PUBLIC mount_table mnt_table[MAX_mnt_table_length];
 PUBLIC struct vfs_mount vfs_mnt_table[MAX_mnt_table_length];
 SPIN_LOCK mnt_table_lock;
-extern struct vfs vfs_table[NR_FS];
+// extern struct vfs vfs_table[NR_FS];
 
-PUBLIC int kern_mount(const char *source, const char *target,
-                      const char *filesystemtype, unsigned long mountflags, const void *data);
+// PUBLIC int kern_mount(const char *source, const char *target,
+//                       const char *filesystemtype, unsigned long mountflags, const void *data);
 
 PUBLIC int do_umount(const char *target);
 
 // oprate
 //PUBLIC int mount_open(char *pathname, int flags);
 
-PRIVATE int alloc_mnttable();
+// PRIVATE int alloc_mnttable();
 
-PRIVATE void free_mnttable(char *target);
+// PRIVATE void free_mnttable(char *target);
 
 
 // PRIVATE void update_mnttable()
@@ -37,103 +37,103 @@ PRIVATE void free_mnttable(char *target);
 //     }
 // }
 
-PRIVATE int alloc_mnttable()
-{
-    int i;
-    for (i = 0; i < MAX_mnt_table_length; i++)
-    {
-        if (mnt_table[i].used == 0)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
+// PRIVATE int alloc_mnttable()
+// {
+//     int i;
+//     for (i = 0; i < MAX_mnt_table_length; i++)
+//     {
+//         if (mnt_table[i].used == 0)
+//         {
+//             return i;
+//         }
+//     }
+//     return -1;
+// }
 
-PRIVATE void free_mnttable(char *target)
-{
-    int i;
-    for (i = 0; i < MAX_mnt_table_length; i++)
-    {
-        if (!strcmp(target, mnt_table[i].filename))
-        {
-            mnt_table[i].vfs_index = -1;
-            memset(mnt_table[i].filename, 0, sizeof(mnt_table[i].filename));
-            mnt_table[i].used = 0;
-            mnt_table[i].dev = 0;
-            return;
-        }
-    }
-    disp_str("no such file! please check your target.");
-    return;
-}
+// PRIVATE void free_mnttable(char *target)
+// {
+//     int i;
+//     for (i = 0; i < MAX_mnt_table_length; i++)
+//     {
+//         if (!strcmp(target, mnt_table[i].filename))
+//         {
+//             mnt_table[i].vfs_index = -1;
+//             memset(mnt_table[i].filename, 0, sizeof(mnt_table[i].filename));
+//             mnt_table[i].used = 0;
+//             mnt_table[i].dev = 0;
+//             return;
+//         }
+//     }
+//     disp_str("no such file! please check your target.");
+//     return;
+// }
 
-PRIVATE int get_dev_from_name(char *devname)
-{
-    char ch = devname[6];
-    char num = devname[7];
-    int major = ch - 'a';
+// PRIVATE int get_dev_from_name(char *devname)
+// {
+//     char ch = devname[6];
+//     char num = devname[7];
+//     int major = ch - 'a';
 
-    if (devname[4] == 'h')
-    {
-        major += IDE_BASE;
-    }
-    else if (devname[4] == 's')
-    {
-        major += SATA_BASE;
-    }
+//     if (devname[4] == 'h')
+//     {
+//         major += IDE_BASE;
+//     }
+//     else if (devname[4] == 's')
+//     {
+//         major += SATA_BASE;
+//     }
 
-    int minor = num - '0';
+//     int minor = num - '0';
 
-    if (num == '\0')
-        minor = 0;
+//     if (num == '\0')
+//         minor = 0;
 
-    int dev_num = MAKE_DEV(major, minor);
+//     int dev_num = MAKE_DEV(major, minor);
 
-    return dev_num;
-}
+//     return dev_num;
+// }
 
-PRIVATE int find_dev_in_mnttable(int device)
-{
-    for (int i = 0; i < MAX_mnt_table_length; i++)
-    {
-        if (mnt_table[i].dev == device)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
+// PRIVATE int find_dev_in_mnttable(int device)
+// {
+//     for (int i = 0; i < MAX_mnt_table_length; i++)
+//     {
+//         if (mnt_table[i].dev == device)
+//         {
+//             return i;
+//         }
+//     }
+//     return -1;
+// }
 
-PRIVATE int find_directory_in_mnttable(char *filename)
-{
-    for (int i = 0; i < MAX_mnt_table_length; i++)
-    {
-        if (strcmp(mnt_table[i].filename, filename) == 0)
-        {
-            return i;
-        }
-    }
-    return -1;
-}
-/**
-* 根据mnt_table 中的下标索引来确定
-* @param index_mnt_table 挂载点在mnt_table的下标
-* @return -1代表查找失败 
-*/
-PUBLIC int get_fs_index(u8 index_mnt_table)
-{
-/*     for (int i = 0; i < MAX_mnt_table_length; i++)
-    {
-        if (!strcmp(mnt_table[i].filename, mountpoint_path))
-        {
-            return mnt_table[i].vfs_index;
-        }
-    } */
-    if(index_mnt_table>=MAX_mnt_table_length)return -1;
-    return mnt_table[index_mnt_table].vfs_index;
+// PRIVATE int find_directory_in_mnttable(char *filename)
+// {
+//     for (int i = 0; i < MAX_mnt_table_length; i++)
+//     {
+//         if (strcmp(mnt_table[i].filename, filename) == 0)
+//         {
+//             return i;
+//         }
+//     }
+//     return -1;
+// }
+// /**
+// * 根据mnt_table 中的下标索引来确定
+// * @param index_mnt_table 挂载点在mnt_table的下标
+// * @return -1代表查找失败 
+// */
+// PUBLIC int get_fs_index(u8 index_mnt_table)
+// {
+// /*     for (int i = 0; i < MAX_mnt_table_length; i++)
+//     {
+//         if (!strcmp(mnt_table[i].filename, mountpoint_path))
+//         {
+//             return mnt_table[i].vfs_index;
+//         }
+//     } */
+//     if(index_mnt_table>=MAX_mnt_table_length)return -1;
+//     return mnt_table[index_mnt_table].vfs_index;
     
-}
+// }
 //deleted by sundong 2023.5.19 mount open 不再发挥作用，vfs中已经能够区分开路径属于哪个文件系统了
 /* PUBLIC int mount_open(char *pathname, int flags)
 {
@@ -193,7 +193,7 @@ PRIVATE struct vfs_mount* get_free_vfsmount()
     int i;
     for (i = 0; i < MAX_mnt_table_length; i++)
     {
-        if (mnt_table[i].used == 0)
+        if (vfs_mnt_table[i].used == 0)
         {
             return i;
         }
@@ -212,66 +212,23 @@ PUBLIC struct vfs_mount* add_vfsmount(char* dev_path, char* dir, struct vfs_dent
 	release(&mnt_table_lock);
 	return mnt;
 }
-#ifndef NEW_VFS
-PUBLIC int kern_mount(const char *source, const char *target,
-                      const char *filesystemtype, unsigned long mountflags, const void *data)
-{
-    //将字符串从用户空间复制到内核空间
-    char block_filepath[MAX_PATH];
-    char mntpoint_path[MAX_PATH];
-    memset(mntpoint_path,0,MAX_PATH);
-    memset(block_filepath,0,MAX_PATH);
-    strcpy(block_filepath,source);
-    strcpy(mntpoint_path,target);
 
-    // modified by sundong 2023.5.28
-    //int device = get_dev_from_name(source);
-    //从根文件系统中获取块设备的设备号
-    int device = get_blockfile_dev(block_filepath);
-    if (find_dev_in_mnttable(device) != -1)
-    {
-        disp_str("dev has already be mountted\n");
-        return -1;
-    }
-    if (find_directory_in_mnttable(mntpoint_path) != -1)
-    {
-        disp_str("mountpoint has already be mountted\n");
-        return -1;
-    }
-
-    int vfs_index;
-    vfs_index = set_vfstable(device, mntpoint_path);
-
-    if (vfs_index == -1)
-        return -1;
-
-    int mnt_index = alloc_mnttable();
-
-    if (mnt_index >= 0)
-    {
-        mnt_table[mnt_index].vfs_index = vfs_index;
-        strcpy(mnt_table[mnt_index].filename, mntpoint_path);
-        mnt_table[mnt_index].used = 1;
-        mnt_table[mnt_index].dev = device;
-    }
-    else
-    {
-        return -1;
-    }
-
-    create_mountpoint(mntpoint_path, vfs_table[3].sb->sb_dev,mnt_index);
-
-    return 0;
+PUBLIC void remove_vfsmnt(struct vfs_dentry* entry){
+	struct vfs_mount* mnt = vfs_mnt_table;
+	acquire(&mnt_table_lock);
+	while(mnt < vfs_mnt_table + MAX_mnt_table_length){
+		if(mnt->mnt_root == entry && mnt->used == 1){
+			mnt->used = 0;
+			break;
+		}
+	}
+	release(&mnt_table_lock);
 }
-#endif
+
 PUBLIC int do_mount(const char *source, const char *target,
                     const char *filesystemtype, unsigned long mountflags, const void *data)
 {
-	#ifdef NEW_VFS
 	return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
-	#else
-    return kern_mount(source, target, filesystemtype, mountflags, data);
-	#endif
 }
 
 // PUBLIC int kern_umount(const char *target)
@@ -285,7 +242,7 @@ PUBLIC int do_mount(const char *source, const char *target,
 PUBLIC int do_umount(const char *target)
 {
     // kern_umount(target);
-	kern_vfs_umount(target);
+	return kern_vfs_umount(target);
 }
 
 /*======================================================================*
