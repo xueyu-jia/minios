@@ -53,7 +53,7 @@ struct sb_op{
 	void (*read_super_block) (int);
 	struct super_block* (*get_super_block) (int);
 };
-
+extern struct vfs_dentry *vfs_root;
 
 PUBLIC struct vfs_inode * vfs_get_inode();
 PUBLIC void vfs_put_inode(struct vfs_inode *inode);

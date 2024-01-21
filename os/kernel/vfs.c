@@ -150,6 +150,29 @@ PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	return 0;
 }
 
+PUBLIC void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
+	if (!buf)
+    {
+        return;
+    }
+	if(dir == vfs_root){
+		strncpy(buf, "/", size);
+		return;
+	}
+	char path[MAX_PATH];
+	char*p = path + MAX_PATH -1;
+	*(p--) = 0;
+	int len;
+	while(dir != vfs_root){
+		len = strlen(dir->d_name);
+		p -= len;
+		strncpy(p, dir->d_name, len);
+		*(--p) = '/';
+		dir = dir->d_covers->d_parent;
+	}
+	strncpy(buf, p, size);
+}
+
 PRIVATE void register_fs_type(char* fstype_name, int fs_type, 
 	struct file_operations* f_op, 
 	struct inode_operations* i_op,
@@ -163,33 +186,38 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
 	fs->fs_sop = s_op;
 }
 
-PRIVATE void strip_base_path(char *path, char** file_name){
+PRIVATE char* strip_dir_path(const char *path, char* dir){
 	int len = strlen(path), flag = 0;
-	char *p = path + len - 1;
-	while(*p){
-		if(*p == '/'){
-			*file_name = p + 1;
-			*p = 0;
+	char *p = path + len - 1, *file_name = path;
+	while(p != path && (*p) == '/')p--;
+	while(p >= path && (*p)){
+		if(*(p) == '/'){
+			file_name = p + 1;
 			break;
 		}
 		p--;
 	}
+	if(file_name != path){
+		strncpy(dir, path, file_name - path);
+		dir[file_name - path] = 0;
+	}
+	return file_name;
 }
 
 // this may modify content in path
-PUBLIC void vfs_get_abspath(char* path){
-	char tmp[MAX_PATH];
-	if(path[0] == '/'){
-		return; //skip abspath
-	}
-	int pwd_len = strlen(p_proc_current->task.cwd);
-	strcpy(tmp, p_proc_current->task.cwd);
-	if(tmp[pwd_len-1]!='/'){
-		tmp[pwd_len++] = '/';
-	}
-	strcpy(tmp + pwd_len, path);
-	strcpy(path, tmp);
-}
+// PUBLIC void vfs_get_abspath(char* path){
+// 	char tmp[MAX_PATH];
+// 	if(path[0] == '/'){
+// 		return; //skip abspath
+// 	}
+// 	int pwd_len = strlen(p_proc_current->task.cwd);
+// 	strcpy(tmp, p_proc_current->task.cwd);
+// 	if(tmp[pwd_len-1]!='/'){
+// 		tmp[pwd_len++] = '/';
+// 	}
+// 	strcpy(tmp + pwd_len, path);
+// 	strcpy(path, tmp);
+// }
 
 PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	acquire(&inode->lock);
@@ -268,15 +296,19 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	return entry;
 }
 
-// 输入：根dentry base (已获得锁)
-PUBLIC struct vfs_dentry *vfs_lookup(struct vfs_dentry *base, char *path){
-	if(!path || !base || !(base->d_inode)){
+// 输入：根dentry base
+PUBLIC struct vfs_dentry *vfs_lookup(const char *path){
+	if(!path){
 		return NULL;
 	}
 	char d_name[MAX_DNAME_LEN];
 	char *p = path, *p_name = d_name;
 	int flag_name = 0;
-	struct vfs_dentry * dir = base;
+	struct vfs_dentry *dir = vfs_root;
+	if(path[0] != '/'){
+		dir = p_proc_current->task.cwd;
+	}
+	acquire(&dir->lock);
 	while(*p == '/')p++;
 	while(*p || flag_name){
 		if(*p == '/' || *p == 0){// meet file name end
@@ -363,21 +395,10 @@ PUBLIC int get_fstype_by_name(const char* fstype_name){
 PUBLIC int kern_vfs_mount(const char *source, const char *target,
                       const char *filesystemtype, unsigned long mountflags, const void *data)
 {
-	//将字符串从用户空间复制到内核空间
-    char block_filepath[MAX_PATH];
-    char mntpoint_path[MAX_PATH];
-    memset(mntpoint_path,0,MAX_PATH);
-    memset(block_filepath,0,MAX_PATH);
-    strcpy(block_filepath,source);
-	vfs_get_abspath(block_filepath);
-    strcpy(mntpoint_path,target);
-	vfs_get_abspath(mntpoint_path);
-
     // modified by sundong 2023.5.28
     //int device = get_dev_from_name(source);
     //从根文件系统中获取块设备的设备号
-	acquire(&vfs_root->lock);
-	struct vfs_dentry* block_dev = vfs_lookup(vfs_root, block_filepath);
+	struct vfs_dentry* block_dev = vfs_lookup(source);
 	if(!block_dev){
 		return -1;
 	}
@@ -392,9 +413,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 	if(dev == -1){
 		return -1;
 	}
-	
-	acquire(&vfs_root->lock);
-	struct vfs_dentry* dir_d = vfs_lookup(vfs_root, mntpoint_path);
+	struct vfs_dentry* dir_d = vfs_lookup(target);
 	if(!dir_d){
 		disp_str("mountpoint dir not exist\n");
         return -1;
@@ -409,7 +428,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 		release(&dir_d->lock);
 		return -1;
 	}
-	add_vfsmount(block_filepath, mntpoint_path, sb->root, dev);
+	add_vfsmount(block_dev, sb->root, dev);
 	sb->root->d_covers = dir_d;
 	dir_d->d_mounts = sb->root;
 	release(&dir_d->lock);
@@ -417,11 +436,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 }
 
 PUBLIC int kern_vfs_umount(const char *target){
-	char full_path[MAX_PATH] = {0};
-	strcpy(full_path, target);
-	vfs_get_abspath(full_path);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *mnt = vfs_lookup(vfs_root, full_path);
+	struct vfs_dentry *mnt = vfs_lookup(target);
 	if(!mnt){
 		return -1;
 	}
@@ -439,13 +454,9 @@ PUBLIC int kern_vfs_umount(const char *target){
 
 PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	int i;
-	char full_path[MAX_PATH] = {0};
-	char* file_name, *base_path = full_path;
-	strcpy(full_path, path);
-	vfs_get_abspath(full_path);
-	strip_base_path(base_path, &file_name);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
+	char dir_path[MAX_PATH] = {0};
+	char* file_name = strip_dir_path(path, dir_path);
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(!dir){
 		return NULL;
@@ -645,13 +656,9 @@ PUBLIC int kern_vfs_creat(const char* path, int mode){
 }
 
 PUBLIC int kern_vfs_unlink(const char *path){
-	char full_path[MAX_PATH] = {0};
-	char* file_name, *base_path = full_path;
-	strcpy(full_path, path);
-	vfs_get_abspath(full_path);
-	strip_base_path(base_path, &file_name);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry= NULL;
+	char dir_path[MAX_PATH] = {0};
+	char* file_name = strip_dir_path(path, dir_path);
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
 	if(!dir){
 		release(&dir->lock);
 		return -1;
@@ -684,13 +691,9 @@ err:
 }
 
 PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
-	char full_path[MAX_PATH] = {0};
-	char* file_name, *base_path = full_path;
-	strcpy(full_path, path);
-	vfs_get_abspath(full_path);
-	strip_base_path(base_path, &file_name);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
+	char dir_path[MAX_PATH] = {0};
+	char* file_name = strip_dir_path(path, dir_path);
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(!dir){
 		return -1;
@@ -749,13 +752,9 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 }
 
 PUBLIC int kern_vfs_mkdir(const char* path, int mode){
-	char full_path[MAX_PATH] = {0};
-	char* file_name, *base_path = full_path;
-	strcpy(full_path, path);
-	vfs_get_abspath(full_path);
-	strip_base_path(base_path, &file_name);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *dir = vfs_lookup(vfs_root, base_path), *entry = NULL;
+	char dir_path[MAX_PATH] = {0};
+	char* file_name = strip_dir_path(path, dir_path);
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
 	struct vfs_inode *inode = NULL;
 	if(dir){
 		entry = _do_lookup(dir, file_name, 0);
@@ -842,11 +841,7 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 }
 
 PUBLIC int kern_vfs_chdir(const char* path){
-	char full_path[MAX_PATH] = {0};
-	strcpy(full_path, path);
-	vfs_get_abspath(full_path);
-	acquire(&vfs_root->lock);
-	struct vfs_dentry *dir = vfs_lookup(vfs_root, full_path);
+	struct vfs_dentry *dir = vfs_lookup(path);
 	if(!dir){
 		return -1;
 	}
@@ -854,7 +849,8 @@ PUBLIC int kern_vfs_chdir(const char* path){
 	int err = -1;
 	acquire(&inode->lock);
 	if(inode->i_type == I_DIRECTORY){
-		strcpy(p_proc_current->task.cwd, full_path);
+		// strcpy(p_proc_current->task.cwd, full_path);
+		p_proc_current->task.cwd = dir;
 		err = 0;
 	}
 	release(&inode->lock);
@@ -874,12 +870,8 @@ PUBLIC int kern_vfs_chdir(const char* path){
 // }
 
 
-PUBLIC char* kern_vgetcwd(char *buf, int size) {
-    if (!buf)
-    {
-        return 0;
-    }
-    strncpy(buf, p_proc_current->task.cwd, size);
+PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
+    vfs_get_path(p_proc_current->task.cwd, buf, size);
     return buf;
 }
 
@@ -948,7 +940,7 @@ PUBLIC int do_vchdir(const char *path)
 
 PUBLIC int do_vgetcwd(char *buf, int size) 
 {
-    return (int)kern_vgetcwd(buf, size);
+    return (int)kern_vfs_getcwd(buf, size);
 }
 /*======================================================================*
                               sys_* 系列函数

@@ -154,6 +154,7 @@ PUBLIC int kernel_main()
 
 	// p_proc_current = proc_table;
 	p_proc_current = &proc_table[PID_INIT];
+	p_proc_current->task.cwd = vfs_root;
 	cr3_ready=p_proc_current->task.cr3;
 
 	//test_alloc_pages();      //test memory management functions    added by wang 2021.3.25
@@ -341,7 +342,6 @@ PRIVATE int initialize_processes()
 		{
 			p_proc->task.filp[j] = 0;
 		}
-		strcpy(p_proc->task.cwd, "/");
 		p_proc++;
 		selector_ldt += 1 << 3;
 	}

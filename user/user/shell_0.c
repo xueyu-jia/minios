@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #define MAX_ARGC	4
-#define NUM_BUILTIN_CMD	2
+#define NUM_BUILTIN_CMD	3
 #define CMD_LEN	8
 struct cmd{
 	char cmd_name[CMD_LEN];
@@ -9,11 +9,13 @@ struct cmd{
 };
 
 int do_ls(int argc, char** argv){
-	if(argc != 2){
-		printf("usage: ls %%path\n");
+	char* path = ".";// default
+	if(argc > 2){
+		printf("usage: ls [%%path]\n");
 		return -1;
+	}else if(argc == 2){
+		path = argv[1];
 	}
-	char* path = argv[1];
 	DIR* dirp = opendir(path);
 	if(!dirp){
 		printf("opendir err\n");
@@ -32,6 +34,13 @@ int do_cd(int argc, char** argv){
 	return chdir(path);
 }
 
+int do_pwd(int argc, char** argv){
+	char path[MAX_PATH];
+	getcwd(path, MAX_PATH);
+	printf("%s\n", path);
+	return 0;
+}
+
 struct cmd cmds[NUM_BUILTIN_CMD];
 int num_cmd;
 
@@ -45,7 +54,7 @@ void reg_cmd(char* name, int (*handler)(int , char**)){
 }
 
 int parse(char* buf, char** argv, int limit){
-	if(!buf)return;
+	if(!buf)return 0;
 	int start = 0, cnt = 0;
 	char *p = buf;
 	for(; *p && *p != '\n'; p++){
@@ -91,9 +100,10 @@ void main(int arg,char *argv[])
 	char * args[MAX_ARGC];
 	reg_cmd("ls", do_ls);
 	reg_cmd("cd", do_cd);
+	reg_cmd("pwd", do_pwd);
   	while(1)
 	{
-        printf("\nminiOS:/ $ ");//,getcwd(pwd, MAX_PATH));
+        printf("\nminiOS:%s $ ",getcwd(pwd, MAX_PATH));
         if(gets(buf) && strlen(buf)!=0 )
 		{
 			int argc = parse(buf, args, MAX_ARGC);

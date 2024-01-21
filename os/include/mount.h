@@ -5,11 +5,10 @@
 
 
 struct vfs_mount{
-	char dev_path[MAX_PATH];
-	char dir_path[MAX_PATH];
+	struct vfs_dentry * dev_path;
 	struct vfs_dentry * mnt_root;
     u32 dev;
 	int used;
 };
 // PUBLIC int get_fs_index(u8 index_mnt_table);
-PUBLIC struct vfs_mount* add_vfsmount(char* dev_path, char* dir, struct vfs_dentry* mnt_root, int dev);
+PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path, struct vfs_dentry* mnt_root, int dev);

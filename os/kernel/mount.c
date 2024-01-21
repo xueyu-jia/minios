@@ -201,11 +201,10 @@ PRIVATE struct vfs_mount* get_free_vfsmount()
     return NULL;
 }
 
-PUBLIC struct vfs_mount* add_vfsmount(char* dev_path, char* dir, struct vfs_dentry* mnt_root, int dev){
+PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path, struct vfs_dentry* mnt_root, int dev){
 	acquire(&mnt_table_lock);
 	struct vfs_mount* mnt = get_free_vfsmount();
-	strcpy(mnt->dev_path, dev_path);
-	strcpy(mnt->dir_path, dir);
+	mnt->dev_path =  dev_path;
 	mnt->dev = dev;
 	mnt->mnt_root = mnt_root;
 	mnt->used = 1;

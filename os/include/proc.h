@@ -174,7 +174,8 @@ typedef struct s_proc {
 
 	u32 cr3;						//add by visual 2016.4.5
 
-	char cwd[MAX_PATH];                //added by ran
+	// char cwd[MAX_PATH];                //added by ran
+	struct vfs_dentry* cwd;
 
 	int suspended; 				//线程id Add By ZengHao & MaLinhan 21.12.22
 	//added by zcr
