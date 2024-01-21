@@ -184,6 +184,9 @@ PUBLIC void vfs_get_abspath(char* path){
 	}
 	int pwd_len = strlen(p_proc_current->task.cwd);
 	strcpy(tmp, p_proc_current->task.cwd);
+	if(tmp[pwd_len-1]!='/'){
+		tmp[pwd_len++] = '/';
+	}
 	strcpy(tmp + pwd_len, path);
 	strcpy(path, tmp);
 }
@@ -207,9 +210,9 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	// root 特判
 	if(dir == vfs_root && (!name[0])){
 		entry = dir;
-	}else if(!strcmp(dir->d_name, ".")){
+	}else if(!strcmp(name, ".")){
 		entry = dir;
-	}else if(!strcmp(dir->d_name, "..")){
+	}else if(!strcmp(name, "..")){
 		entry = dir->d_covers->d_parent; // 对于挂载点下的dentry，上层是挂载前的
 	}
 	int (*compare)(const char*, const char*) = strcmp;// default compare func
