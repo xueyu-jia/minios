@@ -4167,7 +4167,7 @@ PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, char* filename){
 
 PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 	int pos = file->fd_pos;
-	struct vfs_inode *pin = file->fd_inode;
+	struct vfs_inode *pin = file->fd_dentry->d_inode;
 	int pos_end = min(pos + count, pin->i_size);
 	
 	int off = pos % BLOCK_SIZE;
@@ -4200,7 +4200,7 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 
 PUBLIC int orange_write(struct file_desc* file, unsigned int count, char* buf){
 	int pos = file->fd_pos;
-	struct vfs_inode *pin = file->fd_inode;
+	struct vfs_inode *pin = file->fd_dentry->d_inode;
 	int pos_end = min(pos + count, pin->orange_inode.i_nr_blocks * BLOCK_SIZE);
 	int off = pos % BLOCK_SIZE;
 	int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
@@ -4285,11 +4285,14 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	newino->i_op = dir->i_sb->sb_iop;
 	newino->i_fop = dir->i_sb->sb_fop;
 	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
+	orange_new_dir_entry(newino, newino->i_no, ".");
+	orange_new_dir_entry(newino, dir->i_no, "..");
 	orange_sync_inode(newino);
 	return 0;
 }
 
 int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
+
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 

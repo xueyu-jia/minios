@@ -102,6 +102,18 @@ PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
 	ent->d_parent = NULL;
 }
 
+// 0 for empty, else -1
+PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
+	for(struct vfs_dentry* entry = dir->d_subdirs; entry; entry = entry->d_nxt){
+		if((!(strcmp(entry->d_name, ".")))
+		||(!(strcmp(entry->d_name, "..")))){
+			continue;
+		}
+		return -1;
+	}
+	return 0;
+}
+
 PRIVATE struct vfs_dentry * alloc_dentry(char* name, struct vfs_inode* inode){
 	struct vfs_dentry* entry;
 	entry = kern_kmalloc(sizeof(struct vfs_dentry));
@@ -204,26 +216,11 @@ PRIVATE char* strip_dir_path(const char *path, char* dir){
 	return file_name;
 }
 
-// this may modify content in path
-// PUBLIC void vfs_get_abspath(char* path){
-// 	char tmp[MAX_PATH];
-// 	if(path[0] == '/'){
-// 		return; //skip abspath
-// 	}
-// 	int pwd_len = strlen(p_proc_current->task.cwd);
-// 	strcpy(tmp, p_proc_current->task.cwd);
-// 	if(tmp[pwd_len-1]!='/'){
-// 		tmp[pwd_len++] = '/';
-// 	}
-// 	strcpy(tmp + pwd_len, path);
-// 	strcpy(path, tmp);
-// }
-
 PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 	acquire(&inode->lock);
 	int mode = inode->i_mode;
 	release(&inode->lock);
-	if(!(mode & 4)){
+	if(!(mode & I_X)){
 		return -1;
 	}
 	return 0;
@@ -524,7 +521,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	f_desc_table[i].flag = 1;
 	release(&file_desc_lock);
 	inode->i_count++;
-	f_desc_table[i].fd_inode = inode;
+	f_desc_table[i].fd_dentry = entry;
 	f_desc_table[i].fd_mode = rmode;//fd_mode: 1:read 2:write
 	f_desc_table[i].fd_pos = 0;	
 	release(&inode->lock);
@@ -567,10 +564,10 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 }
 
 PUBLIC int kern_vfs_close(int fd) {    //modified by mingxuan 2021-8-15
-    struct vfs_inode* inode = p_proc_current->task.filp[fd]->fd_inode;
+    struct vfs_inode* inode = p_proc_current->task.filp[fd]->fd_dentry->d_inode;
 	acquire(&inode->lock);
 	vfs_put_inode(inode);
-	p_proc_current->task.filp[fd]->fd_inode = 0; // modified by mingxuan 2019-5-17
+	p_proc_current->task.filp[fd]->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
 	p_proc_current->task.filp[fd]->flag = 0;
 	release(&file_desc_lock);			 // added by mingxuan 2019-5-17
@@ -583,7 +580,7 @@ PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
 	if(!file){
 		return -1;
 	}
-	struct vfs_inode * inode = file->fd_inode;
+	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	int size;
 	acquire(&inode->lock);
 	if(!inode_allow_lseek(inode->i_type)){
@@ -618,11 +615,11 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count){
 	if(!file || count<0){
 		return -1;
 	}
-	if(!(file->fd_mode & 1)){
+	if(!(file->fd_mode & I_R)){
 		disp_str("read error: no permission");
 		return -1;
 	}
-	struct vfs_inode * inode = file->fd_inode;
+	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	int cnt = -1;
 	acquire(&inode->lock);
 	if(inode->i_fop && inode->i_fop->read){
@@ -637,11 +634,11 @@ PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
 	if(!file || count<0){
 		return -1;
 	}
-	if(!(file->fd_mode & 2)){
+	if(!(file->fd_mode & I_W)){
 		disp_str("write error: no permission");
 		return -1;
 	}
-	struct vfs_inode * inode = file->fd_inode;
+	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	int cnt = -1;
 	acquire(&inode->lock);
 	if(inode->i_fop && inode->i_fop->write){
@@ -675,8 +672,11 @@ PUBLIC int kern_vfs_unlink(const char *path){
 	}
 	if(inode->i_op && inode->i_op->unlink){
 		acquire(&dir->d_inode->lock);
-		inode->i_op->unlink(dir->d_inode, entry);
+		int state = inode->i_op->unlink(dir->d_inode, entry);
 		release(&dir->d_inode->lock);
+		if(state){
+			goto err;
+		}
 		inode->i_nlink = 0;
 	}
 	vfs_put_inode(inode);
@@ -795,7 +795,47 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 }
 
 PUBLIC int kern_vfs_rmdir(const char* path){
-
+	char dir_path[MAX_PATH] = {0};
+	char* file_name = strip_dir_path(path, dir_path);
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
+	if(!dir){
+		release(&dir->lock);
+		return -1;
+	}
+	entry = _do_lookup(dir, file_name, 0);
+	if(!entry){
+		release(&dir->lock);
+		return -1;
+	}
+	struct vfs_inode *inode = entry->d_inode;
+	acquire(&inode->lock);
+	if(entry->d_covers != entry){// 不允许删除挂载点
+		goto err;
+	}
+	if(inode->i_type != I_DIRECTORY){
+		goto err;	
+	}
+	if(check_dir_entry_empty(entry) != 0){
+		goto err;
+	}
+	if(inode->i_op && inode->i_op->rmdir){
+		acquire(&dir->d_inode->lock);
+		int state = inode->i_op->rmdir(dir->d_inode, entry);
+		release(&dir->d_inode->lock);
+		if(state){
+			goto err;
+		}
+		inode->i_nlink = 0;
+	}
+	vfs_put_inode(inode);
+	release(&entry->lock);
+	release(&dir->lock);
+	return 0;
+err:
+	release(&inode->lock);
+	release(&entry->lock);
+	release(&dir->lock);
+	return -1;
 }
 
 PUBLIC DIR* kern_vfs_opendir(const char* path){
@@ -812,10 +852,10 @@ PUBLIC DIR* kern_vfs_opendir(const char* path){
 }
 
 PUBLIC int kern_vfs_closedir(DIR* dirp){
-	struct vfs_inode* inode = dirp->file->fd_inode;
+	struct vfs_inode* inode = dirp->file->fd_dentry->d_inode;
 	acquire(&inode->lock);
 	vfs_put_inode(inode);
-	dirp->file->fd_inode = 0; // modified by mingxuan 2019-5-17
+	dirp->file->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
 	dirp->file->flag = 0;
 	release(&file_desc_lock);
@@ -825,10 +865,11 @@ PUBLIC int kern_vfs_closedir(DIR* dirp){
 
 struct dirent* kern_vfs_readdir(DIR* dirp){
 	if(!dirp->init){
-		struct vfs_inode* inode = dirp->file->fd_inode;
+		struct vfs_inode* inode = dirp->file->fd_dentry->d_inode;
+		struct dirent* data_start = DIR_DATA(dirp);
 		acquire(&inode->lock);
 		if(inode->i_op && inode->i_op->readdir){
-			dirp->total = inode->i_op->readdir(inode, DIR_DATA(dirp));
+			dirp->total = inode->i_op->readdir(inode, data_start);
 		}
 		dirp->init = 1;
 		release(&inode->lock);
@@ -836,6 +877,14 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 	struct dirent* ent = NULL;
 	if(dirp->count < dirp->total){
 		ent = &DIR_DATA(dirp)[dirp->count++];
+		if(!strcmp(ent->d_name, "..")){// check parent needed for mount point
+			acquire(&dirp->file->fd_dentry->lock);
+			struct vfs_dentry* found = _do_lookup(dirp->file->fd_dentry, ent->d_name, 1);
+			if(found){
+				ent->d_ino = found->d_inode->i_no;
+				release(&found->lock);
+			}
+		}
 	}
 	return ent;
 }
@@ -849,7 +898,6 @@ PUBLIC int kern_vfs_chdir(const char* path){
 	int err = -1;
 	acquire(&inode->lock);
 	if(inode->i_type == I_DIRECTORY){
-		// strcpy(p_proc_current->task.cwd, full_path);
 		p_proc_current->task.cwd = dir;
 		err = 0;
 	}

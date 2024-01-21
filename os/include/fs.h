@@ -120,7 +120,7 @@ struct file_desc {
 	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
 	int		fd_pos;		/**< Current position for R/W. */
-	struct vfs_inode *fd_inode;
+	struct vfs_dentry *fd_dentry;
 };
 
 struct dirent{
