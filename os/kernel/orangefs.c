@@ -4204,7 +4204,7 @@ PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, char* filename){
 	if(inode_nr != INVALID_INODE){
 		struct vfs_inode * new_inode = vfs_get_inode();
 		orange_fill_inode(new_inode, dir->i_sb, inode_nr);
-		struct vfs_dentry * dentry = new_dentry(filename, dir, new_inode);
+		struct vfs_dentry * dentry = new_dentry(filename, new_inode);
 		return dentry;
 	}
 	return NULL;
@@ -4363,7 +4363,7 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_sop = &orange_sb_ops;
 	struct vfs_inode * orange_root = vfs_get_inode();
 	orange_fill_inode(orange_root, sb, sb->root_inode);
-	sb->root = new_dentry("/", orange_root, orange_root);
+	sb->root = new_dentry("/", orange_root);
 	brelse(bh);
 	return 0;
 }

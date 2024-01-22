@@ -36,7 +36,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(){
 	char *s = vfs_bmap, *e = vfs_bmap + INODE_BMAP_SIZE, c;
 	acquire(&inode_alloc_lock);
 	while(s < e){
-		if((c = *s) != 0xFF){
+		if((c = *s) != -1){
 			int i = 0;
 			while((c & (1<<i)) && i < 8){
 				i++;
@@ -133,16 +133,9 @@ PRIVATE struct vfs_dentry * alloc_dentry(char* name, struct vfs_inode* inode){
 
 // alloc a new dentry for filled inode in dir
 // require mutex: dir, inode
-PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* dir, struct vfs_inode* inode){
+PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* inode){
 	struct vfs_dentry* entry;
 	entry = alloc_dentry(name, inode);
-	if(inode->i_type == I_DIRECTORY){
-		struct vfs_dentry *cur, *par;
-		cur = alloc_dentry(".", inode);
-		insert_sub_dentry(entry, cur);
-		par = alloc_dentry("..", dir);
-		insert_sub_dentry(entry, par);
-	}
 	return entry;
 }
 
@@ -152,8 +145,6 @@ PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	if(dentry->d_subdirs || dentry->d_mounts != dentry){
 		// check empty
 		// disp_str("try to delete non empty dentry");
-		// for dir, you must delete . and .. in dentry
-		//  before calling delete_dentry
 		return -1;
 	}
 	remove_sub_dentry(dir, dentry);
