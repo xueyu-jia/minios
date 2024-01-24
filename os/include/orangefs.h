@@ -29,6 +29,23 @@
 #define DIR_PATH_REPEATED -2
 #define DIR_FILE_OCCUPIYED -3
 
+struct orange_sb_info{
+	u32	magic;		  /**< Magic number */
+	u32	nr_inodes;	  /**< How many inodes */
+	u32	nr_blocks;	  /**< How many blocks */
+	u32	nr_imap_blocks;	  /**< How many inode-map blocks */
+	u32	nr_smap_blocks;	  /**< How many sector-map blocks */
+	u32	n_1st_block;	  /**< Number of the 1st data block */
+	u32	nr_inode_blocks;   /**< How many inode blocks */
+	u32	root_inode;       /**< Inode nr of root directory */
+	u32	inode_size;       /**< INODE_SIZE */
+	u32	inode_isize_off;  /**< Offset of `struct inode::i_size' */
+	u32	inode_start_off;  /**< Offset of `struct inode::i_start_sect' */
+	u32	dir_ent_size;     /**< DIR_ENTRY_SIZE */
+	u32	dir_ent_inode_off;/**< Offset of `struct dir_entry::inode_nr' */
+	u32	dir_ent_fname_off;/**< Offset of `struct dir_entry::name' */
+};
+#define ORANGE_SB(sb) (&((sb)->orange_sb))
 /**
  * @def   SUPER_BLOCK_SIZE
  * @brief The size of super block \b in \b the \b device.
@@ -114,28 +131,28 @@ PUBLIC int sys_write(void *uesp);
 PUBLIC int sys_lseek(void *uesp);	//~xw
 PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
 */
-PUBLIC void init_rootfs(int device);
-PUBLIC int init_orangefs(int device);
-PUBLIC void create_mountpoint(const char *pathname, u32 dev,u8 index_mnt_table);
-PUBLIC void free_mountpoint(const char *pathname, u32 dev);
-PUBLIC int vfs_path_transfer(char* path,int* fs_index);
+// PUBLIC void init_rootfs(int device);
+// PUBLIC int init_orangefs(int device);
+// PUBLIC void create_mountpoint(const char *pathname, u32 dev,u8 index_mnt_table);
+// PUBLIC void free_mountpoint(const char *pathname, u32 dev);
+// PUBLIC int vfs_path_transfer(char* path,int* fs_index);
 
-//added by mingxuan 2019-5-17
-PUBLIC int real_open(struct super_block *sb,const char *pathname, int flags);
-PUBLIC int real_close(int fd);
-PUBLIC int real_read(int fd, char *buf, int count);
-PUBLIC int real_write(int fd, const char *buf, int count);
-PUBLIC int real_unlink(struct super_block *sb,const char *pathname);
-PUBLIC int real_lseek(int fd, int offset, int whence);
+// //added by mingxuan 2019-5-17
+// PUBLIC int real_open(struct super_block *sb,const char *pathname, int flags);
+// PUBLIC int real_close(int fd);
+// PUBLIC int real_read(int fd, char *buf, int count);
+// PUBLIC int real_write(int fd, const char *buf, int count);
+// PUBLIC int real_unlink(struct super_block *sb,const char *pathname);
+// PUBLIC int real_lseek(int fd, int offset, int whence);
 
-PUBLIC int real_createdir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_opendir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_deletedir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
-PUBLIC int real_showdir(const char *pathname,char* dir_content);/*add by gfx 2023-2-13*/
+// PUBLIC int real_createdir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+// PUBLIC int real_opendir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+// PUBLIC int real_deletedir(struct super_block *sb,const char *pathname); /*add by xkx 2023-1-3*/
+// PUBLIC int real_showdir(const char *pathname,char* dir_content);/*add by gfx 2023-2-13*/
 
-//added by mingxuan 2020-10-30
-PUBLIC void read_super_block(int dev);
-PUBLIC struct super_block* get_super_block(int dev);
+// //added by mingxuan 2020-10-30
+// PUBLIC void read_super_block(int dev);
+// PUBLIC struct super_block* get_super_block(int dev);
 
 // PUBLIC int get_blockfile_dev(char *path); //add by sundong 2023.5.28
 // PUBLIC int create_tty_file(char *path,int tty_dev);//add by sundong 2023.5.18

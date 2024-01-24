@@ -3727,7 +3727,7 @@ PRIVATE int orange_alloc_imap_bit(struct super_block* sb)
 	int imap_blk0_nr = 1 + 1;
 	char *fsbuf = NULL;
 	buf_head *bh = NULL;
-	for (i = 0; i < sb->nr_imap_blocks; i++)
+	for (i = 0; i < ORANGE_SB(sb)->nr_imap_blocks; i++)
 	{
 		bh = bread(sb->sb_dev, imap_blk0_nr + i);
 		fsbuf = bh->buffer;
@@ -3775,11 +3775,11 @@ PRIVATE int orange_alloc_smap_bit(struct super_block* sb, int nr_sects_to_alloc)
 	int i; /* sector index */
 	int j; /* byte index */
 	int k; /* bit index */
-	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
+	int smap_blk0_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks;
 	int free_sect_nr = 0;
 	char* fsbuf = NULL;
 	buf_head *bh = NULL;
-	for (i = 0; i < sb->nr_smap_blocks; i++)
+	for (i = 0; i < ORANGE_SB(sb)->nr_smap_blocks; i++)
 	{												 
 		bh = bread(sb->sb_dev, smap_blk0_nr + i);
 		fsbuf = bh->buffer;
@@ -3798,7 +3798,7 @@ PRIVATE int orange_alloc_smap_bit(struct super_block* sb, int nr_sects_to_alloc)
 				{
 				}
 				free_sect_nr = (i * BLOCK_SIZE + j) * 8 +
-							   k - 1 + sb->n_1st_block;
+							   k - 1 + ORANGE_SB(sb)->n_1st_block;
 			}
 
 			for (; k < 8; k++)
@@ -3874,16 +3874,16 @@ PRIVATE int orange_free_smap_bit(struct super_block* sb, int start_sect_nr, int 
 	int i; /* sector index */
 	int j; /* byte index */
 	int k; /* bit index */
-	int smap_blk0_nr = 1 + 1 + sb->nr_imap_blocks;
+	int smap_blk0_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks;
 	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
 	char* fsbuf = NULL;
 	buf_head *bh = NULL;
 
-	k = (start_sect_nr - sb->n_1st_block + 1) % 8;
-	j = ((start_sect_nr - sb->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
-	i = (((start_sect_nr - sb->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
+	k = (start_sect_nr - ORANGE_SB(sb)->n_1st_block + 1) % 8;
+	j = ((start_sect_nr - ORANGE_SB(sb)->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
+	i = (((start_sect_nr - ORANGE_SB(sb)->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
 
-	for (; i < sb->nr_smap_blocks; i++)
+	for (; i < ORANGE_SB(sb)->nr_smap_blocks; i++)
 	{ /* smap_blk0_nr + i :
 current sect nr. */
 		// RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw, 18/12/27
@@ -4098,7 +4098,7 @@ PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, 
 	inode->i_sb = sb;
 	inode->i_dev = sb->sb_dev;
 	inode->i_no = num;
-	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
+	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev,blk_nr);
 	char *fsbuf = bh->buffer;
 	struct inode *pinode =  
@@ -4118,7 +4118,7 @@ PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, 
 PRIVATE void orange_sync_inode(struct vfs_inode* inode){
 	struct inode *pinode;
 	struct super_block *sb = inode->i_sb;
-	int blk_nr = 1 + 1 + sb->nr_imap_blocks + sb->nr_smap_blocks + ((inode->i_no - 1) / (BLOCK_SIZE / INODE_SIZE));
+	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((inode->i_no - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev, blk_nr);
 	char * fsbuf = bh->buffer;
 	pinode = (struct inode *)((u8 *)fsbuf +
@@ -4362,7 +4362,7 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_dop = 0;
 	sb->sb_sop = &orange_sb_ops;
 	struct vfs_inode * orange_root = vfs_get_inode();
-	orange_fill_inode(orange_root, sb, sb->root_inode);
+	orange_fill_inode(orange_root, sb, ORANGE_SB(sb)->root_inode);
 	sb->root = new_dentry("/", orange_root);
 	brelse(bh);
 	return 0;

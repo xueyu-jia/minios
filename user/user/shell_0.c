@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "string.h"
-#define MAX_ARGC	4
-#define NUM_BUILTIN_CMD	3
+#define MAX_ARGC	8
+#define NUM_BUILTIN_CMD	5
 #define CMD_LEN	8
 struct cmd{
 	char cmd_name[CMD_LEN];
@@ -39,6 +39,22 @@ int do_pwd(int argc, char** argv){
 	getcwd(path, MAX_PATH);
 	printf("%s\n", path);
 	return 0;
+}
+
+int do_mkdir(int argc, char** argv){
+	if(argc != 2){
+		printf("usage: mkdir %%path\n");
+		return -1;
+	}
+	return mkdir(argv[1]);
+}
+
+int do_mount(int argc, char** argv){
+	if(argc != 4){
+		printf("usage: mount %%dev %%target %%fstype\n");
+		return -1;
+	}
+	return mount(argv[1], argv[2], argv[3], 0, NULL);
 }
 
 struct cmd cmds[NUM_BUILTIN_CMD];
@@ -101,6 +117,8 @@ void main(int arg,char *argv[])
 	reg_cmd("ls", do_ls);
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
+	reg_cmd("mkdir", do_mkdir);
+	reg_cmd("mount", do_mount);
   	while(1)
 	{
         printf("\nminiOS:%s $ ",getcwd(pwd, MAX_PATH));

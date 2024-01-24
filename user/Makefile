@@ -25,7 +25,12 @@ USER_ULIB_DIR=user/ulib
 
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
-SRCUSER = $(wildcard $(USER_SRC_DIR)/*.c)
+SRCUSER = user/user/fstest.c   user/user/shell_1.c  user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c    user/user/tfork.c \
+user/user/myTest.c   user/user/shell_2.c  user/user/test11.c  user/user/test2.c   user/user/test_5.c  user/user/test7.c     user/user/t_pthr01.c \
+user/user/rwtest1.c  user/user/sig_0.c    user/user/test12.c  user/user/test_3.c  user/user/test5.c   user/user/test8.c     user/user/t_pthr02.c \
+user/user/sema1.c    user/user/sig_1.c    user/user/test13.c  user/user/test3.c   user/user/test_6.c  user/user/test9.c     user/user/t_pthr03.c \
+user/user/shell_0.c  user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c   user/user/t_exit01.c  user/user/twait.c
+#$(wildcard $(USER_SRC_DIR)/*.c)
 OBJSUSER = $(subst .c,.o, $(SRCUSER))
 # OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
 # 		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o user/user/test_4.o\

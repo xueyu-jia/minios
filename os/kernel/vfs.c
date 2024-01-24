@@ -357,11 +357,17 @@ PUBLIC void init_fs(int drive){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
+
 	register_fs_type("orangefs", ORANGE_TYPE,
 		&orange_file_ops, 
 		&orange_inode_ops,
 		NULL,
 		&orange_sb_ops);
+	register_fs_type("fat32", FAT32_TYPE,
+		&fat32_file_ops,
+		&fat32_inode_ops,
+		&fat32_dentry_ops,
+		&fat32_sb_ops);
 	
 	mount_root(drive);
 }

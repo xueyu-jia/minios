@@ -62,22 +62,8 @@ struct vfs_dentry{
  //modified by sundong 2023.5.26
 struct super_block {
 	union {
-    	struct {
-			u32	magic;		  /**< Magic number */
-			u32	nr_inodes;	  /**< How many inodes */
-			u32	nr_blocks;	  /**< How many blocks */
-			u32	nr_imap_blocks;	  /**< How many inode-map blocks */
-			u32	nr_smap_blocks;	  /**< How many sector-map blocks */
-			u32	n_1st_block;	  /**< Number of the 1st data block */
-			u32	nr_inode_blocks;   /**< How many inode blocks */
-			u32	root_inode;       /**< Inode nr of root directory */
-			u32	inode_size;       /**< INODE_SIZE */
-			u32	inode_isize_off;  /**< Offset of `struct inode::i_size' */
-			u32	inode_start_off;  /**< Offset of `struct inode::i_start_sect' */
-			u32	dir_ent_size;     /**< DIR_ENTRY_SIZE */
-			u32	dir_ent_inode_off;/**< Offset of `struct dir_entry::inode_nr' */
-			u32	dir_ent_fname_off;/**< Offset of `struct dir_entry::name' */
-    	};
+		struct orange_sb_info orange_sb;
+		struct fat32_sb_info fat32_sb;
     	struct {
 			u32 TotalSectors;//总扇区数，当载入磁盘时，才从DBR中读取。
 			u16  Bytes_Per_Sector;//每个扇区的字节数，当载入磁盘时，才从DBR中读取。
@@ -147,8 +133,8 @@ struct inode_operations{
 	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*rename)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*readdir)(struct vfs_inode* dir, struct dirent* start);
+	int (*sync_inode)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*put_inode)(struct vfs_inode* inode);
 	int (*delete_inode)(struct vfs_inode* inode);
 };

@@ -8,6 +8,11 @@
 // hd moved to hd.h
 // orange moved to fs.h
 
+// same in hd.h, for easy to use
+#define SECTOR_SIZE		512
+#define SECTOR_BITS		(SECTOR_SIZE * 8)
+#define SECTOR_SIZE_SHIFT	9
+
 #define BLOCK_SIZE		4096  //add by sundong 2023.5.26
 #define BLOCK_SIZE_SHIFT   12
 #define MAX_DNAME_LEN 32
