@@ -34,6 +34,8 @@ struct __attribute__((packed)) fat32_bpb{
 	char VolLab[11];
 	char FilSysType[8];
 };
+#define FAT_FLAG_MIRROR 0x80
+#define FAT_FLAG_ACTIVE_MASK 0xF
 
 #define FS_INFO_SECTOR_OFFSET 0x1e0
 struct fat32_fsinfo{
@@ -49,14 +51,28 @@ struct fat32_sb_info{
 	u8 fat_num;
 	u8 fat_bit;
 	u16 fsinfo_sector;
+	// int fat_active; // -1 means all fat mirrored, or the only active fat num
 	int fat_start_sector;
 	int dir_start_sector;
 	int data_start_sector;
 	int cluster_sector;
+	int max_cluster; // max valid cluster
 	struct fat32_fsinfo fsinfo;
 };
 
 #define FAT_SB(sb) (&((sb)->fat32_sb))
+#define FAT32_END  (0xFFFFFFF)
+#define FAT_END   FAT32_END
+struct fat_ent{
+	int cluster_start;
+	int length; // 连续簇个数
+	struct fat_ent* next;
+};
+
+struct fat32_inode_info{
+	struct fat_ent* fat_info;
+};
+
 
 extern struct superblock_operations fat32_sb_ops;
 extern struct inode_operations fat32_inode_ops;

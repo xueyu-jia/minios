@@ -34,6 +34,7 @@ typedef struct vfs_inode{
 	struct file_operations *i_fop;
 	union {
 		struct orange_inode_info orange_inode;
+		struct fat32_inode_info fat32_inode;
 	};
 	struct vfs_inode* lru_nxt;
 	struct vfs_inode* lru_pre;
@@ -64,16 +65,16 @@ struct super_block {
 	union {
 		struct orange_sb_info orange_sb;
 		struct fat32_sb_info fat32_sb;
-    	struct {
-			u32 TotalSectors;//总扇区数，当载入磁盘时，才从DBR中读取。
-			u16  Bytes_Per_Sector;//每个扇区的字节数，当载入磁盘时，才从DBR中读取。
-			u8  Sectors_Per_Cluster;//每个簇的扇区数，当载入磁盘时，才从DBR中读取。
-			u16  Reserved_Sector;//保留扇区数，当载入磁盘时，才从DBR中读取。
-			u32 Sectors_Per_FAT;//每个FAT所占的扇区数，当载入磁盘时，才从DBR中读取。
-			u32 Position_Of_RootDir;//根目录的位置。
-			u32 Position_Of_FAT1;//FAT1的位置。
-			u32 Position_Of_FAT2;//FAT2的位置。
-    	};
+    	// struct {
+		// 	u32 TotalSectors;//总扇区数，当载入磁盘时，才从DBR中读取。
+		// 	u16  Bytes_Per_Sector;//每个扇区的字节数，当载入磁盘时，才从DBR中读取。
+		// 	u8  Sectors_Per_Cluster;//每个簇的扇区数，当载入磁盘时，才从DBR中读取。
+		// 	u16  Reserved_Sector;//保留扇区数，当载入磁盘时，才从DBR中读取。
+		// 	u32 Sectors_Per_FAT;//每个FAT所占的扇区数，当载入磁盘时，才从DBR中读取。
+		// 	u32 Position_Of_RootDir;//根目录的位置。
+		// 	u32 Position_Of_FAT1;//FAT1的位置。
+		// 	u32 Position_Of_FAT2;//FAT2的位置。
+    	// };
 	};
 
   /*
@@ -82,7 +83,7 @@ struct super_block {
   	struct vfs_dentry* root;
 	struct file_operations * sb_fop;
 	struct inode_operations * sb_iop;
-	struct super_operations * sb_sop;
+	struct superblock_operations * sb_sop;
 	struct dentry_operations * sb_dop;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30

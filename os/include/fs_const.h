@@ -15,6 +15,7 @@
 
 #define BLOCK_SIZE		4096  //add by sundong 2023.5.26
 #define BLOCK_SIZE_SHIFT   12
+#define SECTOR_PER_BLOCK (BLOCK_SIZE/SECTOR_SIZE)
 #define MAX_DNAME_LEN 32
 #define	MAX_PATH	256
 
