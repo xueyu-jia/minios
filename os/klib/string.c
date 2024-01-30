@@ -111,3 +111,34 @@ int strncmp(const char *s1, const char *s2, int n)
     }
     return 0;
 }
+
+inline char tolower(char c){
+	if(c >= 'A' && c <= 'Z'){
+		c = c + 'a' - 'A';
+	}
+	return c;
+}
+
+int strnicmp(const char *s1, const char *s2, int len)
+{
+	unsigned char c1, c2;
+
+	c1 = 0;	c2 = 0;
+	if (len) {
+		do {
+			c1 = *s1; c2 = *s2;
+			s1++; s2++;
+			if (!c1)
+				break;
+			if (!c2)
+				break;
+			if (c1 == c2)
+				continue;
+			c1 = tolower(c1);
+			c2 = tolower(c2);
+			if (c1 != c2)
+				break;
+		} while (--len);
+	}
+	return (int)c1 - (int)c2;
+}

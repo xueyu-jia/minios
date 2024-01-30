@@ -7,7 +7,7 @@
 #include "fs.h"
 // mark
 //#define NR_DEV 10
-#define NR_FS 16		//modified by mingxuan 2020-10-18
+// #define NR_FS 16		//modified by mingxuan 2020-10-18
 
 // added by mingxuan 2020-10-27
 # define NO_FS_TYPE		0x0	//added by mingxuan 2020-10-30
@@ -16,43 +16,12 @@
 
 // # define TTY_FS_TYPE	0x3	//added by mingxuan 2020-10-30
 
-#define DEV_NAME_LEN 128	//mark
+// #define DEV_NAME_LEN 128	//mark
 // //#define NR_fs 3
 #define NR_FS_TYPE 3
-#define NR_FS_OP 3		//modified by mingxuan 2020-10-18
-#define NR_SB_OP 2		//added by mingxuan 2020-10-30
-// #define NEW_VFS
-/* //deleted by mingxuan 2020-10-18
-//设备表	
-struct device{
-    char * dev_name; 			//设备名
-    struct file_op * op;          //指向操作表的一项
-    int  dev_num;                //设备号
-};
-*/
-// Replace struct device, added by mingxuan 2020-10-18
-//文件系统的操作函数
-//modified by sundong 2023.5.19 部分接口中添加了superblock参数
-struct file_op{
-	int (*create)   (struct super_block *,const char*);
-	int (*open)    (struct super_block *,const char* ,int);
-	int (*close)   (int);
-	int (*read)    (int,void * ,int);
-	int (*write)   (int,const void* ,int);
-	int (*lseek)   (int,int,int);
-	int (*unlink)  (struct super_block *,const char*);
-    int (*delete) (struct super_block *,const char*);
-	int (*opendir) (struct super_block *,const char *);
-	int (*createdir) (struct super_block *,const char *);
-	int (*deletedir) (struct super_block *,const char *);
-	int (*readdir) (struct super_block *,char*, int*, char*);
-	int (*chdir) (struct super_block *,const char*); //added by ran
-};
+// #define NR_FS_OP 3		//modified by mingxuan 2020-10-18
+// #define NR_SB_OP 2		//added by mingxuan 2020-10-30
 
-struct sb_op{
-	void (*read_super_block) (int);
-	struct super_block* (*get_super_block) (int);
-};
 extern struct vfs_dentry *vfs_root;
 
 PUBLIC struct vfs_inode * vfs_get_inode();

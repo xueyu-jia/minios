@@ -8,6 +8,7 @@
 #include "type.h"
 #include "const.h"
 #include "proc.h"
+#include "clock.h"
 #include "proto.h"
 #include "global.h"
 #include "console.h"
@@ -41,9 +42,9 @@ PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u3
  *======================================================================*/
 PUBLIC int kernel_main()
 {   
-// #ifdef GDBSTUB
-// 	gdb_sys_init();
-// #endif
+#ifdef GDBSTUB
+	gdb_sys_init();
+#endif
 	int error;
 
 	// kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31 
@@ -77,7 +78,6 @@ PUBLIC int kernel_main()
 
 	k_reenter = 0; //record nest level of only interruption! it's different from Orange's.
 		//usage modified by xw
-	ticks = 0; //initialize system-wide ticks
 	p_proc_current = cpu_table;
 
 	/************************************************************************
@@ -85,13 +85,15 @@ PUBLIC int kernel_main()
 	added by xw, 18/6/4
 	*************************************************************************/
 	/* initialize 8253 PIT */
-	out_byte(TIMER_MODE, RATE_GENERATOR);
-	out_byte(TIMER0, (u8)(TIMER_FREQ / HZ));
-	out_byte(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
+	// ticks = 0; //initialize system-wide ticks
+	// out_byte(TIMER_MODE, RATE_GENERATOR);
+	// out_byte(TIMER0, (u8)(TIMER_FREQ / HZ));
+	// out_byte(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
 
-	/* initialize clock-irq */
-	put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
-	enable_irq(CLOCK_IRQ);					   /* 让8259A可以接收时钟中断 */
+	// /* initialize clock-irq */
+	// put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
+	// enable_irq(CLOCK_IRQ);					   /* 让8259A可以接收时钟中断 */
+	init_clock();
 
 	init_kb(); //added by mingxuan 2019-5-19
 

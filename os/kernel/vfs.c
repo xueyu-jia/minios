@@ -865,8 +865,8 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 		struct vfs_inode* inode = dirp->file->fd_dentry->d_inode;
 		struct dirent* data_start = DIR_DATA(dirp);
 		acquire(&inode->lock);
-		if(inode->i_op && inode->i_op->readdir){
-			dirp->total = inode->i_op->readdir(inode, data_start);
+		if(inode->i_fop && inode->i_fop->readdir){
+			dirp->total = inode->i_fop->readdir(dirp->file, data_start);
 		}
 		dirp->init = 1;
 		release(&inode->lock);

@@ -4055,8 +4055,9 @@ PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
 	return 0;
 }
 
-PUBLIC int orange_readdir(struct vfs_inode* dir, struct dirent* start)
+PUBLIC int orange_readdir(struct file_desc* file, struct dirent* start)
 {
+	struct vfs_inode* dir = file->fd_dentry->d_inode;
 	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
@@ -4199,7 +4200,7 @@ PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, cha
 	orange_sync_inode(dir_inode);
 }
 
-PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, char* filename){
+PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, const char* filename){
 	int inode_nr = lookup_inode_in_dir(dir, filename);
 	if(inode_nr != INVALID_INODE){
 		struct vfs_inode * new_inode = vfs_get_inode();
@@ -4378,7 +4379,6 @@ struct inode_operations orange_inode_ops = {
 .unlink = orange_unlink,
 .mkdir = orange_mkdir,
 .rmdir = orange_rmdir,
-.readdir = orange_readdir,
 .put_inode = NULL,
 .delete_inode = orange_deleteinode,
 };
@@ -4386,5 +4386,6 @@ struct inode_operations orange_inode_ops = {
 struct file_operations orange_file_ops = {
 .write = orange_write,
 .read = orange_read,
+.readdir = orange_readdir,
 };
 // #endif

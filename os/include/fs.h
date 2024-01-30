@@ -129,12 +129,11 @@ struct dirstream{
 typedef struct dirstream DIR;
 
 struct inode_operations{
-	struct vfs_dentry * (*lookup)(struct vfs_inode *dir, char *filename);
+	struct vfs_dentry * (*lookup)(struct vfs_inode *dir, const char *filename);
 	int (*create)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*readdir)(struct vfs_inode* dir, struct dirent* start);
 	int (*sync_inode)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*put_inode)(struct vfs_inode* inode);
 	int (*delete_inode)(struct vfs_inode* inode);
@@ -147,6 +146,7 @@ struct dentry_operations{
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, char * buf);
+	int (*readdir)(struct file_desc *file, struct dirent* start);
 };
 
 struct superblock_operations{

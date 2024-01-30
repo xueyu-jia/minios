@@ -53,4 +53,6 @@ extern  TTY         tty_table[NR_CONSOLES];
 #define TTY_END (tty_table+NR_CONSOLES)
 extern int current_console; 
 extern struct file_operations tty_file_ops;
+PUBLIC void in_process(TTY* p_tty,u32 key);
+PUBLIC void task_tty();
 #endif /* _ORANGES_TTY_H_ */

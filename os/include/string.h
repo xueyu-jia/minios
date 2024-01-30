@@ -18,3 +18,4 @@ PUBLIC	int	strlen(char* p_str);
 //added by ran
 char* strncpy(char *dest, const char *src, int n);
 int strncmp(const char *s1, const char *s2, int n);
+int strnicmp(const char *s1, const char *s2, int len);// 不区分大小写

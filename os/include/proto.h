@@ -16,6 +16,8 @@
 #include "proc.h"
 #include "time.h"
 
+// split all unnecessary part, functions defined in .asm & klib
+
 /* klib.asm */
 PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
@@ -24,8 +26,8 @@ PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglon
 // PUBLIC u32	in_mem_32(u32 phy_addr); 
 // PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
 
-PUBLIC void	disp_str(char* info); // implement in tty 
-PUBLIC void	disp_color_str(char* info, int color);
+// PUBLIC void	disp_str(char* info); // implement in tty 
+// PUBLIC void	disp_color_str(char* info, int color);
 PUBLIC void write_char(char ch, int pos);    //added by mingxuan 2019-5-19
 
 //added by zcr
@@ -38,8 +40,8 @@ PUBLIC void	port_write(u16 port, void* buf, int n);
 //~zcr
 
 /* protect.c */
-PUBLIC void	init_prot();
-PUBLIC u32	seg2phys(u16 seg);
+// PUBLIC void	init_prot();
+
 
 /* klib.c */
 PUBLIC void disp_int(int input);
@@ -61,22 +63,20 @@ void halt();                //added by xw, 18/6/11
 // u32 get_arg(void *uesp, int order);	//added by xw, 18/6/18
 
 /* ktest.c */
-void TestA();
-void TestB();
-void TestC();
+// void TestA();
+// void TestB();
+// void TestC();
 void initial();
 
 /* keyboard.c */
 //added by mingxuan 2019-5-19
-PUBLIC void init_kb();
-PUBLIC void keyboard_read();
+// PUBLIC void init_kb();
+// PUBLIC void keyboard_read();
 
 /* tty.c */
 //added by mingxuan 2019-5-19
-PUBLIC void in_process(TTY* p_tty,u32 key);
-PUBLIC void task_tty();
-PUBLIC void tty_write(TTY* tty, char* buf, int len);
-PUBLIC int  tty_read(TTY* tty, char* buf, int len);
+// PUBLIC void tty_write(TTY* tty, char* buf, int len);
+// PUBLIC int  tty_read(TTY* tty, char* buf, int len);
 
 /* shell.c */
 //added by mingxuan 2019-5-19

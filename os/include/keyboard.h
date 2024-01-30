@@ -142,6 +142,7 @@ typedef struct mouse_inbuf{
 	u8 buf[MOUSE_IN_BYTES];
 }MOUSE_INPUT;
 
+PUBLIC void keyboard_read(TTY* p_tty);
 #endif /* _ORANGES_KEYBOARD_H_ */
 
 
