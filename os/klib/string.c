@@ -112,7 +112,7 @@ int strncmp(const char *s1, const char *s2, int n)
     return 0;
 }
 
-inline char tolower(char c){
+char tolower(char c){
 	if(c >= 'A' && c <= 'Z'){
 		c = c + 'a' - 'A';
 	}

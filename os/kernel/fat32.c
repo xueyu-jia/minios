@@ -238,7 +238,7 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	while(entry* FAT_ENTRY_SIZE < dir->i_size){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
-		if(!strnicmp(filename, full_name, 256)){
+		if(!stricmp(filename, full_name)){
 			ino = (fat_get_sector(dir, entry* FAT_ENTRY_SIZE) << FAT_DPS_SHIFT)
 				 | (entry&(FAT_DPS-1));
 			break;
