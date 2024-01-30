@@ -234,7 +234,7 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	int entry = 0, ino = 0;
 	struct fat_dir_entry* de;
 	buf_head* bh;
-	struct vfs_dentry* entry = NULL;
+	struct vfs_dentry* dentry = NULL;
 	while(entry* FAT_ENTRY_SIZE < dir->i_size){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
@@ -246,9 +246,10 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	}
 	if(ino){
 		struct vfs_inode * inode = fat32_read_inode(dir->i_sb, ino);
-		entry = new_dentry(full_name, inode);
+		dentry = new_dentry(full_name, inode);
+		dentry->d_op = &fat32_dentry_ops;
 	}
-	return entry;
+	return dentry;
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
@@ -301,6 +302,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_sop = &fat32_sb_ops;
 	struct vfs_inode * fat32_root = fat32_read_inode(sb, FAT_ROOT_INO);
 	sb->root = new_dentry("/", fat32_root);
+	sb->root->d_op = &fat32_dentry_ops;
 	brelse(bh);
 	return 0;
 }
