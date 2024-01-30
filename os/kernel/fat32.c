@@ -134,12 +134,13 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 	u16 uni_name[256];
 	for(;(*start)*FAT_ENTRY_SIZE < dir->i_size; (*start)++){
 		ds = fat_get_slot(dir, *start, bh);
+		if(!ds)break;
+		if(ds->order == 0){
+			break;
+		}
 		if(ds->order == DIR_DELETE){
 			is_long = 0;
 			continue;
-		}
-		if(ds->order == 0){
-			break;
 		}
 		if( ds->attr == ATTR_LNAME ){
 			if(ds->order & DIR_LDIR_END){
@@ -314,7 +315,7 @@ struct inode_operations fat32_inode_ops = {
 };
 
 struct dentry_operations fat32_dentry_ops = {
-
+.compare = stricmp,
 };
 
 struct file_operations fat32_file_ops = {

@@ -119,26 +119,22 @@ inline char tolower(char c){
 	return c;
 }
 
-int strnicmp(const char *s1, const char *s2, int len)
+int stricmp(const char *s1, const char *s2)
 {
 	unsigned char c1, c2;
 
 	c1 = 0;	c2 = 0;
-	if (len) {
-		do {
-			c1 = *s1; c2 = *s2;
-			s1++; s2++;
-			if (!c1)
-				break;
-			if (!c2)
-				break;
-			if (c1 == c2)
-				continue;
-			c1 = tolower(c1);
-			c2 = tolower(c2);
-			if (c1 != c2)
-				break;
-		} while (--len);
+	if (!s1 || !s2)
+    {
+        return s1 - s2;
+    }
+	for(; (c1 = *s1)&&(c2 = *s2); s1++, s2++){
+		if (c1 == c2)
+			continue;
+		c1 = tolower(c1);
+		c2 = tolower(c2);
+		if (c1 != c2)
+			break;
 	}
 	return (int)c1 - (int)c2;
 }
