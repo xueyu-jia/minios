@@ -2,6 +2,7 @@
 #define FAT32_H
 
 #include "type.h"
+#include "spinlock.h"
 
 struct __attribute__((packed)) fat32_bpb{
 	char jmp[3];
@@ -62,7 +63,7 @@ struct fat_dir_entry{
 #define FAT_DPS_SHIFT 4
 #define FAT_ROOT_INO	1
 
-struct fat_dir_slot{
+struct fat_get_data{
 	u8 order;
 	char name0_4[10];
 	u8 attr;
@@ -96,6 +97,7 @@ struct fat32_sb_info{
 	int max_cluster; // max valid cluster
 	int root_cluster;
 	struct fat_fsinfo fsinfo;
+	SPIN_LOCK lock;
 };
 
 #define FAT_SB(sb) (&((sb)->fat32_sb))
