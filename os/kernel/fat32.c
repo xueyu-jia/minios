@@ -300,6 +300,9 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 			break;
 		}
 	}
+	if(bh){
+		brelse(bh);
+	}
 	if(ino){
 		struct vfs_inode * inode = fat32_read_inode(dir->i_sb, ino);
 		dentry = new_dentry(full_name, inode);
@@ -353,6 +356,36 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, char* buf){
 	}
 	file->fd_pos = pos;
 	return pos - start;
+}
+
+PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
+	char full_name[256]; // for long dir store real name
+	int entry = 0, count = 0;
+	struct fat_dir_entry* de;
+	buf_head* bh;
+	struct vfs_inode* dir = file->fd_dentry->d_inode;
+	struct vfs_dentry* dentry = NULL;
+	if(dir->i_no == FAT_ROOT_INO){
+		start->d_ino = FAT_ROOT_INO;
+		strcpy(start->d_name, ".");
+		start++;
+		start->d_ino = FAT_ROOT_INO;
+		strcpy(start->d_name, "..");
+		start++;
+	}
+	while(entry* FAT_ENTRY_SIZE < dir->i_size){
+		de = fat_get_entry(dir, &entry, &bh, full_name);
+		if(!de)break;
+		start->d_ino = (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT)
+			| (entry&(FAT_DPS-1));
+		strcpy(start->d_name, full_name);
+		start++;
+		count++;
+	}
+	if(bh){
+		brelse(bh);
+	}
+	return count;
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
@@ -431,4 +464,5 @@ struct dentry_operations fat32_dentry_ops = {
 struct file_operations fat32_file_ops = {
 .read = fat32_read,
 .write = fat32_write,
+.readdir = fat32_readdir,
 };
