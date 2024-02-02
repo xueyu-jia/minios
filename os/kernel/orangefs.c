@@ -4116,7 +4116,7 @@ PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, 
 	brelse(bh);
 }
 
-PRIVATE void orange_sync_inode(struct vfs_inode* inode){
+PRIVATE int orange_sync_inode(struct vfs_inode* inode){
 	struct inode *pinode;
 	struct super_block *sb = inode->i_sb;
 	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((inode->i_no - 1) / (BLOCK_SIZE / INODE_SIZE));
@@ -4129,7 +4129,8 @@ PRIVATE void orange_sync_inode(struct vfs_inode* inode){
 	pinode->i_start_block = inode->orange_inode.i_start_block;
 	pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
 	mark_buff_dirty(bh);
-	brelse(bh);		
+	brelse(bh);	
+	return 0;	
 }
 
 /*****************************************************************************
@@ -4381,6 +4382,7 @@ struct inode_operations orange_inode_ops = {
 .rmdir = orange_rmdir,
 .put_inode = NULL,
 .delete_inode = orange_deleteinode,
+.sync_inode = orange_sync_inode,
 };
 
 struct file_operations orange_file_ops = {

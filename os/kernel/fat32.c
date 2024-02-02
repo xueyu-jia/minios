@@ -173,8 +173,8 @@ PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int 
 	return bread_sector(inode->i_dev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
 }
 
-PRIVATE struct fat_get_data* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh){
-	return (struct fat_get_data*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, 0);
+PRIVATE struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
+	return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
 PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, buf_head** bh, char* full_name){
@@ -182,11 +182,12 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 		return NULL;
 	}
 	struct fat_dir_entry* de = NULL;
-	struct fat_get_data* ds;
-	int n_slot = 0, offset, chksum, is_long = 0;
+	struct fat_dir_slot* ds;
+	int n_slot = 0, offset, is_long = 0;
+	u8  chksum;
 	u16 uni_name[256];
 	for(;(*start)*FAT_ENTRY_SIZE < dir->i_size; (*start)++){
-		ds = fat_get_slot(dir, *start, bh);
+		ds = fat_get_slot(dir, *start, bh, 0);
 		if(!ds)break;
 		if(ds->order == 0){
 			break;
@@ -201,7 +202,7 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 				chksum = ds->checksum;
 				is_long = 1;
 			}
-			if((n_slot != ds->order & (~DIR_LDIR_END)) || chksum != ds->checksum){
+			if((n_slot != (ds->order & (~DIR_LDIR_END))) || chksum != ds->checksum){
 				disp_str("error: dismatch slot");
 				is_long = 0;
 				continue;// ignore invalid slot
@@ -219,8 +220,9 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 			n_slot--;
 		}else if(!(ds->attr&ATTR_VOL)){// skip volume
 			// check sum
-			char sum;
+			u8 sum;
 			int i;
+			de = (struct fat_dir_entry*)ds;
 			for (sum = 0, i = 0; i < 11; i++) {
 				sum = (((sum&1)<<7)|((sum&0xfe)>>1)) + de->name[i]; 
 				//两部分的name实际是连续的，所以没问题
@@ -238,11 +240,37 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 				memcpy(full_name + 9, de->ext, 3);
 				full_name[12] = 0;
 			}
-			de = (struct fat_dir_entry*)ds;
 			break;
 		}
 	}
 	return de;
+}
+
+PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
+	buf_head* bh;
+	struct fat_dir_slot* ds;
+	int start, count = 0, res = -1;
+	for(start = 0; ; start++){
+		ds = fat_get_slot(dir, start, &bh, 1);
+		if(ds->order == DIR_DELETE){
+			if(count == 0)res = start;
+			count++;
+			if(count >= num)break;
+		}else if(ds->order == 0){
+			res = start;
+			break;// 后面的均为空闲，不用找了
+		}
+		count = 0;
+	}
+	return res;
+}
+
+PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
+
+}
+
+PRIVATE void fat_add_name(struct vfs_inode* dir, const char* name, int clus_start){
+
 }
 
 PUBLIC struct vfs_inode* fat32_read_inode(struct super_block* sb, int ino){
@@ -309,6 +337,10 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 		dentry->d_op = &fat32_dentry_ops;
 	}
 	return dentry;
+}
+
+PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry){
+
 }
 
 PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
@@ -454,6 +486,7 @@ struct superblock_operations fat32_sb_ops = {
 
 struct inode_operations fat32_inode_ops = {
 .lookup = fat32_lookup,
+.create = fat32_create,
 .put_inode = fat32_put_inode,
 };
 

@@ -45,7 +45,8 @@ USING_GRUB_CHAINLOADER = false
 #grub安装的分区,数字类型，例如：5
 GRUB_PART_NUM=5
 #选择启动分区的文件系统格式，目前仅支持fat32和orangefs
-BOOT_PART_FS_TYPE= fat32
+BOOT_PART_FS_TYPE= orangefs
+ROOT_PART_FS_TYPE= fat32
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
 #使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
@@ -90,9 +91,20 @@ else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
 	BOOT_SIZE =512
 # orangefs boot直接放在分区的0号扇区
 	BOOT_SEEK=0
-	BOOT_PART_MOUNTPOINT =$(ROOT_FS_PART)
+	BOOT_PART_MOUNTPOINT =$(BOOT_PART)
+endif
 
-
+# config root fs param
+ifeq ($(ROOT_PART_FS_TYPE),fat32)
+	ROOT_CP = cp
+	ROOT_MOUNTPOINT = root
+	ROOT_FS_MAKER = mkfs.vfat
+	ROOT_FS_MAKE_FLAG = -F 32 -s8
+else ifeq ($(ROOT_PART_FS_TYPE),orangefs)
+	ROOT_CP = $(ORANGE_CP)
+	ROOT_MOUNTPOINT = $(ROOT_FS_PART)
+	ROOT_FS_MAKER = ./o_mkfs
+	ROOT_FS_MAKE_FLAG =
 endif
 
 
@@ -124,20 +136,20 @@ else
 endif 
 
 
-#检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs)
-ifeq ($(BOOT_PART_FS_TYPE),fat32)
-#检查fat32作为启动分区文件系统时，启动分区是否和根文件系统分区重合
-ifeq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
-	$(error  BOOT_PART_NUM equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
-endif
-else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
-#检查orangefs作为启动分区文件系统时 启动分区是否等于根文件系统分区
-ifneq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
-	$(error  BOOT_PART_NUM not equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
-endif
-else 
-	$(error BOOT_PART_FS_TYPE input error! Correct vlaue: fat32 or orangefs , your input: $(BOOT_PART_FS_TYPE) )
-endif 
+# #检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs)
+# ifeq ($(BOOT_PART_FS_TYPE),fat32)
+# #检查fat32作为启动分区文件系统时，启动分区是否和根文件系统分区重合
+# ifeq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
+# 	$(error  BOOT_PART_NUM equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
+# endif
+# else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
+# #检查orangefs作为启动分区文件系统时 启动分区是否等于根文件系统分区
+# ifneq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
+# 	$(error  BOOT_PART_NUM not equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
+# endif
+# else 
+# 	$(error BOOT_PART_FS_TYPE input error! Correct vlaue: fat32 or orangefs , your input: $(BOOT_PART_FS_TYPE) )
+# endif 
 
 
 #检查USING_GRUB_CHAINLOADER是否输入正确(仅支持true,false)
@@ -155,6 +167,7 @@ endif
 	$(info BOOT_PART=$(BOOT_PART))
 	$(info ROOT_FS_PART=$(ROOT_FS_PART))
 	$(info BOOT_PART_FS_TYPE=$(BOOT_PART_FS_TYPE))
+	$(info ROOT_PART_FS_TYPE=$(ROOT_PART_FS_TYPE))
 ifeq ($(USING_GRUB_CHAINLOADER),true)
 	$(info GRUB_INSTALL_PART=$(GRUB_INSTALL_PART))
 	$(info GRUB_CONFIG=$(GRUB_CONFIG))
@@ -204,8 +217,6 @@ build_fs:
 # FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	sudo dd if=os/boot/mbr/$(BOOT) of=$(BOOT_PART) bs=1 count=$(BOOT_SIZE) seek=$(BOOT_SEEK) conv=notrunc
 
-#初始化根文件系统
-	sudo ./o_mkfs $(ROOT_FS_PART)
 #orangefs有专用的cp 不需要挂载到linux目录下，其他如fat32需要挂载
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
@@ -214,12 +225,17 @@ build_fs:
 	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
 	sudo $(CP) $(CP_FLAG) kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
 
+#初始化根文件系统
+	sudo $(ROOT_FS_MAKER) $(ROOT_FS_MAKE_FLAG) $(ROOT_FS_PART)
+	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
+		sudo mount $(ROOT_FS_PART) $(ROOT_MOUNTPOINT);	\
+	fi
 # 在启动盘放置init.bin启动文件
-	sudo $(ORANGE_CP)  user/init/init.bin $(ROOT_FS_PART)/init.bin
+	sudo $(ROOT_CP)  user/init/init.bin $(ROOT_MOUNTPOINT)/init.bin
 
 # 在此处添加用户程序的文件
 	$(foreach USER_TEST,$(ORANGESUSER),\
-		sudo $(ORANGE_CP)  $(USER_TEST) $(ROOT_FS_PART)/$(notdir $(USER_TEST));\
+		sudo $(ROOT_CP)  $(USER_TEST) $(ROOT_MOUNTPOINT)/$(notdir $(USER_TEST));\
 	)
 # 	sudo $(ORANGE_CP)  user/user/shell_0.bin $(ROOT_FS_PART)/shell_0.bin
 # 	sudo $(ORANGE_CP)  user/user/shell_1.bin $(ROOT_FS_PART)/shell_1.bin
@@ -266,6 +282,9 @@ build_fs:
 
 # 	sudo $(ORANGE_CP)  user/user/sema1.bin $(ROOT_FS_PART)/sema1.bin
 # 	sudo $(ORANGE_CP)  user/user/rwtest1.bin $(ROOT_FS_PART)/rwtest1.bin
+	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
+		sudo umount $(ROOT_MOUNTPOINT) ; \
+	fi
 
 	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo umount $(BOOT_PART_MOUNTPOINT) ; \

@@ -62,8 +62,9 @@ struct fat_dir_entry{
 #define FAT_DPS		16 //(SECTOR_SIZE/FAT_ENTRY_SIZE)
 #define FAT_DPS_SHIFT 4
 #define FAT_ROOT_INO	1
+#define FAT_DOT	".          "
 
-struct fat_get_data{
+struct fat_dir_slot{
 	u8 order;
 	char name0_4[10];
 	u8 attr;

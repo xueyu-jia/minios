@@ -346,9 +346,8 @@ PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
 	return sb;
 }
 
-PUBLIC void mount_root(int root_dev){
-	int root_fstype = ORANGE_TYPE;
-	int dev = get_fs_dev(root_dev, ORANGE_TYPE);
+PUBLIC void mount_root(int root_dev, int root_fstype){
+	int dev = get_fs_dev(root_dev, root_fstype);
 	struct super_block *sb = vfs_read_super(dev, root_fstype);
 	vfs_root = sb->root;
 }
@@ -369,7 +368,7 @@ PUBLIC void init_fs(int drive){
 		&fat32_dentry_ops,
 		&fat32_sb_ops);
 	
-	mount_root(drive);
+	mount_root(drive, FAT32_TYPE);
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){
