@@ -201,27 +201,32 @@ PRIVATE struct vfs_mount* get_free_vfsmount()
     return NULL;
 }
 
-PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path, struct vfs_dentry* mnt_root, int dev){
+PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path, 
+	struct vfs_dentry * mnt_mountpoint, struct vfs_dentry* mnt_root, struct super_block* sb){
 	acquire(&mnt_table_lock);
 	struct vfs_mount* mnt = get_free_vfsmount();
-	mnt->dev_path =  dev_path;
-	mnt->dev = dev;
+	mnt->mnt_dev =  dev_path;
+	mnt->mnt_sb = sb;
+	mnt->mnt_mountpoint = mnt_mountpoint;
 	mnt->mnt_root = mnt_root;
 	mnt->used = 1;
 	release(&mnt_table_lock);
 	return mnt;
 }
 
-PUBLIC void remove_vfsmnt(struct vfs_dentry* entry){
+PUBLIC struct vfs_dentry* remove_vfsmnt(struct vfs_dentry* entry){
 	struct vfs_mount* mnt = vfs_mnt_table;
+	struct vfs_dentry* mountpoint = NULL;
 	acquire(&mnt_table_lock);
 	while(mnt < vfs_mnt_table + MAX_mnt_table_length){
 		if(mnt->mnt_root == entry && mnt->used == 1){
 			mnt->used = 0;
+			mountpoint = mnt->mnt_mountpoint;
 			break;
 		}
 	}
 	release(&mnt_table_lock);
+	return mountpoint;
 }
 
 PUBLIC int do_mount(const char *source, const char *target,

@@ -24,7 +24,7 @@
 
 extern struct vfs_dentry *vfs_root;
 
-PUBLIC struct vfs_inode * vfs_get_inode();
+PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino);
 PUBLIC void vfs_put_inode(struct vfs_inode *inode);
 PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* inode);
 PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir);

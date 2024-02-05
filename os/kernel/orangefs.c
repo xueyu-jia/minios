@@ -3944,14 +3944,14 @@ PRIVATE int lookup_inode_in_dir(struct vfs_inode* dir, char* filename)
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (pde->inode_nr == INVALID_INODE)
-			{
-				continue;
-			}
 			if (++m > nr_dir_entries)
 			{
 				brelse(bh);
 				return INVALID_INODE;
+			}
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
 			}
 
 			if (!strcmp(pde->name, filename))
@@ -3987,14 +3987,14 @@ PRIVATE int remove_name_in_dir(struct vfs_inode* dir, int nr_inode)
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (pde->inode_nr == INVALID_INODE)
-			{
-				continue;
-			}
 			if (++m > nr_dir_entries)
 			{
 				brelse(bh);
 				return -1;
+			}
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
 			}
 
 			if (pde->inode_nr == nr_inode)
@@ -4031,14 +4031,14 @@ PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (pde->inode_nr == INVALID_INODE)
-			{
-				continue;
-			}
 			if (++m > nr_dir_entries)
 			{
 				brelse(bh);
 				return 0;
+			}
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
 			}
 
 			if ((!strcmp(pde->name, ".")) || (!strcmp(pde->name, "..")))
@@ -4075,13 +4075,13 @@ PUBLIC int orange_readdir(struct file_desc* file, struct dirent* start)
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (pde->inode_nr == INVALID_INODE)
-			{
-				continue;
-			}
 			if (++m > nr_dir_entries)
 			{
 				return cnt;
+			}
+			if (pde->inode_nr == INVALID_INODE)
+			{
+				continue;
 			}
 
 			start->d_ino = pde->inode_nr;
@@ -4109,8 +4109,8 @@ PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, 
 	inode->i_size = pinode->i_size;
 	inode->i_nlink = 1;
 	inode->i_mode = I_RWX;
-	inode->i_op = sb->sb_iop;
-	inode->i_fop = sb->sb_fop;
+	inode->i_op = &orange_inode_ops;
+	inode->i_fop = &orange_file_ops;
 	inode->orange_inode.i_start_block = pinode->i_start_block;
 	inode->orange_inode.i_nr_blocks = pinode->i_nr_blocks;
 	brelse(bh);
@@ -4131,6 +4131,10 @@ PRIVATE int orange_sync_inode(struct vfs_inode* inode){
 	mark_buff_dirty(bh);
 	brelse(bh);	
 	return 0;	
+}
+
+PUBLIC int orange_read_inode(struct vfs_inode * inode){
+	orange_fill_inode(inode, inode->i_sb, inode->i_no);
 }
 
 /*****************************************************************************
@@ -4204,8 +4208,8 @@ PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, cha
 PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, const char* filename){
 	int inode_nr = lookup_inode_in_dir(dir, filename);
 	if(inode_nr != INVALID_INODE){
-		struct vfs_inode * new_inode = vfs_get_inode();
-		orange_fill_inode(new_inode, dir->i_sb, inode_nr);
+		struct vfs_inode * new_inode = vfs_get_inode(dir->i_sb, inode_nr);
+		// orange_fill_inode(new_inode, dir->i_sb, inode_nr);
 		struct vfs_dentry * dentry = new_dentry(filename, new_inode);
 		return dentry;
 	}
@@ -4286,13 +4290,14 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, char* buf){
 	return bytes_rw;
 }
 
-int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry){
+int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
 		return -1;
 	}
+	struct vfs_inode *newino = vfs_get_inode(dir->i_sb, inode_nr);
 	int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
-	struct vfs_inode *newino = dentry->d_inode;
+	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
 	newino->i_sb = dir->i_sb;
 	newino->i_dev = dir->i_dev;
@@ -4313,13 +4318,14 @@ int orange_unlink(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 
-int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
+int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
 		return -1;
 	}
+	struct vfs_inode *newino = vfs_get_inode(dir->i_sb, inode_nr);
 	int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
-	struct vfs_inode *newino = dentry->d_inode;
+	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
 	newino->i_sb = dir->i_sb;
 	newino->i_dev = dir->i_dev;
@@ -4329,8 +4335,8 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	newino->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
 	newino->i_mode = I_RWX;
 	newino->i_type = I_DIRECTORY;
-	newino->i_op = dir->i_sb->sb_iop;
-	newino->i_fop = dir->i_sb->sb_fop;
+	newino->i_op = &orange_inode_ops;
+	newino->i_fop = &orange_file_ops;
 	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
 	orange_new_dir_entry(newino, newino->i_no, ".");
 	orange_new_dir_entry(newino, dir->i_no, "..");
@@ -4357,21 +4363,24 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	buf_head * bh = bread(dev, 1);
 	struct super_block *psb = (struct super_block *)bh->buffer;
 	*sb = *psb;
+	sb->sb_lru_list = NULL;
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
 	sb->sb_iop = &orange_inode_ops;
 	sb->sb_fop = &orange_file_ops;
 	sb->sb_dop = 0;
 	sb->sb_sop = &orange_sb_ops;
-	struct vfs_inode * orange_root = vfs_get_inode();
-	orange_fill_inode(orange_root, sb, ORANGE_SB(sb)->root_inode);
-	sb->root = new_dentry("/", orange_root);
+	struct vfs_inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
+	// orange_fill_inode(orange_root, sb, ORANGE_SB(sb)->root_inode);
+	sb->sb_root = new_dentry("/", orange_root);
 	brelse(bh);
 	return 0;
 }
 
 struct superblock_operations orange_sb_ops = {
 .fill_superblock = orange_fill_superblock,
+.write_inode = orange_sync_inode,
+.read_inode = orange_read_inode,
 };
 
 struct inode_operations orange_inode_ops = {
@@ -4382,7 +4391,6 @@ struct inode_operations orange_inode_ops = {
 .rmdir = orange_rmdir,
 .put_inode = NULL,
 .delete_inode = orange_deleteinode,
-.sync_inode = orange_sync_inode,
 };
 
 struct file_operations orange_file_ops = {

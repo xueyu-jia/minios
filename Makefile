@@ -45,8 +45,8 @@ USING_GRUB_CHAINLOADER = false
 #grub安装的分区,数字类型，例如：5
 GRUB_PART_NUM=5
 #选择启动分区的文件系统格式，目前仅支持fat32和orangefs
-BOOT_PART_FS_TYPE= orangefs
-ROOT_PART_FS_TYPE= fat32
+BOOT_PART_FS_TYPE= fat32
+ROOT_PART_FS_TYPE= orangefs
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
 #使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下

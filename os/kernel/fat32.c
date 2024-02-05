@@ -100,7 +100,9 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	memcpy(info_buf, &FAT_SB(sb)->fsinfo, sizeof(struct fat_fsinfo));
 	mark_buff_dirty(bh);
 	brelse(bh);
-	read_write_fat(sb, tail, clus);
+	if(tail){
+		read_write_fat(sb, tail, clus);
+	}
 	release(&FAT_SB(sb)->lock);
 	return clus;
 }
@@ -147,6 +149,10 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 		if(!info->next && new_space){
 			last = info->cluster_start + info->length - 1;
 			clus = add_new_cluster(sb, last);
+			if(!last){
+				info->cluster_start = clus;
+				continue;
+			}
 			if(clus == last + 1){
 				info->length++;
 				continue;
@@ -273,11 +279,12 @@ PRIVATE void fat_add_name(struct vfs_inode* dir, const char* name, int clus_star
 
 }
 
-PUBLIC struct vfs_inode* fat32_read_inode(struct super_block* sb, int ino){
-	struct vfs_inode* inode = vfs_get_inode();
+PUBLIC void fat32_read_inode(struct vfs_inode* inode){
+	struct super_block* sb = inode->i_sb;
 	buf_head* bh = NULL;
 	struct fat_dir_entry* entry = NULL;
 	int cluster_start;
+	int ino = inode->i_no;
 	if(ino == FAT_ROOT_INO){
 		cluster_start = FAT_SB(sb)->root_cluster;
 		inode->i_mode = I_RWX;
@@ -301,6 +308,30 @@ PUBLIC struct vfs_inode* fat32_read_inode(struct super_block* sb, int ino){
 	inode->i_fop = sb->sb_fop;
 	if(bh) brelse(bh);
 	return inode;
+}
+
+PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
+	if(inode->i_no == FAT_ROOT_INO){
+		return 0;
+	}
+	buf_head* bh;
+	int ino = inode->i_no;
+	int start = inode->fat32_inode.fat_info->cluster_start;
+	struct fat_dir_entry* de = 
+		&((struct fat_dir_entry*)bread_sector(inode->i_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
+	if(!de){
+		return -1;
+	}
+	de->size = inode->i_size;
+	if(!((de->start_h<<16)|de->start_l)&& start){
+		de->start_h = start >> 16;
+		de->start_l = start & 0xFFFF;
+	}
+	if(bh){
+		mark_buff_dirty(bh);
+		brelse(bh);
+	}
+	return 0;
 }
 
 PUBLIC void fat32_put_inode(struct vfs_inode* inode){
@@ -332,7 +363,7 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 		brelse(bh);
 	}
 	if(ino){
-		struct vfs_inode * inode = fat32_read_inode(dir->i_sb, ino);
+		struct vfs_inode * inode = vfs_get_inode(dir->i_sb, ino);
 		dentry = new_dentry(full_name, inode);
 		dentry->d_op = &fat32_dentry_ops;
 	}
@@ -472,9 +503,9 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_fop = &fat32_file_ops;
 	sb->sb_dop = &fat32_dentry_ops;
 	sb->sb_sop = &fat32_sb_ops;
-	struct vfs_inode * fat32_root = fat32_read_inode(sb, FAT_ROOT_INO);
-	sb->root = new_dentry("/", fat32_root);
-	sb->root->d_op = &fat32_dentry_ops;
+	struct vfs_inode * fat32_root = vfs_get_inode(sb, FAT_ROOT_INO);
+	sb->sb_root = new_dentry("/", fat32_root);
+	sb->sb_root->d_op = &fat32_dentry_ops;
 	brelse(bh);
 	return 0;
 }
@@ -482,6 +513,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 
 struct superblock_operations fat32_sb_ops = {
 .fill_superblock = fat32_fill_superblock,
+.read_inode = fat32_read_inode,
 };
 
 struct inode_operations fat32_inode_ops = {
