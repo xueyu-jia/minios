@@ -4133,7 +4133,7 @@ PRIVATE int orange_sync_inode(struct vfs_inode* inode){
 	return 0;	
 }
 
-PUBLIC int orange_read_inode(struct vfs_inode * inode){
+PUBLIC void orange_read_inode(struct vfs_inode * inode){
 	orange_fill_inode(inode, inode->i_sb, inode->i_no);
 }
 
@@ -4249,7 +4249,7 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 	return bytes_rw;
 }
 
-PUBLIC int orange_write(struct file_desc* file, unsigned int count, char* buf){
+PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* buf){
 	int pos = file->fd_pos;
 	struct vfs_inode *pin = file->fd_dentry->d_inode;
 	int pos_end = min(pos + count, pin->orange_inode.i_nr_blocks * BLOCK_SIZE);
@@ -4307,8 +4307,8 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	newino->i_nlink = 1;
 	newino->i_mode = I_RWX;
 	newino->i_type = I_REGULAR;
-	newino->i_op = dir->i_sb->sb_iop;
-	newino->i_fop = dir->i_sb->sb_fop;
+	newino->i_op = &orange_inode_ops;
+	newino->i_fop = &orange_file_ops;
 	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
 	orange_sync_inode(newino);
 	return 0;
@@ -4351,12 +4351,11 @@ int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 
-int orange_deleteinode(struct vfs_inode* inode){
+void orange_deleteinode(struct vfs_inode* inode){
 	orange_free_smap_bit(inode->i_sb, 
 		inode->orange_inode.i_start_block, 
 		inode->orange_inode.i_nr_blocks);
 	orange_free_imap_bit(inode->i_sb, inode->i_no);
-	return 0;
 }
 
 int orange_fill_superblock(struct super_block* sb, int dev){
@@ -4366,10 +4365,10 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_lru_list = NULL;
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
-	sb->sb_iop = &orange_inode_ops;
-	sb->sb_fop = &orange_file_ops;
-	sb->sb_dop = 0;
-	sb->sb_sop = &orange_sb_ops;
+	// sb->sb_iop = &orange_inode_ops;
+	// sb->sb_fop = &orange_file_ops;
+	// sb->sb_dop = 0;
+	sb->sb_op = &orange_sb_ops;
 	struct vfs_inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
 	// orange_fill_inode(orange_root, sb, ORANGE_SB(sb)->root_inode);
 	sb->sb_root = new_dentry("/", orange_root);
@@ -4381,6 +4380,8 @@ struct superblock_operations orange_sb_ops = {
 .fill_superblock = orange_fill_superblock,
 .write_inode = orange_sync_inode,
 .read_inode = orange_read_inode,
+.put_inode = NULL,
+.delete_inode = orange_deleteinode,
 };
 
 struct inode_operations orange_inode_ops = {
@@ -4389,8 +4390,6 @@ struct inode_operations orange_inode_ops = {
 .unlink = orange_unlink,
 .mkdir = orange_mkdir,
 .rmdir = orange_rmdir,
-.put_inode = NULL,
-.delete_inode = orange_deleteinode,
 };
 
 struct file_operations orange_file_ops = {

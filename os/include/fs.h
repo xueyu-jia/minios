@@ -35,10 +35,10 @@ typedef struct vfs_inode{
 		struct orange_inode_info orange_inode;
 		struct fat32_inode_info fat32_inode;
 	};
-	struct vfs_inode* lru_nxt;
+	struct vfs_inode* lru_nxt;// used in sb->sb_lru_list: last recently used inodes
 	struct vfs_inode* lru_pre;
 	struct spinlock lock;
-}vfs_inode;
+};
 
 // **** dentry 的本质是cache !!! ****
 struct vfs_dentry{
@@ -48,8 +48,6 @@ struct vfs_dentry{
 	struct vfs_dentry* d_pre;
 	struct vfs_dentry* d_subdirs;
 	struct vfs_dentry* d_parent;
-	// struct vfs_dentry* d_covers;
-	// struct vfs_dentry* d_mounts;
 	struct vfs_mount* d_vfsmount;
 	int d_mounted;
 	struct dentry_operations * d_op;
@@ -71,10 +69,10 @@ struct super_block {
    */
   	struct vfs_dentry* sb_root;
 	struct vfs_inode* sb_lru_list;
-	struct file_operations * sb_fop;
-	struct inode_operations * sb_iop;
-	struct superblock_operations * sb_sop;
-	struct dentry_operations * sb_dop;
+	// struct file_operations * sb_fop;
+	// struct inode_operations * sb_iop;
+	struct superblock_operations * sb_op;
+	// struct dentry_operations * sb_dop;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
@@ -113,8 +111,6 @@ struct inode_operations{
 	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*put_inode)(struct vfs_inode* inode);
-	int (*delete_inode)(struct vfs_inode* inode);
 };
 
 struct dentry_operations{
@@ -123,14 +119,16 @@ struct dentry_operations{
 
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
-	int (*write)(struct file_desc *file, unsigned int count, char * buf);
+	int (*write)(struct file_desc *file, unsigned int count, const char * buf);
 	int (*readdir)(struct file_desc *file, struct dirent* start);
 };
 
 struct superblock_operations{
 	int (*fill_superblock)(struct super_block *, int);
 	int (*write_inode)(struct vfs_inode *inode);
-	int (*read_inode)(struct vfs_inode *inode);
+	void (*read_inode)(struct vfs_inode *inode);
+	void (*put_inode)(struct vfs_inode* inode);
+	void (*delete_inode)(struct vfs_inode* inode);
 };
 
 struct fs_type{
@@ -142,6 +140,7 @@ struct fs_type{
 };
 
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
+int get_fs_part_dev(int drive, int part, u32 fs_type);
 int get_fs_dev(int drive, u32 fs_type);
 int get_free_superblock();
 

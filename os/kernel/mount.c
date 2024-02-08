@@ -6,7 +6,7 @@
 
 // PRIVATE void update_mnttable();
 // PUBLIC mount_table mnt_table[MAX_mnt_table_length];
-PUBLIC struct vfs_mount vfs_mnt_table[MAX_mnt_table_length];
+PUBLIC struct vfs_mount vfs_mnt_table[NR_MNT];
 SPIN_LOCK mnt_table_lock;
 // extern struct vfs vfs_table[NR_FS];
 
@@ -191,11 +191,11 @@ PUBLIC int do_umount(const char *target);
 PRIVATE struct vfs_mount* get_free_vfsmount()
 {
     int i;
-    for (i = 0; i < MAX_mnt_table_length; i++)
+    for (i = 0; i < NR_MNT; i++)
     {
         if (vfs_mnt_table[i].used == 0)
         {
-            return i;
+            return &vfs_mnt_table[i];
         }
     }
     return NULL;
@@ -214,16 +214,30 @@ PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path,
 	return mnt;
 }
 
+PUBLIC struct vfs_mount* lookup_vfsmnt(struct vfs_dentry* mountpoint){
+	struct vfs_mount* mnt = vfs_mnt_table;
+	acquire(&mnt_table_lock);
+	while(mnt < vfs_mnt_table + NR_MNT){
+		if(mnt->mnt_mountpoint == mountpoint && mnt->used == 1){
+			break;
+		}
+		mnt++;
+	}
+	release(&mnt_table_lock);
+	return mnt;
+}
+
 PUBLIC struct vfs_dentry* remove_vfsmnt(struct vfs_dentry* entry){
 	struct vfs_mount* mnt = vfs_mnt_table;
 	struct vfs_dentry* mountpoint = NULL;
 	acquire(&mnt_table_lock);
-	while(mnt < vfs_mnt_table + MAX_mnt_table_length){
+	while(mnt < vfs_mnt_table + NR_MNT){
 		if(mnt->mnt_root == entry && mnt->used == 1){
 			mnt->used = 0;
 			mountpoint = mnt->mnt_mountpoint;
 			break;
 		}
+		mnt++;
 	}
 	release(&mnt_table_lock);
 	return mountpoint;

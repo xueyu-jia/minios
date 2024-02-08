@@ -130,7 +130,7 @@ PUBLIC int kernel_main()
 	// hd_open(SECONDARY_SLAVE);
 
 	init_buffer(64);
-	init_fs(SATA_BASE);
+	init_fs();
 	// init_all_fat(SATA_BASE);
 	//init_fs_fat();	//added by mingxuan 2019-5-17
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30

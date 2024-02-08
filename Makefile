@@ -45,8 +45,8 @@ USING_GRUB_CHAINLOADER = false
 #grub安装的分区,数字类型，例如：5
 GRUB_PART_NUM=5
 #选择启动分区的文件系统格式，目前仅支持fat32和orangefs
-BOOT_PART_FS_TYPE= fat32
-ROOT_PART_FS_TYPE= orangefs
+BOOT_PART_FS_TYPE=orangefs
+ROOT_PART_FS_TYPE=orangefs
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
 #使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
@@ -136,9 +136,14 @@ else
 endif 
 
 
-# #检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs)
+#检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs) 
+ifeq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
+ifneq ($(BOOT_PART_FS_TYPE),$(ROOT_PART_FS_TYPE))
+	$(error different fstype in same part)
+endif
+endif
 # ifeq ($(BOOT_PART_FS_TYPE),fat32)
-# #检查fat32作为启动分区文件系统时，启动分区是否和根文件系统分区重合
+# #检查fat32作为启动分区文件系统时，启动分区是否和根文件系统分区重合 此条限制已去除
 # ifeq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
 # 	$(error  BOOT_PART_NUM equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
 # endif
@@ -233,55 +238,11 @@ build_fs:
 # 在启动盘放置init.bin启动文件
 	sudo $(ROOT_CP)  user/init/init.bin $(ROOT_MOUNTPOINT)/init.bin
 
-# 在此处添加用户程序的文件
+# 在此处根据USER_TEST变量添加用户程序的文件 user/dir/file.bin ==> root/file.bin
 	$(foreach USER_TEST,$(ORANGESUSER),\
 		sudo $(ROOT_CP)  $(USER_TEST) $(ROOT_MOUNTPOINT)/$(notdir $(USER_TEST));\
 	)
-# 	sudo $(ORANGE_CP)  user/user/shell_0.bin $(ROOT_FS_PART)/shell_0.bin
-# 	sudo $(ORANGE_CP)  user/user/shell_1.bin $(ROOT_FS_PART)/shell_1.bin
-# 	sudo $(ORANGE_CP)  user/user/shell_2.bin $(ROOT_FS_PART)/shell_2.bin
 
-# 	sudo $(ORANGE_CP)  user/user/test_0.bin $(ROOT_FS_PART)/test_0.bin
-# 	sudo $(ORANGE_CP)  user/user/test_1.bin $(ROOT_FS_PART)/test_1.bin
-# 	sudo $(ORANGE_CP)  user/user/test_2.bin $(ROOT_FS_PART)/test_2.bin	# added by mingxuan 2021-2-28
-# 	sudo $(ORANGE_CP)  user/user/test_3.bin $(ROOT_FS_PART)/test_3.bin
-# 	sudo $(ORANGE_CP)  user/user/test_4.bin $(ROOT_FS_PART)/test_4.bin
-# 	sudo $(ORANGE_CP)  user/user/test_5.bin $(ROOT_FS_PART)/test_5.bin
-# 	sudo $(ORANGE_CP)  user/user/test_6.bin $(ROOT_FS_PART)/test_6.bin
-# 	sudo $(ORANGE_CP)  user/user/test_7.bin $(ROOT_FS_PART)/test_7.bin
-
-# 	sudo $(ORANGE_CP)  user/user/ptest1.bin $(ROOT_FS_PART)/ptest1.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest2.bin $(ROOT_FS_PART)/ptest2.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest3.bin $(ROOT_FS_PART)/ptest3.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest4.bin $(ROOT_FS_PART)/ptest4.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest5.bin $(ROOT_FS_PART)/ptest5.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest6.bin $(ROOT_FS_PART)/ptest6.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest7.bin $(ROOT_FS_PART)/ptest7.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest8.bin $(ROOT_FS_PART)/ptest8.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest9.bin $(ROOT_FS_PART)/ptest9.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest10.bin $(ROOT_FS_PART)/ptest10.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest11.bin $(ROOT_FS_PART)/ptest11.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest12.bin $(ROOT_FS_PART)/ptest12.bin
-# 	sudo $(ORANGE_CP)  user/user/ptest13.bin $(ROOT_FS_PART)/ptest13.bin
-# 	sudo $(ORANGE_CP)  user/user/fstest.bin $(ROOT_FS_PART)/fstest.bin
-# # added by dzq 2023-4-12
-# 	sudo $(ORANGE_CP)  user/user/t_exit01.bin $(ROOT_FS_PART)/t_exit01.bin
-
-
-# # added by dzq
-# 	sudo $(ORANGE_CP)  user/user/t_pthr01.bin $(ROOT_FS_PART)/t_pthr01.bin
-# 	sudo $(ORANGE_CP)  user/user/t_pthr02.bin $(ROOT_FS_PART)/t_pthr02.bin
-# 	sudo $(ORANGE_CP)  user/user/t_pthr03.bin $(ROOT_FS_PART)/t_pthr03.bin
-
-# # added by yingchi 2022.01.05
-# #	 sudo $(CP) $(CP_FLAG) user/user/myTest.bin $(BOOT_PART_MOUNTPOINT)/myTest.bin
-	
-# 	# added by mingxuan 2021-2-28
-# 	sudo $(ORANGE_CP)  user/user/sig_0.bin $(ROOT_FS_PART)/sig_0.bin
-# 	sudo $(ORANGE_CP)  user/user/sig_1.bin $(ROOT_FS_PART)/sig_1.bin
-
-# 	sudo $(ORANGE_CP)  user/user/sema1.bin $(ROOT_FS_PART)/sema1.bin
-# 	sudo $(ORANGE_CP)  user/user/rwtest1.bin $(ROOT_FS_PART)/rwtest1.bin
 	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo umount $(ROOT_MOUNTPOINT) ; \
 	fi

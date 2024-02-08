@@ -24,9 +24,10 @@
 
 extern struct vfs_dentry *vfs_root;
 
+PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb);
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino);
 PUBLIC void vfs_put_inode(struct vfs_inode *inode);
-PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* inode);
+PUBLIC struct vfs_dentry * new_dentry(const char* name, struct vfs_inode* inode);
 PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir);
 
 
@@ -65,7 +66,7 @@ PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
 // PUBLIC struct vfs* vfs_alloc_vfs_entity();
 // PUBLIC int get_index(char path[]);
 // PUBLIC void init_vfs();
-PUBLIC void init_fs(int drive);
+PUBLIC void init_fs();
 // int sys_CreateFile();
 // int sys_DeleteFile();
 // int sys_OpenFile();

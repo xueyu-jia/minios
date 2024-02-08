@@ -304,8 +304,8 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		inode->i_size = cnt * FAT_SB(sb)->cluster_sector * SECTOR_SIZE;
 	}
 	inode->i_nlink = 1;
-	inode->i_op = sb->sb_iop;
-	inode->i_fop = sb->sb_fop;
+	inode->i_op = &fat32_inode_ops;
+	inode->i_fop = &fat32_file_ops;
 	if(bh) brelse(bh);
 	return inode;
 }
@@ -397,7 +397,7 @@ PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 	return pos - start;
 }
 
-PUBLIC int fat32_write(struct file_desc* file, unsigned int count, char* buf){
+PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* buf){
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
 	int start, pos, end, len;
 	buf_head* bh;
@@ -499,10 +499,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	initlock(&FAT_SB(sb)->lock, "FAT");
 	sb->sb_dev = dev;
 	sb->fs_type = FAT32_TYPE;
-	sb->sb_iop = &fat32_inode_ops;
-	sb->sb_fop = &fat32_file_ops;
-	sb->sb_dop = &fat32_dentry_ops;
-	sb->sb_sop = &fat32_sb_ops;
+	sb->sb_op = &fat32_sb_ops;
 	struct vfs_inode * fat32_root = vfs_get_inode(sb, FAT_ROOT_INO);
 	sb->sb_root = new_dentry("/", fat32_root);
 	sb->sb_root->d_op = &fat32_dentry_ops;
@@ -514,12 +511,12 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 struct superblock_operations fat32_sb_ops = {
 .fill_superblock = fat32_fill_superblock,
 .read_inode = fat32_read_inode,
+.put_inode = fat32_put_inode,
 };
 
 struct inode_operations fat32_inode_ops = {
 .lookup = fat32_lookup,
 .create = fat32_create,
-.put_inode = fat32_put_inode,
 };
 
 struct dentry_operations fat32_dentry_ops = {

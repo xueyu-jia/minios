@@ -21,6 +21,13 @@ int get_fs_dev(int drive, u32 fs_type)
 	}
 }
 
+int get_fs_part_dev(int drive, int part, u32 fs_type){
+	if( hd_infos[drive].part[part].fs_type == fs_type){
+		return MAKE_DEV(drive, part);
+	}
+	return -1;
+}
+
 PUBLIC int get_free_superblock()
 {
 	int sb_index = 0;

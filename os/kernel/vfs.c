@@ -16,21 +16,21 @@
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
-PRIVATE vfs_inode vfs_inode_table[NR_INODE];
-#define INODE_BMAP_SIZE (NR_INODE/8)
-PUBLIC char vfs_bmap[INODE_BMAP_SIZE];
+// PRIVATE vfs_inode vfs_inode_table[NR_INODE];
+// #define INODE_BMAP_SIZE (NR_INODE/8)
+// PUBLIC char vfs_bmap[INODE_BMAP_SIZE];
 struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
 // must held sb lock
-PRIVATE struct vfs_inode* vfs_alloc_inode(struct super_block* sb){
+PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	struct vfs_inode* inode = kern_kmalloc(sizeof(struct vfs_inode));
 	//init
 	memset(inode, 0, sizeof(struct vfs_inode));
 	inode->i_nlink = 1;
-	inode->i_count = 0;
+	inode->i_count = 1;
 	inode->i_sb = sb;
 	return inode;
 }
@@ -40,6 +40,19 @@ PUBLIC void init_file_desc_table(){
     int i;
 	for (i = 0; i < NR_FILE_DESC; i++)
 		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
+}
+
+PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
+	struct vfs_inode* res = NULL;
+	acquire(&inode_alloc_lock);
+	res = vfs_alloc_inode_no_lock(sb);
+	if(sb->sb_lru_list){
+		res->lru_nxt = sb->sb_lru_list;
+		sb->sb_lru_list->lru_pre = res;
+	}
+	sb->sb_lru_list = res;
+	release(&inode_alloc_lock);
+	return res;
 }
 
 // get an inode, if not exist, alloc one 调用此函数获取inode
@@ -74,17 +87,18 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 			break;
 		}
 	}
-	if(!res){
-		res = vfs_alloc_inode(sb);
+	if(res){
+		res->i_count++;
+	}else{
+		res = vfs_alloc_inode_no_lock(sb);
 		res->i_no = ino;
-		sb->sb_sop->read_inode(res);
+		sb->sb_op->read_inode(res);
 	}
 	if(sb->sb_lru_list){
 		res->lru_nxt = sb->sb_lru_list;
 		sb->sb_lru_list->lru_pre = res;
 	}
 	sb->sb_lru_list = res;
-	res->i_count++;
 	release(&inode_alloc_lock);
 	return res;
 }
@@ -94,7 +108,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 // put inode之后自动解锁
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(--inode->i_count == 0){
-		struct inode_operations* ops = inode->i_op;
+		struct superblock_operations* ops = inode->i_sb->sb_op;
 		if(ops && ops->put_inode){
 			ops->put_inode(inode);
 		}
@@ -129,6 +143,8 @@ PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry
 	}
 	dir->d_subdirs = dentry;
 	dentry->d_parent = dir;
+	if(!dentry->d_vfsmount)
+		dentry->d_vfsmount = dir->d_vfsmount;
 }
 
 // require mutex: dir, ent
@@ -157,7 +173,7 @@ PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
 	return 0;
 }
 
-PRIVATE struct vfs_dentry * alloc_dentry(char* name){
+PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	struct vfs_dentry* dentry;
 	dentry = kern_kmalloc(sizeof(struct vfs_dentry));
 	initlock(&dentry->lock, NULL);
@@ -175,7 +191,7 @@ PRIVATE struct vfs_dentry * alloc_dentry(char* name){
 
 // alloc a new dentry for filled inode in dir
 // require mutex: dir, inode
-PUBLIC struct vfs_dentry * new_dentry(char* name, struct vfs_inode* inode){
+PUBLIC struct vfs_dentry * new_dentry(const char* name, struct vfs_inode* inode){
 	struct vfs_dentry* dentry;
 	dentry = alloc_dentry(name);
 	dentry->d_inode = inode;
@@ -210,7 +226,7 @@ PUBLIC void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 	*(p--) = 0;
 	int len;
 	while(dir != vfs_root){
-		while(dir->d_vfsmount->mnt_root==dir){
+		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
 		len = strlen(dir->d_name);
@@ -275,7 +291,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	}else if(!strcmp(name, ".")){
 		dentry = dir;
 	}else if(!strcmp(name, "..")){
-		while(dir->d_vfsmount->mnt_root==dir){
+		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
 		dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
@@ -304,7 +320,6 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 			dentry = i_ops->lookup(dir->d_inode, name);
 			if(dentry){
 				insert_sub_dentry(dir, dentry);
-				// new_dentry = 1;
 			}
 		}
 		/* lookup内部应有的流程: 
@@ -321,7 +336,8 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	}
 	while(dentry && (dentry->d_mounted)){
 		// todo: follow mount
-
+		struct vfs_mount* mnt = lookup_vfsmnt(dentry);
+		dentry = mnt->mnt_root;
 	}
 	if(dentry != dir){ // 排除当前目录
 		if(dentry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
@@ -424,13 +440,13 @@ PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
 	return sb;
 }
 
-PUBLIC void mount_root(int root_dev, int root_fstype){
-	int dev = get_fs_dev(root_dev, root_fstype);
+PUBLIC void mount_root(int root_dev, int part, int root_fstype){
+	int dev = get_fs_part_dev(root_dev, part, root_fstype);
 	struct super_block *sb = vfs_read_super(dev, root_fstype);
 	vfs_root = sb->sb_root;
 }
 
-PUBLIC void init_fs(int drive){
+PUBLIC void init_fs(){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
@@ -445,8 +461,9 @@ PUBLIC void init_fs(int drive){
 		&fat32_inode_ops,
 		&fat32_dentry_ops,
 		&fat32_sb_ops);
-	
-	mount_root(drive, ORANGE_TYPE);
+	int drive = SATA_BASE;
+	int partition = 2;
+	mount_root(drive, partition, ORANGE_TYPE);
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){
@@ -499,7 +516,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 		release(&dir_d->lock);
 		return -1;
 	}
-	add_vfsmount(block_dev, dir_d, sb->sb_root, sb);
+	sb->sb_root->d_vfsmount = add_vfsmount(block_dev, dir_d, sb->sb_root, sb);
 	// sb->sb_root->d_covers = dir_d;
 	// dir_d->d_mounts = sb->sb_root;
 	dir_d->d_mounted = 1;
@@ -514,7 +531,6 @@ PUBLIC int kern_vfs_umount(const char *target){
 	}
 	release(&mnt->lock);
 	mountpoint = remove_vfsmnt(mnt);
-	// mnt->d_covers->d_mounts = mnt->d_covers;
 	if(!mountpoint){
 		return -1;
 	}
@@ -703,7 +719,7 @@ PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
 }
 
 PUBLIC int kern_vfs_creat(const char* path, int mode){
-	return kern_vfs_open(path, O_CREAT|O_RDWR, mode);
+	return kern_vfs_open(path, O_CREAT|O_WRONLY, mode);
 }
 
 PUBLIC int kern_vfs_unlink(const char *path){
@@ -760,25 +776,6 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 			return -1;
 		}
 		insert_sub_dentry(dir, dentry);
-		// struct inode_operations * i_ops = NULL;
-		// acquire(&dir->d_inode->lock);
-		// int type = dir->d_inode->i_type;
-		// if(type == I_DIRECTORY){
-		// 	i_ops = dir->d_inode->i_op;
-		// }
-		// if(i_ops){
-		// 	dentry = alloc_dentry(file_name);
-		// 	int state = i_ops->create(dir->d_inode, dentry);
-		// 	if(state == 0){
-		// 		insert_sub_dentry(dir, dentry);
-		// 		inode = dentry->d_inode;
-		// 	}else{
-		// 		// create error
-		// 		vfs_put_inode(inode);
-		// 		inode = NULL;
-		// 	}
-		// }
-		// release(&dir->d_inode->lock);
 		acquire(&dentry->lock);
 	}
 	inode = dentry->d_inode;
@@ -817,32 +814,7 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 	}
 	dentry = vfs_create(dir->d_inode, file_name, I_DIRECTORY, mode&(~I_TYPE_MASK), 0);
 	insert_sub_dentry(dir, dentry);
-	// 	struct vfs_inode* inode = NULL;
-	// 	struct inode_operations * i_ops = NULL;
-	// 	acquire(&dir->d_inode->lock);
-	// 	int type = dir->d_inode->i_type;
-	// 	if(type == I_DIRECTORY){
-	// 		i_ops = dir->d_inode->i_op;
-	// 	}
-	// 	if(i_ops){
-	// 		inode = vfs_get_inode();
-	// 		inode->i_mode = mode&(~I_TYPE_MASK);
-	// 		inode->i_type = I_DIRECTORY;
-	// 		struct vfs_dentry * dentry = alloc_dentry(file_name);
-	// 		int state = i_ops->mkdir(dir->d_inode, dentry);
-	// 		if(state == 0){
-	// 			insert_sub_dentry(dir, dentry);
-	// 			entry = dentry;
-	// 			// acquire(&entry->lock);
-	// 		}else{
-	// 			// create error
-	// 			vfs_put_inode(inode);
-	// 			inode = NULL;
-	// 		}
-	// 	}
-	// 	release(&dir->d_inode->lock);
 	release(&dir->lock);
-	// }
 	return 0;
 }
 
@@ -948,26 +920,13 @@ PUBLIC int kern_vfs_chdir(const char* path){
 	}
 	struct vfs_inode* inode = dir->d_inode;
 	int err = -1;
-	acquire(&inode->lock);
 	if(inode->i_type == I_DIRECTORY){
 		p_proc_current->task.cwd = dir;
 		err = 0;
 	}
-	release(&inode->lock);
 	release(&dir->lock);
 	return err;
 }
-// PUBLIC void init_vfs(){
-
-//     init_file_desc_table();
-//     init_fileop_table();
-
-//     init_super_block_table();
-//     init_sb_op_table(); //added by mingxuan 2020-10-30
-
-//     //init_dev_table(); //deleted by mingxuan 2020-10-30
-//     init_vfs_table();   //modified by mingxuan 2020-10-30
-// }
 
 
 PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
