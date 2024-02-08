@@ -364,7 +364,7 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	}
 	if(ino){
 		struct vfs_inode * inode = vfs_get_inode(dir->i_sb, ino);
-		dentry = new_dentry(full_name, inode);
+		dentry = vfs_new_dentry(full_name, inode);
 		dentry->d_op = &fat32_dentry_ops;
 	}
 	return dentry;
@@ -501,7 +501,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	sb->fs_type = FAT32_TYPE;
 	sb->sb_op = &fat32_sb_ops;
 	struct vfs_inode * fat32_root = vfs_get_inode(sb, FAT_ROOT_INO);
-	sb->sb_root = new_dentry("/", fat32_root);
+	sb->sb_root = vfs_new_dentry("/", fat32_root);
 	sb->sb_root->d_op = &fat32_dentry_ops;
 	brelse(bh);
 	return 0;

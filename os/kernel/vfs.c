@@ -191,7 +191,7 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 
 // alloc a new dentry for filled inode in dir
 // require mutex: dir, inode
-PUBLIC struct vfs_dentry * new_dentry(const char* name, struct vfs_inode* inode){
+PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode){
 	struct vfs_dentry* dentry;
 	dentry = alloc_dentry(name);
 	dentry->d_inode = inode;
@@ -222,8 +222,8 @@ PUBLIC void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 		return;
 	}
 	char path[MAX_PATH];
-	char*p = path + MAX_PATH -1;
-	*(p--) = 0;
+	char*p = path + MAX_PATH;
+	*(--p) = 0;
 	int len;
 	while(dir != vfs_root){
 		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
