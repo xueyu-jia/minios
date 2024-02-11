@@ -104,8 +104,8 @@ DIR* opendir(const char* dirname) {
 	return _syscall1(_NR_opendir, dirname);
 }
 
-int mkdir(const char* dirname) {
-	return _syscall1(_NR_mkdir, dirname);
+int mkdir(const char* dirname, int mode) {
+	return _syscall2(_NR_mkdir, dirname, mode);
 }
 
 int rmdir(const char* dirname) {

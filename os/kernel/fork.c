@@ -6,6 +6,7 @@
 #include "const.h"
 #include "proc.h"
 #include "string.h"
+#include "fs.h"
 
 PRIVATE int fork_mem_cpy(u32 ppid,u32 pid);
 PRIVATE int fork_pcb_cpy(PROCESS* p_child);
@@ -241,6 +242,11 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	
 	p_child->task.ldt_sel = selector_ldt;				
 	p_child->task.cr3 = cr3_child;
+	for(int i=0; i<NR_FILES; i++){
+		if(p_child->task.filp[i]){
+			fget(p_child->task.filp[i]);
+		}
+	}
 	return 0;
 }
 

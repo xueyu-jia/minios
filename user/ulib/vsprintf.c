@@ -144,6 +144,26 @@ PUBLIC char getchar(){
 	return read(STD_IN,&ch,1)==1 ? ch : EOF;
 }
 
+PUBLIC char fgetc(int fd){
+	char ch;
+	return read(fd,&ch,1)==1 ? ch : EOF;
+}
+
+PUBLIC char* fgets(char *str, int size, int fd){
+	char c;
+	char *cs;
+	cs= str;
+	while(size && (c=fgetc(fd)) != EOF ){
+		if( (*cs=c)=='\n' ){
+			*cs = '\0';
+			break;
+		}
+		cs++;
+		size--;
+	}
+	return str;
+}
+
 PUBLIC char* gets(char *str){
 	char c;
 	char *cs;

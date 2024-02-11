@@ -65,10 +65,6 @@ int free_4k(void* AdddrLin);
 /*printf.c*/
 //added by mingxuan 2019-5-19
 #define EOF -1
-#define _INTSIZEOF(n)   ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
-#define va_start(ap,v) ( ap = (va_list)&v + _INTSIZEOF(v) )
-#define va_arg(ap,t)    ( *(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)) )
-#define va_end(ap)      ( ap = (va_list)0 )
 #define isspace(s)  (s==' ')
 
 #define TOLOWER(x) ((x) | 0x20)
@@ -81,5 +77,6 @@ PUBLIC	int	printf(const char *fmt, ...);
 PUBLIC  int scanf(char *str, ...);
 char getchar();         //added by mingxuan 2019-5-23
 char* gets(char *str);  //added by mingxuan 2019-5-23
-
+char fgetc(int fd);
+char* fgets(char *str, int size, int fd);
 #endif  //added by mingxuan 2019-5-19

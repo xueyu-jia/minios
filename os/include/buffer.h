@@ -28,4 +28,5 @@ buf_head *bread(int dev, int block);
 void mark_buff_dirty(buf_head *bh);
 void brelse(buf_head *bh);
 
+extern struct file_operations blk_file_ops;
 #endif

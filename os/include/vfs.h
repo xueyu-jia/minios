@@ -54,7 +54,7 @@ PUBLIC int do_vlseek(int fd, int offset, int whence);
 PUBLIC int do_vcreat(const char *pathname);
 PUBLIC int do_vclosedir(DIR* dirp);
 PUBLIC int do_vopendir(const char *dirname);
-PUBLIC int do_vmkdir(const char *dirname);
+PUBLIC int do_vmkdir(const char *dirname, int mode);
 PUBLIC int do_vrmdir(const char *dirname);
 PUBLIC int do_vchdir(const char *path); //added by ran
 //PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
@@ -65,15 +65,5 @@ PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
 // PUBLIC int get_index(char path[]);
 // PUBLIC void init_vfs();
 PUBLIC void init_fs();
-// int sys_CreateFile();
-// int sys_DeleteFile();
-// int sys_OpenFile();
-// int sys_CloseFile();
-// int sys_WriteFile();
-// int sys_ReadFile();
-// int sys_OpenDir();
-// int sys_CreateDir();
-// int sys_DeleteDir();
-// int sys_ListDir();
 
 #endif

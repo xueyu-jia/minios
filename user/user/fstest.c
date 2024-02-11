@@ -26,7 +26,7 @@ void main(int argc,char *argv[])
 		path[i++] = 'a' + (i % 26);
 		path[i++] = 'a' + (i % 26);
 		path[i] = 'a' + (i % 26);
-		mkdir(path);
+		mkdir(path, I_RWX);
 	}
 	printf("path:%s\n", path);
 	printf("path length :%d\n", strlen(path));

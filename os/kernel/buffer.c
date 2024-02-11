@@ -331,3 +331,78 @@ void brelse(buf_head *bh)
     release(&bh->lock);
 
 }
+
+PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf){
+	int pos = file->fd_pos;
+	struct vfs_inode *inode = file->fd_dentry->d_inode;
+	int pos_end = max(pos + count, inode->i_size);
+	int off = pos % BLOCK_SIZE;
+	int rw_blk_min = (pos >> BLOCK_SIZE_SHIFT);
+	int rw_blk_max = (pos_end >> BLOCK_SIZE_SHIFT);
+	int chunk = min(rw_blk_max - rw_blk_min + 1,BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
+	int bytes_rw = 0;
+	int bytes_left = count;
+	int i;
+	char *fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = rw_blk_min; i <= rw_blk_max; i += chunk){
+		/* read/write this amount of bytes every time */
+		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
+		bh = bread(inode->i_dev,i);
+		fsbuf = bh->buffer;
+		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+			bytes = pos_end - pos;
+		}
+		phys_copy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
+		mark_buff_dirty(bh);
+		off = 0;
+		bytes_rw += bytes;
+		pos += bytes;
+		bytes_left -= bytes;
+		brelse(bh);
+	}
+	file->fd_pos = pos;
+	if (file->fd_pos > inode->i_size)
+	{
+		/* update inode::size */
+		inode->i_size = file->fd_pos;
+	}
+	return bytes_rw;
+}
+
+PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
+	int pos = file->fd_pos;
+	struct vfs_inode *inode = file->fd_dentry->d_inode;
+	int pos_end = min(pos + count, inode->i_size);
+	int off = pos % BLOCK_SIZE;
+	int rw_blk_min = (pos >> BLOCK_SIZE_SHIFT);
+	int rw_blk_max = (pos_end >> BLOCK_SIZE_SHIFT);
+	int chunk = min(rw_blk_max - rw_blk_min + 1,BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
+	int bytes_rw = 0;
+	int bytes_left = count;
+	int i;
+	char *fsbuf = NULL;
+	buf_head * bh = NULL;
+	for (i = rw_blk_min; i <= rw_blk_max; i += chunk){
+		/* read/write this amount of bytes every time */
+		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
+		bh = bread(inode->i_dev,i);
+		fsbuf = bh->buffer;
+		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+			bytes = pos_end - pos;
+		}
+		phys_copy((void*)(buf + bytes_rw), (void *)(fsbuf + off), bytes);
+		off = 0;
+		bytes_rw += bytes;
+		pos += bytes;
+		bytes_left -= bytes;
+		brelse(bh);
+	}
+	file->fd_pos = pos;
+	return bytes_rw;
+}
+
+struct file_operations blk_file_ops = {
+.read = blk_file_read,
+.write = blk_file_write,
+};

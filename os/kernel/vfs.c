@@ -8,6 +8,7 @@
 #include "proto.h"
 #include "fs.h"
 #include "tty.h"
+#include "buffer.h"
 #include "vfs.h"
 #include "hd.h"
 #include "mount.h"
@@ -16,9 +17,6 @@
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
-// PRIVATE vfs_inode vfs_inode_table[NR_INODE];
-// #define INODE_BMAP_SIZE (NR_INODE/8)
-// PUBLIC char vfs_bmap[INODE_BMAP_SIZE];
 struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
@@ -30,7 +28,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	//init
 	memset(inode, 0, sizeof(struct vfs_inode));
 	inode->i_nlink = 1;
-	inode->i_count = 1;
+	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
 	return inode;
 }
@@ -88,7 +86,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 		}
 	}
 	if(res){
-		res->i_count++;
+		atomic_inc(&res->i_count);
 	}else{
 		res = vfs_alloc_inode_no_lock(sb);
 		res->i_no = ino;
@@ -107,7 +105,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 // 如果引用计数归0，且引用的文件数也为0，执行删除文件
 // put inode之后自动解锁
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
-	if(--inode->i_count == 0){
+	if(atomic_dec_and_test(&inode->i_count)){
 		struct superblock_operations* ops = inode->i_sb->sb_op;
 		if(ops && ops->put_inode){
 			ops->put_inode(inode);
@@ -270,9 +268,7 @@ PRIVATE char* strip_dir_path(const char *path, char* dir){
 }
 
 PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
-	acquire(&inode->lock);
 	int mode = inode->i_mode;
-	release(&inode->lock);
 	if(!(mode & I_X)){
 		return -1;
 	}
@@ -389,6 +385,26 @@ PUBLIC struct vfs_dentry *vfs_lookup(const char *path){
 	return dir;
 }
 
+PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int dev){
+	acquire(&inode->lock);
+	inode->i_mode = mode;
+	inode->i_type = type;
+	inode->i_dev = dev;
+	switch (type)
+	{
+		case I_CHAR_SPECIAL:
+			inode->i_size = 0;
+			inode->i_fop = &tty_file_ops;
+			break;
+		case I_BLOCK_SPECIAL:
+			inode->i_size = hd_infos[MAJOR(dev)].part[MINOR(dev)].size;
+			inode->i_fop = &blk_file_ops;
+		default:
+			break;
+	}
+	release(&inode->lock);
+}
+
 PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	const char* file_name, int type, int mode, int dev){
 	struct inode_operations * i_ops = NULL;
@@ -411,6 +427,9 @@ PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 			kern_kfree(dentry);
 			release(&dir->lock);
 			return NULL;
+		}
+		if(type == I_BLOCK_SPECIAL || type == I_CHAR_SPECIAL){
+			init_special_inode(dentry->d_inode, type, mode, dev);
 		}
 	}
 	release(&dir->lock);
@@ -517,8 +536,6 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 		return -1;
 	}
 	sb->sb_root->d_vfsmount = add_vfsmount(block_dev, dir_d, sb->sb_root, sb);
-	// sb->sb_root->d_covers = dir_d;
-	// dir_d->d_mounts = sb->sb_root;
 	dir_d->d_mounted = 1;
 	release(&dir_d->lock);
 	return 0;
@@ -534,9 +551,7 @@ PUBLIC int kern_vfs_umount(const char *target){
 	if(!mountpoint){
 		return -1;
 	}
-	acquire(&mountpoint->lock);
 	mountpoint->d_mounted = 0;
-	release(&mountpoint->lock);
 	// mnt->
 	return 0;
 }
@@ -547,6 +562,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	char* file_name = strip_dir_path(path, dir_path);
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct vfs_inode *inode = NULL;
+	struct file_desc *file = NULL;
 	if(!dir){
 		return NULL;
 	}
@@ -576,27 +592,29 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	acquire(&file_desc_lock);
 	/* find a free slot in f_desc_table[] */
 	for (i = 0; i < NR_FILE_DESC; i++){
-		if (f_desc_table[i].flag == 0)
+		if (f_desc_table[i].flag == 0){
+			file = &f_desc_table[i];
 			break;
+		}	
 	}
 	if (i >= NR_FILE_DESC){
 		release(&file_desc_lock);
 		disp_str("f_desc_table[] is full (PID:");
 		disp_int(proc2pid(p_proc_current));
 		disp_str(")\n");
-		release(&file_desc_lock);
 		goto err;
 	}
-	f_desc_table[i].flag = 1;
+	file->flag = 1;
+	atomic_set(&file->fd_count, 1);
 	release(&file_desc_lock);
-	inode->i_count++;
-	f_desc_table[i].fd_dentry = dentry;
-	f_desc_table[i].fd_mode = rmode;//fd_mode: 1:read 2:write
-	f_desc_table[i].fd_pos = 0;	
+	atomic_inc(&inode->i_count);
+	file->fd_dentry = dentry;
+	file->fd_mode = rmode;//fd_mode: bit 0:read 1:write
+	file->fd_pos = 0;	
 	release(&inode->lock);
 	release(&dentry->lock);
 	release(&dir->lock);
-	return &f_desc_table[i];
+	return file;
 err:
 	release(&inode->lock);
 	release(&dentry->lock);
@@ -634,12 +652,16 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 }
 
 PUBLIC int kern_vfs_close(int fd) {    //modified by mingxuan 2021-8-15
-    struct vfs_inode* inode = p_proc_current->task.filp[fd]->fd_dentry->d_inode;
+	struct file_desc* file = p_proc_current->task.filp[fd];
+	if(!file){
+		return -1;
+	}
+    struct vfs_inode* inode = file->fd_dentry->d_inode;
 	acquire(&inode->lock);
 	vfs_put_inode(inode);
 	p_proc_current->task.filp[fd]->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
-	p_proc_current->task.filp[fd]->flag = 0;
+	fput(file);
 	release(&file_desc_lock);			 // added by mingxuan 2019-5-17
 	p_proc_current->task.filp[fd] = 0;
 	return 0;
@@ -749,7 +771,7 @@ PUBLIC int kern_vfs_unlink(const char *path){
 		}
 		inode->i_nlink = 0;
 	}
-	vfs_put_inode(inode);
+	delete_dentry(entry, dir);
 	release(&entry->lock);
 	release(&dir->lock);
 	return 0;
@@ -769,7 +791,9 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 		return -1;
 	}
 	dentry = _do_lookup(dir, file_name, 0);
-	if(!dentry){
+	if(dentry){
+		init_special_inode(dentry->d_inode, mode&I_TYPE_MASK, mode&(~I_TYPE_MASK), dev);
+	}else{
 		dentry = vfs_create(dir->d_inode, file_name, mode&I_TYPE_MASK, mode&(~I_TYPE_MASK), dev);
 		if(!dentry){
 			release(&dir->lock);
@@ -778,21 +802,6 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 		insert_sub_dentry(dir, dentry);
 		acquire(&dentry->lock);
 	}
-	inode = dentry->d_inode;
-	acquire(&inode->lock);
-	inode->i_size = 0;
-	inode->i_mode = mode&(~I_TYPE_MASK);
-	inode->i_type = mode&I_TYPE_MASK;
-	inode->i_dev = dev;
-	switch (inode->i_type)
-	{
-		case I_CHAR_SPECIAL:
-			inode->i_fop = &tty_file_ops;
-			break;
-		default:
-			break;
-	}
-	release(&inode->lock);
 	release(&dentry->lock);
 	release(&dir->lock);
 	return 0;
@@ -833,7 +842,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 	}
 	struct vfs_inode *inode = dentry->d_inode;
 	acquire(&inode->lock);
-	if(dentry->d_vfsmount->mnt_root == dentry){// 不允许删除挂载点
+	if(dentry == vfs_root || dentry->d_vfsmount->mnt_root == dentry){// 不允许删除挂载点
 		goto err;
 	}
 	if(inode->i_type != I_DIRECTORY){
@@ -852,6 +861,11 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		inode->i_nlink = 0;
 	}
 	vfs_put_inode(inode);
+	struct vfs_dentry* sub;
+	while(sub = dentry->d_subdirs){
+		delete_dentry(sub, dentry);
+	}
+	delete_dentry(dentry, dir);
 	release(&dentry->lock);
 	release(&dir->lock);
 	return 0;
@@ -979,8 +993,8 @@ PUBLIC int do_vclosedir(DIR* dirp)
 	return kern_vfs_closedir(dirp);
 }
 
-PUBLIC int do_vmkdir(const char *path) {
-	return kern_vfs_mkdir(path, I_RWX);
+PUBLIC int do_vmkdir(const char *path, int mode) {
+	return kern_vfs_mkdir(path, mode);
 }
 
 PUBLIC int do_vrmdir(const char *path) {
@@ -1047,7 +1061,7 @@ PUBLIC int sys_opendir() {
 }
 
 PUBLIC int sys_mkdir() {
-    return do_vmkdir(get_arg(1));
+    return do_vmkdir(get_arg(1), get_arg(2));
 }
 
 PUBLIC int sys_rmdir() {
@@ -1055,7 +1069,7 @@ PUBLIC int sys_rmdir() {
 }
 
 PUBLIC int sys_readdir() {
-    return do_vreaddir(get_arg(1));
+    return do_vreaddir((DIR*)get_arg(1));
 }
 
 //added by ran

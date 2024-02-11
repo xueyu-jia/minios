@@ -46,7 +46,7 @@ int do_mkdir(int argc, char** argv){
 		printf("usage: mkdir %%path\n");
 		return -1;
 	}
-	return mkdir(argv[1]);
+	return mkdir(argv[1], I_RWX);
 }
 
 int do_mount(int argc, char** argv){

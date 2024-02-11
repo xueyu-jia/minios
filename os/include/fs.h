@@ -8,10 +8,10 @@
 #define	FS_H
 
 #include "type.h"
+#include "atomic.h"
 #include "spinlock.h"
 #include "fs_const.h"
 #include "proc.h"
-#include "vfs.h"
 
 /**
  * structure for fs common ***文件系统公共数据结构***
@@ -25,7 +25,7 @@ typedef struct vfs_inode{
 	struct super_block* i_sb;
 	u32 i_dev; // for char special inode
 	u32 i_nlink; // file linked
-	u32 i_count; // reference count
+	atomic_t i_count; // reference count
 	u32 i_size;  // file size in byte
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
@@ -69,10 +69,7 @@ struct super_block {
    */
   	struct vfs_dentry* sb_root;
 	struct vfs_inode* sb_lru_list;
-	// struct file_operations * sb_fop;
-	// struct inode_operations * sb_iop;
 	struct superblock_operations * sb_op;
-	// struct dentry_operations * sb_dop;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
@@ -82,10 +79,14 @@ struct super_block {
 struct file_desc {
 	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
+	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
 	int		fd_pos;		/**< Current position for R/W. */
 	struct vfs_dentry *fd_dentry;
 	struct file_operations* fd_ops;
 };
+
+#define fget(file) atomic_inc(&((file)->fd_count))
+#define fput(file) if(atomic_dec_and_test(&((file)->fd_count))) (file)->flag = 0
 
 struct dirent{
 	int d_ino;

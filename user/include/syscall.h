@@ -168,7 +168,7 @@ int unlink(const char* pathname);
 int creat(const char* pathname);
 DIR* opendir(const char* dirname);
 int closedir(DIR* dirp);
-int mkdir(const char* dirname);
+int mkdir(const char* dirname, int mode);
 int rmdir(const char* dirname);
 struct dirent* readdir(DIR* dirp);
 int chdir(const char* path);

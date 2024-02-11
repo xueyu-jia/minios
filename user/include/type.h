@@ -34,7 +34,10 @@ typedef	void	(*task_f)	();
 typedef	void	(*irq_handler)	(int irq);
 
 typedef	char *	va_list;	//added by mingxuan 2019-5-19
-
+#define _INTSIZEOF(n)   ( (sizeof(n) + sizeof(int) - 1) & ~(sizeof(int) - 1) )
+#define va_start(ap,v) ( ap = (va_list)&v + _INTSIZEOF(v) )
+#define va_arg(ap,t)    ( *(t *)((ap += _INTSIZEOF(t)) - _INTSIZEOF(t)) )
+#define va_end(ap)      ( ap = (va_list)0 )
 typedef void*	system_call;
 
 //mainly used in filesystem. added by xw, 18/8/27
