@@ -253,9 +253,11 @@ PUBLIC void hd_service()
 		// 	rwinfo->proc->task.stat = READY;
 		// }
 		out_hd_queue(&hdque, &rwinfo);
-		hd_rdwt_real(rwinfo);
-		rwinfo->proc->task.stat = READY;
-		yield();
+		if(rwinfo){
+			hd_rdwt_real(rwinfo);
+			rwinfo->proc->task.stat = READY;
+			yield();
+		}
 		
 		//disp_str("H ");
 		//milli_delay(100);

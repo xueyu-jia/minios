@@ -267,9 +267,9 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 }
 
 PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, int task, u32 entry){
-	u8 privilege = task? PRIVILEGE_TASK: PRIVILEGE_USER;
-	u32 eflags = task? 0x1202 : 0x202;
-	u32 rpl = task? RPL_TASK: RPL_USER;
+	u8 privilege = task? PRIVILEGE_KRNL: PRIVILEGE_USER;
+	u32 eflags = 0x202;//task? 0x1202 : 0x202;
+	u32 rpl = task? RPL_KRNL: RPL_USER;
 	p_proc->task.ldt_sel = ldt_sel;
 	memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
 	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
@@ -288,7 +288,7 @@ PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, int task, u32 entr
 														 //sched() will fetch value from esp_save_context
 	*(u32 *)(p_regs - 4) = (u32)(restart_restore); //initialize EIP in the context, so the process can
 												 //start run. added by xw, 18/4/18
-	*(u32 *)(p_regs - 8) = 0x1202;
+	*(u32 *)(p_regs - 8) = 0x202;
 }
 
 /*************************************************************************

@@ -75,7 +75,7 @@ PUBLIC void init_screen(TTY* tty)
 
 PUBLIC void out_char(CONSOLE* con, char ch)
 {
-	acquire(&video_mem_lock);
+	// acquire(&video_mem_lock);
 	disable_int();
 	
 
@@ -145,7 +145,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	flush(con);
 
 	enable_int();
-	release(&video_mem_lock);
+	// release(&video_mem_lock);
 }
 
 

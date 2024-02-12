@@ -187,8 +187,9 @@ PRIVATE void tty_dev_write(TTY* tty){
                 }
             }   
         }
+		acquire(&video_mem_lock);
         out_char(tty->console,ch);
-        
+        release(&video_mem_lock);
     }
 }
 
@@ -235,8 +236,10 @@ PUBLIC void task_tty(){
  *****************************************************************************/
 PUBLIC void tty_write(TTY* tty, char* buf, int len)
 {
+	acquire(&video_mem_lock);
 	while (--len >= 0)
 		out_char(tty->console, *buf++);
+	release(&video_mem_lock);
 }
 
 /*****************************************************************************

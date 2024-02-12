@@ -156,6 +156,7 @@ PUBLIC void kern_sleep(int n)
 		p_proc_current->task.stat = SLEEPING;
 		sched();	//Modified by xw, 18/4/19
 	}
+	p_proc_current->task.channel = 0;
 }
 
 PUBLIC void do_sleep(int n)
@@ -267,4 +268,5 @@ PUBLIC void wait_event(void* event) {
   	} else {
 		yield();	//系统调用
   	}
+	p_proc_current->task.channel = 0;
 }
