@@ -3,6 +3,17 @@
 #define MAX_ARGC	8
 #define NUM_BUILTIN_CMD	5
 #define CMD_LEN	8
+
+// #define SHELL_TEST
+
+#ifdef SHELL_TEST
+#define TEST_CMD_NUM 3
+char* pre_test_cmds[TEST_CMD_NUM] = {
+	"mkdir fat",
+	"mount /dev/sda1 fat fat32",
+	"ls fat"
+};
+#endif
 struct cmd{
 	char cmd_name[CMD_LEN];
 	int (*handler)(int , char**);
@@ -113,16 +124,30 @@ void main(int arg,char *argv[])
 	char pwd[MAX_PATH];
     int pid;
     int times = 0;
+	int pre = 0;
 	char * args[MAX_ARGC];
 	reg_cmd("ls", do_ls);
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
 	reg_cmd("mkdir", do_mkdir);
 	reg_cmd("mount", do_mount);
+	#ifdef SHELL_TEST
+	pre = TEST_CMD_NUM;
+	#endif
   	while(1)
 	{
         printf("\nminiOS:%s $ ",getcwd(pwd, MAX_PATH));
-        if(gets(buf) && strlen(buf)!=0 )
+		#ifdef SHELL_TEST
+		if(pre){
+			strncpy(buf, pre_test_cmds[TEST_CMD_NUM - pre], 64);
+			pre--;
+		}else{
+			gets(buf);
+		}
+		#else 
+			gets(buf);
+		#endif
+        if(strlen(buf)!=0 )
 		{
 			int argc = parse(buf, args, MAX_ARGC);
 			// printf("%d ", argc);

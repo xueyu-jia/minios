@@ -128,7 +128,7 @@ int stricmp(const char *s1, const char *s2)
     {
         return s1 - s2;
     }
-	for(; (c1 = *s1)&&(c2 = *s2); s1++, s2++){
+	for(; (c1 = *s1, c2 = *s2, c1 && c2); s1++, s2++){
 		if (c1 == c2)
 			continue;
 		c1 = tolower(c1);

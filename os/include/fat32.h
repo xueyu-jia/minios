@@ -63,6 +63,7 @@ struct fat_dir_entry{
 #define FAT_DPS_SHIFT 4
 #define FAT_ROOT_INO	1
 #define FAT_DOT	".          "
+#define FAT_DOTDOT	"..         "
 
 struct fat_dir_slot{
 	u8 order;

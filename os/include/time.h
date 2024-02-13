@@ -16,4 +16,5 @@ struct tm
 	long int __tm_gmtoff;		/* Seconds east of UTC.  */
 	const char *__tm_zone;	/* Timezone abbreviation.  */
 };
+void get_rtc_datetime(struct tm* time);
 #endif

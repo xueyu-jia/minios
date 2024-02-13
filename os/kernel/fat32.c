@@ -1,9 +1,11 @@
 // /**********************************************************
 // *	fat32.c       
 // ***********************************************************/
-
+// #define FAT_TEST
+#ifndef FAT_TEST
 #include "type.h"
 #include "const.h"
+#include "time.h"
 #include "string.h"
 #include "buffer.h"
 #include "vfs.h"
@@ -15,6 +17,42 @@ PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len){
 		*(norm_name++) = c&0xFF;
 	}
 	*norm_name = 0;
+}
+
+PRIVATE void char2uni(u16* uni_name, char* norm_name, int max_len){
+	char c;
+	for(int i = 0; (c = *(norm_name++)) &&i < max_len; i++){
+		*(uni_name++) = c;
+	}
+	*uni_name = 0;
+}
+
+PRIVATE u8 fat_chksum(const char* shortname){
+	u8 sum = 0;
+	int i;
+	for (sum = 0, i = 0; i < 11; i++) {
+		sum = (((sum&1)<<7)|((sum&0xfe)>>1)) + shortname[i]; 
+		//两部分的name实际是连续的，所以get entry 中传入de->name没问题
+	}
+	return sum;
+}
+
+PRIVATE void fat_update_datetime(struct tm* time_s, u16* date, u16* time){
+	*date = ((time_s->tm_year+1900-1980) << 9)
+			|((time_s->tm_mon+1) << 5)
+			|(time_s->tm_mday);
+	*time = ((time_s->tm_hour) << 11)
+			|((time_s->tm_min) << 5)
+			|(time_s->tm_sec >> 1);
+}
+
+PRIVATE void fat_read_datetime(struct tm* time_s, u16 date, u16 time){
+	time_s->tm_year = (date >> 9) + 1980 - 1900;
+	time_s->tm_mon = ((date >> 5) & 0xF) - 1;
+	time_s->tm_mday = ((date) & 0x1F);
+	time_s->tm_hour = ((time >> 11) & 0x1F);
+	time_s->tm_min = ((time >> 5) & 0x2F);
+	time_s->tm_sec = (time & 0x1F) << 1;
 }
 
 PRIVATE struct fat_info* alloc_fat_info(int cluster_start){
@@ -138,10 +176,16 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 	struct super_block* sb = inode->i_sb;
 	int clus_sector = off >> SECTOR_SIZE_SHIFT;
 	int clus_skip = clus_sector / FAT_SB(sb)->cluster_sector;
-	int clus, last;
+	int clus, last = 0;
 	struct fat_info* info = inode->fat32_inode.fat_info;
+	int new = 0;
 	if(!info->cluster_start){
-		return -1;
+		if(!new_space){
+			return -1;
+		}
+		clus = add_new_cluster(sb, last);
+		info->cluster_start = clus;
+		info->length = 1;
 	}
 	while(clus_skip && info){
 		if(clus_skip < info->length)
@@ -159,6 +203,7 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 			}else{// new alloc cluster not consecutive
 				info->next = alloc_fat_info(clus);
 			}
+			new = 1;
 		}
 		clus_skip -= info->length;
 		info = info->next;
@@ -166,9 +211,16 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 	if(!info){
 		return -1;
 	}
+	if(new){
+		fat32_sync_inode(inode);
+	}
 	clus_sector = FAT_SB(sb)->data_start_sector 
 		+(info->cluster_start+clus_skip -2)* FAT_SB(sb)->cluster_sector + (clus_sector%FAT_SB(sb)->cluster_sector);
 	return clus_sector;
+}
+
+PRIVATE int fat_ino(struct vfs_inode* dir, int entry){
+	return (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT) | (entry&(FAT_DPS-1));
 }
 
 PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int alloc_new){
@@ -226,13 +278,8 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 			n_slot--;
 		}else if(!(ds->attr&ATTR_VOL)){// skip volume
 			// check sum
-			u8 sum;
-			int i;
 			de = (struct fat_dir_entry*)ds;
-			for (sum = 0, i = 0; i < 11; i++) {
-				sum = (((sum&1)<<7)|((sum&0xfe)>>1)) + de->name[i]; 
-				//两部分的name实际是连续的，所以没问题
-			}
+			u8 sum = fat_chksum(de->name);
 			if(sum != chksum){
 				disp_str("error: chksum wrong");
 				is_long = 0;
@@ -268,15 +315,139 @@ PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
 		}
 		count = 0;
 	}
+	if(bh){
+		brelse(bh);
+	}
 	return res;
 }
 
 PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
-
+	buf_head* bh;
+	struct fat_dir_slot* ds;
+	int start, res = 0;
+	for(start = 0; ; start++){
+		ds = fat_get_slot(dir, start, &bh, 1);
+		if(ds->order == DIR_DELETE){
+			continue;
+		}else if(ds->order == 0){
+			break;// 后面的均为空闲，不用找了
+		}
+		if(!strncmp(name, ((struct fat_dir_entry*)ds)->name, 11)){
+			res = -1;
+			break;
+		}
+	}
+	return res;
 }
 
-PRIVATE void fat_add_name(struct vfs_inode* dir, const char* name, int clus_start){
+// get shortname return 0 if legal
+PRIVATE int fat_gen_shortname(struct vfs_inode* dir, const char* fullname, char* shortname){
+	int len = strlen(fullname);
+	int type = 0, offset = 0, ext_start = -1, baselen;
+	char c;
+	for(ext_start = len; ext_start >= 0 ;ext_start--){
+		if(fullname[ext_start] == '.'){
+			ext_start++;
+			break;
+		}
+	}
+	for(int i = 0; i < len; i++) {
+		c = fullname[i];
+		if(type == 0){// skipped start
+			if(!(c == '.' || c == ' ')){
+				type = 1;
+			}
+			if(i == ext_start){
+				ext_start = -1;
+			}
+		}else if(type == 1 && ext_start != -1 && i >= ext_start){
+			type = 2;
+			offset = 8;
+		}
+		if(!((type == 1 && offset < 8 && ((ext_start == -1) || (i < ext_start - 1)))
+			||(type == 2 && offset < 11)))
+			continue;
+		if(c >= 'a' && c <= 'z'){
+			c = c -'a' + 'A';
+		}
+		shortname[offset++] = c;
+		if(type){
+			baselen = offset;
+		}
+	}
+	if(shortname[0] == DIR_DELETE){
+		shortname[0] = 0x05;
+	}
+	if(!fat_check_short(dir, shortname))
+		return 0;
+	if(baselen > 6 ){
+		baselen = 6;
+	}
+	shortname[baselen] = '~';
+	for(int i=0; i<10; i++){
+		shortname[baselen + 1] = '0' + i;
+		if(!fat_check_short(dir, shortname)){
+			return 0;
+		}
+	}
+	// 尝试达到10次仍然重复,使用tick产生随机序列 事实上，现有已知的实现大多也是这么处理的
+	int rand = kern_get_ticks();
+	itoa(rand&0xFFFF, shortname + baselen - 4, 16);
+	shortname[baselen] = '~';
+	shortname[baselen + 1] = '0' + rand % 10;
+	if(!fat_check_short(dir, shortname)){
+		return 0;
+	}
+	return -1;
+}
 
+PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* entry, int order){
+	buf_head* bh = NULL;
+	struct fat_dir_entry* de = fat_get_slot(dir, order, &bh, 1);
+	if(!de)
+		return -1;
+	*de = *entry;
+	mark_buff_dirty(bh);
+	brelse(bh);
+}
+
+PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir, struct tm* time){
+	int nslot = strlen(name)/13  + 1;
+	int free_slot_order = fat_find_free(dir, nslot+1);
+	buf_head* bh;
+	u8 chksum;
+	int offset;
+	char shortname[12];
+	u16 uniname[256];
+	memset(shortname, ' ', 12);
+	fat_gen_shortname(dir, name, shortname);
+	memset(uniname, -1, 256);
+	char2uni(uniname, name, 256);
+	chksum = fat_chksum(shortname);
+	for(int slot = nslot; slot > 0; slot--){
+		u8 order = slot | ((slot == nslot)? DIR_LDIR_END:0);
+		struct fat_dir_slot * ds = fat_get_slot(dir, free_slot_order + (nslot - slot), &bh, 1);
+		ds->attr = ATTR_LNAME;
+		ds->order = order;
+		offset = (slot-1)*13;
+		memcpy(ds->name0_4, uniname + offset, 10);
+		offset += 5;
+		memcpy(ds->name5_10, uniname + offset, 6);
+		offset += 6;
+		memcpy(ds->name11_12, uniname + offset, 2);
+		ds->checksum = chksum;
+	}
+	if(bh)brelse(bh);
+	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
+	inode->i_dev = dir->i_sb->sb_dev;
+	inode->i_no = fat_ino(dir, free_slot_order + nslot);
+	fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
+	struct fat_dir_entry de;
+	memcpy(de.name, shortname, 11);
+	de.attr = (is_dir)? ATTR_DIR : ATTR_ARCH;
+	fat_update_datetime(time, &de.cdate, &de.ctime);
+	fat_write_shortname(dir, &de, free_slot_order + nslot);
+	return inode;
 }
 
 PUBLIC void fat32_read_inode(struct vfs_inode* inode){
@@ -315,6 +486,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		return 0;
 	}
 	buf_head* bh;
+	struct tm time;
 	int ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
@@ -327,6 +499,8 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		de->start_h = start >> 16;
 		de->start_l = start & 0xFFFF;
 	}
+	get_rtc_datetime(&time);
+	fat_update_datetime(&time, &de->mdate, &de->mtime);
 	if(bh){
 		mark_buff_dirty(bh);
 		brelse(bh);
@@ -350,12 +524,11 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	struct fat_dir_entry* de;
 	buf_head* bh;
 	struct vfs_dentry* dentry = NULL;
-	while(entry* FAT_ENTRY_SIZE < dir->i_size){
+	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
 		if(!stricmp(filename, full_name)){
-			ino = (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT)
-				 | (entry&(FAT_DPS-1));
+			ino = fat_ino(dir, entry);
 			break;
 		}
 	}
@@ -370,8 +543,37 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	return dentry;
 }
 
-PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry){
+PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
+	struct tm time;
+	get_rtc_datetime(&time);
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0, &time);
+	inode->i_type = I_REGULAR;
+	inode->i_mode = mode;
+	inode->i_op = &fat32_inode_ops;
+	inode->i_fop = &fat32_file_ops;
+	dentry->d_inode = inode;
+	fat32_sync_inode(inode);
+	return 0;
+}
 
+PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
+	struct tm time;
+	get_rtc_datetime(&time);
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1, &time);
+	inode->i_type = I_DIRECTORY;
+	inode->i_mode = mode;
+	struct fat_dir_entry de;
+	memcpy(de.name, FAT_DOT, 11);
+	de.attr = ATTR_DIR;
+	de.size = FAT_SB(dir->i_sb)->cluster_sector * SECTOR_SIZE;
+	fat_write_shortname(inode, &de, 0);
+	memcpy(de.name, FAT_DOTDOT, 11);
+	de.attr = ATTR_DIR;
+	de.size = dir->i_size;
+	fat_write_shortname(inode, &de, 1);
+	dentry->d_inode = inode;
+	fat32_sync_inode(inode);
+	return 0;
 }
 
 PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
@@ -435,8 +637,9 @@ PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
 		start->d_ino = FAT_ROOT_INO;
 		strcpy(start->d_name, "..");
 		start++;
+		count += 2;
 	}
-	while(entry* FAT_ENTRY_SIZE < dir->i_size){
+	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
 		start->d_ino = (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT)
@@ -517,6 +720,7 @@ struct superblock_operations fat32_sb_ops = {
 struct inode_operations fat32_inode_ops = {
 .lookup = fat32_lookup,
 .create = fat32_create,
+.mkdir = fat32_mkdir,
 };
 
 struct dentry_operations fat32_dentry_ops = {
@@ -528,3 +732,53 @@ struct file_operations fat32_file_ops = {
 .write = fat32_write,
 .readdir = fat32_readdir,
 };
+#endif
+// unit test
+
+#ifdef FAT_TEST
+#include <stdio.h>
+int fat_gen_shortname(const char* fullname, char* shortname){
+	int len = strlen(fullname);
+	int type = 0, offset = 0, ext_start = -1;
+	char c;
+	for(ext_start = len; ext_start >= 0 ;ext_start--){
+		if(fullname[ext_start] == '.'){
+			ext_start++;
+			break;
+		}
+	}
+	for(int i = 0; i < len; i++) {
+		c = fullname[i];
+		if(type == 0){// skipped start
+			if(!(c == '.' || c == ' ')){
+				type = 1;
+			}
+			if(i == ext_start){
+				ext_start = -1;
+			}
+		}else if(type == 1 && ext_start != -1 && i >= ext_start){
+			type = 2;
+			offset = 8;
+		}
+		if(!((type == 1 && offset < 8 && ((ext_start == -1) || (i < ext_start - 1)))
+			||(type == 2 && offset < 11)))
+			continue;
+		if(c >= 'a' && c <= 'z'){
+			c = c -'a' + 'A';
+		}
+		shortname[offset++] = c;
+	}
+	shortname[11] = 0;
+}
+
+int main(int argc, char* argv[]){
+	char buf[256];
+	char out[256];
+	while(1){
+		memset(out, ' ', 256);
+		gets(buf);
+		fat_gen_shortname(buf, out);
+		puts(out);
+	}
+}
+#endif
