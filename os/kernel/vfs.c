@@ -21,7 +21,8 @@ struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
-
+int do_init_block_dev(int drive);
+int do_init_char_dev(int drive);
 // must held sb lock
 PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	struct vfs_inode* inode = kern_kmalloc(sizeof(struct vfs_inode));
@@ -483,6 +484,9 @@ PUBLIC void init_fs(){
 	int drive = SATA_BASE;
 	int partition = 2;
 	mount_root(drive, partition, ORANGE_TYPE);
+	kern_vfs_mkdir("/dev", I_RWX);
+	do_init_block_dev(drive);
+	do_init_char_dev(drive);
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){

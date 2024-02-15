@@ -335,7 +335,7 @@ void brelse(buf_head *bh)
 PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf){
 	int pos = file->fd_pos;
 	struct vfs_inode *inode = file->fd_dentry->d_inode;
-	int pos_end = max(pos + count, inode->i_size);
+	int pos_end = min(pos + count, inode->i_size);
 	int off = pos % BLOCK_SIZE;
 	int rw_blk_min = (pos >> BLOCK_SIZE_SHIFT);
 	int rw_blk_max = (pos_end >> BLOCK_SIZE_SHIFT);
@@ -350,7 +350,7 @@ PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf)
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
 		bh = bread(inode->i_dev,i);
 		fsbuf = bh->buffer;
-		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;
 		}
 		phys_copy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
@@ -362,11 +362,11 @@ PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf)
 		brelse(bh);
 	}
 	file->fd_pos = pos;
-	if (file->fd_pos > inode->i_size)
-	{
-		/* update inode::size */
-		inode->i_size = file->fd_pos;
-	}
+	// if (file->fd_pos > inode->i_size) block dev size cant change
+	// {
+	// 	/* update inode::size */
+	// 	inode->i_size = file->fd_pos;
+	// }
 	return bytes_rw;
 }
 
@@ -388,7 +388,7 @@ PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
 		bh = bread(inode->i_dev,i);
 		fsbuf = bh->buffer;
-		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
+		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;
 		}
 		phys_copy((void*)(buf + bytes_rw), (void *)(fsbuf + off), bytes);

@@ -62,12 +62,12 @@ int kern_init_block_dev(int drive)
 
 					if (major < SATA_BASE)
 					{
-						strcpy(dev_pathname, "dev/hd");
+						strcpy(dev_pathname, "/dev/hd");
 						dev_pathname[strlen(dev_pathname)] = 'a' + major - IDE_BASE;
 					}
 					else if (major < SCSI_BASE)
 					{
-						strcpy(dev_pathname, "dev/sd");
+						strcpy(dev_pathname, "/dev/sd");
 						dev_pathname[strlen(dev_pathname)] = 'a' + major - SATA_BASE;
 					}
 					else if (major < 12)
@@ -110,7 +110,7 @@ PRIVATE int kern_init_char_dev(int drive)
 {
 	// struct super_block *sb = get_super_block(drive);
 	//real_createdir(sb, "dev");
-	char ttypath[MAX_PATH] = {"dev/tty0"};
+	char ttypath[MAX_PATH] = {"/dev/tty0"};
 	for (int i = 0; i < NR_CONSOLES; ++i)
 	{
 		ttypath[strlen(ttypath) - 1] = '0' + i;

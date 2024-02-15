@@ -602,9 +602,9 @@ void initial()
 	//disp_str("\n");
 
 	//get_pid();
-	mkdir("/dev", I_RWX);
-	init_block_dev(SATA_BASE);		//added by xiaofeng
-	init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
+	// do_vmkdir("/dev", I_RWX);
+	// do_init_block_dev(SATA_BASE);		//added by xiaofeng
+	// do_init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
 	// get_datetime();
 	//mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
 /* 	createdir("test");

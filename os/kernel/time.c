@@ -8,8 +8,8 @@
 #define RTC_ADDR	0x70
 #define RTC_DATA	0x71
 
-int timezone_offset = 8;// timestamp use UTC， localtime UTC+8
-int rtc_timezone = 0; // read cmos rtc as UTC
+#define LOCAL_TIMEZONE	8// timestamp use UTC， localtime UTC+8
+#define RTC_TIMEZONE	0// read cmos rtc as UTC
 
 u8 readRTC(int addr){
 	//*** must disable int and ***
@@ -21,7 +21,7 @@ int bcd2byte(u8 x){
 	return ((x>>4)&0xF)*10 + (x & 0xF);
 }
 
-// 计算自1970-1-1 00:00:00 的秒数(时间戳) 全是技巧的算法, copy自linux kernel
+// 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的算法, copy自linux kernel
 u32 mktime(struct tm* time){
 	unsigned int mon = time->tm_mon + 1, 
 	year = time->tm_year + 1900, day = time->tm_mday, 
@@ -44,7 +44,7 @@ u32 mktime(struct tm* time){
 struct tm* localtime(u32 timestamp, struct tm* tm_time){
 	static int days_four_year = 1461;
     const static unsigned char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	tm_time->__tm_gmtoff = (timezone_offset)*3600;
+	tm_time->__tm_gmtoff = (LOCAL_TIMEZONE)*3600;
 	u32 localtime = timestamp + tm_time->__tm_gmtoff;
 	tm_time->tm_sec = localtime % 60;
 	localtime /= 60; // min
@@ -106,7 +106,7 @@ void get_rtc_datetime(struct tm* time){
 	time->tm_hour = hour;
 	time->tm_min = min;
 	time->tm_sec = sec;
-	time->__tm_gmtoff = rtc_timezone * 3600;
+	time->__tm_gmtoff = RTC_TIMEZONE * 3600;
 }
 
 u32 get_init_rtc_timestamp(){
