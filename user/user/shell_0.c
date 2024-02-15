@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #define MAX_ARGC	8
-#define NUM_BUILTIN_CMD	5
+#define NUM_BUILTIN_CMD	6
 #define CMD_LEN	8
 
 // #define SHELL_TEST
@@ -68,6 +68,14 @@ int do_mount(int argc, char** argv){
 	return mount(argv[1], argv[2], argv[3], 0, NULL);
 }
 
+int do_date(int argc, char** argv){
+	struct tm time= {0};
+	get_time(&time);
+	printf("%d-%02d-%02d %02d:%02d:%02d\n", 
+	time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
+	return 0;
+}
+
 struct cmd cmds[NUM_BUILTIN_CMD];
 int num_cmd;
 
@@ -131,6 +139,7 @@ void main(int arg,char *argv[])
 	reg_cmd("pwd", do_pwd);
 	reg_cmd("mkdir", do_mkdir);
 	reg_cmd("mount", do_mount);
+	reg_cmd("date", do_date);
 	#ifdef SHELL_TEST
 	pre = TEST_CMD_NUM;
 	#endif

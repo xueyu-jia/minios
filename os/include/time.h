@@ -1,6 +1,7 @@
 /* ISO C `broken-down time' structure.  */
 #ifndef TIME_H
 #define TIME_H
+#include "type.h"
 struct tm
 {
 	int tm_sec;			/* Seconds.	[0-60] (1 leap second) */
@@ -17,4 +18,5 @@ struct tm
 	const char *__tm_zone;	/* Timezone abbreviation.  */
 };
 void get_rtc_datetime(struct tm* time);
+u32 get_init_rtc_timestamp();
 #endif

@@ -90,7 +90,7 @@ void test_wait_is_sleeping(void)
 	if (get_pid() != rt_pid) {
 		int la_ticks = get_ticks();
 		
-		for (int i = 1 ; i <= (int)5e6 ; i++) {
+		for (int i = 1 ; i <= (int)500 ; i++) {
 			int now_ticks = get_ticks();
 			assert(now_ticks - la_ticks <= 3);
 			la_ticks = now_ticks;

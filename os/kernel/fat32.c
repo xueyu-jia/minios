@@ -279,11 +279,13 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 		}else if(!(ds->attr&ATTR_VOL)){// skip volume
 			// check sum
 			de = (struct fat_dir_entry*)ds;
-			u8 sum = fat_chksum(de->name);
-			if(sum != chksum){
-				disp_str("error: chksum wrong");
-				is_long = 0;
-				continue;
+			if(is_long){
+				u8 sum = fat_chksum(de->name);
+				if(sum != chksum){
+					disp_str("error: chksum wrong");
+					is_long = 0;
+					continue;
+				}
 			}
 			if(is_long){
 				uni2char(uni_name, full_name, 256);
@@ -409,6 +411,10 @@ PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* en
 	*de = *entry;
 	mark_buff_dirty(bh);
 	brelse(bh);
+	int limit = (order + 1)*FAT_ENTRY_SIZE;
+	if(limit > dir->i_size){
+		dir->i_size = limit;
+	}
 }
 
 PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir, struct tm* time){
@@ -443,6 +449,7 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
 	fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
 	struct fat_dir_entry de;
+	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, shortname, 11);
 	de.attr = (is_dir)? ATTR_DIR : ATTR_ARCH;
 	fat_update_datetime(time, &de.cdate, &de.ctime);
@@ -521,8 +528,8 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 	// 2. loop get entry until match
 	char full_name[256]; // for long dir store real name
 	int entry = 0, ino = 0;
-	struct fat_dir_entry* de;
-	buf_head* bh;
+	struct fat_dir_entry* de = NULL;
+	buf_head* bh = NULL;
 	struct vfs_dentry* dentry = NULL;
 	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
@@ -562,7 +569,10 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1, &time);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
+	inode->i_op = &fat32_inode_ops;
+	inode->i_fop = &fat32_file_ops;
 	struct fat_dir_entry de;
+	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, FAT_DOT, 11);
 	de.attr = ATTR_DIR;
 	de.size = FAT_SB(dir->i_sb)->cluster_sector * SECTOR_SIZE;
@@ -572,6 +582,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	de.size = dir->i_size;
 	fat_write_shortname(inode, &de, 1);
 	dentry->d_inode = inode;
+	dentry->d_op = &fat32_dentry_ops;
 	fat32_sync_inode(inode);
 	return 0;
 }
@@ -642,8 +653,7 @@ PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
 	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
-		start->d_ino = (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT)
-			| (entry&(FAT_DPS-1));
+		start->d_ino = fat_ino(dir, entry);
 		strcpy(start->d_name, full_name);
 		start++;
 		count++;

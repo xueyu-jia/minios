@@ -482,7 +482,7 @@ PUBLIC void init_fs(){
 		&fat32_sb_ops);
 	int drive = SATA_BASE;
 	int partition = 2;
-	mount_root(drive, partition, FAT32_TYPE);
+	mount_root(drive, partition, ORANGE_TYPE);
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){
