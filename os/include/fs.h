@@ -29,6 +29,9 @@ typedef struct vfs_inode{
 	u32 i_size;  // file size in byte
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
+	u32 i_atime;
+	u32	i_ctime;
+	u32 i_mtime;
 	struct inode_operations *i_op;
 	struct file_operations *i_fop;
 	union {

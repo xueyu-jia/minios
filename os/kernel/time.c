@@ -8,9 +8,6 @@
 #define RTC_ADDR	0x70
 #define RTC_DATA	0x71
 
-#define LOCAL_TIMEZONE	8// timestamp use UTC， localtime UTC+8
-#define RTC_TIMEZONE	0// read cmos rtc as UTC
-
 u8 readRTC(int addr){
 	//*** must disable int and ***
 	out_byte(RTC_ADDR, addr);

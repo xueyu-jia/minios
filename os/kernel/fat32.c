@@ -37,22 +37,27 @@ PRIVATE u8 fat_chksum(const char* shortname){
 	return sum;
 }
 
-PRIVATE void fat_update_datetime(struct tm* time_s, u16* date, u16* time){
-	*date = ((time_s->tm_year+1900-1980) << 9)
-			|((time_s->tm_mon+1) << 5)
-			|(time_s->tm_mday);
-	*time = ((time_s->tm_hour) << 11)
-			|((time_s->tm_min) << 5)
-			|(time_s->tm_sec >> 1);
+PRIVATE void fat_update_datetime(u32 timestamp, u16* date, u16* time){
+	struct tm time_s;
+	localtime(timestamp, &time_s);
+	*date = ((time_s.tm_year+1900-1980) << 9)
+			|((time_s.tm_mon+1) << 5)
+			|(time_s.tm_mday);
+	*time = ((time_s.tm_hour) << 11)
+			|((time_s.tm_min) << 5)
+			|(time_s.tm_sec >> 1);
 }
 
-PRIVATE void fat_read_datetime(struct tm* time_s, u16 date, u16 time){
-	time_s->tm_year = (date >> 9) + 1980 - 1900;
-	time_s->tm_mon = ((date >> 5) & 0xF) - 1;
-	time_s->tm_mday = ((date) & 0x1F);
-	time_s->tm_hour = ((time >> 11) & 0x1F);
-	time_s->tm_min = ((time >> 5) & 0x2F);
-	time_s->tm_sec = (time & 0x1F) << 1;
+PRIVATE u32 fat_read_datetime(u16 date, u16 time){
+	struct tm time_s;
+	time_s.__tm_gmtoff = LOCAL_TIMEZONE*3600;
+	time_s.tm_year = (date >> 9) + 1980 - 1900;
+	time_s.tm_mon = ((date >> 5) & 0xF) - 1;
+	time_s.tm_mday = ((date) & 0x1F);
+	time_s.tm_hour = ((time >> 11) & 0x1F);
+	time_s.tm_min = ((time >> 5) & 0x2F);
+	time_s.tm_sec = (time & 0x1F) << 1;
+	return mktime(&time_s);
 }
 
 PRIVATE struct fat_info* alloc_fat_info(int cluster_start){
@@ -113,7 +118,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	acquire(&FAT_SB(sb)->lock);
 	int i, clus, next_free = FAT_SB(sb)->fsinfo.cluster_next_free, 
 		total = FAT_SB(sb)->max_cluster - 1;
-	buf_head* bh;
+	buf_head* bh = NULL;
 	for(i = 0; i < total; i++){// we must check before use,(linux dont use fsinfo.nextfree)
 		clus = 2 + (next_free - 2 + i)%total;
 		if(read_write_fat(sb, clus, -1) == 0)
@@ -302,7 +307,7 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 }
 
 PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
-	buf_head* bh;
+	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, count = 0, res = -1;
 	for(start = 0; ; start++){
@@ -324,7 +329,7 @@ PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
 }
 
 PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
-	buf_head* bh;
+	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
 	for(start = 0; ; start++){
@@ -417,15 +422,16 @@ PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* en
 	}
 }
 
-PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir, struct tm* time){
+PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir){
 	int nslot = strlen(name)/13  + 1;
 	int free_slot_order = fat_find_free(dir, nslot+1);
-	buf_head* bh;
+	buf_head* bh = NULL;
 	u8 chksum;
 	int offset;
 	char shortname[12];
 	u16 uniname[256];
 	memset(shortname, ' ', 12);
+	shortname[11] = 0;
 	fat_gen_shortname(dir, name, shortname);
 	memset(uniname, -1, 256);
 	char2uni(uniname, name, 256);
@@ -452,7 +458,7 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, shortname, 11);
 	de.attr = (is_dir)? ATTR_DIR : ATTR_ARCH;
-	fat_update_datetime(time, &de.cdate, &de.ctime);
+	fat_update_datetime(current_timestamp, &de.cdate, &de.ctime);
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
 	return inode;
 }
@@ -467,12 +473,18 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		cluster_start = FAT_SB(sb)->root_cluster;
 		inode->i_mode = I_RWX;
 		inode->i_type = I_DIRECTORY;
+		inode->i_ctime = 0;
+		inode->i_mtime = 0;
+		inode->i_atime = 0;
 	}else{
 		entry = &((struct fat_dir_entry*)bread_sector(sb->sb_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
 		cluster_start = entry->start_l | (entry->start_h << 16);
 		inode->i_mode = (entry->attr & ATTR_RO)? I_R|I_X : I_RWX;
 		inode->i_type = (entry->attr & ATTR_DIR)? I_DIRECTORY: I_REGULAR;
 		inode->i_size = entry->size;
+		inode->i_ctime = fat_read_datetime(entry->cdate, entry->ctime);
+		inode->i_mtime = fat_read_datetime(entry->mdate, entry->mtime);
+		inode->i_atime = fat_read_datetime(entry->adate, 0);
 	}
 	inode->i_sb = sb;
 	inode->i_dev = sb->sb_dev;
@@ -492,7 +504,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	if(inode->i_no == FAT_ROOT_INO){
 		return 0;
 	}
-	buf_head* bh;
+	buf_head* bh = NULL;
 	struct tm time;
 	int ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
@@ -506,8 +518,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		de->start_h = start >> 16;
 		de->start_l = start & 0xFFFF;
 	}
-	get_rtc_datetime(&time);
-	fat_update_datetime(&time, &de->mdate, &de->mtime);
+	fat_update_datetime(current_timestamp, &de->mdate, &de->mtime);
 	if(bh){
 		mark_buff_dirty(bh);
 		brelse(bh);
@@ -553,7 +564,7 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	struct tm time;
 	get_rtc_datetime(&time);
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0, &time);
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0);
 	inode->i_type = I_REGULAR;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -566,7 +577,7 @@ PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mo
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	struct tm time;
 	get_rtc_datetime(&time);
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1, &time);
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -590,7 +601,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
 	int start, pos, end, len;
-	buf_head* bh;
+	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
 	end = min(start + count, inode->i_size);
@@ -613,7 +624,7 @@ PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* buf){
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
 	int start, pos, end, len;
-	buf_head* bh;
+	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
 	end = min(start + count, inode->i_size);
@@ -638,7 +649,7 @@ PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
 	char full_name[256]; // for long dir store real name
 	int entry = 0, count = 0;
 	struct fat_dir_entry* de;
-	buf_head* bh;
+	buf_head* bh = NULL;
 	struct vfs_inode* dir = file->fd_dentry->d_inode;
 	struct vfs_dentry* dentry = NULL;
 	if(dir->i_no == FAT_ROOT_INO){
