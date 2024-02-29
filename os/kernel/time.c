@@ -18,7 +18,7 @@ int bcd2byte(u8 x){
 	return ((x>>4)&0xF)*10 + (x & 0xF);
 }
 
-// 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的算法, copy自linux kernel
+// 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的Gauss算法, copy自linux kernel
 u32 mktime(struct tm* time){
 	unsigned int mon = time->tm_mon + 1, 
 	year = time->tm_year + 1900, day = time->tm_mday, 

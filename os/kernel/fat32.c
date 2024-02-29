@@ -295,10 +295,16 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 			if(is_long){
 				uni2char(uni_name, full_name, 256);
 			}else{
-				memcpy(full_name, de->name, 8);
-				full_name[8] = '.';
-				memcpy(full_name + 9, de->ext, 3);
-				full_name[12] = 0;
+				if(!strncmp(de->name, FAT_DOT, 11)) {
+					strcpy(full_name, ".");
+				}else if(!strncmp(de->name, FAT_DOTDOT, 11)) {
+					strcpy(full_name, "..");
+				}else {
+					memcpy(full_name, de->name, 8);
+					full_name[8] = '.';
+					memcpy(full_name + 9, de->ext, 3);
+					full_name[12] = 0;
+				}
 			}
 			break;
 		}
