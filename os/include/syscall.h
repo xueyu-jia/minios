@@ -60,12 +60,9 @@
 #define _NR_get_pid_byname				56
 #define _NR_mount						57
 #define _NR_umount						58
-#define _NR_init_block_dev				59
-#define _NR_pthread_exit                60
-#define _NR_pthread_join                61
-
-#define _NR_init_char_dev				62
-#define _NR_get_time					63
+#define _NR_pthread_exit                59
+#define _NR_pthread_join                60
+#define _NR_get_time					61
 #define INT_VECTOR_SYS_CALL             0x90
 
 /* 无参数的系统调用 */

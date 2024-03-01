@@ -206,7 +206,6 @@ int pthread_cond_destroy(pthread_cond_t* cond);
 int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
-int init_block_dev(int drive);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
 
@@ -344,13 +343,10 @@ PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
 PUBLIC int sys_mount();
 PUBLIC int sys_umount();
 
-/*fs.c*/
-PUBLIC int sys_init_block_dev();
 
 /*slab.c*/
 void *kmalloc(u32 size);
 int kfree(u32 object);
-PUBLIC int sys_init_char_dev();
 
 PUBLIC int sys_get_time();
 #endif

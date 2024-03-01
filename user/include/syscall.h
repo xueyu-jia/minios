@@ -69,10 +69,9 @@
 #define _NR_get_pid_byname				56
 #define _NR_mount						57
 #define _NR_umount						58
-#define _NR_init_block_dev				59
-#define _NR_pthread_exit                60
-#define _NR_pthread_join                61
-#define _NR_get_time					63
+#define _NR_pthread_exit                59
+#define _NR_pthread_join                60
+#define _NR_get_time					61
 
 #define INT_VECTOR_SYS_CALL             0x90
 
@@ -207,7 +206,6 @@ int pthread_cond_destroy(pthread_cond_t* cond);
 int get_pid_byname(char* name);
 int mount(const char *source, const char *target,const char *filesystemtype, unsigned long mountflags, const void *data);
 int umount(const char *target);
-int init_block_dev(int drive);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
 int get_time(struct tm* time);

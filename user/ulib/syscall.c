@@ -243,10 +243,6 @@ int umount(const char *target) {
 	return _syscall1(_NR_umount, target);
 }
 
-int init_block_dev(int drive) {
-	return _syscall1(_NR_init_block_dev, drive);
-}
-
 void pthread_exit(void *retval){
 	return _syscall1(_NR_pthread_exit, retval);
 }

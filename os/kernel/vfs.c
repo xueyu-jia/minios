@@ -485,8 +485,8 @@ PUBLIC void init_fs(){
 	int partition = 2;
 	mount_root(drive, partition, FAT32_TYPE);
 	kern_vfs_mkdir("/dev", I_RWX);
-	do_init_block_dev(drive);
-	do_init_char_dev(drive);
+	kern_init_block_dev();
+	kern_init_char_dev();
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){
