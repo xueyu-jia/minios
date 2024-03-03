@@ -83,8 +83,8 @@ int do_write(int argc, char** argv){
 	return 0;
 }
 
-#define MAX_CAT 64
 int do_cat(int argc, char** argv){
+#define MAX_CAT 128
 	char buf[MAX_CAT];
 	int fd = open(argv[1], O_RDONLY);
 	if(fd < 0) {
@@ -100,10 +100,11 @@ int do_cat(int argc, char** argv){
 }
 
 int do_cat_hex(int argc, char** argv) {
-#define MAX_CAT 64
-	char buf[MAX_CAT];
-	if(argc != 4){
-		printf("usage: hex %%file %%block %%offset\n");
+#define MAX_HEX 512
+#define print_hex(c) (((c) >= ' ' && (c) < 0x7F)? (c) :'.')
+	char buf[MAX_HEX];
+	if(argc < 4){
+		printf("usage: hex %%file %%block %%offset [%%len]\n");
 		return -1;
 	}
 	int fd = open(argv[1], O_RDONLY);
@@ -111,20 +112,27 @@ int do_cat_hex(int argc, char** argv) {
 		printf("open error");
 		return -1;
 	}
-	int cnt;
-	int line_len = 8;
-	
-	lseek(fd,  atoi(argv[1])*4096 + atoi(argv[2]), SEEK_SET);
-	cnt = read(fd, buf, MAX_CAT);
-	for(int i = 0; i < cnt; i++) {
-		if(i % line_len == 0) {
-			printf("\n");
-		}
-		printf("%02x ", buf[i]);
+	int cnt, len, total = MAX_HEX;
+	int line_len = 16;
+	char c;
+	if(argc == 5) {
+		total = min(MAX_HEX, atoi(argv[4]));
 	}
-	printf("\n");
+	lseek(fd,  atoi(argv[2])*4096 + atoi(argv[3]), SEEK_SET);
+	cnt = read(fd, buf, total);
+	for(int i = 0; i < cnt;) {
+		len = min(line_len, cnt - i);
+		for(int j = 0; j < len; j++) {
+			printf("%02x ", (u8)buf[i + j]);
+		}
+		for(int j = 0; j < len; j++) {
+			printf("%c", print_hex(buf[i + j]));
+		}
+		i += len;
+		printf("\n");
+	}
 	close(fd);
-	return 0;
+	return cnt;
 }
 
 struct cmd cmds[NUM_BUILTIN_CMD];
@@ -195,13 +203,15 @@ void main(int arg,char *argv[])
 	reg_cmd("cat", do_cat);
 	reg_cmd("hex", do_cat_hex);
 	#ifdef SHELL_TEST
-	#define TEST_CMD_NUM 3
 	#define TEST_CMD_LEN_LIMIT	32
+
+	#define TEST_CMD_NUM 3
 	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
 		"mkdir ora",
 		"mount /dev/sda1 ora orangefs",
-		"ls ora"
+		"hex /dev/sda2 20 1024 128",
 	};
+	
 	pre = TEST_CMD_NUM;
 	#endif
   	while(1)
@@ -210,6 +220,7 @@ void main(int arg,char *argv[])
 		#ifdef SHELL_TEST
 		if(pre){
 			strcpy(buf, pre_test_cmds[TEST_CMD_NUM - pre]);
+			printf("%s\n", buf);
 			pre--;
 		}else{
 			gets(buf);

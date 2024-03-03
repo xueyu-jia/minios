@@ -119,14 +119,14 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	
 
 
+	cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
+	cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
 	if (con->cursor - con->orig >= con->con_size) {
-		cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
-		cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
 		int cp_orig = con->orig + (cursor_y + 1) * SCR_WIDTH - SCR_SIZE;
 		w_copy(con->orig, cp_orig, SCR_SIZE - SCR_WIDTH);
 		con->crtc_start = con->orig;
 		con->cursor = con->orig + (SCR_SIZE - SCR_WIDTH) + cursor_x;
-		clear_screen(con->cursor, SCR_WIDTH);
+		clear_screen(con->cursor, SCR_WIDTH - cursor_x);
 		if (!con->is_full)
 			con->is_full = 1;
 	}
@@ -137,7 +137,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	       con->cursor < con->crtc_start) {
 		scroll_screen(con, SCR_UP);
 
-		clear_screen(con->cursor, SCR_WIDTH);
+		clear_screen(con->cursor, SCR_WIDTH - cursor_x);
 	}
 	// if(con == console_table){
 	// 	disp_pos = con->cursor*2;
@@ -307,6 +307,14 @@ PUBLIC void scroll_screen(CONSOLE* con, int dir)
 	flush(con);
 }
 
+PUBLIC void reset_screen(CONSOLE* con) {
+	int latest_start = (con->cursor - con->orig) / SCR_WIDTH * SCR_WIDTH + SCR_WIDTH - SCR_SIZE;
+	if(latest_start < 0){
+		latest_start = 0;
+	}
+	con->crtc_start = con->orig + latest_start;
+	flush(con);
+}
 
 /*****************************************************************************
  *                                flush

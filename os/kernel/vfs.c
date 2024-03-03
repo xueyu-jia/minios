@@ -21,8 +21,7 @@ struct vfs_dentry *vfs_root;
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
-int do_init_block_dev(int drive);
-int do_init_char_dev(int drive);
+
 // must held sb lock
 PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	struct vfs_inode* inode = kern_kmalloc(sizeof(struct vfs_inode));
@@ -398,7 +397,7 @@ PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int
 			inode->i_fop = &tty_file_ops;
 			break;
 		case I_BLOCK_SPECIAL:
-			inode->i_size = hd_infos[MAJOR(dev)].part[MINOR(dev)].size;
+			inode->i_size = hd_infos[MAJOR(dev)].part[MINOR(dev)].size << SECTOR_SIZE_SHIFT;
 			inode->i_fop = &blk_file_ops;
 		default:
 			break;

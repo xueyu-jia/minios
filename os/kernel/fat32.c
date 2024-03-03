@@ -40,12 +40,16 @@ PRIVATE u8 fat_chksum(const char* shortname){
 PRIVATE void fat_update_datetime(u32 timestamp, u16* date, u16* time){
 	struct tm time_s;
 	localtime(timestamp, &time_s);
-	*date = ((time_s.tm_year+1900-1980) << 9)
-			|((time_s.tm_mon+1) << 5)
-			|(time_s.tm_mday);
-	*time = ((time_s.tm_hour) << 11)
-			|((time_s.tm_min) << 5)
-			|(time_s.tm_sec >> 1);
+	if(date != NULL) {
+		*date = ((time_s.tm_year+1900-1980) << 9)
+				|((time_s.tm_mon+1) << 5)
+				|(time_s.tm_mday);
+	}
+	if(time != NULL) {
+		*time = ((time_s.tm_hour) << 11)
+				|((time_s.tm_min) << 5)
+				|(time_s.tm_sec >> 1);
+	}
 }
 
 PRIVATE u32 fat_read_datetime(u16 date, u16 time){
@@ -191,6 +195,7 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 		clus = add_new_cluster(sb, last);
 		info->cluster_start = clus;
 		info->length = 1;
+		new = 1;
 	}
 	while(clus_skip && info){
 		if(clus_skip < info->length)
@@ -451,7 +456,7 @@ PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* en
 	}
 }
 
-PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir){
+PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir, u32 timestamp){
 	int nslot = strlen(name)/13  + 1;
 	int free_slot_order = fat_find_free(dir, nslot+1);
 	buf_head* bh = NULL;
@@ -477,17 +482,21 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 		offset += 6;
 		memcpy(ds->name11_12, uniname + offset, 2);
 		ds->checksum = chksum;
+		mark_buff_dirty(bh);
 	}
 	if(bh)brelse(bh);
 	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
 	inode->i_dev = dir->i_sb->sb_dev;
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
+	inode->i_atime = inode->i_ctime = inode->i_mtime = timestamp;
 	fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
 	struct fat_dir_entry de;
 	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, shortname, 11);
 	de.attr = (is_dir)? ATTR_DIR : ATTR_ARCH;
-	fat_update_datetime(current_timestamp, &de.cdate, &de.ctime);
+	fat_update_datetime(timestamp, &de.cdate, &de.ctime);
+	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
+	// fat_update_datetime(timestamp, &de.adate, NULL); 
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
 	return inode;
 }
@@ -547,7 +556,8 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		de->start_h = start >> 16;
 		de->start_l = start & 0xFFFF;
 	}
-	fat_update_datetime(current_timestamp, &de->mdate, &de->mtime);
+	fat_update_datetime(inode->i_atime, &de->adate, NULL);
+	fat_update_datetime(inode->i_mtime, &de->mdate, &de->mtime);
 	if(bh){
 		mark_buff_dirty(bh);
 		brelse(bh);
@@ -591,9 +601,10 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 }
 
 PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
-	struct tm time;
-	get_rtc_datetime(&time);
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0);
+	// struct tm time;
+	// get_rtc_datetime(&time);
+	u32 timestamp = current_timestamp;
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0, timestamp);
 	inode->i_type = I_REGULAR;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -632,9 +643,10 @@ PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 }
 
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
-	struct tm time;
-	get_rtc_datetime(&time);
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1);
+	// struct tm time;
+	// get_rtc_datetime(&time);
+	u32 timestamp = current_timestamp;
+	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1, timestamp);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -644,10 +656,16 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	memcpy(de.name, FAT_DOT, 11);
 	de.attr = ATTR_DIR;
 	de.size = FAT_SB(dir->i_sb)->cluster_sector * SECTOR_SIZE;
+	fat_update_datetime(timestamp, &de.cdate, &de.ctime);
+	fat_update_datetime(timestamp, &de.mdate, &de.mtime);
+	fat_update_datetime(timestamp, &de.adate, NULL);
 	fat_write_shortname(inode, &de, 0);
 	memcpy(de.name, FAT_DOTDOT, 11);
 	de.attr = ATTR_DIR;
 	de.size = dir->i_size;
+	fat_update_datetime(dir->i_ctime, &de.cdate, &de.ctime);
+	fat_update_datetime(dir->i_mtime, &de.mdate, &de.mtime);
+	fat_update_datetime(dir->i_atime, &de.adate, NULL);
 	fat_write_shortname(inode, &de, 1);
 	dentry->d_inode = inode;
 	dentry->d_op = &fat32_dentry_ops;
