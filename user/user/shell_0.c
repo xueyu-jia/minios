@@ -1,19 +1,11 @@
 #include "stdio.h"
 #include "string.h"
 #define MAX_ARGC	8
-#define NUM_BUILTIN_CMD	6
+#define NUM_BUILTIN_CMD	10
 #define CMD_LEN	8
 
-// #define SHELL_TEST
+#define SHELL_TEST
 
-#ifdef SHELL_TEST
-#define TEST_CMD_NUM 3
-char* pre_test_cmds[TEST_CMD_NUM] = {
-	"mkdir fat",
-	"mount /dev/sda1 fat fat32",
-	"ls fat"
-};
-#endif
 struct cmd{
 	char cmd_name[CMD_LEN];
 	int (*handler)(int , char**);
@@ -73,6 +65,65 @@ int do_date(int argc, char** argv){
 	get_time(&time);
 	printf("%d-%02d-%02d %02d:%02d:%02d\n", 
 	time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
+	return 0;
+}
+
+int do_write(int argc, char** argv){
+	char buf[512];
+	int fd = open(argv[1], O_WRONLY|O_CREAT, I_R|I_W);
+	if(fd < 0) {
+		printf("open error");
+		return -1;
+	}
+	lseek(fd, 0, SEEK_END);
+	while((gets(buf) && strlen(buf) != 0)) {
+		write(fd, buf, strlen(buf));
+	}
+	close(fd);
+	return 0;
+}
+
+#define MAX_CAT 64
+int do_cat(int argc, char** argv){
+	char buf[MAX_CAT];
+	int fd = open(argv[1], O_RDONLY);
+	if(fd < 0) {
+		printf("open error");
+		return -1;
+	}
+	int cnt;
+	cnt = read(fd, buf, MAX_CAT);
+	write(STD_OUT, buf, cnt);
+	printf("\n");
+	close(fd);
+	return 0;
+}
+
+int do_cat_hex(int argc, char** argv) {
+#define MAX_CAT 64
+	char buf[MAX_CAT];
+	if(argc != 4){
+		printf("usage: hex %%file %%block %%offset\n");
+		return -1;
+	}
+	int fd = open(argv[1], O_RDONLY);
+	if(fd < 0) {
+		printf("open error");
+		return -1;
+	}
+	int cnt;
+	int line_len = 8;
+	
+	lseek(fd,  atoi(argv[1])*4096 + atoi(argv[2]), SEEK_SET);
+	cnt = read(fd, buf, MAX_CAT);
+	for(int i = 0; i < cnt; i++) {
+		if(i % line_len == 0) {
+			printf("\n");
+		}
+		printf("%02x ", buf[i]);
+	}
+	printf("\n");
+	close(fd);
 	return 0;
 }
 
@@ -140,7 +191,17 @@ void main(int arg,char *argv[])
 	reg_cmd("mkdir", do_mkdir);
 	reg_cmd("mount", do_mount);
 	reg_cmd("date", do_date);
+	reg_cmd("write", do_write);
+	reg_cmd("cat", do_cat);
+	reg_cmd("hex", do_cat_hex);
 	#ifdef SHELL_TEST
+	#define TEST_CMD_NUM 3
+	#define TEST_CMD_LEN_LIMIT	32
+	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
+		"mkdir ora",
+		"mount /dev/sda1 ora orangefs",
+		"ls ora"
+	};
 	pre = TEST_CMD_NUM;
 	#endif
   	while(1)
@@ -148,7 +209,7 @@ void main(int arg,char *argv[])
         printf("\nminiOS:%s $ ",getcwd(pwd, MAX_PATH));
 		#ifdef SHELL_TEST
 		if(pre){
-			strncpy(buf, pre_test_cmds[TEST_CMD_NUM - pre], 64);
+			strcpy(buf, pre_test_cmds[TEST_CMD_NUM - pre]);
 			pre--;
 		}else{
 			gets(buf);

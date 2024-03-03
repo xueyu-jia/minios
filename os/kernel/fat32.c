@@ -224,6 +224,29 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 	return clus_sector;
 }
 
+// return entry offset by 32 bytes
+PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, int ino) {
+	struct super_block* sb = dir->i_sb;
+	int entry = ino & (FAT_DPS - 1);
+	int sector_offset = (ino >> FAT_DPS_SHIFT) - FAT_SB(sb)->data_start_sector;
+	int cluster = sector_offset / FAT_SB(sb)->cluster_sector;
+	entry += (sector_offset % FAT_SB(sb)->cluster_sector) << FAT_DPS_SHIFT;// 计算最后一簇的偏移量
+	int start = 0, found = 0;
+	struct fat_info* info = dir->fat32_inode.fat_info;
+	for(struct fat_info* info = dir->fat32_inode.fat_info; info; info = info->next) {
+		if(cluster >= info->cluster_start && cluster < info->cluster_start + info->length) {
+			found = 1;
+			start += (FAT_SB(sb)->cluster_sector * (cluster - info->cluster_start)) << FAT_DPS_SHIFT;
+			break;
+		}
+		start += (FAT_SB(sb)->cluster_sector * info->length) << FAT_DPS_SHIFT;
+	}
+	if(!found) {
+		return -1;
+	}
+	return start + entry;
+}
+
 PRIVATE int fat_ino(struct vfs_inode* dir, int entry){
 	return (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT) | (entry&(FAT_DPS-1));
 }
@@ -580,6 +603,34 @@ PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mo
 	return 0;
 }
 
+PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
+	buf_head* bh = NULL;
+	struct fat_dir_slot* ds;
+	struct vfs_inode* inode = dentry->d_inode;
+	int ino = inode->i_no;
+	u8 order, chksum;
+	if(ino == FAT_ROOT_INO) {
+		return -1;
+	}
+	int pos = fat_entry_offset_by_ino(dir, ino);
+	if(pos == -1){
+		return -1;
+	}
+	ds = fat_get_slot(dir, pos, &bh, 0);
+	chksum = fat_chksum(((struct fat_dir_entry*)ds)->name);
+	do {
+		order = ds->order;
+		ds->order = DIR_DELETE;
+		mark_buff_dirty(bh);
+		pos--;
+		ds = fat_get_slot(dir, pos, &bh, 0);
+	}while(ds->checksum == chksum);
+	if(bh) {
+		brelse(bh);
+	}
+	return 0;
+}
+
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	struct tm time;
 	get_rtc_datetime(&time);
@@ -742,11 +793,13 @@ struct superblock_operations fat32_sb_ops = {
 .fill_superblock = fat32_fill_superblock,
 .read_inode = fat32_read_inode,
 .put_inode = fat32_put_inode,
+.delete_inode = NULL
 };
 
 struct inode_operations fat32_inode_ops = {
 .lookup = fat32_lookup,
 .create = fat32_create,
+.unlink = fat32_unlink,
 .mkdir = fat32_mkdir,
 };
 

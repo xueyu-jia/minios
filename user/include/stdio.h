@@ -71,6 +71,8 @@ int free_4k(void* AdddrLin);
 #define isxdigit(c)    (('0' <= (c) && (c) <= '9') || ('a' <= (c) && (c) <= 'f') || ('A' <= (c) && (c) <= 'F'))
 #define isdigit(c)    ('0' <= (c) && (c) <= '9')
 
+int  atoi(const     char  *nptr);
+
 PUBLIC	int	vsprintf(char *buf, const char *fmt, va_list args);
 PUBLIC	int	sprintf(char *buf, const char *fmt, ...);
 PUBLIC	int	printf(const char *fmt, ...); 
