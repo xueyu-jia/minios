@@ -22,7 +22,7 @@ int buf_read_block(int dev, int block, int pid, void *buf); */
 void init_buffer(int num_block);
 /*#define BUF_RD_BLOCK(dev,block_nr,fsbuf) buf_read_block(dev,block_nr,proc2pid(p_proc_current),fsbuf);
 #define BUF_WR_BLOCK(dev,block_nr,fsbuf) buf_write_block(dev,block_nr,proc2pid(p_proc_current),fsbuf); */
- 
+extern int buffer_debug; 
 /********buffer向文件系统提供的API********/
 buf_head *bread(int dev, int block);
 void mark_buff_dirty(buf_head *bh);

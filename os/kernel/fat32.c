@@ -72,16 +72,21 @@ PRIVATE struct fat_info* alloc_fat_info(int cluster_start){
 	return ent;
 }
 
-// if *bh not NULL, origin blk
+// if *bh not NULL, brelse origin blk
 // getblk by sector(512 bytes), return buf pointer and update bh
 PRIVATE char* bread_sector(int dev, int sector, buf_head** bh){
-	buf_head* b;
-	b = bread(dev, sector/SECTOR_PER_BLOCK);
-	if(!b) return NULL;
-	if(*bh){
-		brelse(*bh);
+	buf_head* b = NULL;
+	int block = sector/SECTOR_PER_BLOCK;
+	if((*bh) && (*bh)->block == block && (*bh)->dev == dev) {
+		b = *bh; //避免没必要的bread
+	} else {
+		b = bread(dev, sector/SECTOR_PER_BLOCK);
+		if(!b) return NULL;
+		if(*bh){
+			brelse(*bh);
+		}
+		*bh = b;
 	}
-	*bh = b;
 	return ((char*)b->buffer) + ((sector&(SECTOR_PER_BLOCK-1)) << SECTOR_SIZE_SHIFT);
 }
 
@@ -378,6 +383,9 @@ PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
 			break;
 		}
 	}
+	if(bh) {
+		brelse(bh);
+	}
 	return res;
 }
 
@@ -498,6 +506,11 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
 	// fat_update_datetime(timestamp, &de.adate, NULL); 
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
+	if((free_slot_order + 1)*FAT_ENTRY_SIZE > dir->i_size) {
+		dir->i_size = (free_slot_order + 1)*FAT_ENTRY_SIZE;
+	}
+	dir->i_mtime = timestamp; 
+	fat32_sync_inode(dir);
 	return inode;
 }
 
@@ -692,6 +705,7 @@ PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 	if(bh){
 		brelse(bh);
 	}
+	inode->i_atime = current_timestamp;
 	file->fd_pos = pos;
 	return pos - start;
 }
@@ -702,7 +716,7 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* b
 	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
-	end = min(start + count, inode->i_size);
+	end = max(start + count, inode->i_size);
 	for(pos = start; pos < end;){
 		len = min(SECTOR_SIZE - (pos&(SECTOR_SIZE-1)), end - pos);
 		file_buf = fat_get_data(inode, pos, &bh, 1);
@@ -716,6 +730,11 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* b
 	if(bh){
 		brelse(bh);
 	}
+	if(pos > inode->i_size) {
+		inode->i_size = pos;
+	}
+	inode->i_mtime = current_timestamp;
+	fat32_sync_inode(inode);
 	file->fd_pos = pos;
 	return pos - start;
 }

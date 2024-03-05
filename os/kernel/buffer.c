@@ -6,6 +6,8 @@
 #include "string.h"
 #include "buffer.h"
 
+int buffer_debug = 0;
+#define buff_log(bh, info_type) if(buffer_debug == 1){disp_int(info_type);disp_str(":");disp_int(bh->block);disp_str(" ");}
 
 /*用于记录LRU链表的数据结构*/
 struct buf_lru_list
@@ -293,6 +295,7 @@ buf_head *bread(int dev, int block)
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
     acquire(&bh->lock);
+	// buff_log(bh, 0);
     if (!bh->used)
     {
         // 该buf head是一个新分配的，此时应该从硬盘读数据进来
@@ -313,6 +316,7 @@ buf_head *bread(int dev, int block)
 void mark_buff_dirty(buf_head *bh)
 {
     acquire(&bh->lock);
+	// buff_log(bh, 1);
     bh->dirty = 1;
     release(&bh->lock);
 
@@ -321,6 +325,7 @@ void brelse(buf_head *bh)
 {
 
     acquire(&bh->lock);
+	// buff_log(bh, 2);
     if(bh->count > 0){
         bh->count--;
     }
