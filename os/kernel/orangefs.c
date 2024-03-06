@@ -4097,7 +4097,7 @@ PUBLIC int orange_readdir(struct file_desc* file, struct dirent* start)
 
 PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, int num){
 	inode->i_sb = sb;
-	inode->i_dev = sb->sb_dev;
+	inode->i_rdev = sb->sb_dev;
 	inode->i_no = num;
 	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev,blk_nr);
@@ -4171,7 +4171,7 @@ PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, cha
 	// find free slot in disk
 	for (i = 0; i <= nr_dir_blks && i < dir_blk_total; i++)// 此处取等,允许多读取一块
 	{
-		bh = bread(dir_inode->i_dev, dir_blk0_nr + i);
+		bh = bread(dir_inode->i_rdev, dir_blk0_nr + i);
 		fsbuf = bh->buffer;
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
@@ -4232,7 +4232,7 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 	for (i = rw_sect_min; i <= rw_sect_max; i += chunk){
 		/* read/write this amount of bytes every time */
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
-		bh = bread(pin->i_dev,i);
+		bh = bread(pin->i_rdev,i);
 		fsbuf = bh->buffer;
 		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
 			bytes = pos_end - pos;
@@ -4264,7 +4264,7 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 	for (i = rw_sect_min; i <= rw_sect_max; i += chunk){
 		/* read/write this amount of bytes every time */
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
-		bh = bread(pin->i_dev,i);
+		bh = bread(pin->i_rdev,i);
 		fsbuf = bh->buffer;
 		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
 			bytes = pos_end - pos;
@@ -4299,7 +4299,7 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
 	newino->i_sb = dir->i_sb;
-	newino->i_dev = dir->i_dev;
+	newino->i_rdev = dir->i_rdev;
 	newino->orange_inode.i_start_block = free_sect_nr;
 	newino->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
 	newino->i_size = 0;
@@ -4327,7 +4327,7 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
 	newino->i_sb = dir->i_sb;
-	newino->i_dev = dir->i_dev;
+	newino->i_rdev = dir->i_rdev;
 	newino->i_size = 0;
 	newino->i_nlink = 1;
 	newino->orange_inode.i_start_block = free_sect_nr;
@@ -4361,15 +4361,11 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	buf_head * bh = bread(dev, 1);
 	struct super_block *psb = (struct super_block *)bh->buffer;
 	*sb = *psb;
-	sb->sb_lru_list = NULL;
+	list_init(&sb->sb_inode_list);
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
-	// sb->sb_iop = &orange_inode_ops;
-	// sb->sb_fop = &orange_file_ops;
-	// sb->sb_dop = 0;
 	sb->sb_op = &orange_sb_ops;
 	struct vfs_inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
-	// orange_fill_inode(orange_root, sb, ORANGE_SB(sb)->root_inode);
 	sb->sb_root = vfs_new_dentry("/", orange_root);
 	brelse(bh);
 	return 0;

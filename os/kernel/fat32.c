@@ -266,7 +266,7 @@ PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int 
 	if(clus_sector == -1){
 		return NULL;
 	}
-	return bread_sector(inode->i_dev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
+	return bread_sector(inode->i_rdev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
 }
 
 PRIVATE struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
@@ -494,7 +494,7 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	}
 	if(bh)brelse(bh);
 	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
-	inode->i_dev = dir->i_sb->sb_dev;
+	inode->i_rdev = dir->i_sb->sb_dev;
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
 	inode->i_atime = inode->i_ctime = inode->i_mtime = timestamp;
 	fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
@@ -538,7 +538,7 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		inode->i_atime = fat_read_datetime(entry->adate, 0);
 	}
 	inode->i_sb = sb;
-	inode->i_dev = sb->sb_dev;
+	inode->i_rdev = sb->sb_dev;
 	inode->i_no = ino;
 	int cnt = fill_fat_info(sb, cluster_start, &inode->fat32_inode.fat_info);
 	if(!inode->i_size){
@@ -560,7 +560,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	int ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
-		&((struct fat_dir_entry*)bread_sector(inode->i_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
+		&((struct fat_dir_entry*)bread_sector(inode->i_rdev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
 	if(!de){
 		return -1;
 	}
@@ -815,6 +815,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 		brelse(fs_info_buf);
 	}
 	initlock(&FAT_SB(sb)->lock, "FAT");
+	list_init(&sb->sb_inode_list);
 	sb->sb_dev = dev;
 	sb->fs_type = FAT32_TYPE;
 	sb->sb_op = &fat32_sb_ops;

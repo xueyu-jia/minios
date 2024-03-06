@@ -353,7 +353,7 @@ PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf)
 	for (i = rw_blk_min; i <= rw_blk_max; i += chunk){
 		/* read/write this amount of bytes every time */
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
-		bh = bread(inode->i_dev,i);
+		bh = bread(inode->i_b_cdev,i);
 		fsbuf = bh->buffer;
 		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;
@@ -391,7 +391,7 @@ PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
 	for (i = rw_blk_min; i <= rw_blk_max; i += chunk){
 		/* read/write this amount of bytes every time */
 		int bytes = min(bytes_left, chunk * BLOCK_SIZE - off);
-		bh = bread(inode->i_dev,i);
+		bh = bread(inode->i_b_cdev,i);
 		fsbuf = bh->buffer;
 		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;

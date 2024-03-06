@@ -281,7 +281,7 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len){
 }
 
 PUBLIC int tty_file_write(struct file_desc* file, unsigned int count, char* buf){
-	int dev = file->fd_dentry->d_inode->i_dev;
+	int dev = file->fd_dentry->d_inode->i_b_cdev;
 	int nr_tty = MINOR(dev);
 	if (MAJOR(dev) != DEV_CHAR_TTY){
 		disp_str("Error: MAJOR(dev) != DEV_CHAR_TTY\n");
@@ -291,7 +291,7 @@ PUBLIC int tty_file_write(struct file_desc* file, unsigned int count, char* buf)
 }
 
 PUBLIC int tty_file_read(struct file_desc* file, unsigned int count, char* buf){
-	int dev = file->fd_dentry->d_inode->i_dev;
+	int dev = file->fd_dentry->d_inode->i_b_cdev;
 	int nr_tty = MINOR(dev);
 	if (MAJOR(dev) != DEV_CHAR_TTY){
 		disp_str("Error: MAJOR(dev) != DEV_CHAR_TTY\n");

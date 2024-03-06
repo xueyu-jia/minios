@@ -17,8 +17,9 @@ struct tm
 	long int __tm_gmtoff;		/* Seconds east of UTC.  */
 	const char *__tm_zone;	/* Timezone abbreviation.  */
 };
-#define LOCAL_TIMEZONE	8// timestamp use UTC， localtime UTC+8
-#define RTC_TIMEZONE	0// read cmos rtc as UTC
+#define UTC 			0
+#define LOCAL_TIMEZONE	+8// timestamp use UTC， localtime UTC+8
+#define RTC_TIMEZONE	UTC// read cmos rtc as UTC
 extern u32 current_timestamp;
 u32 mktime(struct tm* time);
 struct tm* gmtime(u32 timestamp, struct tm* tm_time);

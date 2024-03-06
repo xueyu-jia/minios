@@ -6,6 +6,7 @@
 #include "global.h"
 #include "string.h"
 #include "proto.h"
+#include "list.h"
 #include "fs.h"
 #include "tty.h"
 #include "buffer.h"
@@ -18,18 +19,37 @@ PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
 struct vfs_dentry *vfs_root;
+PRIVATE u32 inode_free_cnt;
+PRIVATE list_head inode_free_list;
+#define MAX_FREE_INODE_OBTAIN	32
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
-// must held sb lock
+//尝试从之前分配的空闲链表取一个inode，没有则返回NULL
+PRIVATE struct vfs_inode* get_rcu_free_inode() {
+	if(list_empty(&inode_free_list)) {
+		return NULL;
+	}
+	return inode_free_list.next;
+}
+
+// must held inode alloc lock
 PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
-	struct vfs_inode* inode = kern_kmalloc(sizeof(struct vfs_inode));
+	struct vfs_inode* inode = NULL;
+	inode = get_rcu_free_inode();
+	if(inode) {
+		inode_free_cnt --;
+		list_remove(&inode->i_list);
+	} else {// real malloc
+		inode = kern_kmalloc(sizeof(struct vfs_inode));
+	}
 	//init
 	memset(inode, 0, sizeof(struct vfs_inode));
 	inode->i_nlink = 1;
 	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
+	list_init(&inode->i_list);
 	return inode;
 }
 
@@ -44,43 +64,31 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 	struct vfs_inode* res = NULL;
 	acquire(&inode_alloc_lock);
 	res = vfs_alloc_inode_no_lock(sb);
-	if(sb->sb_lru_list){
-		res->lru_nxt = sb->sb_lru_list;
-		sb->sb_lru_list->lru_pre = res;
-	}
-	sb->sb_lru_list = res;
+	list_add_first(&res->i_list, &sb->sb_inode_list);
 	release(&inode_alloc_lock);
 	return res;
+}
+
+PUBLIC void vfs_free_inode(struct vfs_inode* inode) {
+	acquire(&inode_alloc_lock);
+	if(inode_free_cnt > MAX_FREE_INODE_OBTAIN) {
+		list_remove(&inode->i_list);
+		kern_kfree(inode);
+	} else {// 添加到空闲链表暂存
+		inode_free_cnt++;
+		list_move(&inode->i_list, &inode_free_list);
+	}
+	release(&inode_alloc_lock);
 }
 
 // get an inode, if not exist, alloc one 调用此函数获取inode
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 	struct vfs_inode *res = 0, *inode;
-	// char *s = vfs_bmap, *e = vfs_bmap + INODE_BMAP_SIZE, c;
-	// while(s < e){
-	// 	if((c = *s) != -1){
-	// 		int i = 0;
-	// 		while((c & (1<<i)) && i < 8){
-	// 			i++;
-	// 		}
-	// 		*s = c | (1<<i); // mark used;
-	// 		res = vfs_inode_table + ((s-vfs_bmap) << 3) + i;
-	// 		break;
-	// 	}
-	// 	s++;
-	// }
 	acquire(&inode_alloc_lock);
-	for(inode = sb->sb_lru_list; inode; inode = inode->lru_nxt){
+	list_for_each(&sb->sb_inode_list, inode, i_list)
+	{
 		if(inode->i_sb == sb && inode->i_no == ino){
-			if(inode->lru_nxt){
-				inode->lru_nxt->lru_pre = inode->lru_pre;
-			}
-			if(inode->lru_pre){
-				inode->lru_pre->lru_nxt = inode->lru_nxt;
-			}
-			if(inode->i_sb->sb_lru_list == inode){
-				inode->i_sb->sb_lru_list = NULL;
-			}
+			list_remove(&inode->i_list);
 			res = inode;
 			break;
 		}
@@ -92,11 +100,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 		res->i_no = ino;
 		sb->sb_op->read_inode(res);
 	}
-	if(sb->sb_lru_list){
-		res->lru_nxt = sb->sb_lru_list;
-		sb->sb_lru_list->lru_pre = res;
-	}
-	sb->sb_lru_list = res;
+	list_add_first(&res->i_list, &sb->sb_inode_list);
 	release(&inode_alloc_lock);
 	return res;
 }
@@ -114,21 +118,9 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 			if(ops && ops->delete_inode){
 				ops->delete_inode(inode);
 			}
-		}  
-		// int i = (inode - vfs_inode_table);
-		// vfs_bmap[i >> 3] &= ~(1 << (i%8));
-		acquire(&inode_alloc_lock);
-		if(inode->lru_nxt){
-			inode->lru_nxt->lru_pre = inode->lru_pre;
 		}
-		if(inode->lru_pre){
-			inode->lru_pre->lru_nxt = inode->lru_nxt;
-		}
-		if(inode->i_sb->sb_lru_list == inode){
-			inode->i_sb->sb_lru_list = NULL;
-		}
-		kern_kfree(inode);
-		release(&inode_alloc_lock);
+		vfs_free_inode(inode);
+		return;
 	}
 	release(&inode->lock);
 }
@@ -176,11 +168,6 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	dentry = kern_kmalloc(sizeof(struct vfs_dentry));
 	initlock(&dentry->lock, NULL);
 	strcpy(dentry->d_name, name);
-	// if(inode->i_sb){
-	// 	entry->d_op = inode->i_sb->sb_dop;
-	// }
-	// entry->d_covers = entry;
-	// entry->d_mounts = entry;
 	dentry->d_mounted = 0;
 	dentry->d_parent = NULL;
 	dentry->d_nxt = dentry->d_pre = dentry->d_subdirs = NULL;
@@ -389,7 +376,7 @@ PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int
 	acquire(&inode->lock);
 	inode->i_mode = mode;
 	inode->i_type = type;
-	inode->i_dev = dev;
+	inode->i_b_cdev = dev;
 	switch (type)
 	{
 		case I_CHAR_SPECIAL:
@@ -469,7 +456,8 @@ PUBLIC void init_fs(){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
-
+	list_init(&inode_free_list);
+	inode_free_cnt = 0;
 	register_fs_type("orangefs", ORANGE_TYPE,
 		&orange_file_ops, 
 		&orange_inode_ops,
@@ -513,7 +501,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 		return -1;
 	}
 	acquire(&block_dev->d_inode->lock);
-	int dev = block_dev->d_inode->i_dev;
+	int dev = block_dev->d_inode->i_b_cdev;
 	if(block_dev->d_inode->i_type != I_BLOCK_SPECIAL){
 		// 不是块设备，挂载失败
 		dev = -1;

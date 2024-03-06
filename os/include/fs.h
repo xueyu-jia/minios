@@ -9,6 +9,7 @@
 
 #include "type.h"
 #include "atomic.h"
+#include "list.h"
 #include "spinlock.h"
 #include "fs_const.h"
 #include "proc.h"
@@ -23,23 +24,23 @@
 typedef struct vfs_inode{
 	u32 i_no;
 	struct super_block* i_sb;
-	u32 i_dev; // for char special inode
+	u32 i_rdev;   // real device
+	u32 i_b_cdev; // for char special inode
 	u32 i_nlink; // file linked
 	atomic_t i_count; // reference count
 	u32 i_size;  // file size in byte
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
-	u32 i_atime;
-	u32	i_ctime;
-	u32 i_mtime;
+	u32 i_atime; // access time (use UTC timestamp, 下同)
+	u32	i_ctime; // create time
+	u32 i_mtime; // modify time
 	struct inode_operations *i_op;
 	struct file_operations *i_fop;
 	union {
 		struct orange_inode_info orange_inode;
 		struct fat32_inode_info fat32_inode;
 	};
-	struct vfs_inode* lru_nxt;// used in sb->sb_lru_list: last recently used inodes
-	struct vfs_inode* lru_pre;
+	struct list_node i_list; // recently used inodes list
 	struct spinlock lock;
 };
 
@@ -71,7 +72,7 @@ struct super_block {
    * the following item(s) are only present in memory
    */
   	struct vfs_dentry* sb_root;
-	struct vfs_inode* sb_lru_list;
+	list_head sb_inode_list;
 	struct superblock_operations * sb_op;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
