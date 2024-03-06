@@ -21,6 +21,7 @@ struct tm
 #define RTC_TIMEZONE	0// read cmos rtc as UTC
 extern u32 current_timestamp;
 u32 mktime(struct tm* time);
+struct tm* gmtime(u32 timestamp, struct tm* tm_time);
 struct tm* localtime(u32 timestamp, struct tm* tm_time);
 u32 get_init_rtc_timestamp();
 #endif

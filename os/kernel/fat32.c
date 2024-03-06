@@ -39,7 +39,7 @@ PRIVATE u8 fat_chksum(const char* shortname){
 
 PRIVATE void fat_update_datetime(u32 timestamp, u16* date, u16* time){
 	struct tm time_s;
-	localtime(timestamp, &time_s);
+	gmtime(timestamp, &time_s);
 	if(date != NULL) {
 		*date = ((time_s.tm_year+1900-1980) << 9)
 				|((time_s.tm_mon+1) << 5)
@@ -54,7 +54,7 @@ PRIVATE void fat_update_datetime(u32 timestamp, u16* date, u16* time){
 
 PRIVATE u32 fat_read_datetime(u16 date, u16 time){
 	struct tm time_s;
-	time_s.__tm_gmtoff = LOCAL_TIMEZONE*3600;
+	time_s.__tm_gmtoff = 0;
 	time_s.tm_year = (date >> 9) + 1980 - 1900;
 	time_s.tm_mon = ((date >> 5) & 0xF) - 1;
 	time_s.tm_mday = ((date) & 0x1F);

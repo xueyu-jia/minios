@@ -38,10 +38,9 @@ u32 mktime(struct tm* time){
 	)*60 + sec - time->__tm_gmtoff; /* finally seconds */
 }
 
-struct tm* localtime(u32 timestamp, struct tm* tm_time){
+PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time){
 	static int days_four_year = 1461;
     const static unsigned char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-	tm_time->__tm_gmtoff = (LOCAL_TIMEZONE)*3600;
 	u32 localtime = timestamp + tm_time->__tm_gmtoff;
 	tm_time->tm_sec = localtime % 60;
 	localtime /= 60; // min
@@ -73,6 +72,18 @@ struct tm* localtime(u32 timestamp, struct tm* tm_time){
     }
     tm_time->tm_mon = mon;
     tm_time->tm_mday = localtime + 1;
+	return tm_time;
+}
+
+struct tm* gmtime(u32 timestamp, struct tm* tm_time){
+	tm_time->__tm_gmtoff = 0;
+	_gmtime(timestamp, tm_time);
+	return tm_time;
+}
+
+struct tm* localtime(u32 timestamp, struct tm* tm_time){
+	tm_time->__tm_gmtoff = (LOCAL_TIMEZONE)*3600;
+	_gmtime(timestamp, tm_time);
 	return tm_time;
 }
 
