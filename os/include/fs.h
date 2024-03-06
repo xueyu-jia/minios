@@ -34,18 +34,20 @@ typedef struct vfs_inode{
 	u32 i_atime; // access time (use UTC timestamp, 下同)
 	u32	i_ctime; // create time
 	u32 i_mtime; // modify time
+	// list_head i_dentry; // connected dentry list，待定
+	struct list_node i_list; // recently used inodes list
 	struct inode_operations *i_op;
 	struct file_operations *i_fop;
+	struct spinlock lock;
 	union {
 		struct orange_inode_info orange_inode;
 		struct fat32_inode_info fat32_inode;
 	};
-	struct list_node i_list; // recently used inodes list
-	struct spinlock lock;
 };
 
 // **** dentry 的本质是cache !!! ****
 struct vfs_dentry{
+	atomic_t d_count;
 	char d_name[MAX_DNAME_LEN];
 	struct vfs_inode* d_inode;
 	struct vfs_dentry* d_nxt;

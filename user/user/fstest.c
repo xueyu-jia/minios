@@ -38,7 +38,7 @@ void main(int argc,char *argv[])
     }
 	filename[i] = 0;
 	printf("path + filename length :%d\n", strlen(filename));
-	fd = open(filename, O_CREAT|O_RDWR);
+	fd = open(filename, O_CREAT|O_RDWR, I_R|I_W);
 	if(fd >= 0){
 		write(fd, filename, 128);
 		close(fd);

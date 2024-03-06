@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #define MAX_ARGC	8
-#define NUM_BUILTIN_CMD	10
+#define NUM_BUILTIN_CMD	12
 #define CMD_LEN	8
 
 #define SHELL_TEST
@@ -135,6 +135,27 @@ int do_cat_hex(int argc, char** argv) {
 	return cnt;
 }
 
+int do_unlink(int argc, char** argv) {
+	if(argc != 2){
+		printf("usage: unlink %%path\n");
+		return -1;
+	}
+	return unlink(argv[1]);
+}
+
+int do_rmdir(int argc, char** argv) {
+	if(argc != 2){
+		printf("usage: rmdir %%path\n");
+		return -1;
+	}
+	return rmdir(argv[1]);
+}
+
+int do_chkmem(int argc, char** argv) {
+	printf("mem_size=0x%x\n",total_mem_size());
+	return 0;
+}
+
 struct cmd cmds[NUM_BUILTIN_CMD];
 int num_cmd;
 
@@ -202,6 +223,9 @@ void main(int arg,char *argv[])
 	reg_cmd("write", do_write);
 	reg_cmd("cat", do_cat);
 	reg_cmd("hex", do_cat_hex);
+	reg_cmd("unlink", do_unlink);
+	reg_cmd("rmdir", do_rmdir);
+	reg_cmd("chkmem", do_chkmem);
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 
