@@ -184,6 +184,10 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	for(char** p = argv; p != 0 && *p != 0; p++){
 		argc++;
 	}
+	// 补充: 参数数量不能超过最大值
+	if(argc > MAXARG) {
+		goto close_on_error;
+	}
 	char** args_base = (char**)(ArgLinBase + 4);
 	char* args_raw_base = ((char*)args_base) + num_4B * (argc + 1);
 	*(int*)(ArgLinBase-4) = argc;
@@ -218,7 +222,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
-		return -1; //使用了const指针传递
+		goto close_on_error; //使用了const指针传递
 	}
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
@@ -299,7 +303,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
-			return -1;
+			goto close_on_error;
 		}
 	}
 
@@ -319,6 +323,9 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
 	return 0;
+close_on_error:
+	kern_vfs_close(fd);
+	return -1;
 }
 
 /*    added by xyx&&wjh  2021-12-31  */

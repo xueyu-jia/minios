@@ -5,8 +5,6 @@
 */
 #include "signal.h"
 #include "syscall.h"
-#include <stddef.h>
-#include <stdarg.h>
 
 void Handler(Sigaction sigaction) {
     void (*_fun)(int, int);

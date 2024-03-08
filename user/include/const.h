@@ -204,6 +204,7 @@
 #define STD_IN 0
 #define STD_OUT 1
 #define STD_ERR 2
+#define MAXARG ((ArgLinLimitMAX-ArgLinBase)/4 - 2) // 减2是因为Arg开头用来保存argv,末尾需要保存一个NULL
 
 /* max() & min() */
 //added by mingxuan 2019-5-19

@@ -49,6 +49,7 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 			    put_key(p_tty, '\b');
 			    break;
             case UP:
+				// 
                 // if(p_tty->console->current_line < 43){
                 //     disable_int( );
                 //     p_tty->console->current_line ++;

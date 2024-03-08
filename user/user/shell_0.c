@@ -229,11 +229,12 @@ void main(int arg,char *argv[])
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 
-	#define TEST_CMD_NUM 3
+	#define TEST_CMD_NUM 1
 	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
-		"mkdir ora",
-		"mount /dev/sda1 ora orangefs",
-		"hex /dev/sda2 20 1024 128",
+		// "mkdir ora",
+		// "mount /dev/sda1 ora orangefs",
+		// "cd ora",
+		"/t_xv6.bin",
 	};
 	
 	pre = TEST_CMD_NUM;
