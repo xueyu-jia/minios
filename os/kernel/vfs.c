@@ -31,7 +31,7 @@ PRIVATE struct vfs_inode* get_rcu_free_inode() {
 	if(list_empty(&inode_free_list)) {
 		return NULL;
 	}
-	return inode_free_list.next;
+	return list_entry(inode_free_list.next, struct vfs_inode, i_list);
 }
 
 // must held inode alloc lock
@@ -166,6 +166,7 @@ PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
 PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	struct vfs_dentry* dentry;
 	dentry = kern_kmalloc(sizeof(struct vfs_dentry));
+	memset(dentry, 0, sizeof(struct vfs_dentry));
 	initlock(&dentry->lock, NULL);
 	strcpy(dentry->d_name, name);
 	dentry->d_mounted = 0;
@@ -263,7 +264,7 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 }
 // 上锁规则: 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁,
 //(todo:对于访问..可能产生的顺序是否存在死锁的可能,有待探究)
-// dir lock must held, return entry with lock
+// dir lock must held, return dentry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
 PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int release_origin){
 	// acquire(&dir->lock);
@@ -420,12 +421,17 @@ PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 		}
 	}
 	release(&dir->lock);
-	return dentry;	
+	return dentry;
 }
 
 PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
+	// 对于 fstype NO_FS_TYPE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
+	if(fstype == NO_FS_TYPE) {
+		fstype = hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type;
+	}	
 	if(hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type != fstype){
 		// dismatch fstype
+		disp_str("fail: fstype not match");
 		return NULL;
 	}
 	struct fs_type* file_sys = &fstype_table[fstype];
@@ -446,10 +452,26 @@ PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
 	return sb;
 }
 
-PUBLIC void mount_root(int root_dev, int part, int root_fstype){
-	int dev = get_fs_part_dev(root_dev, part, root_fstype);
+PRIVATE void mount_root(int root_dev){
+	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了
+	#ifndef ROOT_FSTYPE
+	#define ROOT_FSTYPE "orangefs"
+	#endif
+	int root_fstype = get_fstype_by_name(ROOT_FSTYPE);
+	int dev = -1;
+	#ifdef ROOT_PART
+		dev = get_fs_part_dev(root_dev, ROOT_PART, root_fstype);
+	#else
+		dev = get_fs_dev(root_dev, root_fstype);
+	#endif
 	struct super_block *sb = vfs_read_super(dev, root_fstype);
 	vfs_root = sb->sb_root;
+}
+
+PRIVATE void init_fsroot() {
+	kern_vfs_mkdir("/dev", I_RWX);
+	kern_init_block_dev();
+	kern_init_char_dev();
 }
 
 PUBLIC void init_fs(){
@@ -468,12 +490,8 @@ PUBLIC void init_fs(){
 		&fat32_inode_ops,
 		&fat32_dentry_ops,
 		&fat32_sb_ops);
-	int drive = SATA_BASE;
-	int partition = 2;
-	mount_root(drive, partition, FAT32_TYPE);
-	kern_vfs_mkdir("/dev", I_RWX);
-	kern_init_block_dev();
-	kern_init_char_dev();
+	mount_root(SATA_BASE);
+	init_fsroot();
 }
 
 PUBLIC int get_fstype_by_name(const char* fstype_name){
@@ -738,37 +756,37 @@ PUBLIC int kern_vfs_creat(const char* path, int mode){
 PUBLIC int kern_vfs_unlink(const char *path){
 	char dir_path[MAX_PATH] = {0};
 	char* file_name = strip_dir_path(path, dir_path);
-	struct vfs_dentry *dir = vfs_lookup(dir_path), *entry = NULL;
+	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	if(!dir){
+		return -1;
+	}
+	dentry = _do_lookup(dir, file_name, 0);
+	if(!dentry){
 		release(&dir->lock);
 		return -1;
 	}
-	entry = _do_lookup(dir, file_name, 0);
-	if(!entry){
-		release(&dir->lock);
-		return -1;
-	}
-	struct vfs_inode *inode = entry->d_inode;
+	struct vfs_inode *inode = dentry->d_inode;
 	acquire(&inode->lock);
 	if(inode->i_type == I_DIRECTORY){
 		goto err;	
 	}
 	if(inode->i_op && inode->i_op->unlink){
 		acquire(&dir->d_inode->lock);
-		int state = inode->i_op->unlink(dir->d_inode, entry);
+		int state = inode->i_op->unlink(dir->d_inode, dentry);
 		release(&dir->d_inode->lock);
 		if(state){
 			goto err;
 		}
 		inode->i_nlink = 0;
 	}
-	delete_dentry(entry, dir);
-	release(&entry->lock);
+	if(delete_dentry(dentry, dir) == 0) {
+		release(&dentry->lock);
+	}
 	release(&dir->lock);
 	return 0;
 err:
 	release(&inode->lock);
-	release(&entry->lock);
+	release(&dentry->lock);
 	release(&dir->lock);
 	return -1;
 }
@@ -856,8 +874,9 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 	while(sub = dentry->d_subdirs){
 		delete_dentry(sub, dentry);
 	}
-	delete_dentry(dentry, dir);
-	release(&dentry->lock);
+	if(delete_dentry(dentry, dir) == 0) {
+		release(&dentry->lock);
+	}
 	release(&dir->lock);
 	return 0;
 err:

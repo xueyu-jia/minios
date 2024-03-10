@@ -2,7 +2,7 @@
 *	spinlock.h       //added by mingxuan 2018-12-26
 ***********************************************************/
 #pragma once
-
+#include "list.h" // dbg
 // Mutual exclusion lock.
 #define uint unsigned
 

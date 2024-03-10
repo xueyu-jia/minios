@@ -24,8 +24,11 @@ ASMBFLAGS_mbr   = -I os/boot/mbr/include/	#added by mingxuan 2019-5-17
 ASMKFLAGS	= -I os/include/ -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
+DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
+CFLAGS		= -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
+KFLAGS		= $(CFLAGS) $(DEF_FLAGS)
 
-CFLAGS		= -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 
+#modified by jiangfeng 2024-03-10 add definitions option for root
 
 LDFLAGS_kernel	= -m elf_i386 -s -Ttext $(ENTRYPOINT) #modified by mingxuan 2021-3-29
 #LDFLAGS_init	= -m elf_i386 -s -T../user/init/lds
@@ -116,13 +119,13 @@ kernel.gdb.bin : $(OBJS)
 
 # spinlock.o	added by mingxuan 2019-1-5
 os/kernel/spinlock.o: os/kernel/spinlock.c os/include/spinlock.h
-	$(CC) -masm=intel  -I os/include/ $(CFLAGS) -o $@ $<
+	$(CC) -masm=intel  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/kernel/%.o : os/kernel/%.c
-	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
+	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/ipc/%.o : os/ipc/%.c
-	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
+	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 	nasm -I os/gdbstub/ -f elf -o $@ $<

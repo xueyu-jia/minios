@@ -30,18 +30,14 @@ PRIVATE inline _list_remove(struct list_node* prev, struct list_node* next) {
 	next->prev = prev;
 }
 
-#define list_add_first(node, list) (	\
-	_list_insert(node, list, (list)->next)	\
-)
+#define list_add_first(node, list) _list_insert(node, list, (list)->next)
 
-#define list_move(node, list) ({\
+#define list_move(node, list) do{\
 	_list_remove((node)->prev, (node)->next);\
 	list_add_first(node, list);\
-})
+}while(0)
 
-#define list_remove(node) (\
-	_list_remove((node)->prev, (node)->next)\
-)
+#define list_remove(node) _list_remove((node)->prev, (node)->next)
 
 #define list_for_each(head, entry, member) \
 for(entry = list_entry((head)->next, typeof(*entry), member);	\

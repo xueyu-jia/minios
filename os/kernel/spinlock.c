@@ -4,8 +4,9 @@
 // Mutual exclusion spin locks.
 
 #include "spinlock.h"
-
-
+#include "proc.h"
+#include "global.h"
+#define lock_log(info) { disp_str(info); disp_int(p_proc_current->task.pid); disp_str(" ");}
 //extern int use_console_lock;
 
 static inline uint
@@ -25,7 +26,7 @@ initlock(struct spinlock *lock, char *name)
   lock->name = name;
   lock->locked = 0;
   lock->cpu = 0xffffffff;
-}
+  }
 
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.
@@ -34,18 +35,18 @@ initlock(struct spinlock *lock, char *name)
 void
 acquire(struct spinlock *lock)
 {
-
+  
   while(cmpxchg(0, 1, &lock->locked) == 1)
-    ;
-}
+;
+  }
 
 // Release the lock.
 void
 release(struct spinlock *lock)
 {
-
+  
   lock->locked = 0;
-}
+  }
 
 
 

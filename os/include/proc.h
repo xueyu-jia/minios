@@ -198,7 +198,7 @@ typedef struct s_proc {
 	pthread_attr_t attr;           
 	void * retval;
 	u32 who_wait_flag;   
-
+	
 	
 
 }PROCESS_0;
