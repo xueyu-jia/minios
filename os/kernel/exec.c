@@ -180,12 +180,13 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	// low<--               ---stack---           -->high(base)
 	//  | user main ebp | _start rt |        argc           |  argv    | argv[0]... argv[argc-1]|... argv raw data
 	//  |               |           | StackLinBase(pcb esp) |ArgLinBase|
-	int argc = 0, len = 0;
+	int argc = 0, len = 0, arg_content = 0;
 	for(char** p = argv; p != 0 && *p != 0; p++){
+		arg_content += strlen(*p) + 1;
 		argc++;
 	}
 	// 补充: 参数数量不能超过最大值
-	if(argc > MAXARG) {
+	if(argc > MAXARG || ((argc + 2)*4 + arg_content > num_4K)) {
 		goto close_on_error;
 	}
 	char** args_base = (char**)(ArgLinBase + 4);

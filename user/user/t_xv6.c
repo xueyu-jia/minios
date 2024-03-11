@@ -33,7 +33,7 @@ iputtest(void)
     printf("chdir iputdir failed\n");
     exit(-1);
   }
-  if(unlink("../iputdir") < 0){
+  if(rmdir("../iputdir") < 0){
     printf("unlink ../iputdir failed\n");
     exit(-1);
   }
@@ -66,8 +66,8 @@ exitiputtest(void)
       printf("child chdir failed\n");
       exit(-1);
     }
-    if(unlink("../iputdir") < 0){
-      printf("unlink ../iputdir failed\n");
+    if(rmdir("../iputdir") < 0){
+      printf("rmdir ../iputdir failed\n");
       exit(-1);
     }
     exit(-1);
@@ -129,7 +129,7 @@ opentest(void)
   int fd;
 
   printf("open test\n");
-  fd = open("echo", 0);
+  fd = open("echo.bin", 0);
   if(fd < 0){
     printf("open echo failed!\n");
     exit(-1);
@@ -304,7 +304,7 @@ void
 exectest(void)
 {
   printf("exec test\n");
-  if(execv("echo", echoargv) < 0){
+  if(execv("echo.bin", echoargv) < 0){
     printf("exec echo failed\n");
     exit(-1);
   }
@@ -1644,7 +1644,7 @@ bigargtest(void)
       args[i] = "bigargs test: failed\n                                                                                                                                                                                                       ";
     args[MAXARG-1] = 0;
     printf("bigarg test\n");
-    execv("echo", args);
+    execv("echo.bin", args);
     printf("bigarg test ok\n");
     fd = open("bigarg-ok", O_CREAT, I_RW);
     close(fd);

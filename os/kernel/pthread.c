@@ -203,11 +203,6 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	*((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
 	
 	p_child->task.ldt_sel = selector_ldt;	
-	for(int i=0; i<NR_FILES; i++){
-		if(p_child->task.filp[i]){
-			fget(p_child->task.filp[i]);
-		}
-	}	
 	return 0;
 }
 

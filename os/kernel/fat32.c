@@ -238,7 +238,7 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 }
 
 // return entry offset by 32 bytes
-PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, int ino) {
+PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, u32 ino) {
 	struct super_block* sb = dir->i_sb;
 	int entry = ino & (FAT_DPS - 1);
 	int sector_offset = (ino >> FAT_DPS_SHIFT) - FAT_SB(sb)->data_start_sector;
@@ -260,7 +260,7 @@ PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, int ino) {
 	return start + entry;
 }
 
-PRIVATE int fat_ino(struct vfs_inode* dir, int entry){
+PRIVATE u32 fat_ino(struct vfs_inode* dir, int entry){
 	return (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT) | (entry&(FAT_DPS-1));
 }
 
@@ -354,15 +354,14 @@ PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
 	int start, count = 0, res = -1;
 	for(start = 0; ; start++){
 		ds = fat_get_slot(dir, start, &bh, 1);
-		if(ds->order == DIR_DELETE){
+		if((ds->order == DIR_DELETE) || (ds->order == 0)) {
+			// 如果为0应该已经不用找了(后面均为空闲)，但是要进行可能的FAT空间分配，所以不立即跳出
 			if(count == 0)res = start;
 			count++;
 			if(count >= num)break;
-		}else if(ds->order == 0){
-			res = start;
-			break;// 后面的均为空闲，不用找了
+		} else {
+			count = 0;
 		}
-		count = 0;
 	}
 	if(bh){
 		brelse(bh);
@@ -467,7 +466,7 @@ PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* en
 	}
 }
 
-PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, int is_dir, u32 timestamp){
+PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name, int is_dir, u32 timestamp){
 	int nslot = strlen(name)/13  + 1;
 	int free_slot_order = fat_find_free(dir, nslot+1);
 	buf_head* bh = NULL;
@@ -481,7 +480,7 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	memset(uniname, -1, 256);
 	char2uni(uniname, name, 256);
 	chksum = fat_chksum(shortname);
-	for(int slot = nslot; slot > 0; slot--){
+	for(int slot = nslot; slot > 0; slot--){ //写入长目录项
 		u8 order = slot | ((slot == nslot)? DIR_LDIR_END:0);
 		struct fat_dir_slot * ds = fat_get_slot(dir, free_slot_order + (nslot - slot), &bh, 1);
 		ds->attr = ATTR_LNAME;
@@ -496,6 +495,10 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 		mark_buff_dirty(bh);
 	}
 	if(bh)brelse(bh);
+	if((free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
+		dir->i_size = (free_slot_order + 1)*FAT_ENTRY_SIZE;
+	}
+	dir->i_mtime = timestamp; 
 	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
 	inode->i_rdev = dir->i_sb->sb_dev;
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
@@ -509,10 +512,6 @@ PRIVATE struct vfs_inode* fat_add_name(struct vfs_inode* dir, const char* name, 
 	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
 	// fat_update_datetime(timestamp, &de.adate, NULL); 
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
-	if((free_slot_order + 1)*FAT_ENTRY_SIZE > dir->i_size) {
-		dir->i_size = (free_slot_order + 1)*FAT_ENTRY_SIZE;
-	}
-	dir->i_mtime = timestamp; 
 	fat32_sync_inode(dir);
 	return inode;
 }
@@ -560,7 +559,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	}
 	buf_head* bh = NULL;
 	struct tm time;
-	int ino = inode->i_no;
+	u32 ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
 		&((struct fat_dir_entry*)bread_sector(inode->i_rdev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
@@ -589,11 +588,25 @@ PUBLIC void fat32_put_inode(struct vfs_inode* inode){
 	}
 }
 
+PUBLIC void fat32_delete_inode(struct vfs_inode* inode) {
+	struct fat_info* ent=inode->fat32_inode.fat_info;
+	if(!ent->cluster_start) {// inode 并没有分配磁盘空间
+		return;
+	}
+	while(ent){
+		for(int clus_in_ent = 0; clus_in_ent < ent->length; clus_in_ent++) {
+			read_write_fat(inode->i_sb, ent->cluster_start + clus_in_ent, 0);
+		}
+		ent = ent->next;
+	}
+}
+
 PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filename){
 	// 1. format
 	// 2. loop get entry until match
 	char full_name[256]; // for long dir store real name
-	int entry = 0, ino = 0;
+	int entry = 0;
+	u32 ino = 0;
 	struct fat_dir_entry* de = NULL;
 	buf_head* bh = NULL;
 	struct vfs_dentry* dentry = NULL;
@@ -620,7 +633,7 @@ PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mo
 	// struct tm time;
 	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 0, timestamp);
+	struct vfs_inode* inode = fat_add_entry(dir, dentry->d_name, 0, timestamp);
 	inode->i_type = I_REGULAR;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -634,7 +647,7 @@ PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	struct vfs_inode* inode = dentry->d_inode;
-	int ino = inode->i_no;
+	u32 ino = inode->i_no;
 	u8 order, chksum;
 	if(ino == FAT_ROOT_INO) {
 		return -1;
@@ -662,7 +675,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	// struct tm time;
 	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
-	struct vfs_inode* inode = fat_add_name(dir, dentry->d_name, 1, timestamp);
+	struct vfs_inode* inode = fat_add_entry(dir, dentry->d_name, 1, timestamp);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -834,7 +847,7 @@ struct superblock_operations fat32_sb_ops = {
 .fill_superblock = fat32_fill_superblock,
 .read_inode = fat32_read_inode,
 .put_inode = fat32_put_inode,
-.delete_inode = NULL
+.delete_inode = fat32_delete_inode,
 };
 
 struct inode_operations fat32_inode_ops = {

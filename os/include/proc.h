@@ -233,4 +233,7 @@ extern  TASK	task_table[NR_TASKS];
 //added by zcr
 #define proc2pid(x) (x - proc_table)
 
+//added by jiangfeng
+#define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
+
 #endif

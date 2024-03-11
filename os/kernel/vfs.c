@@ -111,13 +111,13 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(atomic_dec_and_test(&inode->i_count)){
 		struct superblock_operations* ops = inode->i_sb->sb_op;
-		if(ops && ops->put_inode){
-			ops->put_inode(inode);
-		}
 		if(inode->i_nlink == 0){
 			if(ops && ops->delete_inode){
 				ops->delete_inode(inode);
 			}
+		}
+		if(ops && ops->put_inode){
+			ops->put_inode(inode);
 		}
 		vfs_free_inode(inode);
 		return;
@@ -170,6 +170,7 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	initlock(&dentry->lock, NULL);
 	strcpy(dentry->d_name, name);
 	dentry->d_mounted = 0;
+	atomic_set(&dentry->d_count, 1);
 	dentry->d_parent = NULL;
 	dentry->d_nxt = dentry->d_pre = dentry->d_subdirs = NULL;
 	return dentry;
@@ -184,6 +185,20 @@ PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* in
 	return dentry;
 }
 
+PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
+	if(atomic_dec_and_test(&dentry->d_count)){
+		// 如果其中的inode已经无效，说明是已经unlink/rmdir的dentry,要进行内存释放
+		if(!dentry->d_inode) {
+			kern_kfree(dentry);
+		}
+	}
+	release(&dentry->lock);
+}
+
+PUBLIC void vfs_get_dentry(struct vfs_dentry* dentry) {
+	acquire(&dentry->lock);
+	atomic_inc(&dentry->d_count);
+}
 // delete dentry in dir
 // require mutex: dir, dentry, dentry.inode
 PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
@@ -194,7 +209,8 @@ PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	}
 	remove_sub_dentry(dir, dentry);
 	vfs_put_inode(dentry->d_inode);
-	kern_kfree(dentry);
+	dentry->d_inode = NULL;
+	vfs_put_dentry(dentry);
 	return 0;
 }
 
@@ -325,10 +341,10 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	}
 	if(dentry != dir){ // 排除当前目录
 		if(dentry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
-			acquire(&dentry->lock);
+			vfs_get_dentry(dentry);
 		}
 		if(release_origin){
-			release(&dir->lock);
+			vfs_put_dentry(dir);
 		}
 	}
 	return dentry;
@@ -346,7 +362,7 @@ PUBLIC struct vfs_dentry *vfs_lookup(const char *path){
 	if(path[0] != '/'){
 		dir = p_proc_current->task.cwd;
 	}
-	acquire(&dir->lock);
+	vfs_get_dentry(dir);
 	while(*p == '/')p++;
 	while(*p || flag_name){
 		if(*p == '/' || *p == 0){// meet file name end
@@ -412,8 +428,7 @@ PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 			state = i_ops->create(dir, dentry, mode);
 		}
 		if(state != 0){// error
-			kern_kfree(dentry);
-			release(&dir->lock);
+			vfs_put_dentry(dentry);
 			return NULL;
 		}
 		if(type == I_BLOCK_SPECIAL || type == I_CHAR_SPECIAL){
@@ -453,7 +468,7 @@ PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
 }
 
 PRIVATE void mount_root(int root_dev){
-	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了
+	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了 2024-03-10 jiangfeng
 	#ifndef ROOT_FSTYPE
 	#define ROOT_FSTYPE "orangefs"
 	#endif
@@ -462,7 +477,7 @@ PRIVATE void mount_root(int root_dev){
 	#ifdef ROOT_PART
 		dev = get_fs_part_dev(root_dev, ROOT_PART, root_fstype);
 	#else
-		dev = get_fs_dev(root_dev, root_fstype);
+		dev = get_fs_dev(root_dev, root_fstype); // 自动匹配符合文件系统类型的第一个分区
 	#endif
 	struct super_block *sb = vfs_read_super(dev, root_fstype);
 	vfs_root = sb->sb_root;
@@ -525,7 +540,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 		dev = -1;
 	}
 	release(&block_dev->d_inode->lock);
-	release(&block_dev->lock);
+	vfs_put_dentry(block_dev);
 	if(dev == -1){
 		return -1;
 	}
@@ -541,12 +556,12 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 	int fstype = get_fstype_by_name(filesystemtype);
 	struct super_block *sb = vfs_read_super(dev, fstype);
 	if(!sb){
-		release(&dir_d->lock);
+		vfs_put_dentry(dir_d);
 		return -1;
 	}
 	sb->sb_root->d_vfsmount = add_vfsmount(block_dev, dir_d, sb->sb_root, sb);
 	dir_d->d_mounted = 1;
-	release(&dir_d->lock);
+	vfs_put_dentry(dir_d);
 	return 0;
 }
 
@@ -555,13 +570,14 @@ PUBLIC int kern_vfs_umount(const char *target){
 	if(!mnt){
 		return -1;
 	}
-	release(&mnt->lock);
 	mountpoint = remove_vfsmnt(mnt);
+	vfs_put_dentry(mnt);
 	if(!mountpoint){
 		return -1;
 	}
 	mountpoint->d_mounted = 0;
 	// mnt->
+	vfs_put_dentry(mountpoint);
 	return 0;
 }
 
@@ -581,8 +597,8 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 		dentry = vfs_create(dir->d_inode, file_name, I_REGULAR, mode&(~I_TYPE_MASK), 0);
 		if(!dentry)
 			goto no_dentry_out;
-		insert_sub_dentry(dir, dentry);
 		acquire(&dentry->lock);
+		insert_sub_dentry(dir, dentry);
 	}
 	if(!dentry){
 		goto no_dentry_out;
@@ -616,19 +632,18 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	file->flag = 1;
 	atomic_set(&file->fd_count, 1);
 	release(&file_desc_lock);
-	atomic_inc(&inode->i_count);
 	file->fd_dentry = dentry;
 	file->fd_mode = rmode;//fd_mode: bit 0:read 1:write
 	file->fd_pos = 0;	
 	release(&inode->lock);
 	release(&dentry->lock);
-	release(&dir->lock);
+	vfs_put_dentry(dir);
 	return file;
 err:
 	release(&inode->lock);
-	release(&dentry->lock);
+	vfs_put_dentry(dentry);
 no_dentry_out:
-	release(&dir->lock);
+	vfs_put_dentry(dir);
 	return NULL;
 }
 
@@ -661,23 +676,23 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 }
 
 PUBLIC int kern_vfs_close(int fd) {    //modified by mingxuan 2021-8-15
-	struct file_desc* file = p_proc_current->task.filp[fd];
+	PROCESS* p_proc = proc_real(p_proc_current);
+	struct file_desc* file = p_proc->task.filp[fd];
 	if(!file){
 		return -1;
 	}
-    struct vfs_inode* inode = file->fd_dentry->d_inode;
-	acquire(&inode->lock);
-	vfs_put_inode(inode);
-	p_proc_current->task.filp[fd]->fd_dentry = 0; // modified by mingxuan 2019-5-17
+	vfs_put_dentry(file->fd_dentry);
+	p_proc->task.filp[fd]->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
 	fput(file);
 	release(&file_desc_lock);			 // added by mingxuan 2019-5-17
-	p_proc_current->task.filp[fd] = 0;
+	p_proc->task.filp[fd] = 0;
 	return 0;
 }
 
 PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
-	struct file_desc * file = p_proc_current->task.filp[fd];
+	PROCESS* p_proc = proc_real(p_proc_current);
+	struct file_desc * file = p_proc->task.filp[fd];
 	if(!file){
 		return -1;
 	}
@@ -712,7 +727,8 @@ PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
 }
 
 PUBLIC int kern_vfs_read(int fd, char *buf, int count){
-	struct file_desc * file = p_proc_current->task.filp[fd];
+	PROCESS* p_proc = proc_real(p_proc_current);
+	struct file_desc * file = p_proc->task.filp[fd];
 	if(!file || count<0){
 		return -1;
 	}
@@ -731,7 +747,8 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count){
 }
 
 PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
-	struct file_desc * file = p_proc_current->task.filp[fd];
+	PROCESS* p_proc = proc_real(p_proc_current);
+	struct file_desc * file = p_proc->task.filp[fd];
 	if(!file || count<0){
 		return -1;
 	}
@@ -777,17 +794,15 @@ PUBLIC int kern_vfs_unlink(const char *path){
 		if(state){
 			goto err;
 		}
-		inode->i_nlink = 0;
+		inode->i_nlink--;
 	}
-	if(delete_dentry(dentry, dir) == 0) {
-		release(&dentry->lock);
-	}
-	release(&dir->lock);
+	delete_dentry(dentry, dir);
+	vfs_put_dentry(dir);
 	return 0;
 err:
 	release(&inode->lock);
-	release(&dentry->lock);
-	release(&dir->lock);
+	vfs_put_dentry(dentry);
+	vfs_put_dentry(dir);
 	return -1;
 }
 
@@ -808,11 +823,11 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 			release(&dir->lock);
 			return -1;
 		}
-		insert_sub_dentry(dir, dentry);
 		acquire(&dentry->lock);
+		insert_sub_dentry(dir, dentry);
 	}
-	release(&dentry->lock);
-	release(&dir->lock);
+	vfs_put_dentry(dentry);
+	vfs_put_dentry(dir);
 	return 0;
 }
 
@@ -867,22 +882,19 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		if(state){
 			goto err;
 		}
-		inode->i_nlink = 0;
+		inode->i_nlink--;
 	}
-	vfs_put_inode(inode);
 	struct vfs_dentry* sub;
 	while(sub = dentry->d_subdirs){
 		delete_dentry(sub, dentry);
 	}
-	if(delete_dentry(dentry, dir) == 0) {
-		release(&dentry->lock);
-	}
-	release(&dir->lock);
+	delete_dentry(dentry, dir);
+	vfs_put_dentry(dir);
 	return 0;
 err:
 	release(&inode->lock);
-	release(&dentry->lock);
-	release(&dir->lock);
+	vfs_put_dentry(dentry);
+	vfs_put_dentry(dir);
 	return -1;
 }
 
@@ -900,12 +912,14 @@ PUBLIC DIR* kern_vfs_opendir(const char* path){
 }
 
 PUBLIC int kern_vfs_closedir(DIR* dirp){
-	struct vfs_inode* inode = dirp->file->fd_dentry->d_inode;
-	acquire(&inode->lock);
-	vfs_put_inode(inode);
-	dirp->file->fd_dentry = 0; // modified by mingxuan 2019-5-17
+	struct file_desc* file = dirp->file;
+	if(!file){
+		return -1;
+	}
+	vfs_put_dentry(file->fd_dentry);
+	file->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
-	fput(dirp->file);
+	fput(file);
 	release(&file_desc_lock);
 	kern_free_4k(dirp);
 	return 0;
@@ -926,11 +940,11 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 	if(dirp->count < dirp->total){
 		ent = &DIR_DATA(dirp)[dirp->count++];
 		if(!strcmp(ent->d_name, "..")){// check parent needed for mount point
-			acquire(&dirp->file->fd_dentry->lock);
+			vfs_get_dentry(dirp->file->fd_dentry);
 			struct vfs_dentry* found = _do_lookup(dirp->file->fd_dentry, ent->d_name, 1);
 			if(found){
 				ent->d_ino = found->d_inode->i_no;
-				release(&found->lock);
+				vfs_put_dentry(found);
 			}
 		}
 	}
@@ -938,6 +952,7 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 }
 
 PUBLIC int kern_vfs_chdir(const char* path){
+	PROCESS* p_proc = proc_real(p_proc_current);
 	struct vfs_dentry *dir = vfs_lookup(path);
 	if(!dir){
 		return -1;
@@ -945,7 +960,10 @@ PUBLIC int kern_vfs_chdir(const char* path){
 	struct vfs_inode* inode = dir->d_inode;
 	int err = -1;
 	if(inode->i_type == I_DIRECTORY){
-		p_proc_current->task.cwd = dir;
+		if(p_proc->task.cwd) {
+			vfs_put_dentry(p_proc->task.cwd);
+		}
+		p_proc->task.cwd = dir;
 		err = 0;
 	}
 	release(&dir->lock);
@@ -954,7 +972,8 @@ PUBLIC int kern_vfs_chdir(const char* path){
 
 
 PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
-    vfs_get_path(p_proc_current->task.cwd, buf, size);
+	PROCESS* p_proc = proc_real(p_proc_current);
+    vfs_get_path(p_proc->task.cwd, buf, size);
     return buf;
 }
 

@@ -132,8 +132,13 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	
 
 	//暂时不考虑file exit, mingxuan 2021-1-6
-
-
+	// 现在应该考虑了 xv6也测了这个 jiangfeng 2024-03-11
+	vfs_put_dentry(p_proc->task.cwd);
+	for(int i=0; i < NR_FILES; i++){
+		if(p_proc->task.filp[i]){
+			fput(p_proc->task.filp[i]);
+		}
+	}
 	//如果有线程, 先把线程释放 mingxuan 2021-8-17
 	u32 tid = -1;
 	if(p_proc->task.info.child_t_num > 0) //说明有线程

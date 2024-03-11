@@ -242,6 +242,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	
 	p_child->task.ldt_sel = selector_ldt;				
 	p_child->task.cr3 = cr3_child;
+	atomic_inc(&p_child->task.cwd->d_count);
 	for(int i=0; i<NR_FILES; i++){
 		if(p_child->task.filp[i]){
 			fget(p_child->task.filp[i]);
