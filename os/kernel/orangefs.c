@@ -4055,7 +4055,7 @@ PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
 	return 0;
 }
 
-PUBLIC int orange_readdir(struct file_desc* file, struct dirent* start)
+PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dirent* start)
 {
 	struct vfs_inode* dir = file->fd_dentry->d_inode;
 	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
@@ -4075,7 +4075,7 @@ PUBLIC int orange_readdir(struct file_desc* file, struct dirent* start)
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (++m > nr_dir_entries)
+			if (++m > nr_dir_entries || cnt >= count)
 			{
 				return cnt;
 			}

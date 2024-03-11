@@ -92,7 +92,6 @@ struct file_desc {
 };
 
 #define fget(file) atomic_inc(&((file)->fd_count))
-#define fput(file) if(atomic_dec_and_test(&((file)->fd_count))) (file)->flag = 0
 
 struct dirent{
 	int d_ino;
@@ -127,7 +126,7 @@ struct dentry_operations{
 struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, const char * buf);
-	int (*readdir)(struct file_desc *file, struct dirent* start);
+	int (*readdir)(struct file_desc *file, unsigned int count, struct dirent* start);
 };
 
 struct superblock_operations{

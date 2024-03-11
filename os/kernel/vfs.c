@@ -1,7 +1,7 @@
 /**********************************************************
 *	vfs.c       //added by mingxuan 2019-5-17
 ***********************************************************/
-
+// VFS   modified by jiangfeng 2024-03
 #include "const.h"
 #include "global.h"
 #include "string.h"
@@ -18,7 +18,14 @@
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
-struct vfs_dentry *vfs_root;
+PUBLIC struct vfs_dentry *vfs_root;
+
+// 实例文件系统调用：
+PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb);// inode create
+PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino); //inode lookup
+PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode); //inode lookup
+PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry);
+
 PRIVATE u32 inode_free_cnt;
 PRIVATE list_head inode_free_list;
 #define MAX_FREE_INODE_OBTAIN	32
@@ -54,7 +61,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 }
 
 
-PUBLIC void init_file_desc_table(){
+PRIVATE void init_file_desc_table(){
     int i;
 	for (i = 0; i < NR_FILE_DESC; i++)
 		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
@@ -69,7 +76,7 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 	return res;
 }
 
-PUBLIC void vfs_free_inode(struct vfs_inode* inode) {
+PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 	acquire(&inode_alloc_lock);
 	if(inode_free_cnt > MAX_FREE_INODE_OBTAIN) {
 		list_remove(&inode->i_list);
@@ -195,13 +202,13 @@ PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 	release(&dentry->lock);
 }
 
-PUBLIC void vfs_get_dentry(struct vfs_dentry* dentry) {
+PRIVATE void vfs_get_dentry(struct vfs_dentry* dentry) {
 	acquire(&dentry->lock);
 	atomic_inc(&dentry->d_count);
 }
 // delete dentry in dir
 // require mutex: dir, dentry, dentry.inode
-PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
+PRIVATE int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	if(dentry->d_subdirs || dentry->d_mounted){
 		// check empty
 		// disp_str("try to delete non empty dentry");
@@ -214,7 +221,7 @@ PUBLIC int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	return 0;
 }
 
-PUBLIC void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
+PRIVATE void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 	if (!buf)
     {
         return;
@@ -409,7 +416,7 @@ PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int
 	release(&inode->lock);
 }
 
-PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
+PRIVATE struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	const char* file_name, int type, int mode, int dev){
 	struct inode_operations * i_ops = NULL;
 	struct vfs_dentry* dentry = NULL;
@@ -439,7 +446,7 @@ PUBLIC struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	return dentry;
 }
 
-PUBLIC struct super_block * vfs_read_super(int dev, int fstype){
+PRIVATE struct super_block * vfs_read_super(int dev, int fstype){
 	// 对于 fstype NO_FS_TYPE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
 	if(fstype == NO_FS_TYPE) {
 		fstype = hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type;
@@ -675,17 +682,19 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
     return fd;
 }
 
-PUBLIC int kern_vfs_close(int fd) {    //modified by mingxuan 2021-8-15
+PUBLIC int kern_vfs_close(int fd) {
 	PROCESS* p_proc = proc_real(p_proc_current);
 	struct file_desc* file = p_proc->task.filp[fd];
 	if(!file){
 		return -1;
 	}
-	vfs_put_dentry(file->fd_dentry);
-	p_proc->task.filp[fd]->fd_dentry = 0; // modified by mingxuan 2019-5-17
 	acquire(&file_desc_lock);
-	fput(file);
-	release(&file_desc_lock);			 // added by mingxuan 2019-5-17
+	if(atomic_dec_and_test(&file->fd_count)){
+		vfs_put_dentry(file->fd_dentry);
+		file->fd_dentry = 0;
+		file->flag = 0;
+	}
+	release(&file_desc_lock);
 	p_proc->task.filp[fd] = 0;
 	return 0;
 }
@@ -846,8 +855,14 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 		return -1;
 	}
 	dentry = vfs_create(dir->d_inode, file_name, I_DIRECTORY, mode&(~I_TYPE_MASK), 0);
+	if(!dentry) {
+		vfs_put_dentry(dir);
+		return -1;
+	}
+	acquire(&dentry->lock);
 	insert_sub_dentry(dir, dentry);
-	release(&dir->lock);
+	vfs_put_dentry(dentry);
+	vfs_put_dentry(dir);
 	return 0;
 }
 
@@ -916,11 +931,13 @@ PUBLIC int kern_vfs_closedir(DIR* dirp){
 	if(!file){
 		return -1;
 	}
-	vfs_put_dentry(file->fd_dentry);
-	file->fd_dentry = 0; // modified by mingxuan 2019-5-17
-	acquire(&file_desc_lock);
-	fput(file);
-	release(&file_desc_lock);
+	if(atomic_dec_and_test(&file->fd_count)){
+		acquire(&file_desc_lock);
+		vfs_put_dentry(file->fd_dentry);
+		file->fd_dentry = 0; // modified by mingxuan 2019-5-17
+		file->flag = 0;
+		release(&file_desc_lock);
+	}
 	kern_free_4k(dirp);
 	return 0;
 }
@@ -931,7 +948,8 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 		struct dirent* data_start = DIR_DATA(dirp);
 		acquire(&inode->lock);
 		if(inode->i_fop && inode->i_fop->readdir){
-			dirp->total = inode->i_fop->readdir(dirp->file, data_start);
+			dirp->total = inode->i_fop->readdir(dirp->file, 
+			((num_4K - sizeof(DIR))/sizeof(struct dirent)) ,data_start);
 		}
 		dirp->init = 1;
 		release(&inode->lock);

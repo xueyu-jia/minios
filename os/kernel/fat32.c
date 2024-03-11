@@ -755,9 +755,9 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* b
 	return pos - start;
 }
 
-PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
+PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dirent* start){
 	char full_name[256]; // for long dir store real name
-	int entry = 0, count = 0;
+	int entry = 0, _count = 0;
 	struct fat_dir_entry* de;
 	buf_head* bh = NULL;
 	struct vfs_inode* dir = file->fd_dentry->d_inode;
@@ -769,20 +769,23 @@ PUBLIC int fat32_readdir(struct file_desc* file, struct dirent* start){
 		start->d_ino = FAT_ROOT_INO;
 		strcpy(start->d_name, "..");
 		start++;
-		count += 2;
+		_count += 2;
 	}
 	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
+		if(_count >= count) {
+			break;
+		}
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
 		start->d_ino = fat_ino(dir, entry);
 		strcpy(start->d_name, full_name);
 		start++;
-		count++;
+		_count++;
 	}
 	if(bh){
 		brelse(bh);
 	}
-	return count;
+	return _count;
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){

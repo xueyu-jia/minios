@@ -136,7 +136,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	vfs_put_dentry(p_proc->task.cwd);
 	for(int i=0; i < NR_FILES; i++){
 		if(p_proc->task.filp[i]){
-			fput(p_proc->task.filp[i]);
+			kern_vfs_close(i);
 		}
 	}
 	//如果有线程, 先把线程释放 mingxuan 2021-8-17

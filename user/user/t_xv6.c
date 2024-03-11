@@ -1777,9 +1777,7 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREAT, I_RW));
 
-//   argptest();
   createdelete();
-//   linkunlink();
   concreate();
   fourfiles();
   sharedfd();
@@ -1788,37 +1786,42 @@ main(int argc, char *argv[])
   bigwrite();
   bigargtest();
   bsstest();
-//   sbrktest();
-//   validatetest();
 
   opentest();
   writetest();
   writetest1();
   createtest();
 
-  openiputtest();
+  openiputtest(); 
   exitiputtest();
-  iputtest();
+  iputtest();	//fail  rmdir cwd error
 
-//   mem();
-//   pipe1();
-//   preempt();
   exitwait();
 
-  rmdot();
-  fourteen();
+  rmdot();     //fail	rmdir cwd error
+  fourteen();	//fail	long name error
   bigfile();
-  subdir();
-//   linktest();
-  unlinkread();
+  subdir();		//fail
+  unlinkread();	//fail	read after unlink
   dirfile();
   iref();
   forktest();
-  bigdir(); // slow
+  bigdir(); // slow fail
 
-  uio();
+//   uio();	//invalid io access test success, just general protection halt 
 
   exectest();
 
   exit(-1);
+  /*
+  bug log:
+  fixed:
+  1. vfs_inode free list should return inode
+  2. SATA error when fat32 create between cluster
+  3. exec have no args size check
+  todo:
+  1. rmdir cwd? rmdir/unlink effective after process exit
+  2. invalid check after unlinked file
+  3. ...
+  */
 }
