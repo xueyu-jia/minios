@@ -36,9 +36,8 @@ void
 acquire(struct spinlock *lock)
 {
   
-  while(cmpxchg(0, 1, &lock->locked) == 1)
-;
-  }
+  while(cmpxchg(0, 1, &lock->locked) == 1);
+}
 
 // Release the lock.
 void
@@ -46,7 +45,7 @@ release(struct spinlock *lock)
 {
   
   lock->locked = 0;
-  }
+}
 
 
 

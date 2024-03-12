@@ -24,7 +24,6 @@ PUBLIC struct vfs_dentry *vfs_root;
 PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb);// inode create
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino); //inode lookup
 PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode); //inode lookup
-PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry);
 
 PRIVATE u32 inode_free_cnt;
 PRIVATE list_head inode_free_list;
@@ -192,9 +191,15 @@ PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* in
 	return dentry;
 }
 
+// locked: dentry
 PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 	if(atomic_dec_and_test(&dentry->d_count)){
-		// 如果其中的inode已经无效，说明是已经unlink/rmdir的dentry,要进行内存释放
+		// 如果其中的inode已经无效，说明是已经unlink/rmdir的dentry
+		if(dentry->d_inode && dentry->d_inode->i_nlink == 0) {
+			acquire(&dentry->d_inode);
+			vfs_put_inode(dentry->d_inode);
+			dentry->d_inode = NULL;
+		}
 		if(!dentry->d_inode) {
 			kern_kfree(dentry);
 		}
@@ -207,7 +212,7 @@ PRIVATE void vfs_get_dentry(struct vfs_dentry* dentry) {
 	atomic_inc(&dentry->d_count);
 }
 // delete dentry in dir
-// require mutex: dir, dentry, dentry.inode
+// require mutex: dir, dentry
 PRIVATE int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 	if(dentry->d_subdirs || dentry->d_mounted){
 		// check empty
@@ -215,9 +220,6 @@ PRIVATE int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
 		return -1;
 	}
 	remove_sub_dentry(dir, dentry);
-	vfs_put_inode(dentry->d_inode);
-	dentry->d_inode = NULL;
-	vfs_put_dentry(dentry);
 	return 0;
 }
 
@@ -260,10 +262,13 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
 	fs->fs_sop = s_op;
 }
 
-PRIVATE char* strip_dir_path(const char *path, char* dir){
+// 文件名拆分：同时删除末尾多余的"/"
+PRIVATE char* strip_dir_path(char *path, char* dir){
 	int len = strlen(path), flag = 0;
-	char *p = path + len - 1, *file_name = path;
+	char *p = path + len - 1, *file_name = path, *file_end = path + len - 1;
 	while(p != path && (*p) == '/')p--;
+	file_end = p;
+	file_end[1] = '\0';
 	while(p >= path && (*p)){
 		if(*(p) == '/'){
 			file_name = p + 1;
@@ -301,7 +306,11 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
-		dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
+		if(dir == vfs_root) {
+			dentry = vfs_root;
+		} else {
+			dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
+		}
 	}
 	int (*compare)(const char*, const char*) = strcmp;// default compare func
 	if(dir->d_op && dir->d_op->compare){
@@ -316,7 +325,11 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 			}
 		}
 	}
-	if(!dentry){
+	if(dentry){ // dentry 命中
+		if(dentry != dir) {
+			vfs_get_dentry(dentry);
+		}
+	} else {	// real lookup
 		acquire(&dir->d_inode->lock);
 		struct inode_operations * i_ops = NULL;
 		int type = dir->d_inode->i_type;
@@ -326,6 +339,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		if(i_ops){
 			dentry = i_ops->lookup(dir->d_inode, name);
 			if(dentry){
+				acquire(&dentry->lock);
 				insert_sub_dentry(dir, dentry);
 			}
 		}
@@ -334,22 +348,21 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		 *  2. 若查找成功: .1 调用vfs_get_inode 得到一个inode,填入相应数据
 		 *               .2 调用new_dentry 初始化新的dentry
 		 *  3. 返回结果dentry的指针
-		 *  注：每次新的lookup分配新inode之后，其引用计数为1，保证dentry中的inode有效
-		 *     对于open的文件,引用计数再加1,close之后不会归0释放
-		 *     可以简单认为目录树的dentry对于相应的inode都有一次额外的引用
-		 *     删除dentry时,对应的引用计数清除,inode才有可能释放
+		 *  注：每次新的lookup分配新inode之后，其引用计数为1，(引用来自dentry)
+		 * 	   dentry引用计数d_count 为1，保证dentry有效，引用来自上层调用
+		 *     如open的文件,引用归属于file
+		 *     删除dentry时,对应的引用计数清除,dentry才有可能释放
 		 */
 		release(&dir->d_inode->lock);
 	}
 	while(dentry && (dentry->d_mounted)){
 		// todo: follow mount
 		struct vfs_mount* mnt = lookup_vfsmnt(dentry);
+		vfs_get_dentry(mnt->mnt_root);
+		vfs_put_dentry(dentry);
 		dentry = mnt->mnt_root;
 	}
-	if(dentry != dir){ // 排除当前目录
-		if(dentry){// 此时不管entry是命中的还是新创建的都已经在目录树中了，一锁换一锁
-			vfs_get_dentry(dentry);
-		}
+	if(dentry != dir){
 		if(release_origin){
 			vfs_put_dentry(dir);
 		}
@@ -436,6 +449,7 @@ PRIVATE struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 		}
 		if(state != 0){// error
 			vfs_put_dentry(dentry);
+			release(&dir->lock);
 			return NULL;
 		}
 		if(type == I_BLOCK_SPECIAL || type == I_CHAR_SPECIAL){
@@ -688,13 +702,13 @@ PUBLIC int kern_vfs_close(int fd) {
 	if(!file){
 		return -1;
 	}
-	acquire(&file_desc_lock);
 	if(atomic_dec_and_test(&file->fd_count)){
+		acquire(&file_desc_lock);
 		vfs_put_dentry(file->fd_dentry);
 		file->fd_dentry = 0;
 		file->flag = 0;
+		release(&file_desc_lock);
 	}
-	release(&file_desc_lock);
 	p_proc->task.filp[fd] = 0;
 	return 0;
 }
@@ -805,7 +819,9 @@ PUBLIC int kern_vfs_unlink(const char *path){
 		}
 		inode->i_nlink--;
 	}
+	release(&inode->lock);
 	delete_dentry(dentry, dir);
+	vfs_put_dentry(dentry);
 	vfs_put_dentry(dir);
 	return 0;
 err:
@@ -850,8 +866,8 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 	}
 	dentry = _do_lookup(dir, file_name, 0);
 	if(dentry){
-		release(&dentry->lock);
-		release(&dir->lock);
+		vfs_put_dentry(dentry);
+		vfs_put_dentry(dir);
 		return -1;
 	}
 	dentry = vfs_create(dir->d_inode, file_name, I_DIRECTORY, mode&(~I_TYPE_MASK), 0);
@@ -869,19 +885,22 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 PUBLIC int kern_vfs_rmdir(const char* path){
 	char dir_path[MAX_PATH] = {0};
 	char* file_name = strip_dir_path(path, dir_path);
+	if(file_name[strlen(file_name) - 1] == '.') {
+		disp_str(". in name end is invalid ");
+		return -1;
+	}
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	if(!dir){
-		release(&dir->lock);
-		return -1;
+		return -1;	// cant find parent
 	}
 	dentry = _do_lookup(dir, file_name, 0);
 	if(!dentry){
-		release(&dir->lock);
-		return -1;
+		vfs_put_dentry(dir);
+		return -1;	// cant find target dir
 	}
 	struct vfs_inode *inode = dentry->d_inode;
 	acquire(&inode->lock);
-	if(dentry == vfs_root || dentry->d_vfsmount->mnt_root == dentry){// 不允许删除挂载点
+	if(dentry == vfs_root || (dentry->d_vfsmount && dentry->d_vfsmount->mnt_root == dentry)){// 不允许删除挂载点
 		goto err;
 	}
 	if(inode->i_type != I_DIRECTORY){
@@ -899,11 +918,13 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		}
 		inode->i_nlink--;
 	}
+	release(&inode->lock);
 	struct vfs_dentry* sub;
 	while(sub = dentry->d_subdirs){
 		delete_dentry(sub, dentry);
 	}
 	delete_dentry(dentry, dir);
+	vfs_put_dentry(dentry);
 	vfs_put_dentry(dir);
 	return 0;
 err:

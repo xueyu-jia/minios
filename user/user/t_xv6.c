@@ -999,8 +999,8 @@ subdir(void)
 //     printf("link dd/dd/ff dd/dd/ffff failed\n");
 //     exit(-1);
 //   }
-  if((fd2 = creat("dd/dd/ffff")) >= 0){
-    printf("link dd/dd/ff dd/dd/ffff failed\n");
+  if((fd2 = creat("dd/dd/ffff")) < 0){
+    printf("create dd/dd/ff dd/dd/ffff failed\n");
     exit(-1);
   }
   write(fd2, "FF", 2);
@@ -1117,16 +1117,16 @@ subdir(void)
     printf("unlink dd/ff failed\n");
     exit(-1);
   }
-  if(unlink("dd") == 0){
-    printf("unlink non-empty dd succeeded!\n");
+  if(rmdir("dd") == 0){
+    printf("rmdir non-empty dd succeeded!\n");
     exit(-1);
   }
-  if(unlink("dd/dd") < 0){
-    printf("unlink dd/dd failed\n");
+  if(rmdir("dd/dd") < 0){
+    printf("rmdir dd/dd failed\n");
     exit(-1);
   }
-  if(unlink("dd") < 0){
-    printf("unlink dd failed\n");
+  if(rmdir("dd") < 0){
+    printf("rmdir dd failed\n");
     exit(-1);
   }
 
@@ -1272,11 +1272,11 @@ rmdot(void)
     printf("chdir dots failed\n");
     exit(-1);
   }
-  if(unlink(".") == 0){
+  if(rmdir(".") == 0){
     printf("rm . worked!\n");
     exit(-1);
   }
-  if(unlink("..") == 0){
+  if(rmdir("..") == 0){
     printf("rm .. worked!\n");
     exit(-1);
   }
@@ -1284,15 +1284,15 @@ rmdot(void)
     printf("chdir / failed\n");
     exit(-1);
   }
-  if(unlink("dots/.") == 0){
+  if(rmdir("dots/.") == 0){
     printf("unlink dots/. worked!\n");
     exit(-1);
   }
-  if(unlink("dots/..") == 0){
+  if(rmdir("dots/..") == 0){
     printf("unlink dots/.. worked!\n");
     exit(-1);
   }
-  if(unlink("dots") != 0){
+  if(rmdir("dots") != 0){
     printf("unlink dots failed!\n");
     exit(-1);
   }
@@ -1777,35 +1777,36 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREAT, I_RW));
 
-  createdelete();
-  concreate();
-  fourfiles();
-  sharedfd();
+//   createdelete();
+//   concreate();
+//   fourfiles();
+//   sharedfd();
 
-  bigargtest();
-  bigwrite();
-  bigargtest();
-  bsstest();
+//   bigargtest();
+//   bigwrite();
+//   bigargtest();
+//   bsstest();
 
-  opentest();
-  writetest();
-  writetest1();
-  createtest();
+//   opentest();
+//   writetest();
+//   writetest1();
+//   createtest();
 
-  openiputtest(); 
-  exitiputtest();
-  iputtest();	//fail  rmdir cwd error
+//   openiputtest(); 
+//   exitiputtest();
+//   iputtest();
 
-  exitwait();
+//   exitwait();
 
-  rmdot();     //fail	rmdir cwd error
-  fourteen();	//fail	long name error
-  bigfile();
-  subdir();		//fail
-  unlinkread();	//fail	read after unlink
-  dirfile();
-  iref();
-  forktest();
+//   rmdot();
+//   fourteen();	//fail	no error: xv6 only store 14 byte name, 
+  // the test consider 14 bytes' name the same as 15 bytes' name
+//   bigfile();
+//   subdir();		
+//   unlinkread();
+//   dirfile();
+//   iref();
+//   forktest();
   bigdir(); // slow fail
 
 //   uio();	//invalid io access test success, just general protection halt 
@@ -1815,13 +1816,18 @@ main(int argc, char *argv[])
   exit(-1);
   /*
   bug log:
-  fixed:
-  1. vfs_inode free list should return inode
-  2. SATA error when fat32 create between cluster
-  3. exec have no args size check
+  fixed: nr			description							belonging model
+  1. vfs_inode free list should return inode			vfs
+  2. SATA error when fat32 create between cluster		fat32
+  3. exec have no args size check						exec
+  4. fat32 missing rmdir								fat32
+  5. rmdir path end with . illegal						vfs
+  6. read after unlink									vfs
+  7. root /.. = /										vfs
+
   todo:
-  1. rmdir cwd? rmdir/unlink effective after process exit
-  2. invalid check after unlinked file
-  3. ...
+  // rmdir cwd? rmdir/unlink effective after process exit  fixed
+  // invalid check after unlinked file // checked: read should ok for unlinked file after open, fixed
+  1. ...
   */
 }

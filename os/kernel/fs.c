@@ -25,6 +25,7 @@ int get_fs_part_dev(int drive, int part, u32 fs_type){
 	if( hd_infos[drive].part[part].fs_type == fs_type){
 		return MAKE_DEV(drive, part);
 	}
+	disp_str("fatal: FSTYPE provided incorrect");
 	return -1;
 }
 

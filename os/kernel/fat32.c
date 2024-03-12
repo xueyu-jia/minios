@@ -373,8 +373,8 @@ PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
-	for(start = 0; ; start++){
-		ds = fat_get_slot(dir, start, &bh, 1);
+	for(start = 0; start < (dir->i_size >> FAT_DPS_SHIFT); start++){
+		ds = fat_get_slot(dir, start, &bh, 0);
 		if(ds->order == DIR_DELETE){
 			continue;
 		}else if(ds->order == 0){
@@ -384,6 +384,31 @@ PRIVATE int fat_check_short(struct vfs_inode* dir, const char* name){
 			res = -1;
 			break;
 		}
+	}
+	if(bh) {
+		brelse(bh);
+	}
+	return res;
+}
+
+PRIVATE int fat_check_empty(struct vfs_inode* dir){
+	buf_head* bh = NULL;
+	struct fat_dir_slot* ds;
+	int start, res = 0;
+	for(start = 0; start < (dir->i_size >> FAT_DPS_SHIFT); start++){
+		ds = fat_get_slot(dir, start, &bh, 0);
+		if(ds->order == DIR_DELETE){
+			continue;
+		}else if(ds->order == 0){
+			break;// 后面的均为空闲，不用找了
+		}
+		if((!strncmp(FAT_DOT, ((struct fat_dir_entry*)ds)->name, 11))
+		|| (!strncmp(FAT_DOTDOT, ((struct fat_dir_entry*)ds)->name, 11))
+		){
+			continue;
+		}
+		res = -1;
+		break;
 	}
 	if(bh) {
 		brelse(bh);
@@ -643,7 +668,7 @@ PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mo
 	return 0;
 }
 
-PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
+PRIVATE int fat32_unlink_name(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	struct vfs_inode* inode = dentry->d_inode;
@@ -671,6 +696,17 @@ PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 	return 0;
 }
 
+PUBLIC int fat32_unlink(struct vfs_inode *dir, struct vfs_dentry *dentry) {
+	return fat32_unlink_name(dir, dentry);
+}
+
+PUBLIC int fat32_rmdir(struct vfs_inode *dir, struct vfs_dentry *dentry) {
+	if(fat_check_empty(dentry->d_inode)) {
+		return -1;
+	}
+	return fat32_unlink_name(dir, dentry);
+} 
+
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	// struct tm time;
 	// get_rtc_datetime(&time);
@@ -680,6 +716,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
 	inode->i_fop = &fat32_file_ops;
+	inode->i_size = 2*FAT_ENTRY_SIZE;
 	struct fat_dir_entry de;
 	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, FAT_DOT, 11);
@@ -696,6 +733,8 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	fat_update_datetime(dir->i_mtime, &de.mdate, &de.mtime, NULL);
 	fat_update_datetime(dir->i_atime, &de.adate, NULL, NULL);
 	fat_write_shortname(inode, &de, 1);
+	memset(&de, 0, sizeof(struct fat_dir_entry));
+	fat_write_shortname(inode, &de, 2);
 	dentry->d_inode = inode;
 	dentry->d_op = &fat32_dentry_ops;
 	fat32_sync_inode(inode);
@@ -858,6 +897,7 @@ struct inode_operations fat32_inode_ops = {
 .create = fat32_create,
 .unlink = fat32_unlink,
 .mkdir = fat32_mkdir,
+.rmdir = fat32_rmdir,
 };
 
 struct dentry_operations fat32_dentry_ops = {
