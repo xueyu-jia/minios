@@ -919,8 +919,8 @@ bigdir(void)
 
   for(i = 0; i < 500; i++){
     name[0] = 'x';
-    name[1] = '0' + (i / 64);
-    name[2] = '0' + (i % 64);
+    name[1] = '0' + (i / 49);//  name[1] = '0' + (i / 64); 原来的xv6测试由于文件名A-O 到 a-o 对于FAT32重复，改为49下同
+    name[2] = '0' + (i % 49);
     name[3] = '\0';
     if((fd2 = creat(name)) < 0){
       printf("bigdir link failed\n");
@@ -932,8 +932,8 @@ bigdir(void)
   unlink("bd");
   for(i = 0; i < 500; i++){
     name[0] = 'x';
-    name[1] = '0' + (i / 64);
-    name[2] = '0' + (i % 64);
+    name[1] = '0' + (i / 49);
+    name[2] = '0' + (i % 49);
     name[3] = '\0';
     if(unlink(name) != 0){
       printf("bigdir unlink failed");
@@ -1796,18 +1796,20 @@ main(int argc, char *argv[])
 //   exitiputtest();
 //   iputtest();
 
-//   exitwait();
+  for(int i = 0; i < 1000; i++) {
+    exitwait();
+  }
 
 //   rmdot();
 //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
-  // the test consider 14 bytes' name the same as 15 bytes' name
+  // the test consider 15 bytes' name the same as 14 bytes' name
 //   bigfile();
 //   subdir();		
 //   unlinkread();
 //   dirfile();
 //   iref();
 //   forktest();
-  bigdir(); // slow fail
+//   bigdir(); // slow
 
 //   uio();	//invalid io access test success, just general protection halt 
 
@@ -1824,6 +1826,7 @@ main(int argc, char *argv[])
   5. rmdir path end with . illegal						vfs
   6. read after unlink									vfs
   7. root /.. = /										vfs
+  8. phy_kfree_4k addr error:missing type convert		const.h								
 
   todo:
   // rmdir cwd? rmdir/unlink effective after process exit  fixed

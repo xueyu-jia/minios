@@ -145,7 +145,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	{
 		//防止在释放的过程中该线程被调度
 		//added by mingxuan 2021-8-21
-		for(int i=0; i<p_proc->task.info.child_t_num; i++) //对每个子线程，都释放它的栈
+		for(int i=0; i<p_proc->task.info.child_t_num; i++)
 		{
 			tid = p_proc->task.info.child_thread[i];
 			proc_table[tid].task.stat = IDLE; //释放线程的PCB, 防止在释放的过程中该线程被调度
@@ -155,7 +155,6 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		for(int i=0; i<p_proc->task.info.child_t_num; i++) //对每个子线程，都释放它的栈
 		{
 			tid = p_proc->task.info.child_thread[i]; //得到子线程的pid
-			//proc_table[tid].task.stat = IDLE; //释放线程的PCB, 防止在释放的过程中该线程被调度
 			free_seg_phypage(tid, MEMMAP_STACK);
 		}
 
@@ -176,7 +175,6 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 
 	}
 	//释放线程资源完毕，将自己的子线程数量设为0
-	//p_proc->task.info.child_p_num = 0;
 	p_proc->task.info.child_t_num = 0;//modified by dongzhangqi 2023-4-12
 
 
@@ -185,7 +183,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
     free_all_pagetbl(p_proc->task.pid);
     //free_pagedir(p_proc_current->task.pid);	//不能释放cr3，不然会崩 //deleted by mingxuan 2021-1-7
 
-	p_proc->task.info.child_p_num = 0;	//自己的子进程设为0，数量
+	p_proc->task.info.child_p_num = 0;	//自己的子进程数量设为0
 
 	//判断是否有父进程
 	if (p_proc->task.info.ppid==-1) //无父进程
@@ -200,8 +198,8 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 												//但是不能设置为IDLE，因为可能会有其他的进程占据这个进程表项
 		
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
-		sys_wakeup(p_father);
 		p_proc->task.stat = ZOMBY; //modified by dongzhangqi 2023.6.2
+		sys_wakeup(p_father);
 		
 	}
 

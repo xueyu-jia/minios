@@ -7,7 +7,7 @@
 
 #ifndef	_ORANGES_CONST_H_
 #define	_ORANGES_CONST_H_
-
+#include "type.h"
 /*最大整数定义*/
 #define MAX_UNSIGNED_INT 0xFFFFFFFF		//最大的无符号整形
 #define MAX_INT 0x7FFFFFFF			//最大的整形数
@@ -109,8 +109,8 @@
 /*线性地址描述*/	//edit by visual 2016.5.25
 #define	SmallKernelSize		0x800000 			//小内核的大小8M//edited by wang 2021.8.27
 #define	BigKernelSize			0x2000000           //大内核的大小32M，edited by wang 2021.8.27 
-#define K_PHY2LIN(x)		((x)+0xC0000000)	//内核中物理地址转线性地址		//add by visual 2016.5.10
-#define K_LIN2PHY(x)		((x)-0xC0000000)	//added by xw, 18/8/27
+#define K_PHY2LIN(x)		(((u32)x)+0xC0000000)	//内核中物理地址转线性地址		//add by visual 2016.5.10
+#define K_LIN2PHY(x)		(((u32)x)-0xC0000000)	//added by xw, 18/8/27
 #define num_4B	0x4			//4B大小
 #define num_1K	0x400		//1k大小
 #define num_4K	0x1000		//4k大小

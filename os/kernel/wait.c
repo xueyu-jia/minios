@@ -68,7 +68,7 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 		if(exit_child_hanging == 0)
 		{
 			//p_proc_current->task.we_flag = WAITING;
-			
+
 			wait_event(p_proc_current); //changed by dongzhangqi 2023.6.2
 		}
 	}
