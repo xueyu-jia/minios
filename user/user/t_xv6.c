@@ -1777,39 +1777,37 @@ main(int argc, char *argv[])
   }
   close(open("usertests.ran", O_CREAT, I_RW));
 
-//   createdelete();
-//   concreate();
-//   fourfiles();
-//   sharedfd();
+  createdelete();
+  concreate();
+  fourfiles();
+  sharedfd();
 
-//   bigargtest();
-//   bigwrite();
-//   bigargtest();
-//   bsstest();
+  bigargtest();
+  bigwrite();
+  bigargtest();
+  bsstest();
 
-//   opentest();
-//   writetest();
-//   writetest1();
-//   createtest();
+  opentest();
+  writetest();
+  writetest1();
+  createtest();
 
-//   openiputtest(); 
-//   exitiputtest();
-//   iputtest();
+  openiputtest(); 
+  exitiputtest();
+  iputtest();
 
-  for(int i = 0; i < 1000; i++) {
-    exitwait();
-  }
+//   exitwait();  // frequently failed
 
-//   rmdot();
+  rmdot();
 //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
   // the test consider 15 bytes' name the same as 14 bytes' name
-//   bigfile();
-//   subdir();		
-//   unlinkread();
-//   dirfile();
-//   iref();
-//   forktest();
-//   bigdir(); // slow
+  bigfile();
+  subdir();		
+  unlinkread();
+  dirfile();
+  iref();
+  forktest();
+  bigdir(); // slow
 
 //   uio();	//invalid io access test success, just general protection halt 
 
