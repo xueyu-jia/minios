@@ -14,18 +14,6 @@ PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_stack_init(PROCESS *p_child,PROCESS *p_parent, pthread_attr_t *attr);
 PRIVATE int pthread_heap_init(PROCESS *p_child,PROCESS *p_parent);
 
-//added by mingxuan 2021-8-11
-PUBLIC int sys_pthread_create()
-{
-    return do_pthread_create(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
-}
-
-//added by mingxuan 2021-8-14
-PUBLIC int do_pthread_create(int *thread, void *attr, void *entry, void *arg)
-{
-	return kern_pthread_create(thread, attr, entry, arg);
-}
-
 /**********************************************************
 *		sys_pthread			//add by visual 2016.5.25
 *系统调用sys_pthread的具体实现部分
@@ -154,6 +142,17 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	return 0;
 }
 
+//added by mingxuan 2021-8-14
+PUBLIC int do_pthread_create(int *thread, void *attr, void *entry, void *arg)
+{
+	return kern_pthread_create(thread, attr, entry, arg);
+}
+
+//added by mingxuan 2021-8-11
+PUBLIC int sys_pthread_create()
+{
+    return do_pthread_create(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
+}
 
 /**********************************************************
 *		pthread_pcb_cpy			//add by visual 2016.5.26
@@ -189,7 +188,7 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	//note that syscalls can be interrupted now! the state of child can only be setted
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
-	p_child->task.stat = IDLE;
+	p_child->task.stat = SLEEPING; //统一PCB state 20240314
 	p_child->task.esp_save_int = esp_save_int;	//esp_save_int of child must be restored!!
 	p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_parent + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
@@ -338,7 +337,7 @@ PUBLIC void kern_pthread_exit(void *retval)
 	//设置返回值
 	p_proc->task.retval = retval;
 
-	p_proc->task.stat = ZOMBY;
+	p_proc->task.stat = KILLED; //统一PCB state 20240314
 
 	//设置返回值
     //p_proc->task.regs.eax = (u32)retval;
@@ -354,16 +353,6 @@ PUBLIC void kern_pthread_exit(void *retval)
 *		pthread_join			//add by dongzhangqi 2023.5.4
 *
 *************************************************************/
-
-PUBLIC int sys_pthread_join()
-{
-    return do_pthread_join(get_arg(1), get_arg(2));
-}
-
-PUBLIC int do_pthread_join(pthread_t thread, void **retval)
-{
-	return kern_pthread_join(thread, retval);
-}
 
 PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 {
@@ -383,7 +372,7 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 		return -1;
 	}
 	while(1){
-		if(p_proc_child->task.stat != ZOMBY){
+		if(p_proc_child->task.stat != KILLED){ //统一PCB state 20240314
 			//挂起，并告知被等待的线程，线程退出时再唤醒
 			p_proc_child->task.who_wait_flag = p_proc_father->task.pid;
 			wait_event(p_proc_father);
@@ -417,3 +406,13 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 
 		
 } 
+
+PUBLIC int do_pthread_join(pthread_t thread, void **retval)
+{
+	return kern_pthread_join(thread, retval);
+}
+
+PUBLIC int sys_pthread_join()
+{
+    return do_pthread_join(get_arg(1), get_arg(2));
+}

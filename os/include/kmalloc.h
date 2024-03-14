@@ -38,5 +38,6 @@ typedef struct malloced    //已经kmalloc的内存块的记录表，供kfree时
 } malloced;
 
 void kmem_init();
+void malloced_insert(u32 addr, u32 size);
 
 extern free_kmem kmem;

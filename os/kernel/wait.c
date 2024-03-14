@@ -23,7 +23,7 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 		for(i = 0;i < NR_CHILD_MAX;i++)
 		{
 			//该子进程表项中有值且处于ZOMBY
-			if(p_proc_current->task.info.child_process[i] !=0 && proc_table[p_proc_current->task.info.child_process[i]].task.stat == ZOMBY)
+			if(p_proc_current->task.info.child_process[i] !=0 && proc_table[p_proc_current->task.info.child_process[i]].task.stat == KILLED)//统一PCB stat 20240314
 			{
 				exit_child_hanging = 1;
 

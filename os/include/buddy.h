@@ -65,4 +65,6 @@ extern int big_kernel;
 extern u32 kernel_code_size;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
 extern u32 test_phy_mem_size; //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
 
+void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr);
+int block_init(u32 bgn_addr, u32 end_addr, buddy *bud);
 #endif

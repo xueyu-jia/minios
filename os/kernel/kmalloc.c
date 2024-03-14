@@ -4,6 +4,7 @@
 
 #include "kmalloc.h"
 #include "buddy.h"
+#include "console.h"
 //#include "../include/memman.h"    //deleted by mingxuan 2021-8-13
 
 malloced mal;
@@ -16,7 +17,7 @@ free_kmem kmem;
 void malloced_insert(u32 addr, u32 size);
 //static u32 do_kfree(u32 addr,u32 size);
 //static u32 do_kfree_static(u32 addr,u32 size);  //modified by mingxuan 2021-3-25
-static u32 phy_kfree_static(u32 addr, u32 size); //modified by mingxuan 2021-8-17
+// static u32 phy_kfree_static(u32 addr, u32 size); //modified by mingxuan 2021-8-17
 static u32 which_order(u32 size);
 
 //added by mingxuan 2021-3-8

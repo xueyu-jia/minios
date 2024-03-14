@@ -2,17 +2,6 @@
 #include "const.h"
 #include "proc.h"
 
-// added by mingxuan 2021-8-13
-PUBLIC void sys_exit()
-{
-    do_exit(get_arg(1));
-}
-
-PUBLIC void do_exit(int status)
-{
-	kern_exit(status);
-}
-
 /*======================================================================*
 					  sys_exit			  added by mingxuan 2021-1-6
  *======================================================================*/
@@ -148,7 +137,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		for(int i=0; i<p_proc->task.info.child_t_num; i++)
 		{
 			tid = p_proc->task.info.child_thread[i];
-			proc_table[tid].task.stat = IDLE; //释放线程的PCB, 防止在释放的过程中该线程被调度
+			proc_table[tid].task.stat = FREE; //释放线程的PCB, 防止在释放的过程中该线程被调度 //统一PCB state 20240314
 		}
 
 		//释放每个线程的栈物理页
@@ -198,7 +187,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 												//但是不能设置为IDLE，因为可能会有其他的进程占据这个进程表项
 		
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
-		p_proc->task.stat = ZOMBY; //modified by dongzhangqi 2023.6.2
+		p_proc->task.stat = KILLED; //modified by dongzhangqi 2023.6.2 //统一PCB state 20240314
 		sys_wakeup(p_father);
 		
 	}
@@ -206,4 +195,15 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//while(1);	//added by mingxuan 2021-8-17
 
 	return;
+}
+
+PUBLIC void do_exit(int status)
+{
+	kern_exit(status);
+}
+
+// added by mingxuan 2021-8-13
+PUBLIC void sys_exit()
+{
+    do_exit(get_arg(1));
 }

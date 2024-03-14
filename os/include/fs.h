@@ -21,7 +21,7 @@
 */
 #include "orangefs.h"
 #include "fat32.h"
-typedef struct vfs_inode{
+struct vfs_inode{
 	u32 i_no;
 	struct super_block* i_sb;
 	u32 i_rdev;   // real device

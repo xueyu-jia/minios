@@ -10,7 +10,7 @@ int suspend_with_cancellation(PROCESS *self, int timeout)
   p_proc_current->task.channel = &ticks;
   while (ticks - ticks0 < timeout)
   {
-    if (self->task.suspended == WAKE)
+    if (self->task.suspended == READY) //统一PCB state 20240314
     {
       self->task.stat = READY;
       return 0;
@@ -207,7 +207,7 @@ int kern_pthread_cond_signal(pthread_cond_t* cond)
   {
     if (proc_table[i].task.pthread_id == th)
     {
-      proc_table[i].task.suspended = WAKE;
+      proc_table[i].task.suspended = READY; //统一PCB state 20240314
     }
   }
   //条件量 操作完释放锁
@@ -237,7 +237,7 @@ int kern_pthread_cond_broadcast(pthread_cond_t* cond)
     {
       if (proc_table[j].task.pthread_id == cond->queue[i])
       {
-        proc_table[j].task.suspended = WAKE;
+        proc_table[j].task.suspended = READY; //统一PCB state 20240314
       }
     }
   }

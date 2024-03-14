@@ -6,6 +6,7 @@
 #include "console.h"
 #include "buddy.h"
 #include "kmalloc.h"
+#include "proto.h"
 
 struct page mem_map[ALL_PAGES];
 buddy kbuddy, ubuddy;
@@ -29,7 +30,6 @@ PRIVATE void set_page_order(page *page, u32 order);
 PRIVATE void set_buddy_order(page *page, u32 order);
 PRIVATE page* get_page_from_free_area(struct free_area *area);
 PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
-void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr);
 
 void memory_init()
 {
@@ -99,7 +99,8 @@ void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {
 //added by wang 2021.6.8
 int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
 {
-    int bsize, i;
+    int i;
+	u32 bsize;
     if (bgn_addr % num_4K != 0) {
         int tmp = bgn_addr % num_4K;
         if(bud==kbud) 

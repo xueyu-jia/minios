@@ -13,16 +13,6 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child);
 PRIVATE int fork_update_info(PROCESS* p_child);
 
 
-PUBLIC int sys_fork()
-{
-	return do_fork();
-}
-
-PUBLIC int do_fork()
-{
-	return kern_fork();
-}
-
 /**********************************************************
 *		sys_fork			//add by visual 2016.5.25
 *系统调用sys_fork的具体实现部分
@@ -85,6 +75,15 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 	return p_child->task.pid;	
 }
 
+PUBLIC int do_fork()
+{
+	return kern_fork();
+}
+
+PUBLIC int sys_fork()
+{
+	return do_fork();
+}
 
 /**********************************************************
 *		fork_mem_cpy			//add by visual 2016.5.24
@@ -190,6 +189,7 @@ PRIVATE int fork_mem_cpy(u32 ppid,u32 pid)
 	return 0;		
 }
 
+
 /**********************************************************
 *		fork_pcb_cpy			//add by visual 2016.5.26
 *复制父进程PCB表，但是又马上恢复了子进程的标识信息
@@ -226,7 +226,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//note that syscalls can be interrupted now! the state of child can only be setted
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
-	p_child->task.stat = IDLE;
+	p_child->task.stat = SLEEPING;
 	p_child->task.esp_save_int = esp_save_stackframe;	//esp_save_int of child must be restored!!
 	p_child->task.esp_save_context = esp_save_context;	//same above
 	//p_child->task.esp_save_context = (char*)(p_child + 1) - P_STACKTOP - 4 * 6;	

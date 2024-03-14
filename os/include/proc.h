@@ -71,9 +71,15 @@
 												 */
 //enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE};	//add FREE state which means this PCB is free, added by mingxuan 2021-9-21
 
-enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE,WAITING,ZOMBY};//combine wai_flag into proc_stat 2023.6.2 changed by dongzhangqi
+// enum proc_stat	{IDLE,READY,SLEEPING,KILLED,FREE,WAKE,WAITING,ZOMBY};//combine wai_flag into proc_stat 2023.6.2 changed by dongzhangqi
+//??? why so many duplicated PCB state
+//	FREE: 此PCB空闲未分配
+//	READY: 此PCB表示的进程/线程正在使用且可被调度
+//	SLEEPING: 此PCB表示的进程/线程处于睡眠等待状态
+//	KILLED: 
+enum proc_stat	{FREE,READY,SLEEPING,KILLED}; //simplify 20240314 jiangfeng
 
-enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 2021-1-6
+// enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 2021-1-6
 														//deleted by dongzhangqi 2023-6-2
 
 #define NR_CHILD_MAX (NR_PCBS-NR_K_PCBS-1)    //定义最多子进程/线程数量	//add by visual 2016.5.26
@@ -182,7 +188,7 @@ typedef struct s_proc {
 	struct file_desc * filp[NR_FILES];
 	//~zcr
 
-	enum wait_exit_flag we_flag;	//used for exit and wait //added by mingxuan 2021-1-6
+	// enum wait_exit_flag we_flag;	//used for exit and wait //added by mingxuan 2021-1-6
 	int exit_status;				//added by mingxuan 2021-1-6
 	int child_exit_status;			//added by mingxuan 2021-1-6
 

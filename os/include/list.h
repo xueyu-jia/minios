@@ -18,14 +18,14 @@ typedef struct list_node list_head;
 #define list_empty(head) \
 	((head)->next == head)
 
-PRIVATE inline _list_insert(struct list_node* new, struct list_node* prev, struct list_node* next) {
+PRIVATE inline void _list_insert(struct list_node* new, struct list_node* prev, struct list_node* next) {
 	prev->next = new;
 	next->prev = new;
 	new->prev = prev;
 	new->next = next;
 }
 
-PRIVATE inline _list_remove(struct list_node* prev, struct list_node* next) {
+PRIVATE inline void _list_remove(struct list_node* prev, struct list_node* next) {
 	prev->next = next;
 	next->prev = prev;
 }

@@ -8,7 +8,7 @@ int mutex_suspend_with_cancellation(PROCESS *self, pthread_mutex_t *mutex)
 { // 挂起等待条件满足后被唤醒
   while (1)
   {
-    if (self->task.suspended == WAKE)
+    if (self->task.suspended == READY) //统一PCB state 20240314
     {
       self->task.stat = READY;
       mutex->owner = self->task.pthread_id;
@@ -156,7 +156,7 @@ int kern_pthread_mutex_unlock(pthread_mutex_t *mutex)
     {
       if (proc_table[i].task.pthread_id == th)
       {
-        proc_table[i].task.suspended = WAKE;
+        proc_table[i].task.suspended = READY; //统一PCB state 20240314
       }
     }
   }

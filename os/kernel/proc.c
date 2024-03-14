@@ -63,15 +63,15 @@ PUBLIC void schedule()
  *======================================================================*/
 PUBLIC PROCESS* alloc_PCB()
 {//分配PCB表
-	 PROCESS* p;
-	 int i;
-	 p=proc_table+NR_K_PCBS;//跳过前NR_K_PCBS个
-	 for(i=NR_K_PCBS;i<NR_PCBS;i++)
-	 {
-	   //if(p->task.stat==IDLE)break;
-	   if(p->task.stat==FREE)break; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
-	   p++;
-	 }
+	PROCESS* p;
+	int i;
+	p=proc_table+NR_K_PCBS;//跳过前NR_K_PCBS个
+	for(i=NR_K_PCBS;i<NR_PCBS;i++)
+	{
+		// if(p->task.stat==IDLE)break;
+		if(p->task.stat==FREE)break; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
+		p++;
+	}
 	if(i>=NR_PCBS)	return 0;   //NULL
 	else	return p;
 }
@@ -80,8 +80,8 @@ PUBLIC PROCESS* alloc_PCB()
                            free_PCB  add by visual 2016.4.8
  *======================================================================*/
 PUBLIC void free_PCB(PROCESS *p)
-{//释放PCB表
-	//p->task.stat=IDLE;
+{	//释放PCB表
+	// p->task.stat=IDLE;
 	p->task.stat=FREE; //FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
 }
 
