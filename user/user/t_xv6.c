@@ -1776,7 +1776,7 @@ main(int argc, char *argv[])
     exit(-1);
   }
   close(open("usertests.ran", O_CREAT, I_RW));
-
+  int start_tick = get_ticks();
   createdelete();
   concreate();
   fourfiles();
@@ -1810,7 +1810,7 @@ main(int argc, char *argv[])
   bigdir(); // slow
 
 //   uio();	//invalid io access test success, just general protection halt 
-
+  printf("total usage: %d ticks\n", get_ticks() - start_tick);
   exectest();
 
   exit(-1);
