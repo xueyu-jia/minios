@@ -26,8 +26,11 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino); //inod
 PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode); //inode lookup
 
 PRIVATE u32 inode_free_cnt;
+PRIVATE u32 dentry_free_cnt;
 PRIVATE list_head inode_free_list;
-#define MAX_FREE_INODE_OBTAIN	32
+PRIVATE list_head dentry_free_list;
+#define MAX_FREE_INODE	32
+#define MAX_FREE_DENTRY	32
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
@@ -38,6 +41,13 @@ PRIVATE struct vfs_inode* get_rcu_free_inode() {
 		return NULL;
 	}
 	return list_entry(inode_free_list.next, struct vfs_inode, i_list);
+}
+
+PRIVATE struct vfs_dentry* get_rcu_free_dentry() {
+	if(list_empty(&dentry_free_list)) {
+		return NULL;
+	}
+	return list_entry(dentry_free_list.next, struct vfs_inode, i_list);
 }
 
 // must held inode alloc lock
@@ -77,7 +87,7 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 
 PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 	acquire(&inode_alloc_lock);
-	if(inode_free_cnt > MAX_FREE_INODE_OBTAIN) {
+	if(inode_free_cnt > MAX_FREE_INODE) {
 		list_remove(&inode->i_list);
 		kern_kfree(inode);
 	} else {// 添加到空闲链表暂存
@@ -133,11 +143,12 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 
 // require mutex: dir, ent
 PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry){
-	dentry->d_nxt = dir->d_subdirs;
-	if(dir->d_subdirs){
-		dir->d_subdirs->d_pre = dentry;
-	}
-	dir->d_subdirs = dentry;
+	// dentry->d_nxt = dir->d_subdirs;
+	// if(dir->d_subdirs){
+	// 	dir->d_subdirs->d_pre = dentry;
+	// }
+	// dir->d_subdirs = dentry;
+	list_add_first(&dentry->d_list, &dir->d_subdirs);
 	dentry->d_parent = dir;
 	if(!dentry->d_vfsmount)
 		dentry->d_vfsmount = dir->d_vfsmount;
@@ -145,21 +156,24 @@ PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry
 
 // require mutex: dir, ent
 PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
-	if(dir->d_subdirs == ent){
-		dir->d_subdirs = ent->d_nxt;
-	}
-	if(ent->d_pre){
-		ent->d_pre->d_nxt = ent->d_nxt;
-	}
-	if(ent->d_nxt){
-		ent->d_nxt->d_pre = ent->d_pre;
-	}
+	// if(dir->d_subdirs == ent){
+	// 	dir->d_subdirs = ent->d_nxt;
+	// }
+	// if(ent->d_pre){
+	// 	ent->d_pre->d_nxt = ent->d_nxt;
+	// }
+	// if(ent->d_nxt){
+	// 	ent->d_nxt->d_pre = ent->d_pre;
+	// }
+	list_remove(&ent->d_list);
 	ent->d_parent = NULL;
 }
 
 // 0 for empty, else -1
 PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
-	for(struct vfs_dentry* dentry = dir->d_subdirs; dentry; dentry = dentry->d_nxt){
+	// for(struct vfs_dentry* dentry = dir->d_subdirs; dentry; dentry = dentry->d_nxt){
+	struct vfs_dentry* dentry = NULL;
+	list_for_each(&dir->d_subdirs, dentry, d_list) {
 		if((!(strcmp(dentry->d_name, ".")))
 		||(!(strcmp(dentry->d_name, "..")))){
 			continue;
@@ -178,7 +192,9 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	dentry->d_mounted = 0;
 	atomic_set(&dentry->d_count, 1);
 	dentry->d_parent = NULL;
-	dentry->d_nxt = dentry->d_pre = dentry->d_subdirs = NULL;
+	// dentry->d_nxt = dentry->d_pre = dentry->d_subdirs = NULL;
+	list_init(&dentry->d_list);
+	list_init(&dentry->d_subdirs);
 	return dentry;
 }
 
@@ -214,7 +230,8 @@ PRIVATE void vfs_get_dentry(struct vfs_dentry* dentry) {
 // delete dentry in dir
 // require mutex: dir, dentry
 PRIVATE int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
-	if(dentry->d_subdirs || dentry->d_mounted){
+	// if(dentry->d_subdirs || dentry->d_mounted){
+	if((!list_empty(&dentry->d_subdirs)) || dentry->d_mounted){
 		// check empty
 		// disp_str("try to delete non empty dentry");
 		return -1;
@@ -317,12 +334,20 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		compare = dir->d_op->compare;
 	}
 	if(!dentry){
-		dentry = dir->d_subdirs;
+		// dentry = dir->d_subdirs;
 		// int new_dentry = 0;
-		for( ;dentry; dentry = dentry->d_nxt){
-			if(!compare(dentry->d_name, name)){
-				break;
+		// for( ;dentry; dentry = dentry->d_nxt){
+		int found = 0;
+		if(!list_empty(&dir->d_subdirs)) {
+			list_for_each(&dir->d_subdirs, dentry, d_list) {
+				if(!compare(dentry->d_name, name)){
+					found = 1;
+					break;
+				}
 			}
+		}
+		if(found == 0) {
+			dentry = NULL;
 		}
 	}
 	if(dentry){ // dentry 命中
@@ -515,6 +540,7 @@ PUBLIC void init_fs(){
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
 	list_init(&inode_free_list);
+	list_init(&dentry_free_list);
 	inode_free_cnt = 0;
 	register_fs_type("orangefs", ORANGE_TYPE,
 		&orange_file_ops, 
@@ -920,7 +946,11 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 	}
 	release(&inode->lock);
 	struct vfs_dentry* sub;
-	while(sub = dentry->d_subdirs){
+	// while(sub = dentry->d_subdirs){
+	// 	delete_dentry(sub, dentry);
+	// }
+	while(!list_empty(&dentry->d_subdirs)){
+		sub = list_entry(&dentry->d_subdirs.next, struct vfs_dentry, d_list);
 		delete_dentry(sub, dentry);
 	}
 	delete_dentry(dentry, dir);

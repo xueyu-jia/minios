@@ -50,9 +50,11 @@ struct vfs_dentry{
 	atomic_t d_count;
 	char d_name[MAX_DNAME_LEN];
 	struct vfs_inode* d_inode;
-	struct vfs_dentry* d_nxt;
-	struct vfs_dentry* d_pre;
-	struct vfs_dentry* d_subdirs;
+	// struct vfs_dentry* d_nxt;
+	// struct vfs_dentry* d_pre;
+	// struct vfs_dentry* d_subdirs;
+	struct list_node d_list;
+	list_head d_subdirs;
 	struct vfs_dentry* d_parent;
 	struct vfs_mount* d_vfsmount;
 	int d_mounted;

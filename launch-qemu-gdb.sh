@@ -46,12 +46,12 @@
 # -boot menu=on \
 #  -gdb tcp::1234 -S -monitor stdio
 desktop_env=$XDG_CURRENT_DESKTOP
-if [[ $desktop_env == "KDE"]]; then
-	terminal="konsole"
+if [[ $desktop_env == "KDE" ]];then
+	terminal="konsole -e"
 else 
-	terminal="gnome-terminal"
+	terminal="gnome-terminal -x"
 fi
-$terminal -x bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
+$terminal bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \

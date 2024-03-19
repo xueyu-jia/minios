@@ -25,7 +25,7 @@ ASMKFLAGS	= -I os/include/ -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
-CFLAGS		= -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
+CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
 KFLAGS		= $(CFLAGS) $(DEF_FLAGS)
 
 #modified by jiangfeng 2024-03-10 add definitions option for root
