@@ -25,32 +25,18 @@ USER_ULIB_DIR=user/ulib
 
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
-SRCUSER = user/user/fstest.c   user/user/shell_1.c  user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c    user/user/tfork.c \
-user/user/shell_0.c  user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c   user/user/t_exit01.c  user/user/twait.c	\
-user/user/t_xv6.c user/user/echo.c
+SRCUSER =  user/user/shell_0.c  user/user/shell_1.c user/user/echo.c \
+user/user/t_xv6.c  
+# user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c  \
+user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c  \
+user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \
 # user/user/myTest.c   user/user/shell_2.c  user/user/test11.c  user/user/test2.c   user/user/test_5.c  user/user/test7.c     user/user/t_pthr01.c \
 # user/user/rwtest1.c  user/user/sig_0.c    user/user/test12.c  user/user/test_3.c  user/user/test5.c   user/user/test8.c     user/user/t_pthr02.c \
 # user/user/sema1.c    user/user/sig_1.c    user/user/test13.c  user/user/test3.c   user/user/test_6.c  user/user/test9.c     user/user/t_pthr03.c \
 #$(wildcard $(USER_SRC_DIR)/*.c)
 OBJSUSER = $(subst .c,.o, $(SRCUSER))
-# OBJSUSER = user/user/shell_0.o user/user/shell_1.o user/user/shell_2.o \
-# 		user/user/test_0.o user/user/test_1.o user/user/test_2.o user/user/test_3.o user/user/test_4.o\
-# 		user/user/test_5.o user/user/test_6.o user/user/test_7.o user/user/sig_0.o user/user/sig_1.o user/user/userstart.o user/user/myTest.o\
-# 		user/user/fortest1.o user/user/fortest2.o user/user/fortest3.o user/user/fortest4.o user/user/fortest5.o \
-# 		user/user/fortest6.o user/user/fortest7.o user/user/fortest8.o user/user/fortest9.o user/user/fortest10.o \
-# 		user/user/fortest11.o user/user/fortest12.o user/user/fortest13.o user/user/t_exit01.o \
-# 		user/user/t_pthr01.o user/user/t_pthr02.o user/user/t_pthr03.o user/user/sema1.o \
-# 		user/user/fstest.o user/user/rwtest1.o
 
 ORANGESUSER = $(subst .o,.bin, $(OBJSUSER))
-# ORANGESUSER = user/user/shell_0.bin user/user/shell_1.bin user/user/shell_2.bin \
-# 			user/user/test_0.bin user/user/test_1.bin user/user/test_2.bin user/user/test_3.bin user/user/test_4.bin\
-# 			user/user/test_5.bin user/user/test_6.bin user/user/test_7.bin user/user/sig_0.bin user/user/sig_1.bin user/user/myTest.bin \
-# 			user/user/ptest1.bin user/user/ptest2.bin user/user/ptest3.bin user/user/ptest4.bin user/user/ptest5.bin \
-# 			user/user/ptest6.bin user/user/ptest7.bin user/user/ptest8.bin user/user/ptest9.bin user/user/ptest10.bin \
-# 			user/user/ptest11.bin user/user/ptest12.bin user/user/ptest13.bin user/user/ptest13.gdb.bin  \
-# 			user/user/t_exit01.bin user/user/t_pthr01.bin user/user/t_pthr02.bin user/user/t_pthr03.bin user/user/sema1.bin \
-# 			user/user/fstest.bin user/user/rwtest1.bin
 
 #added by mingxuan 2021-8-21
 GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin

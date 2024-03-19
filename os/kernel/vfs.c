@@ -26,11 +26,8 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino); //inod
 PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode); //inode lookup
 
 PRIVATE u32 inode_free_cnt;
-PRIVATE u32 dentry_free_cnt;
 PRIVATE list_head inode_free_list;
-PRIVATE list_head dentry_free_list;
 #define MAX_FREE_INODE	32
-#define MAX_FREE_DENTRY	32
 PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
@@ -41,13 +38,6 @@ PRIVATE struct vfs_inode* get_rcu_free_inode() {
 		return NULL;
 	}
 	return list_entry(inode_free_list.next, struct vfs_inode, i_list);
-}
-
-PRIVATE struct vfs_dentry* get_rcu_free_dentry() {
-	if(list_empty(&dentry_free_list)) {
-		return NULL;
-	}
-	return list_entry(dentry_free_list.next, struct vfs_inode, i_list);
 }
 
 // must held inode alloc lock
@@ -540,7 +530,6 @@ PUBLIC void init_fs(){
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
 	list_init(&inode_free_list);
-	list_init(&dentry_free_list);
 	inode_free_cnt = 0;
 	register_fs_type("orangefs", ORANGE_TYPE,
 		&orange_file_ops, 

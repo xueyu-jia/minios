@@ -4077,6 +4077,7 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 		{
 			if (++m > nr_dir_entries || cnt >= count)
 			{
+				brelse(bh);
 				return cnt;
 			}
 			if (pde->inode_nr == INVALID_INODE)
