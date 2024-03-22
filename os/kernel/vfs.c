@@ -13,6 +13,7 @@
 #include "vfs.h"
 #include "hd.h"
 #include "mount.h"
+#include "blame.h"
 
 // PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
@@ -66,6 +67,9 @@ PRIVATE void init_file_desc_table(){
 		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
 }
 
+// VFS api
+// alloc a new inode for superblock
+// 调用此函数分配新的inode
 PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 	struct vfs_inode* res = NULL;
 	acquire(&inode_alloc_lock);
@@ -87,7 +91,9 @@ PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 	release(&inode_alloc_lock);
 }
 
-// get an inode, if not exist, alloc one 调用此函数获取inode
+// VFS api
+// get an inode by ino, if not exist in mem, alloc one and read from disk
+// 调用此函数获取inode
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 	struct vfs_inode *res = 0, *inode;
 	acquire(&inode_alloc_lock);
@@ -164,8 +170,8 @@ PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
 	// for(struct vfs_dentry* dentry = dir->d_subdirs; dentry; dentry = dentry->d_nxt){
 	struct vfs_dentry* dentry = NULL;
 	list_for_each(&dir->d_subdirs, dentry, d_list) {
-		if((!(strcmp(dentry->d_name, ".")))
-		||(!(strcmp(dentry->d_name, "..")))){
+		if((!(strcmp(dentry_name(dentry), ".")))
+		||(!(strcmp(dentry_name(dentry), "..")))){
 			continue;
 		}
 		return -1;
@@ -178,7 +184,14 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	dentry = kern_kmalloc(sizeof(struct vfs_dentry));
 	memset(dentry, 0, sizeof(struct vfs_dentry));
 	initlock(&dentry->lock, NULL);
-	strcpy(dentry->d_name, name);
+	int len = strlen(name);
+	if(len < MAX_DNAME_LEN) {
+		strcpy(dentry->d_shortname, name);
+	} else {
+		char* pstr = kern_kmalloc(len + 1);
+		strcpy(pstr, name);
+		dentry->d_longname = pstr;
+	}
 	dentry->d_mounted = 0;
 	atomic_set(&dentry->d_count, 1);
 	dentry->d_parent = NULL;
@@ -188,7 +201,15 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	return dentry;
 }
 
-// alloc a new dentry for filled inode in dir
+PRIVATE void free_dentry(struct vfs_dentry* dentry) {
+	if(dentry->d_longname) {
+		kern_kfree(dentry->d_longname);
+	}
+	kern_kfree(dentry);
+}
+
+// VFS api
+// alloc a new dentry and connect to inode
 // require mutex: dir, inode
 PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode){
 	struct vfs_dentry* dentry;
@@ -207,7 +228,7 @@ PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 			dentry->d_inode = NULL;
 		}
 		if(!dentry->d_inode) {
-			kern_kfree(dentry);
+			free_dentry(dentry);
 		}
 	}
 	release(&dentry->lock);
@@ -247,9 +268,9 @@ PRIVATE void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
-		len = strlen(dir->d_name);
+		len = strlen(dentry_name(dir));
 		p -= len;
-		strncpy(p, dir->d_name, len);
+		strncpy(p, dentry_name(dir), len);
 		*(--p) = '/';
 		dir = dir->d_parent;
 	}
@@ -330,7 +351,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		int found = 0;
 		if(!list_empty(&dir->d_subdirs)) {
 			list_for_each(&dir->d_subdirs, dentry, d_list) {
-				if(!compare(dentry->d_name, name)){
+				if(!compare(dentry_name(dentry), name)){
 					found = 1;
 					break;
 				}
@@ -684,7 +705,6 @@ no_dentry_out:
 }
 
 PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
-	
 	int fd = -1, i;
 	for (i = 0; i < NR_FILES; i++)
 	{ // modified by mingxuan 2019-5-20

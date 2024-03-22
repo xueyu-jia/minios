@@ -22,6 +22,7 @@
 #include "fs.h"
 #include "ahci.h"
 #include "semaphore.h"
+#include "blame.h"
 
 struct memfree{
 	u32	addr;
@@ -345,26 +346,25 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 	
 	//buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
 	//buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan 2021-3-25
-	buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
+	// buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
 	rwinfo->msg = p;
-	rwinfo->kbuf = buffer;
+	rwinfo->kbuf = p->BUF; //buffer;
 	rwinfo->proc = p_proc_current;
 	
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, rwinfo);
 		wait_event(&hdque);
-		phys_copy(p->BUF, buffer, p->CNT);
+		// phys_copy(p->BUF, buffer, p->CNT);
 	} else {
-		phys_copy(buffer, p->BUF, p->CNT);
+		// phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, rwinfo);
 		wait_event(&hdque);
 	}
 	
-	kern_kfree((u32)buffer);
+	// kern_kfree((u32)buffer);
 	kern_kfree((u32)rwinfo);
 	// hdque_buf.addr = K_LIN2PHY((u32)buffer);
 	// hdque_buf.size = size;
-
 	//sys_free(&hdque_buf);
 	//do_kfree(hdque_buf.addr); //modified by mingxuan 2021-3-8
 	// phy_kfree(hdque_buf.addr);	//modified by mingxuan 2021-8-17

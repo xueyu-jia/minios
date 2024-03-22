@@ -4309,7 +4309,7 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	newino->i_type = I_REGULAR;
 	newino->i_op = &orange_inode_ops;
 	newino->i_fop = &orange_file_ops;
-	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
+	orange_new_dir_entry(dir, newino->i_no, dentry_name(dentry));
 	orange_sync_inode(newino);
 	return 0;
 }
@@ -4337,7 +4337,7 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	newino->i_type = I_DIRECTORY;
 	newino->i_op = &orange_inode_ops;
 	newino->i_fop = &orange_file_ops;
-	orange_new_dir_entry(dir, newino->i_no, dentry->d_name);
+	orange_new_dir_entry(dir, newino->i_no, dentry_name(dentry));
 	orange_new_dir_entry(newino, newino->i_no, ".");
 	orange_new_dir_entry(newino, dir->i_no, "..");
 	orange_sync_inode(newino);

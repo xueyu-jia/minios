@@ -53,11 +53,11 @@ PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time){
 	int year = ((localtime/days_four_year) << 2);
     localtime %= days_four_year;
     localtime += ((year + 99) / 100) - ((year + 299)/400);// 修正置闰
-    int ydays = 365 + (int)(((year%4 == 0) && (year%100 !=0)) || ((year+300) %400 == 0));
+    int ydays = 365 + (int)(((year%4 == 0) && (year%100 != 0)) || ((year+300) % 400 == 0));
     while(ydays <= localtime){
         localtime -= ydays;
         year++;
-        ydays = 365 + (int)(((year%4 == 0) && (year%100 !=0)) || ((year+300) %400 == 0));
+        ydays = 365 + (int)(((year%4 == 0) && (year%100 != 0)) || ((year+300) % 400 == 0));
     }
     int leapyear = ((year%4 == 0) && (year%100 !=0)) || ((year+300) %400 == 0);
     tm_time->tm_year = year;

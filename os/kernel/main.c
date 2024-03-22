@@ -14,6 +14,7 @@
 #include "console.h"
 #include "buddy.h"
 #include "ahci.h"
+#include "blame.h"
 // #define GDBSTUB
 
 #include "../gdbstub/gdbstub.h"
@@ -186,6 +187,9 @@ PUBLIC int kernel_main()
         disp_int(get_pte(&tmp));
         disp_str("\n");
 */
+	#ifdef BLAME_STAT
+		stat_init();// stat performance
+	#endif
 	restart_initial(); //modified by xw, 18/4/19
 	while (1)
 	{

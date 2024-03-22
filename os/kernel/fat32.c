@@ -2,7 +2,6 @@
 // *	fat32.c       
 // ***********************************************************/
 // #define FAT_TEST
-#ifndef FAT_TEST
 #include "type.h"
 #include "const.h"
 #include "time.h"
@@ -10,6 +9,7 @@
 #include "buffer.h"
 #include "vfs.h"
 #include "fat32.h"
+#include "blame.h"
 
 PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len){
 	u16 c;
@@ -83,7 +83,7 @@ PRIVATE char* bread_sector(int dev, int sector, buf_head** bh){
 	if((*bh) && (*bh)->block == block && (*bh)->dev == dev) {
 		b = *bh; //避免没必要的bread
 	} else {
-		b = bread(dev, sector/SECTOR_PER_BLOCK);
+		b = bread(dev, block);
 		if(!b) return NULL;
 		if(*bh){
 			brelse(*bh);
@@ -276,6 +276,8 @@ PRIVATE struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_
 	return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
+// get next fat short entry from *%start in inode %dir, 
+//   long dir full name stored in %full_name and %bh updated
 PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, buf_head** bh, char* full_name){
 	if(!start){
 		return NULL;
@@ -477,7 +479,7 @@ PRIVATE int fat_gen_shortname(struct vfs_inode* dir, const char* fullname, char*
 	return -1;
 }
 
-PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* entry, int order){
+PRIVATE int fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* entry, int order){
 	buf_head* bh = NULL;
 	struct fat_dir_entry* de = fat_get_slot(dir, order, &bh, 1);
 	if(!de)
@@ -489,6 +491,7 @@ PRIVATE void fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* en
 	if(limit > dir->i_size){
 		dir->i_size = limit;
 	}
+	return 0;
 }
 
 PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name, int is_dir, u32 timestamp){
@@ -542,6 +545,7 @@ PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name,
 }
 
 PUBLIC void fat32_read_inode(struct vfs_inode* inode){
+	stat_step(BLAME_READ);
 	struct super_block* sb = inode->i_sb;
 	buf_head* bh = NULL;
 	struct fat_dir_entry* entry = NULL;
@@ -575,6 +579,7 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 	inode->i_op = &fat32_inode_ops;
 	inode->i_fop = &fat32_file_ops;
 	if(bh) brelse(bh);
+	stat_step(BLAME_OTHER);
 	return inode;
 }
 
@@ -582,6 +587,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	if(inode->i_no == FAT_ROOT_INO){
 		return 0;
 	}
+	stat_step(BLAME_SYN);
 	buf_head* bh = NULL;
 	struct tm time;
 	u32 ino = inode->i_no;
@@ -602,6 +608,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		mark_buff_dirty(bh);
 		brelse(bh);
 	}
+	stat_step(BLAME_OTHER);
 	return 0;
 }
 
@@ -658,7 +665,7 @@ PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mo
 	// struct tm time;
 	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
-	struct vfs_inode* inode = fat_add_entry(dir, dentry->d_name, 0, timestamp);
+	struct vfs_inode* inode = fat_add_entry(dir, dentry_name(dentry), 0, timestamp);
 	inode->i_type = I_REGULAR;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -711,7 +718,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	// struct tm time;
 	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
-	struct vfs_inode* inode = fat_add_entry(dir, dentry->d_name, 1, timestamp);
+	struct vfs_inode* inode = fat_add_entry(dir, dentry_name(dentry), 1, timestamp);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -766,6 +773,7 @@ PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 }
 
 PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* buf){
+	stat_step(BLAME_WRT);
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
 	int start, pos, end, len;
 	buf_head* bh = NULL;
@@ -789,6 +797,7 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* b
 		inode->i_size = pos;
 	}
 	inode->i_mtime = current_timestamp;
+	stat_step(BLAME_OTHER);
 	fat32_sync_inode(inode);
 	file->fd_pos = pos;
 	return pos - start;
@@ -828,6 +837,7 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
+	stat_step(BLAME_READ);
 	int dir_sectors, fsinfo_blk, ext_flag;
 	buf_head * fs_info_buf;
 	buf_head * bh = bread(dev, 0);
@@ -872,6 +882,8 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	if(fsinfo_blk){
 		brelse(fs_info_buf);
 	}
+	brelse(bh);
+	stat_step(BLAME_OTHER);
 	initlock(&FAT_SB(sb)->lock, "FAT");
 	list_init(&sb->sb_inode_list);
 	sb->sb_dev = dev;
@@ -880,7 +892,6 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	struct vfs_inode * fat32_root = vfs_get_inode(sb, FAT_ROOT_INO);
 	sb->sb_root = vfs_new_dentry("/", fat32_root);
 	sb->sb_root->d_op = &fat32_dentry_ops;
-	brelse(bh);
 	return 0;
 }
 
@@ -909,7 +920,6 @@ struct file_operations fat32_file_ops = {
 .write = fat32_write,
 .readdir = fat32_readdir,
 };
-#endif
 // unit test
 
 #ifdef FAT_TEST

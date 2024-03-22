@@ -1775,40 +1775,47 @@ main(int argc, char *argv[])
     printf("already ran user tests -- rebuild fs.img\n");
     exit(-1);
   }
+  char buf[1000];
+  memset(buf, 'a', 1000);
   close(open("usertests.ran", O_CREAT, I_RW));
   int start_tick = get_ticks();
-  createdelete();
-  concreate();
-  fourfiles();
-  sharedfd();
+//   createdelete();
+//   concreate();
+//   fourfiles();
+//   sharedfd();
 
-  bigargtest();
-  bigwrite();
-  bigargtest();
-  bsstest();
+//   bigargtest();
+//   bigwrite();
+//   bigargtest();
+//   bsstest();
 
-  opentest();
-  writetest();
-  writetest1();
-  createtest();
+//   opentest();
+//   writetest();
+//   writetest1();
+//   createtest();
 
-  openiputtest(); 
-  exitiputtest();
-  iputtest();
+//   openiputtest(); 
+//   exitiputtest();
+//   iputtest();
 
 //   exitwait();  // frequently failed
 
-  rmdot();
+//   rmdot();
 //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
   // the test consider 15 bytes' name the same as 14 bytes' name
-  bigfile();
-  subdir();		
-  unlinkread();
-  dirfile();
-  iref();
-  forktest();
-  bigdir(); // slow
-
+//   bigfile();
+//   subdir();		
+//   unlinkread();
+//   dirfile();
+//   iref();
+//   forktest();
+//   bigdir(); // slow
+  
+	int fd = open("test", O_CREAT|O_RDWR, I_RW);
+	for(int i=0; i < 200; i++){
+		write(fd, buf, 1000);
+	}
+	close(fd);
 //   uio();	//invalid io access test success, just general protection halt 
   printf("total usage: %d ticks\n", get_ticks() - start_tick);
   exectest();

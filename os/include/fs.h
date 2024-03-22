@@ -48,7 +48,8 @@ struct vfs_inode{
 // **** dentry 的本质是cache !!! ****
 struct vfs_dentry{
 	atomic_t d_count;
-	char d_name[MAX_DNAME_LEN];
+	char d_shortname[MAX_DNAME_LEN];
+	char *d_longname;
 	struct vfs_inode* d_inode;
 	// struct vfs_dentry* d_nxt;
 	// struct vfs_dentry* d_pre;
@@ -61,6 +62,7 @@ struct vfs_dentry{
 	struct dentry_operations * d_op;
 	struct spinlock lock;
 };
+#define dentry_name(d) ((d)->d_longname?(d)->d_longname:(d)->d_shortname)
 /**
  * @struct super_block fs.h "include/fs.h"
  *
