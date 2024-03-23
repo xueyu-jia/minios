@@ -51,7 +51,7 @@
 // #define NR_K_PCBS 10		//add by visual 2016.4.5
 #define NR_PCBS		64								//modified by zhenhao 2023.3.5
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
-#define NR_TASKS	2	//task_tty + hd_service		//modified by mingxuan 2019-5-19
+#define NR_TASKS	3	//task_tty + hd_service + bsync_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 #define PID_INIT NR_K_PCBS
 //~xw

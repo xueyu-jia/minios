@@ -11,6 +11,7 @@
 #include "global.h"
 #include "proto.h"
 #include "hd.h"
+#include "buffer.h"
 
 u32 cr3_ready;
 int     u_proc_sum;
@@ -19,7 +20,8 @@ PROCESS*	p_proc_next;
 PUBLIC	PROCESS			cpu_table[NR_CPUS];
 PUBLIC	PROCESS			proc_table[NR_PCBS];
 PUBLIC	TASK	task_table[NR_TASKS] = {{hd_service, STACK_SIZE_TASK, "hd_service"},
-										{task_tty, STACK_SIZE_TASK, "task_tty"}};
+										{task_tty, STACK_SIZE_TASK, "task_tty"},
+										{bsync_service, STACK_SIZE_TASK, "bsync"}};
 /*======================================================================*
                               schedule
  *======================================================================*/

@@ -10,11 +10,11 @@ int buffer_debug = 0;
 #define buff_log(bh, info_type) if(buffer_debug == 1){disp_int(info_type);disp_str(":");disp_int(bh->block);disp_str(" ");}
 
 /*用于记录LRU链表的数据结构*/
-struct buf_lru_list
-{
-    struct buf_head *lru_head; // buffer head组成的双向链表的头
-    struct buf_head *lru_tail; // buffer head组成的双向链表的尾
-};
+// struct buf_lru_list
+// {
+//     struct buf_head *lru_head; // buffer head组成的双向链表的头
+//     struct buf_head *lru_tail; // buffer head组成的双向链表的尾
+// };
 #define NR_HASH 19
 // 计算hash值
 #define HASH_CODE(dev, block) ((block ^ dev) % NR_HASH)
@@ -24,8 +24,11 @@ struct buf_lru_list
     struct buf_head *lru_head; // buffer head组成的双向链表的头
     struct buf_head *lru_tail; // buffer head组成的双向链表的尾
 }; */
-static struct buf_lru_list lru_list;
-static struct buf_head *buf_hash_table[NR_HASH];
+// static struct buf_lru_list lru_list;
+// static struct buf_head *buf_hash_table[NR_HASH];
+static list_head lru_list;
+static list_head dirty_list;
+static list_head buf_hash_table[NR_HASH];
 static SPIN_LOCK buf_lock;
 
 /*****************************************************************************
@@ -39,23 +42,39 @@ static SPIN_LOCK buf_lock;
 void init_buffer(int num_block)
 {
     // 申请buffe head和buffer block的内存，初始化lru 双向链表
-    buf_head *pre = kern_kzalloc(sizeof(buf_head));
-    pre->buffer = kern_kzalloc(BLOCK_SIZE);
-    initlock(&(pre->lock),NULL);
-    lru_list.lru_head = pre;
-    initlock(&buf_lock,"buf_lock");
-    for (int i = 0; i < num_block - 1; i++)
-    {
-        pre->nxt_lru = kern_kzalloc(sizeof(buf_head));
-        pre->nxt_lru->buffer = kern_kzalloc(BLOCK_SIZE);
-        pre->nxt_lru->pre_lru = pre;
-        initlock(&(pre->nxt_lru->lock),NULL);
-        pre = pre->nxt_lru;
+    // buf_head *pre = kern_kzalloc(sizeof(buf_head));
+    // pre->buffer = kern_kzalloc(BLOCK_SIZE);
+    // initlock(&(pre->lock),NULL);
+    // lru_list.lru_head = pre;
+    // initlock(&buf_lock,"buf_lock");
+    // for (int i = 0; i < num_block - 1; i++)
+    // {
+    //     pre->nxt_lru = kern_kzalloc(sizeof(buf_head));
+    //     pre->nxt_lru->buffer = kern_kzalloc(BLOCK_SIZE);
+    //     pre->nxt_lru->pre_lru = pre;
+    //     initlock(&(pre->nxt_lru->lock),NULL);
+    //     pre = pre->nxt_lru;
 
-    }
-    pre->nxt_lru = lru_list.lru_head;
-    lru_list.lru_head->pre_lru = pre;
-    lru_list.lru_tail = pre;
+    // }
+    // pre->nxt_lru = lru_list.lru_head;
+    // lru_list.lru_head->pre_lru = pre;
+    // lru_list.lru_tail = pre;
+	buf_head *bh = NULL;
+	initlock(&buf_lock,"buf_lock");
+	list_init(&lru_list);
+	list_init(&dirty_list);
+	for(int i = 0; i < NR_HASH; i++) {
+		list_init(&buf_hash_table[i]);
+	}
+	for(int i = 0; i < num_block; i++) {
+		bh = kern_kzalloc(sizeof(buf_head));
+		bh->buffer = kern_kzalloc(BLOCK_SIZE);
+		initlock(&bh->lock, NULL);
+		list_init(&bh->b_lru);
+		list_init(&bh->b_hash);
+		list_init(&bh->b_dirty);
+		list_add_first(&bh->b_lru, &lru_list);
+	}
 }
 /*****************************************************************************
  *                                find_buffer_hash
@@ -71,12 +90,17 @@ void init_buffer(int num_block)
 static struct buf_head *find_buffer_hash(int dev, int block)
 {
     int ihash = HASH_CODE(dev, block);
-    buf_head *tmp = buf_hash_table[ihash];
-    for (; tmp != NULL; tmp = tmp->nxt_hash)
-    {
-        if (tmp->dev == dev && tmp->block == block)
+    // buf_head *tmp = buf_hash_table[ihash];
+    // for (; tmp != NULL; tmp = tmp->nxt_hash)
+    // {
+    //     if (tmp->dev == dev && tmp->block == block)
+    //         return tmp;
+    // }
+	buf_head *tmp = NULL;
+	list_for_each(&buf_hash_table[ihash], tmp, b_hash) {
+		if (tmp->dev == dev && tmp->block == block)
             return tmp;
-    }
+	}
     return NULL;
 }
 /*****************************************************************************
@@ -90,15 +114,16 @@ static struct buf_head *find_buffer_hash(int dev, int block)
  *****************************************************************************/
 static inline void rm_bh_lru(buf_head *bh)
 {
-    bh->pre_lru->nxt_lru = bh->nxt_lru;
-    bh->nxt_lru->pre_lru = bh->pre_lru;
-    if (bh == lru_list.lru_tail)
-    {
-        lru_list.lru_tail = bh->pre_lru;
-    }
-    else if(bh == lru_list.lru_head){
-        lru_list.lru_head = bh->nxt_lru;
-    }
+    // bh->pre_lru->nxt_lru = bh->nxt_lru;
+    // bh->nxt_lru->pre_lru = bh->pre_lru;
+    // if (bh == lru_list.lru_tail)
+    // {
+    //     lru_list.lru_tail = bh->pre_lru;
+    // }
+    // else if(bh == lru_list.lru_head){
+    //     lru_list.lru_head = bh->nxt_lru;
+    // }
+	list_remove(&bh->b_lru);
 }
 
 /*****************************************************************************
@@ -114,8 +139,9 @@ static inline buf_head *get_bh_lru()
 {
     // lru list的头部就是一个最近最少未使用的buf head
     // 需要将buf head 从lru双向链表中“摘”出来
-    buf_head *bh = lru_list.lru_head;
-    lru_list.lru_head = bh->nxt_lru;
+    // buf_head *bh = lru_list.lru_head;
+    // lru_list.lru_head = bh->nxt_lru;
+	buf_head *bh = list_front(&lru_list, struct buf_head, b_lru);
     return bh;
 }
 /*****************************************************************************
@@ -129,12 +155,13 @@ static inline buf_head *get_bh_lru()
 static void put_bh_lru(buf_head *bh)
 {
     // lru list的尾部是一个最近刚刚使用的buf head，因此需要将bh添加进队尾
-    bh->nxt_lru = lru_list.lru_head;
-    bh->pre_lru = lru_list.lru_tail;
+    // bh->nxt_lru = lru_list.lru_head;
+    // bh->pre_lru = lru_list.lru_tail;
 
-    lru_list.lru_head->pre_lru = bh;
-    lru_list.lru_tail->nxt_lru = bh;
-    lru_list.lru_tail = bh;
+    // lru_list.lru_head->pre_lru = bh;
+    // lru_list.lru_tail->nxt_lru = bh;
+    // lru_list.lru_tail = bh;
+	list_add_last(&bh->b_lru, &lru_list);
 }
 /*****************************************************************************
  *                                rm_bh_hashtbl
@@ -146,19 +173,20 @@ static void put_bh_lru(buf_head *bh)
  *****************************************************************************/
 static void rm_bh_hashtbl(buf_head *bh)
 {
-    if (bh->pre_hash == NULL)
-    { // 说明它在hash tble的散列链表中是表头
-        buf_hash_table[HASH_CODE(bh->dev, bh->block)] = bh->nxt_hash;
-        bh->nxt_hash->pre_hash = NULL;
-    }
-    else
-    {
-        bh->pre_hash->nxt_hash = bh->nxt_hash;
-        if (bh->nxt_hash != NULL)
-            bh->nxt_hash->pre_hash = bh->pre_hash;
-    }
-    bh->nxt_hash = NULL;
-    bh->pre_hash = NULL;
+    // if (bh->pre_hash == NULL)
+    // { // 说明它在hash tble的散列链表中是表头
+    //     buf_hash_table[HASH_CODE(bh->dev, bh->block)] = bh->nxt_hash;
+    //     bh->nxt_hash->pre_hash = NULL;
+    // }
+    // else
+    // {
+    //     bh->pre_hash->nxt_hash = bh->nxt_hash;
+    //     if (bh->nxt_hash != NULL)
+    //         bh->nxt_hash->pre_hash = bh->pre_hash;
+    // }
+    // bh->nxt_hash = NULL;
+    // bh->pre_hash = NULL;
+	list_remove(&bh->b_hash);
 }
 /*****************************************************************************
  *                                put_bh_hashtbl
@@ -171,30 +199,57 @@ static void rm_bh_hashtbl(buf_head *bh)
 static void put_bh_hashtbl(buf_head *bh)
 {
     int ihash = HASH_CODE(bh->dev, bh->block);
-    if (buf_hash_table[ihash] == NULL)
-    {
-        buf_hash_table[ihash] = bh;
-        bh->pre_hash = NULL;
-        bh->nxt_hash = NULL;
-        return;
-    }
-    buf_head *tmp = buf_hash_table[ihash];
-    for (; tmp->nxt_hash != NULL; tmp = tmp->nxt_hash)
-        ;
-    bh->pre_hash = tmp;
-    tmp->nxt_hash = bh;
-    bh->nxt_hash = NULL;
+    // if (buf_hash_table[ihash] == NULL)
+    // {
+    //     buf_hash_table[ihash] = bh;
+    //     bh->pre_hash = NULL;
+    //     bh->nxt_hash = NULL;
+    //     return;
+    // }
+    // buf_head *tmp = buf_hash_table[ihash];
+    // for (; tmp->nxt_hash != NULL; tmp = tmp->nxt_hash)
+    //     ;
+    // bh->pre_hash = tmp;
+    // tmp->nxt_hash = bh;
+    // bh->nxt_hash = NULL;
+	list_add_first(&bh->b_hash, &buf_hash_table[ihash]);
 
 }
 static inline void sync_buff(buf_head *bh){
+	// disp_int(bh->block);
+	// disp_str(".");
+	int tick = ticks;
 	if(kernel_initial){
 		WR_BLOCK(bh->dev, bh->block, bh->buffer);
 	}else{
 		WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
 	}
+	// disp_int(ticks-tick);
+	// disp_str(" ");
     bh->dirty = 0;
-
 }
+
+static void put_sync_buf(buf_head *bh) {
+	acquire(&buf_lock);
+	list_remove(&bh->b_dirty);
+	bh->dirty_tick = ticks;
+	list_add_last(&bh->b_dirty, &dirty_list);
+	release(&buf_lock);
+}
+
+#define BUF_SYNC_DELAY_TICK	6
+static buf_head *get_sync_buf() {
+	acquire(&buf_lock);
+	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
+	if(bh && (ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK)) {
+		list_remove(&bh->b_dirty);
+	} else {
+		bh = NULL; // 此次不进行同步
+	}
+	release(&buf_lock);
+	return bh;
+}
+
 /*****************************************************************************
  *                                getblk
  *****************************************************************************/
@@ -331,10 +386,26 @@ void brelse(buf_head *bh)
     }
     
     if(bh->dirty&&bh->count == 0){
-        sync_buff(bh);
+		if(kernel_initial == 1) {
+			sync_buff(bh);
+		} else {
+			put_sync_buf(bh);
+		}
+        // sync_buff(bh);
     }
     release(&bh->lock);
 
+}
+
+PUBLIC void bsync_service() {
+	while(1) {
+		buf_head *bh = get_sync_buf();
+		if(bh) {
+			// disp_int(bh->block);
+			// disp_str(" ");
+			sync_buff(bh);
+		}
+	}
 }
 
 PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf){

@@ -1261,17 +1261,20 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 //add by sundong 2023.5.26
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
-	MESSAGE driver_msg;
-
-	driver_msg.type = io_type;
+	// driver_msg will be used in hd_service(another process) why use stack memory??? jiangfeng 20240323
+	// MESSAGE driver_msg;
+	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
+	driver_msg->DEVICE = dev;
 
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; 
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
+	driver_msg->POSITION = pos;
+	driver_msg->CNT = bytes; 
+	driver_msg->PROC_NR = proc_nr;
+	driver_msg->BUF = buf;
 
-	hd_rdwt_sched(&driver_msg);
+	hd_rdwt_sched(driver_msg);
+	kern_kfree(driver_msg);
+	
 	return 0;
 }

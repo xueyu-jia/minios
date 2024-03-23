@@ -374,6 +374,7 @@ PUBLIC void disp_color_str(char* info, int color){
 		acquire(&video_mem_lock);
 		CONSOLE* con = &console_table[current_console];
 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
+		flush(con);
 		release(&video_mem_lock);
 	}
 }
