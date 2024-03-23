@@ -4,6 +4,7 @@
 #include "vfs.h"
 #include "hd.h"
 #include "string.h"
+#include "semaphore.h"
 #include "buffer.h"
 
 int buffer_debug = 0;
@@ -30,6 +31,7 @@ static list_head lru_list;
 static list_head dirty_list;
 static list_head buf_hash_table[NR_HASH];
 static SPIN_LOCK buf_lock;
+PRIVATE struct Semaphore buf_dirty_sem;
 
 /*****************************************************************************
  *                                init_buffer
@@ -61,6 +63,7 @@ void init_buffer(int num_block)
     // lru_list.lru_tail = pre;
 	buf_head *bh = NULL;
 	initlock(&buf_lock,"buf_lock");
+	ksem_init(&buf_dirty_sem, 0);
 	list_init(&lru_list);
 	list_init(&dirty_list);
 	for(int i = 0; i < NR_HASH; i++) {
@@ -235,16 +238,21 @@ static void put_sync_buf(buf_head *bh) {
 	bh->dirty_tick = ticks;
 	list_add_last(&bh->b_dirty, &dirty_list);
 	release(&buf_lock);
+	ksem_post(&buf_dirty_sem, 1);
 }
 
-#define BUF_SYNC_DELAY_TICK	6
+#define BUF_SYNC_DELAY_TICK	5
 static buf_head *get_sync_buf() {
+	ksem_wait(&buf_dirty_sem, 1);
 	acquire(&buf_lock);
 	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
-	if(bh && (ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK)) {
-		list_remove(&bh->b_dirty);
-	} else {
-		bh = NULL; // 此次不进行同步
+	if(bh) {
+		if(ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK) {
+			list_remove(&bh->b_dirty);
+		} else {
+			bh = NULL;
+			ksem_post(&buf_dirty_sem, 1);
+		}
 	}
 	release(&buf_lock);
 	return bh;

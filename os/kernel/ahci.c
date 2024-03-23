@@ -186,23 +186,6 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 */
 PRIVATE void sata_handler(int irq)
 {	
-	int pid = proc2pid(p_proc_current);
-	int err_temp = 0;
-	u32 user_phyaddr = NULL;
-	if(kernel_initial == 0 && pid >= NR_K_PCBS) {// 用户进程需要临时建立DMA映射
-		if(pte_exist(get_pde_phy_addr(pid), HBA)) {
-			user_phyaddr = get_page_phy_addr(pid, HBA);
-			clear_pte(pid, HBA);
-		}
-		err_temp = lin_mapping_phy(HBA,  //线性地址					//add by visual 2016.5.9
-									HBA, //物理地址
-									pid,
-									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）
-		if(err_temp) {
-			disp_str("error:build DMA failed\n");
-		}
-	}
 	u32 port_bitmap = HBA->is;
     
 	if(port_bitmap == 0){
@@ -245,20 +228,6 @@ PRIVATE void sata_handler(int irq)
 		sata_error_flag = 1;
 	}
 	HBA->is = port_bitmap;			// 控制器清中断
-out:
-	if(kernel_initial == 0 && pid >= NR_K_PCBS) {
-		clear_pte(pid, HBA);
-		if(user_phyaddr) {
-			err_temp = lin_mapping_phy(HBA,  //线性地址					//add by visual 2016.5.9
-									user_phyaddr, //物理地址
-									pid,
-									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）
-			if(err_temp) {
-				disp_str("error: back user page\n");
-			}
-		}
-	}
 	return;			
 }
 
