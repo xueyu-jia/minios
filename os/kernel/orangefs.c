@@ -4063,11 +4063,12 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
 	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
-	int m = 0, cnt = 0;
+	int m = 0;
 	struct dir_entry *pde;
 	int i, j;
 	char * fsbuf = NULL;
 	buf_head * bh = NULL;
+	struct dirent* dent = start;
 	for (i = 0; i < nr_dir_blks; i++)
 	{
 		bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
@@ -4075,25 +4076,25 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 		pde = (struct dir_entry *)fsbuf;
 		for (j = 0; j < BLOCK_SIZE / DIR_ENTRY_SIZE; j++, pde++)
 		{
-			if (++m > nr_dir_entries || cnt >= count)
+			if (++m > nr_dir_entries || count < dirent_len(strlen(pde->name)))
 			{
 				brelse(bh);
-				return cnt;
+				return (u32)dent - (u32)start;;
 			}
 			if (pde->inode_nr == INVALID_INODE)
 			{
 				continue;
 			}
 
-			start->d_ino = pde->inode_nr;
-			strncpy(start->d_name, pde->name, MAX_DNAME_LEN);
-			start++;
-			cnt++;
+			dirent_read(dent, pde->inode_nr, MAX_FILENAME_LEN);
+			strncpy(dent->d_name, pde->name, MAX_DNAME_LEN);
+			count -= dent->d_len;
+			dent = dirent_next(dent);
 		}
 		brelse(bh);
 		
 	}
-	return cnt;
+	return (u32)dent - (u32)start;;
 }
 
 PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, int num){

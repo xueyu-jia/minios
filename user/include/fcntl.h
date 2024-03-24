@@ -28,8 +28,9 @@
 #define I_NAMED_PIPE	0010000
 
 struct dirent{
+	int d_len;// total len, including full d_name
 	int d_ino;
-	char d_name[MAX_DNAME_LEN];
+	char d_name[256]; //just d_name start
 };
 
 struct dirstream;

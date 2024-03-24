@@ -13,7 +13,6 @@
 #include "vfs.h"
 #include "hd.h"
 #include "mount.h"
-#include "blame.h"
 
 // PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
@@ -980,7 +979,7 @@ PUBLIC DIR* kern_vfs_opendir(const char* path){
 	}
 	DIR* dirp = kern_malloc_4k();
 	dirp->file = file;
-	dirp->count = 0;
+	dirp->pos = 0;
 	dirp->total = 0;
 	dirp->init = 0;
 	return dirp;
@@ -1008,15 +1007,15 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 		struct dirent* data_start = DIR_DATA(dirp);
 		acquire(&inode->lock);
 		if(inode->i_fop && inode->i_fop->readdir){
-			dirp->total = inode->i_fop->readdir(dirp->file, 
-			((num_4K - sizeof(DIR))/sizeof(struct dirent)) ,data_start);
+			dirp->total = inode->i_fop->readdir(dirp->file, num_4K - sizeof(DIR), data_start);
 		}
 		dirp->init = 1;
 		release(&inode->lock);
 	}
 	struct dirent* ent = NULL;
-	if(dirp->count < dirp->total){
-		ent = &DIR_DATA(dirp)[dirp->count++];
+	if(dirp->pos < dirp->total){
+		ent = (struct dirent*)(((char*)DIR_DATA(dirp)) + dirp->pos);
+		dirp->pos += ent->d_len;
 		if(!strcmp(ent->d_name, "..")){// check parent needed for mount point
 			vfs_get_dentry(dirp->file->fd_dentry);
 			struct vfs_dentry* found = _do_lookup(dirp->file->fd_dentry, ent->d_name, 1);

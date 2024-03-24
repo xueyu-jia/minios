@@ -98,17 +98,23 @@ struct file_desc {
 #define fget(file) atomic_inc(&((file)->fd_count))
 
 struct dirent{
+	int d_len;// total len, including full d_name
 	int d_ino;
-	char d_name[MAX_DNAME_LEN];
+	char d_name[1]; //just d_name start
 };
-
+#define dirent_next(dent) ((struct dirent*)(((char*)dent)+(dent->d_len)))
+#define dirent_len(name_len) ((name_len) + 9) // 2*int+end'\0'
+#define dirent_read(dent, ino, name_len) do{	\
+	(dent)->d_ino = ino;\
+	(dent)->d_len = dirent_len(name_len);\
+}while(0)
 // opendir mallock a page and take beginning as dirstream struct, remaining data as dir raw dirent
 // | ------4K-------------|
-// |dirstream|dirent[]... |
+// |dirstream|dirent... |
 struct dirstream{
 	struct file_desc* file;
 	int init;
-	int count;
+	int pos;
 	int total;
 };
 #define DIR_DATA(dirp) ((struct dirent*)((dirp) + 1))
