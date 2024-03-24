@@ -1798,7 +1798,7 @@ main(int argc, char *argv[])
   exitiputtest();
   iputtest();
 
-//   exitwait();  // frequently failed
+  exitwait();
 
   rmdot();
 //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
@@ -1831,7 +1831,8 @@ main(int argc, char *argv[])
   5. rmdir path end with . illegal						vfs
   6. read after unlink									vfs
   7. root /.. = /										vfs
-  8. phy_kfree_4k addr error:missing type convert		const.h								
+  8. phy_kfree_4k addr error:missing type convert		const.h			
+  9. exit wait race										exit					
 
   todo:
   // rmdir cwd? rmdir/unlink effective after process exit  fixed

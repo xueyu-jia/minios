@@ -185,11 +185,11 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		//p_proc->task.we_flag = ZOMBY;	//modified by hejia 2019-12-25
 		//p_proc->task.stat = SLEEPING;	//先置它为SLEEPING，因为当sched的时候产生进程调度，就不会调度它了（它的内存已经释放，如果再执行这个进程，肯定会发生错误）
 												//但是不能设置为IDLE，因为可能会有其他的进程占据这个进程表项
-		
+		disable_int();
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
 		p_proc->task.stat = KILLED; //modified by dongzhangqi 2023.6.2 //统一PCB state 20240314
 		sys_wakeup(p_father);
-		
+		enable_int();
 	}
 
 	//while(1);	//added by mingxuan 2021-8-17
