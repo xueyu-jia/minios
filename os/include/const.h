@@ -132,6 +132,8 @@
 #define ArgLinBase 				(KernelLinBase-0x1000)		//参数存放位置起始地址，放在3G前，暂时还没没用到
 #define ArgLinLimitMAX  		KernelLinBase  				//=(ArgLinBase+0x1000)大小：4K。
 #define	KernelLinBase			0xC0000000 					//内核线性起始地址(有0x30400的偏移)
+#define KernelLinMapBase		(KernelLinBase+BigKernelSize)
+#define KernelLinMapLimit		(KernelLinMapBase + num_4M)
 #define	KernelLinLimitMAX		(KernelLinBase+0x40000000) 	//大小：1G
 
 //added by mingxuan 2021-1-7

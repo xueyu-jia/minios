@@ -251,9 +251,9 @@ PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
 // 调用此函数分配页表
 PRIVATE void init_proc_pages(PROCESS* p_proc){
 	int pid = p_proc - proc_table;
-	if (0 != init_page_pte(pid))
+	if (0 != init_proc_page(pid))
 	{
-		disp_color_str("kernel_main Error:init_page_pte", 0x74);
+		disp_color_str("kernel_main Error:init_proc_page", 0x74);
 		return -1;
 	}
 	p_proc->task.memmap.heap_lin_base = HeapLinBase;

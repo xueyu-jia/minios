@@ -16,55 +16,6 @@
 
 PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute); //added by mingxuan 2021-8-25
 
-//added by mingxuan 2021-8-25
-PUBLIC int init_kernel_page()
-{
-	//第一步: 生成一张内核用的页目录表
-	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
-	memset((void *)K_PHY2LIN(kernel_pde_addr_phy), 0, num_4K); //by qianglong
-	//第二步: 初始化3G~3G+kernel_size的内核映射
-	u32 AddrLin = 0, phy_addr = 0;
-
-	//delete by sundong 2023.3.8 kernel中低端页表没有发挥作用，因此此处删掉对低端页表的映射
-	/*
-	//建立对低端0~kernel_size内核的映射
-	for (AddrLin = 0, phy_addr = 0; AddrLin < 0 + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
-		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
-											 phy_addr, //物理地址
-											 kernel_pde_addr_phy,
-											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-		if (err_temp != 0)
-		{
-			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
-			return -1;
-		}
-	}
-	*/
-
-	//建立3G~3G+kernel_size的内核映射
-	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
-		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
-											 phy_addr, //物理地址
-											 kernel_pde_addr_phy,
-											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-		if (err_temp != 0)
-		{
-			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
-			return -1;
-		}
-	}
-
-	//第三步：更换cr3
-	__asm__(
-		"mov %0, %%eax\n"
-		"mov %%eax, %%cr3\n"
-		:
-		: "m"(kernel_pde_addr_phy));
-}
 
 //added by mingxuan 2021-8-29
 PUBLIC void init_gdt()

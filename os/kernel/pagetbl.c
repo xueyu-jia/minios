@@ -10,12 +10,14 @@
 #include "global.h"
 #include "proto.h"
 #include "buddy.h"
+#include "pagetable.h"
 
 
 //to determine if a page fault is reparable. added by xw, 18/6/11
 u32 cr2_save;
 u32 cr2_count = 0;
 
+u32 kern_mapping_free = KernelLinMapBase;
 /*======================================================================*
                            switch_pde			added by xw, 17/12/11
  *switch the page directory table after schedule() is called
@@ -25,11 +27,135 @@ PUBLIC void switch_pde()
 	cr3_ready = p_proc_current->task.cr3;
 }
 
+/***************************地址转换过程***************************
+*
+*第一步，CR3包含着页目录的起始地址，用32位线性地址的最高10位A31~A22作为页目录的页目录项的索引，
+*将它乘以4，与CR3中的页目录的起始地址相加，形成相应页表的地址。
+*
+*第二步，从指定的地址中取出32位页目录项，它的低12位为0，这32位是页表的起始地址。
+*用32位线性地址中的A21~A12位作为页表中的页面的索引，将它乘以4，与页表的起始地址相加，形成32位页面地址。
+*
+*第三步，将A11~A0作为相对于页面地址的偏移量，与32位页面地址相加，形成32位物理地址。
+*************************************************************************/
+
+/*======================================================================*
+                          get_pde_index		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC inline u32 get_pde_index(u32 AddrLin)
+{							//由 线性地址 得到 页目录项编号
+	return (AddrLin >> 22); //高10位A31~A22
+}
+
+/*======================================================================*
+                          get_pte_index		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC inline u32 get_pte_index(u32 AddrLin)
+{										   //由 线性地址 得到 页表项编号
+	return (((AddrLin)&0x003FFFFF) >> 12); //中间10位A21~A12,0x3FFFFF = 0000 0000 0011 1111 1111 1111 1111 1111
+}
+
+/*======================================================================*
+                          get_pde_phy_addr	add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC inline u32 get_pde_phy_addr(u32 pid)
+{ //获取页目录物理地址
+	if (proc_table[pid].task.cr3 == 0)
+	{ //还没有初始化页目录
+		return -1;
+	}
+	else
+	{
+		return ((proc_table[pid].task.cr3) & 0xFFFFF000);
+	}
+}
+
+/*======================================================================*
+                          get_pte_phy_addr	add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC inline u32 get_pte_phy_addr(u32 pid,		//页目录物理地址		//edit by visual 2016.5.19
+								   u32 AddrLin) //线性地址
+{												//获取该线性地址所属页表的物理地址
+	u32 PageDirPhyAddr = get_pde_phy_addr(pid); //add by visual 2016.5.19
+	if (-1 == PageDirPhyAddr)					//异常处理, added by mingxuan 2021-1-29
+		disp_str("Get PageDir Physical Address Error!\n");
+
+	return (*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin))) & 0xFFFFF000; //先找到该进程页目录首地址，然后计算出该线性地址对应的页目录项，再访问,最后注意4k对齐
+}
+
+/*======================================================================*
+                          get_page_phy_addr	add by visual 2016.5.9
+ *======================================================================*/
+PUBLIC inline u32 get_page_phy_addr(u32 pid,			 //页表物理地址				//edit by visual 2016.5.19
+									u32 AddrLin)		 //线性地址
+{														 //获取该线性地址对应的物理页物理地址
+	u32 PageTblPhyAddr = get_pte_phy_addr(pid, AddrLin); //add by visual 2016.5.19
+	if (0 == PageTblPhyAddr)							 //异常处理, added by mingxuan 2021-1-29
+		disp_str("Get PageTbl Physical Address Error!\n");
+
+	return (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin))) & 0xFFFFF000;
+}
+
+/*======================================================================*
+                          pte_exist		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC u32 pte_exist(u32 PageDirPhyAddr,													//页目录物理地址
+					 u32 AddrLin)															//线性地址
+{																							//判断 有没有 页表
+	if ((0x00000001 & (*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin)))) == 0) //先找到该进程页目录,然后计算出该线性地址对应的页目录项,访问并判断其是否存在
+	{																						//标志位为0，不存在
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+/*======================================================================*
+                          phy_exist		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC u32 phy_exist(u32 PageTblPhyAddr, //页表物理地址
+					 u32 AddrLin)		 //线性地址
+{										 //判断 该线性地址 有没有 对应的 物理页
+	if ((0x00000001 & (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin)))) == 0)
+	{ //标志位为0，不存在
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+/*======================================================================*
+                          write_page_pde		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC void write_page_pde(u32 PageDirPhyAddr, //页目录物理地址
+						   u32 AddrLin,		   //线性地址
+						   u32 TblPhyAddr,	   //要填写的页表的物理地址（函数会进行4k对齐）
+						   u32 Attribute)	   //属性
+{											   //填写页目录
+	(*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin))) = (TblPhyAddr & 0xFFFFF000) | Attribute;
+	//进程页目录起始地址+每一项的大小*所属的项
+}
+
+/*======================================================================*
+                          write_page_pte		add by visual 2016.4.28
+ *======================================================================*/
+PUBLIC void write_page_pte(u32 TblPhyAddr, //页表物理地址
+						   u32 AddrLin,	   //线性地址
+						   u32 PhyAddr,	   //要填写的物理页物理地址(任意的物理地址，函数会进行4k对齐)
+						   u32 Attribute)  //属性
+{										   //填写页目录，会添加属性
+	(*((u32 *)K_PHY2LIN(TblPhyAddr) + get_pte_index(AddrLin))) = (PhyAddr & 0xFFFFF000) | Attribute;
+	//页表起始地址+一项的大小*所属的项
+}
+
 /*======================================================================*
                            init_page_pte		add by visual 2016.4.19
 *该函数只初始化了进程的高端（内核端）地址页表
  *======================================================================*/
-PUBLIC u32 init_page_pte(u32 pid)
+PUBLIC int init_proc_page(u32 pid)
 { //页表初始化函数
 
 	u32 AddrLin, pde_addr_phy_temp, pte_addr_phy_temp, err_temp;
@@ -41,30 +167,100 @@ PUBLIC u32 init_page_pte(u32 pid)
 
 	if (pde_addr_phy_temp < 0 || (pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
 	{
-		disp_color_str("init_page_pte Error:pde_addr_phy_temp", 0x74);
+		disp_color_str("init_proc_page Error:pde_addr_phy_temp", 0x74);
 		return -1;
 	}
 
 	proc_table[pid].task.cr3 = pde_addr_phy_temp; //初始化了进程表中cr3寄存器变量，属性位暂时不管
 
 	/*********************页表初始化部分*********************************/
-	u32 phy_addr = 0;
-    //kernel_size edited by wang 2021.8.27
-	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{														//只初始化内核部分，3G后的线性地址映射到物理地址开始处
-		err_temp = lin_mapping_phy(AddrLin,					//线性地址					//add by visual 2016.5.9
-								   phy_addr,				//物理地址
-								   pid,						//进程pid						//edit by visual 2016.5.19
-								   PG_P | PG_USU | PG_RWW,	//页目录的属性位（用户权限）			//edit by visual 2016.5.26
-								   PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+	// u32 phy_addr = 0;
+    // // kernel_size edited by wang 2021.8.27
+	// for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	// {														//只初始化内核部分，3G后的线性地址映射到物理地址开始处
+	// 	err_temp = lin_mapping_phy(AddrLin,					//线性地址					//add by visual 2016.5.9
+	// 							   phy_addr,				//物理地址
+	// 							   pid,						//进程pid						//edit by visual 2016.5.19
+	// 							   PG_P | PG_USU | PG_RWW,	//页目录的属性位（用户权限）			//edit by visual 2016.5.26
+	// 							   PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+	// 	if (err_temp != 0)
+	// 	{
+	// 		disp_color_str("init_proc_page Error:lin_mapping_phy", 0x74);
+	// 		return -1;
+	// 	}
+	// }
+	u32 kernel_pde_offset = KernelLinBase/num_4M * 4;
+	memcpy(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset, 
+		K_PHY2LIN(read_cr3()) + kernel_pde_offset, num_4K - kernel_pde_offset);
+
+	return 0;
+}
+
+//added by mingxuan 2021-8-25
+PUBLIC int init_kernel_page()
+{
+	//第一步: 生成一张内核用的页目录表
+	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
+	memset((void *)K_PHY2LIN(kernel_pde_addr_phy), 0, num_4K); //by qianglong
+	//第二步: 初始化3G~3G+kernel_size的内核映射
+	u32 AddrLin = 0, phy_addr = 0;
+
+	//delete by sundong 2023.3.8 kernel中低端页表没有发挥作用，因此此处删掉对低端页表的映射
+	/*
+	//建立对低端0~kernel_size内核的映射
+	for (AddrLin = 0, phy_addr = 0; AddrLin < 0 + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
+		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
+											 phy_addr, //物理地址
+											 kernel_pde_addr_phy,
+											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
 		if (err_temp != 0)
 		{
-			disp_color_str("init_page_pte Error:lin_mapping_phy", 0x74);
+			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
+			return -1;
+		}
+	}
+	*/
+	// jiangfeng 20240328 给内核pde中需要的位置分配
+	for (AddrLin = KernelLinBase; AddrLin < KernelLinMapLimit; AddrLin += num_4M) {
+		phy_addr = (u32)phy_kmalloc_4k(); //为页表申请一页	//modified by mingxuan 2021-8-16
+
+		memset((void *)K_PHY2LIN(phy_addr), 0, num_4K); //add by visual 2016.5.26
+
+		if (phy_addr < 0 || (phy_addr & 0x3FF) != 0) //add by visual 2016.5.9
+		{
+			disp_color_str("lin_mapping_phy Error:pte_addr_phy", 0x74);
+			return -1;
+		}
+
+		write_page_pde(kernel_pde_addr_phy,   //页目录物理地址
+					   AddrLin,		   //线性地址
+					   phy_addr,   //页表物理地址
+					   PG_P | PG_USS | PG_RWW); //属性（系统权限）
+	}
+
+	//建立3G~3G+kernel_size的内核映射
+	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
+		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
+											 phy_addr, //物理地址
+											 kernel_pde_addr_phy,
+											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+		if (err_temp != 0)
+		{
+			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
 			return -1;
 		}
 	}
 
-	return 0;
+	//第三步：更换cr3
+	__asm__(
+		"mov %0, %%eax\n"
+		"mov %%eax, %%cr3\n"
+		:
+		: "m"(kernel_pde_addr_phy));
 }
 
 /*======================================================================*
@@ -207,129 +403,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	refresh_page_cache();
 }
 
-/***************************地址转换过程***************************
-*
-*第一步，CR3包含着页目录的起始地址，用32位线性地址的最高10位A31~A22作为页目录的页目录项的索引，
-*将它乘以4，与CR3中的页目录的起始地址相加，形成相应页表的地址。
-*
-*第二步，从指定的地址中取出32位页目录项，它的低12位为0，这32位是页表的起始地址。
-*用32位线性地址中的A21~A12位作为页表中的页面的索引，将它乘以4，与页表的起始地址相加，形成32位页面地址。
-*
-*第三步，将A11~A0作为相对于页面地址的偏移量，与32位页面地址相加，形成32位物理地址。
-*************************************************************************/
 
-/*======================================================================*
-                          get_pde_index		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC inline u32 get_pde_index(u32 AddrLin)
-{							//由 线性地址 得到 页目录项编号
-	return (AddrLin >> 22); //高10位A31~A22
-}
-
-/*======================================================================*
-                          get_pte_index		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC inline u32 get_pte_index(u32 AddrLin)
-{										   //由 线性地址 得到 页表项编号
-	return (((AddrLin)&0x003FFFFF) >> 12); //中间10位A21~A12,0x3FFFFF = 0000 0000 0011 1111 1111 1111 1111 1111
-}
-
-/*======================================================================*
-                          get_pde_phy_addr	add by visual 2016.4.28
- *======================================================================*/
-PUBLIC inline u32 get_pde_phy_addr(u32 pid)
-{ //获取页目录物理地址
-	if (proc_table[pid].task.cr3 == 0)
-	{ //还没有初始化页目录
-		return -1;
-	}
-	else
-	{
-		return ((proc_table[pid].task.cr3) & 0xFFFFF000);
-	}
-}
-
-/*======================================================================*
-                          get_pte_phy_addr	add by visual 2016.4.28
- *======================================================================*/
-PUBLIC inline u32 get_pte_phy_addr(u32 pid,		//页目录物理地址		//edit by visual 2016.5.19
-								   u32 AddrLin) //线性地址
-{												//获取该线性地址所属页表的物理地址
-	u32 PageDirPhyAddr = get_pde_phy_addr(pid); //add by visual 2016.5.19
-	if (-1 == PageDirPhyAddr)					//异常处理, added by mingxuan 2021-1-29
-		disp_str("Get PageDir Physical Address Error!\n");
-
-	return (*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin))) & 0xFFFFF000; //先找到该进程页目录首地址，然后计算出该线性地址对应的页目录项，再访问,最后注意4k对齐
-}
-
-/*======================================================================*
-                          get_page_phy_addr	add by visual 2016.5.9
- *======================================================================*/
-PUBLIC inline u32 get_page_phy_addr(u32 pid,			 //页表物理地址				//edit by visual 2016.5.19
-									u32 AddrLin)		 //线性地址
-{														 //获取该线性地址对应的物理页物理地址
-	u32 PageTblPhyAddr = get_pte_phy_addr(pid, AddrLin); //add by visual 2016.5.19
-	if (0 == PageTblPhyAddr)							 //异常处理, added by mingxuan 2021-1-29
-		disp_str("Get PageTbl Physical Address Error!\n");
-
-	return (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin))) & 0xFFFFF000;
-}
-
-/*======================================================================*
-                          pte_exist		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC u32 pte_exist(u32 PageDirPhyAddr,													//页目录物理地址
-					 u32 AddrLin)															//线性地址
-{																							//判断 有没有 页表
-	if ((0x00000001 & (*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin)))) == 0) //先找到该进程页目录,然后计算出该线性地址对应的页目录项,访问并判断其是否存在
-	{																						//标志位为0，不存在
-		return 0;
-	}
-	else
-	{
-		return 1;
-	}
-}
-
-/*======================================================================*
-                          phy_exist		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC u32 phy_exist(u32 PageTblPhyAddr, //页表物理地址
-					 u32 AddrLin)		 //线性地址
-{										 //判断 该线性地址 有没有 对应的 物理页
-	if ((0x00000001 & (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin)))) == 0)
-	{ //标志位为0，不存在
-		return 0;
-	}
-	else
-	{
-		return 1;
-	}
-}
-
-/*======================================================================*
-                          write_page_pde		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC void write_page_pde(u32 PageDirPhyAddr, //页目录物理地址
-						   u32 AddrLin,		   //线性地址
-						   u32 TblPhyAddr,	   //要填写的页表的物理地址（函数会进行4k对齐）
-						   u32 Attribute)	   //属性
-{											   //填写页目录
-	(*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin))) = (TblPhyAddr & 0xFFFFF000) | Attribute;
-	//进程页目录起始地址+每一项的大小*所属的项
-}
-
-/*======================================================================*
-                          write_page_pte		add by visual 2016.4.28
- *======================================================================*/
-PUBLIC void write_page_pte(u32 TblPhyAddr, //页表物理地址
-						   u32 AddrLin,	   //线性地址
-						   u32 PhyAddr,	   //要填写的物理页物理地址(任意的物理地址，函数会进行4k对齐)
-						   u32 Attribute)  //属性
-{										   //填写页目录，会添加属性
-	(*((u32 *)K_PHY2LIN(TblPhyAddr) + get_pte_index(AddrLin))) = (PhyAddr & 0xFFFFF000) | Attribute;
-	//页表起始地址+一项的大小*所属的项
-}
 
 /*======================================================================*
 *                         vmalloc		add by visual 2016.5.4
@@ -503,6 +577,25 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 	refresh_page_cache();
 
 	return 0;
+}
+
+
+// used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
+PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
+	if(kern_mapping_free + nr_pages*num_4K >= KernelLinMapLimit) {
+		disp_str("not free mapping space");
+		return 0;
+	}
+	int lin_addr = kern_mapping_free;
+	kern_mapping_free += nr_pages*num_4K;
+	for(u32 offset = 0; offset < nr_pages; offset++) {
+		lin_mapping_phy_nopid(lin_addr + offset*num_4K, 
+							phy_addr + offset*num_4K, 
+							read_cr3(), 
+							PG_P | PG_USS | PG_RWW,
+							PG_P | PG_USS | PG_RWW);
+	} 
+	return lin_addr;
 }
 
 /*======================================================================*

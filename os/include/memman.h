@@ -1,5 +1,5 @@
 #include "type.h"				
-// #include "const.h"	unused headers			
+#include "const.h"		
 // #include "protect.h"		
 // #include "string.h"				
 // #include "proc.h"				
@@ -24,3 +24,15 @@ struct MEMMAN{
 	struct FREEINFO free[MEMMAN_FREES];	//空闲内存
 };
 
+PUBLIC u32 phy_kmalloc(u32 size);
+PUBLIC u32 phy_kfree(u32 phy_addr);
+PUBLIC u32 kern_kmalloc(u32 size);
+PUBLIC u32 kern_kfree(u32 addr);
+PUBLIC u32 phy_kmalloc_4k();
+PUBLIC u32 phy_kfree_4k(u32 phy_addr);
+PUBLIC u32 kern_kmalloc_4k();
+PUBLIC u32 kern_kfree_4k(u32 addr);
+PUBLIC u32 phy_malloc_4k();
+PUBLIC u32 phy_free_4k(u32 phy_addr);
+PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
+PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);

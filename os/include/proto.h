@@ -310,34 +310,9 @@ void init_msgq();
 ****************************************************************/
 
 /*pagepte.c*/
-PUBLIC	u32 init_page_pte(u32 pid);	//edit by visual 2016.4.28
-PUBLIC 	void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);//add by visual 2016.4.19
-PUBLIC	u32 get_pde_index(u32 AddrLin);//add by visual 2016.4.28
-PUBLIC 	u32 get_pte_index(u32 AddrLin);
-PUBLIC 	u32 get_pde_phy_addr(u32 pid);
-PUBLIC 	u32 get_pte_phy_addr(u32 pid,u32 AddrLin);
-PUBLIC  u32 get_page_phy_addr(u32 pid,u32 AddrLin);//线性地址
-PUBLIC 	u32 pte_exist(u32 PageTblAddrPhy,u32 AddrLin);
-PUBLIC 	u32 phy_exist(u32 PageTblPhyAddr,u32 AddrLin);
-PUBLIC 	void write_page_pde(u32 PageDirPhyAddr,u32	AddrLin,u32 TblPhyAddr,u32 Attribute);
-PUBLIC  void write_page_pte(	u32 TblPhyAddr,u32	AddrLin,u32 PhyAddr,u32 Attribute);
-PUBLIC  u32 vmalloc(u32 size);
-PUBLIC  int lin_mapping_phy(u32 AddrLin,u32 phy_addr,u32 pid,u32 pde_Attribute,u32 pte_Attribute);//edit by visual 2016.5.19
-PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
 
 /*memman.c*/
-PUBLIC u32 phy_kmalloc(u32 size);
-PUBLIC u32 phy_kfree(u32 phy_addr);
-PUBLIC u32 kern_kmalloc(u32 size);
-PUBLIC u32 kern_kfree(u32 addr);
-PUBLIC u32 phy_kmalloc_4k();
-PUBLIC u32 phy_kfree_4k(u32 phy_addr);
-PUBLIC u32 kern_kmalloc_4k();
-PUBLIC u32 kern_kfree_4k(u32 addr);
-PUBLIC u32 phy_malloc_4k();
-PUBLIC u32 phy_free_4k(u32 phy_addr);
-PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
-PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
+
 
 /*mount.c */
 PUBLIC int sys_mount();

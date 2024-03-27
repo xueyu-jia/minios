@@ -11,7 +11,7 @@
 PRIVATE int fork_mem_cpy(u32 ppid,u32 pid);
 PRIVATE int fork_pcb_cpy(PROCESS* p_child);
 PRIVATE int fork_update_info(PROCESS* p_child);
-PRIVATE int fork_hpage_cpy(PROCESS* p_child);
+// PRIVATE int fork_hpage_cpy(PROCESS* p_child);
 
 /**********************************************************
 *		sys_fork			//add by visual 2016.5.25
@@ -37,8 +37,8 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 	{
 		/****************初始化子进程高端地址页表（内核部分）***********************///这个页表可以复制父进程的！
 		if(p_child->task.cr3 == 0){	//如果没有页目录，就申请 //added by mingxuan 2021-1-11
-			// init_page_pte(p_child->task.pid);	//这里面已经填写了该进程的cr3寄存器变量
-			fork_hpage_cpy(p_child);
+			init_proc_page(p_child->task.pid);	//这里面已经填写了该进程的cr3寄存器变量
+			// fork_hpage_cpy(p_child);
 		}	
 
 		/************复制父进程的PCB部分内容（保留了自己的标识信息）**************/
@@ -286,20 +286,20 @@ PRIVATE int fork_update_info(PROCESS* p_child)
 	return 0;
 }
 
-PRIVATE int fork_hpage_cpy(PROCESS* p_child) {
-	u32 parent_pde, child_pde;
-	parent_pde = p_proc_current->task.cr3;
+// PRIVATE int fork_hpage_cpy(PROCESS* p_child) {
+// 	u32 parent_pde, child_pde;
+// 	parent_pde = p_proc_current->task.cr3;
 
-	child_pde = phy_kmalloc_4k(); //为页目录申请一页
+// 	child_pde = phy_kmalloc_4k(); //为页目录申请一页
 
-	if (child_pde < 0 || (child_pde & 0x3FF) != 0) //add by visual 2016.5.9
-	{
-		disp_color_str("init_page_pte Error:pde_addr_phy_temp", 0x74);
-		return -1;
-	}
-	memcpy((void *)K_PHY2LIN(child_pde), (void *)K_PHY2LIN(parent_pde), num_4K);
-	memset((void *)K_PHY2LIN(child_pde), 0, KernelLinBase/num_4M * 4); //add by visual 2016.5.26
+// 	if (child_pde < 0 || (child_pde & 0x3FF) != 0) //add by visual 2016.5.9
+// 	{
+// 		disp_color_str("init_proc_page Error:pde_addr_phy_temp", 0x74);
+// 		return -1;
+// 	}
+// 	memcpy((void *)K_PHY2LIN(child_pde), (void *)K_PHY2LIN(parent_pde), num_4K);
+// 	memset((void *)K_PHY2LIN(child_pde), 0, KernelLinBase/num_4M * 4); //add by visual 2016.5.26
 
-	p_child->task.cr3 = child_pde; //初始化了进程表中cr3寄存器变量，属性位暂时不管
+// 	p_child->task.cr3 = child_pde; //初始化了进程表中cr3寄存器变量，属性位暂时不管
 
-}
+// }

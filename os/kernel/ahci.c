@@ -73,20 +73,21 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	}
 
 	//将AHCI基地址映射到线性地址
-	err_temp = lin_mapping_phy_nopid(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
-										ahci_info[0].ABAR, //物理地址
-										read_cr3(),
-										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-	for(int pid = 0; pid <= NR_K_PCBS; pid++){
-		if(proc_table[pid].task.stat == READY){
-			err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
-										ahci_info[0].ABAR, //物理地址
-										pid,
-										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）
-		}
-	}
+	int lin_hba = kern_kmapping_phy(ahci_info[0].ABAR, 1);
+	// err_temp = lin_mapping_phy_nopid(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	// 									ahci_info[0].ABAR, //物理地址
+	// 									read_cr3(),
+	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+	// for(int pid = 0; pid <= NR_K_PCBS; pid++){
+	// 	if(proc_table[pid].task.stat == READY){
+	// 		err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
+	// 									ahci_info[0].ABAR, //物理地址
+	// 									pid,
+	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
+	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）
+	// 	}
+	// }
 	// int hd_service_pid = kern_get_pid_byname("hd_service");
 
 	// err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
@@ -111,7 +112,8 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 	// 									PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 	// 									PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
-	if (err_temp != 0)
+	if (lin_hba == 0)
+	// if (err_temp != 0)
 	{
 		disp_color_str("kernel page Error:lin_mapping_phy_ahci", 0x74);
 		return FALSE;
@@ -119,7 +121,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 
 	
 	// disp_str("\nlin_mapping_phy_ahci");
-	HBA=(HBA_MEM *)(ahci_info[0].ABAR);
+	HBA=(HBA_MEM *)(lin_hba);
 
 	ahci_info[0].is_AHCI_MODE = (HBA->ghc)>>31;
 
