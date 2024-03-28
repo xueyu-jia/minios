@@ -149,7 +149,7 @@ typedef struct s_proc {
 	STACK_FRAME* esp_save_int;
 	//char* esp_save_int;		//to save the position of esp in the kernel stack of the process
 							//added by xw, 17/12/11
-	char* esp_save_syscall;	//to save the position of esp in the kernel stack of the process
+//	char* esp_save_syscall;	//to save the position of esp in the kernel stack of the process
 	char* esp_save_context;	//to save the position of esp in the kernel stack of the process
 //	int   save_type;		//the cause of process losting CPU	//save_type is not needed any more, xw, 18/4/20
 							//1st-bit for interruption, 2nd-bit for context, 3rd-bit for syscall
