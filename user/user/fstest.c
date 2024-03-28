@@ -11,6 +11,12 @@
 */
 void main(int argc,char *argv[])
 {
+	if(fork() == 0){
+		// 子进程一直循环，父进程读写硬盘产生的中断实际上会在子进程运行时触发
+		// 如果报错：SATA handler:No error but interrupt
+		// 说明子进程没有映射sata寄存器的端口（AHCI的端口）
+		while(1){};
+	}
 	// 创建长目录
 	char path[128], buff[128], filename[128];
 	int ret, fd;

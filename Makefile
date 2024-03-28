@@ -49,7 +49,7 @@ BOOT_PART_FS_TYPE= fat32
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
 #使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
-BOOT_IMG=virtual_disk.img
+BOOT_IMG=fat32_boot.img
 ###################################################################
 
 

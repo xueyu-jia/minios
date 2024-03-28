@@ -133,6 +133,7 @@
 #define ArgLinLimitMAX  		KernelLinBase  				//=(ArgLinBase+0x1000)大小：4K。
 #define	KernelLinBase			0xC0000000 					//内核线性起始地址(有0x30400的偏移)
 #define	KernelLinLimitMAX		(KernelLinBase+0x40000000) 	//大小：1G
+#define Kernel_space_max		(0x100000000-1)					// 4GB-1
 
 //added by mingxuan 2021-1-7
 #define MEMMAP_TEXT 	0x0
