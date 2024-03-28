@@ -59,7 +59,8 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 	{
 		/****************初始化子进程高端地址页表（内核部分）***********************///这个页表可以复制父进程的！
 		if(p_child->task.cr3 == 0)	//如果没有页目录，就申请 //added by mingxuan 2021-1-11
-			init_page_pte(p_child->task.pid);	//这里面已经填写了该进程的cr3寄存器变量		
+			// init_page_pte(p_child->task.pid);	//这里面已经填写了该进程的cr3寄存器变量		
+			init_user_page_pte(p_child->task.pid);
 
 		/************复制父进程的PCB部分内容（保留了自己的标识信息）**************/
 		fork_pcb_cpy(p_child);

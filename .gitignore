@@ -3,6 +3,7 @@
 
 # ignore all files in the ** directory
 /.vscode/*
+/.VSCodeCounter/*
 /tmp/*
 .idea
 

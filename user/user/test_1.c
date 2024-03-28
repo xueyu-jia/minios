@@ -62,7 +62,16 @@ char bufr[BUF_SIZE];
 
 void main(int arg,char *argv[])
 {
+	// if(fork() != 0){
+	// 	while(1){};
+	// 	for(unsigned int i = 0; i < 0xFFFFFFF0; i++){
+	// 		for(unsigned int j = 0; i < 0xFFFFFFF0; i++){
+	// 			for(unsigned int k = 0; i < 0xFFFFFFF0; i++){
+	// 			}
+	// 		}
 
+	// 	}
+	// }
 	int fd;
 	char filename[] = "fat0/test33.txt";
 

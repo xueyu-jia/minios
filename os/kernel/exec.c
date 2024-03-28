@@ -137,7 +137,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
 		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
+		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2	//暂时修复，execv失败后父进程似乎不会回收僵尸进程；mark lirong
 		//因proc_stat和we_flag的改动而改动
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31

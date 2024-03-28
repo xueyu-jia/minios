@@ -34,6 +34,44 @@ PUBLIC void switch_pde()
 	cr3_ready = p_proc_current->task.cr3;
 }
 
+PRIVATE void copy_pte(const u32 src_cr3, const u32 dst_cr3, const u32 AddrLin)
+{
+	u32 src_pageDir_addr = src_cr3 & 0xFFFFF000;
+	u32 dst_pageDir_addr = dst_cr3 & 0xFFFFF000;
+	u32 src_pte = (*((u32 *)K_PHY2LIN(src_pageDir_addr) + get_pde_index(AddrLin)));
+	(*((u32 *)K_PHY2LIN(dst_pageDir_addr) + get_pde_index(AddrLin))) = src_pte;
+}
+
+/*
+ * @brief 初始化用户进程的页表目录，仅初始化内核空间（和父进程共享页表）
+ * @param pid:需要初始化的子进程的pid
+ * @details 初始化进程的页表目录，仅初始化 KernelLinBase~4G的空间范围（内核地址空间），
+ * 			直接复制父进程的页表目录，也就是说，子进程和父进程共享内核空间范围的页表。
+ * 			父进程的pid由p_proc_current获取
+*/
+PUBLIC u32 init_user_page_pte(u32 pid)
+{	
+	u32 AddrLin, pde_addr_phy_temp, pte_addr_phy_temp, err_temp;
+
+	pde_addr_phy_temp = phy_kmalloc_4k(); //为页目录申请一页	//modified by mingxuan 2021-8-16
+
+	memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0, num_4K); //add by visual 2016.5.26
+
+	if (pde_addr_phy_temp < 0 || (pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
+	{
+		disp_color_str("init_page_pte Error:pde_addr_phy_temp", 0x74);
+		return -1;
+	}
+
+	u32 parent_cr3 = p_proc_current->task.cr3;
+	proc_table[pid].task.cr3 = pde_addr_phy_temp; //初始化了进程表中cr3寄存器变量，属性位暂时不管
+	// 将父进程的3G-4G的pte全部复制过来，小心AddrLin溢出
+	for (AddrLin = KernelLinBase; AddrLin < Kernel_space_max-num_4K*1024 && AddrLin >= KernelLinBase; AddrLin += num_4K*1024){
+		copy_pte(parent_cr3, pde_addr_phy_temp, AddrLin);
+	}
+
+	return 0;
+}
 /*======================================================================*
                            init_page_pte		add by visual 2016.4.19
 *该函数只初始化了进程的高端（内核端）地址页表

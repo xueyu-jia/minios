@@ -307,6 +307,7 @@ void init_msgq();
 
 /*pagepte.c*/
 PUBLIC	u32 init_page_pte(u32 pid);	//edit by visual 2016.4.28
+PUBLIC u32 init_user_page_pte(u32 pid);
 PUBLIC 	void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);//add by visual 2016.4.19
 PUBLIC	u32 get_pde_index(u32 AddrLin);//add by visual 2016.4.28
 PUBLIC 	u32 get_pte_index(u32 AddrLin);
