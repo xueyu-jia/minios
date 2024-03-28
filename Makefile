@@ -196,7 +196,7 @@ build_grub:
 	
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
-		sudo grub-install --boot-directory=./iso  --modules="part_msdos"  $(INS_DEV) &&\
+		sudo grub-install --target=i386-pc --boot-directory=./iso  --modules="part_msdos" $(INS_DEV) &&\
 		sudo cp os/boot/mbr/grub/$(GRUB_CONFIG) iso/grub/grub.cfg &&\
 		sudo umount iso ;\
 	fi
