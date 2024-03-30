@@ -84,5 +84,5 @@ PUBLIC int do_wait(int *status) //wait返回的为子进程pid,子进程退出�
 
 PUBLIC int sys_wait() //wait返回的为子进程pid modified by dongzhangqi 2023-4-20
 {
-	return do_wait(get_arg(1));
+	return do_wait((int*)get_arg(1));
 }

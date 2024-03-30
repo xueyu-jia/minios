@@ -15,7 +15,6 @@
 #include "protect.h"
 #include "string.h"
 #include "proc.h"
-#include "global.h"
 #include "proto.h"
 #include "fs_const.h"
 #include "hd.h"
@@ -24,10 +23,6 @@
 #include "semaphore.h"
 #include "blame.h"
 
-struct memfree{
-	u32	addr;
-	u32	size;
-};
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
 PRIVATE volatile int hd_int_waiting_flag = 1;
@@ -149,6 +144,23 @@ PUBLIC void hd_close(int device)
 	hd_infos[drive].open_cnt--;
 }
 
+// hd_rdwt_base
+// 		low level hd read write count bytes, must start from sector boundary
+// 		count <= BLOCK_SIZE 
+PUBLIC int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) {
+	disp_str(" ");
+	disp_int(sect_nr);
+	u64 sect = (u64) sect_nr;
+	if (drive >= SATA_BASE && drive < SATA_LIMIT)
+	{
+		SATA_rdwt(drive, type, sect, count, buf);
+		return 1;
+	} else if (drive >= IDE_BASE && drive < IDE_LIMIT) {
+		IDE_rdwt(drive, type, sect, count, buf);
+		return 1;
+	}
+	return 0;
+}
 
 /*****************************************************************************
  *                                hd_rdwt
@@ -160,84 +172,16 @@ PUBLIC void hd_close(int device)
  *****************************************************************************/
 PUBLIC void hd_rdwt(MESSAGE * p)
 {
-	u32 n=(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;// by qianglong 2022.4.26
-	
-
 	int drive = DRV_OF_DEV(p->DEVICE);
-
 	u64 pos = p->POSITION;
-
-
-	if (drive >= SATA_BASE && drive < SATA_LIMIT)
-	{
-
-		void *la = (void *)va2la(p->PROC_NR, p->BUF);
-
-		SATA_rdwt(p, la);
-
-		return 1;
-	}
-
 	//We only allow to R/W from a SECTOR boundary:
-
-	// u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
-	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-
-	// int logidx = (p->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	// sect_nr += p->DEVICE < MAX_PRIM ?
-	// 	hd_info[drive].primary[p->DEVICE].base :
-	// 	hd_info[drive].logical[logidx].base;
+	u32	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
 
 	sect_nr += hd_infos[drive].part[p->DEVICE & 0x0F].base;
+	// u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
-	struct hd_cmd cmd;
-	cmd.features	= 0;
-	cmd.count	= (p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
-	cmd.lba_low	= sect_nr & 0xFF;
-	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
-	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-
-	if(hd_LBA48_sup[drive] == 1){//LBA48
-		cmd.count_LBA48		= (n>>8)&0xFF;
-		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;
-		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;
-		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;
-		cmd.device	= 0x40|((drive<<4)&0xFF);//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-		cmd.command	= (p->type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-	}//by qianglong 2022.4.26
-	else{//LBA28
-		cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
-		cmd.command	= (p->type == DEV_READ) ? ATA_READ : ATA_WRITE;
-	}
-
-	// hd_cmd_out(&cmd);
-	hd_cmd_out(&cmd,drive);
-
-	int bytes_left = p->CNT;
-	void * la = (void*)va2la(p->PROC_NR, p->BUF);
-
-	while (bytes_left) {
-		int bytes = min(SECTOR_SIZE, bytes_left);
-		if (p->type == DEV_READ) {
-			interrupt_wait();
-			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-			//hdbuf is in kernel space, no need to do address transferring. xw, 18/8/26
-			//phys_copy(la, (void*)va2la(proc2pid(p_proc_current), hdbuf), bytes);
-			phys_copy(la, hdbuf, bytes);
-		}
-		else {
-			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
-				disp_str("hd writing error.");
-
-			//modified by xw, 18/8/25
-			//port_write(REG_DATA, la, bytes);
-			phys_copy(hdbuf, la, bytes);
-			port_write(REG_DATA, hdbuf, SECTOR_SIZE);
-			interrupt_wait();
-		}
-		bytes_left -= SECTOR_SIZE;
-		la += SECTOR_SIZE;
-	}
+	void *la = (void *)va2la(p->PROC_NR, p->BUF);
+	hd_rdwt_base(drive, p->type, sect_nr, p->CNT, la);
 }
 
 //added by xw, 18/8/26
@@ -268,79 +212,12 @@ PUBLIC void hd_service()
 
 PRIVATE void hd_rdwt_real(RWInfo *p)
 {
-	int drive = DRV_OF_DEV(p->msg->DEVICE);
-
-
-	u64 pos = p->msg->POSITION;
-
-	//We only allow to R/W from a SECTOR boundary:
-
-	// u32 sect_nr = (u32)(pos >> SECTOR_SIZE_SHIFT);	// pos / SECTOR_SIZE
-	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-	u32 n=(p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
-
-	if (drive >=SATA_BASE && drive < SATA_LIMIT)//SATA read or write
-	{	
-		SATA_rdwt(p->msg,p->kbuf);
-		return 1;
-	}
-
-	// int logidx = (p->msg->DEVICE - MINOR_hd1a) % NR_SUB_PER_DRIVE;
-	// sect_nr += p->msg->DEVICE < MAX_PRIM ?
-	// 	hd_info[drive].primary[p->msg->DEVICE].base :
-	// 	hd_info[drive].logical[logidx].base;
-
-	sect_nr += hd_infos[drive].part[p->msg->DEVICE & 0x0F].base;
-
-	struct hd_cmd cmd;
-	cmd.features	= 0;
-	// cmd.count	= (p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
-	cmd.count = n & 0xFF;
-	cmd.lba_low	= sect_nr & 0xFF;
-	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
-	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-
-	if(hd_LBA48_sup[drive]==1){//LBA48
-		cmd.count_LBA48		= (n>>8)&0xFF;
-		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;
-		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;
-		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;
-		cmd.device	= 0x40|((drive<<4)&0xFF);//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-		cmd.command	= (p->msg->type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-	}//by qianglong 2022.4.26
-	else{//LBA28
-		cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
-		cmd.command	= (p->msg->type == DEV_READ) ? ATA_READ : ATA_WRITE;
-	}
-	hd_cmd_out(&cmd,drive);
-
-	int bytes_left = p->msg->CNT;
-	void *la = p->kbuf;	//attention here!
-
-	while (bytes_left) {
-		int bytes = min(SECTOR_SIZE, bytes_left);
-		if (p->msg->type == DEV_READ) {
-			interrupt_wait();
-			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-			phys_copy(la, hdbuf, bytes);
-		}
-		else {
-			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
-				disp_str("hd writing error.");
-
-			phys_copy(hdbuf, la, bytes);
-			port_write(REG_DATA, hdbuf, SECTOR_SIZE);
-			interrupt_wait();
-		}
-		bytes_left -= SECTOR_SIZE;
-		la += SECTOR_SIZE;
-	}
+	hd_rdwt(p->msg);
 }
 
 PUBLIC void hd_rdwt_sched(MESSAGE *p)
 {
 	RWInfo* rwinfo = kern_kmalloc(sizeof(RWInfo));
-	struct memfree hdque_buf;
 	int size = p->CNT;
 	void *buffer;
 	
@@ -363,11 +240,6 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 	
 	// kern_kfree((u32)buffer);
 	kern_kfree((u32)rwinfo);
-	// hdque_buf.addr = K_LIN2PHY((u32)buffer);
-	// hdque_buf.size = size;
-	//sys_free(&hdque_buf);
-	//do_kfree(hdque_buf.addr); //modified by mingxuan 2021-3-8
-	// phy_kfree(hdque_buf.addr);	//modified by mingxuan 2021-8-17
 }
 
 PUBLIC void init_hd_queue(HDQueue *hdq)
@@ -454,137 +326,22 @@ PUBLIC void hd_ioctl(MESSAGE * p)
  *****************************************************************************/
 PRIVATE void get_part_table(int drive, int _sect_nr, struct part_ent * entry)
 {
-	// SATA设备
-	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
-	{	
-		SATA_rdwt_sects(drive, DEV_READ, (u64)_sect_nr, 1);
-		phys_copy(entry, satabuf + PARTITION_TABLE_OFFSET, sizeof(struct part_ent) * NR_PART_PER_DRIVE);
-		return;
-	}
-
-	// IDE设备
-	u64 sect_nr = (u64)_sect_nr;
-	struct hd_cmd cmd;
-	cmd.features	= 0;
-	cmd.count	= 1;
-	cmd.lba_low	= sect_nr & 0xFF;
-	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
-	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-
-	if(hd_LBA48_sup[drive]==1){//LBA48
-		cmd.count_LBA48		= (1>>8)&0xFF;
-		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
-		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
-		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
-		cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-		cmd.command	=ATA_READ_EXT;
-	}//by qianglong 2022.4.26
-	else{//LBA28
-		cmd.device	= MAKE_DEVICE_REG(1, /* LBA mode*/
-						drive,
-						(sect_nr >> 24) & 0xF);
-		cmd.command	= ATA_READ;
-	}
-
-	hd_cmd_out(&cmd,drive);
-	interrupt_wait();
-
-	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-	memcpy(entry, hdbuf + PARTITION_TABLE_OFFSET,
+	char buf[512];
+	hd_rdwt_base(drive, DEV_READ, (u32)_sect_nr, 512, buf);
+	memcpy(entry, buf + PARTITION_TABLE_OFFSET,
 	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
 	return;
 }
 
-// added by mingxuan 2020-10-27
-PRIVATE void get_fs_flags(int drive, int _sect_nr, struct fs_flags * fs_flags_buf)
-{
-	// SATA设备
-	if (drive >=SATA_BASE && drive <SATA_LIMIT)
-	{	
-		SATA_rdwt_sects(drive, DEV_READ, (u64)_sect_nr, 1);
-		phys_copy(fs_flags_buf, satabuf, sizeof(struct fs_flags));
-        return;
-	}
-
-	// IDE设备
-	u64 sect_nr = (u64)_sect_nr;
-	struct hd_cmd cmd;
-	cmd.features	= 0;
-	cmd.count		= 1;
-	cmd.lba_low		= sect_nr & 0xFF;
-	cmd.lba_mid		= (sect_nr >>  8) & 0xFF;
-	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-
-	if(hd_LBA48_sup[drive]==1){//LBA48
-		cmd.count_LBA48		= (1>>8)&0xFF;
-		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
-		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
-		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
-		cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-		cmd.command	=ATA_READ_EXT;
-	}//by qianglong 2022.4.26
-	else{//LBA28
-		cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
-						drive,
-						(sect_nr >> 24) & 0xF);
-		cmd.command	= ATA_READ;
-	}
-
-	hd_cmd_out(&cmd,drive);
-	interrupt_wait();
-
-	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-	memcpy(fs_flags_buf, hdbuf,
-		sizeof(struct fs_flags));
-}
-
-// added by ran
-// is_fat32_part函数的功能是判断分区是否为FAT32文件系统
-PRIVATE int is_fat32_part(int drive, int _sect_nr)
-{
-	
-	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
-	{	// SATA
-		SATA_rdwt_sects(drive, DEV_READ, (u64)_sect_nr, 1);
-		phys_copy(hdbuf, satabuf, SECTOR_SIZE);
-	}
-	else 
-	{	// IDE
-		u64 sect_nr = (u64)_sect_nr;
-		struct hd_cmd cmd;
-		cmd.features	= 0;
-		cmd.count		= 1;
-		cmd.lba_low		= sect_nr & 0xFF;
-		cmd.lba_mid		= (sect_nr >>  8) & 0xFF;
-		cmd.lba_high	= (sect_nr >> 16) & 0xFF;
-
-		if(hd_LBA48_sup[drive]==1){//LBA48
-			cmd.count_LBA48		= (1>>8)&0xFF;
-			cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;	//LBA48,24~31位
-			cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;	//LBA48,32~39位
-			cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;	//LBA48,40~47位
-			cmd.device	= 0x40|((drive<<4)&0xFF);			//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-			cmd.command	=ATA_READ_EXT;
-		}//by qianglong 2022.4.26
-		else{//LBA28
-			cmd.device		= MAKE_DEVICE_REG(1, /* LBA mode*/
-							drive,
-							(sect_nr >> 24) & 0xF);
-			cmd.command	= ATA_READ;
+PRIVATE int partition_get_fstype(int drive, int start_sect) {
+	for(int type = 1; type < NR_FS_TYPE; type++) {
+		if(fstype_table[type].identify) {
+			if(fstype_table[type].identify(drive, (u32)start_sect) == 1) {
+				return type;
+			}
 		}
-		hd_cmd_out(&cmd,drive);
-		interrupt_wait();
-		port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 	}
-
-	int fs_name;
-	fs_name = *(int*)(hdbuf + 0x52);
-	if (fs_name != 0x33544146)
-	{
-		return 0;
-	}
-	fs_name = *(int*)(hdbuf + 0x56);
-	return fs_name == 0x20202032;
+	return NO_FS_TYPE;
 }
 
 /*****************************************************************************
@@ -624,13 +381,13 @@ PRIVATE void partition(int device, int style)
 			int dev_nr = i + 1;		  /* 1~4 */
 			hdi->part[dev_nr].base = part_tbl[i].start_sect;
 			hdi->part[dev_nr].size = part_tbl[i].nr_sects;
-
+			hdi->part[dev_nr].fs_type = partition_get_fstype(drive, hdi->part[dev_nr].base);
 			// added by mingxuan 2020-10-27
-			struct fs_flags fs_flags_real;
-			struct fs_flags *fs_flags_buf = &fs_flags_real;
-			get_fs_flags(drive, hdi->part[dev_nr].base+BLOCK_SIZE/SECTOR_SIZE, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
-			if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-				hdi->part[dev_nr].fs_type = ORANGE_TYPE;
+			// struct fs_flags fs_flags_real;
+			// struct fs_flags *fs_flags_buf = &fs_flags_real;
+			// get_fs_flags(drive, hdi->part[dev_nr].base+BLOCK_SIZE/SECTOR_SIZE, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
+			// if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
+			// 	hdi->part[dev_nr].fs_type = ORANGE_TYPE;
 
 			// comment added by ran 2021-01-15
 			// 这里的逻辑是判断分区的1号扇区是否有FAT32文件系统的标记，
@@ -650,10 +407,11 @@ PRIVATE void partition(int device, int style)
 			// added end, mingxuan 2020-10-27
 
 			// added by ran
-			else if (is_fat32_part(drive, hdi->part[dev_nr].base))
-			{
-				hdi->part[dev_nr].fs_type = FAT32_TYPE;
-			}
+			// else if (is_fat32_part(drive, hdi->part[dev_nr].base))
+			// {
+			// 	hdi->part[dev_nr].fs_type = FAT32_TYPE;
+			// }
+
 
 
 			if (part_tbl[i].sys_id == EXT_PART) /* extended */
@@ -681,29 +439,30 @@ PRIVATE void partition(int device, int style)
 			int boot_sec = hdi->part[dev_nr].base;
 
 			// added by mingxuan 2020-10-29
-			struct fs_flags fs_flags_real;
-			struct fs_flags *fs_flags_buf = &fs_flags_real;
+			// struct fs_flags fs_flags_real;
+			// struct fs_flags *fs_flags_buf = &fs_flags_real;
 
 			// get_fs_flags(drive, hdi->logical[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
 			// modified by ran
-			get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
+			// get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
 			
-			if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-			{
-				// hdi->logical[dev_nr].fs_type = ORANGE_TYPE;
-				// modified by ran
-				logical[dev_nr].fs_type = ORANGE_TYPE;
-			}
+			// if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
+			// {
+			// 	// hdi->logical[dev_nr].fs_type = ORANGE_TYPE;
+			// 	// modified by ran
+			// 	logical[dev_nr].fs_type = ORANGE_TYPE;
+			// }
 			// deleted by ran
 			// else if(fs_flags_buf->fat32_flag1 == 0x534f4453 && fs_flags_buf->fat32_flag2 == 0x302e35) // FAT32 flags
 			// 	hdi->logical[dev_nr].fs_type = FAT32_TYPE;
 			// added end, mingxuan 2020-10-29
 
 			// added by ran
-			else if (is_fat32_part(drive, boot_sec))
-			{
-				logical[dev_nr].fs_type = FAT32_TYPE;
-			}
+			// else if (is_fat32_part(drive, boot_sec))
+			// {
+			// 	logical[dev_nr].fs_type = FAT32_TYPE;
+			// }
+			logical[dev_nr].fs_type = partition_get_fstype(drive, boot_sec);
 
 			s = ext_start_sect + part_tbl[1].start_sect;
 
@@ -719,19 +478,19 @@ PRIVATE void partition(int device, int style)
 
 		int boot_sec = hdi->part[dev_nr].base;
 
-		struct fs_flags fs_flags_real;
-		struct fs_flags *fs_flags_buf = &fs_flags_real;
+		// struct fs_flags *fs_flags_buf = &fs_flags_real;
 
-		get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
+		// get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
 
-		if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-		{
-			logical[dev_nr].fs_type = ORANGE_TYPE;
-		}
-		else if (is_fat32_part(drive, boot_sec))
-		{
-			logical[dev_nr].fs_type = FAT32_TYPE;
-		}
+		// if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
+		// {
+		// 	logical[dev_nr].fs_type = ORANGE_TYPE;
+		// }
+		// else if (is_fat32_part(drive, boot_sec))
+		// {
+		// 	logical[dev_nr].fs_type = FAT32_TYPE;
+		// }
+		logical[dev_nr].fs_type = partition_get_fstype(drive, boot_sec);
 
 		// assert(0);
 	}
@@ -807,7 +566,7 @@ PRIVATE void hd_identify(int drive)
 	struct hd_cmd cmd;
 	cmd.device  = MAKE_DEVICE_REG(0, drive, 0);
 	cmd.command = ATA_IDENTIFY;
-	hd_cmd_out(&cmd,drive	);
+	hd_cmd_out(&cmd,drive);
 	interrupt_wait();
 	port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 
@@ -1043,29 +802,79 @@ PRIVATE void inform_int()
 	return;
 }
 
-PUBLIC	int SATA_rdwt(MESSAGE*p,void *buf)
+/*
+ * 读写IDE
+*/
+PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
+	struct hd_cmd cmd;
+	u32 n=(count + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	cmd.features	= 0;
+	// cmd.count	= (p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	cmd.count = n & 0xFF;
+	cmd.lba_low	= sect_nr & 0xFF;
+	cmd.lba_mid	= (sect_nr >>  8) & 0xFF;
+	cmd.lba_high	= (sect_nr >> 16) & 0xFF;
+
+	if(hd_LBA48_sup[drive]==1){//LBA48
+		cmd.count_LBA48		= (n>>8)&0xFF;
+		cmd.lba_low_LBA48	= (sect_nr >> 24) & 0xFF;
+		cmd.lba_mid_LBA48	= (sect_nr >> 32) & 0xFF;
+		cmd.lba_high_LBA48	= (sect_nr >> 40) & 0xFF;
+		cmd.device	= 0x40|((drive<<4)&0xFF);//0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
+		cmd.command	= (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
+	}//by qianglong 2022.4.26
+	else{//LBA28
+		cmd.device	= MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
+		cmd.command	= (type == DEV_READ) ? ATA_READ : ATA_WRITE;
+	}
+	hd_cmd_out(&cmd,drive);
+
+	int bytes_left = count;
+	void *la = buf;	//attention here!
+
+	while (bytes_left) {
+		int bytes = min(SECTOR_SIZE, bytes_left);
+		if (type == DEV_READ) {
+			interrupt_wait();
+			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
+			phys_copy(la, hdbuf, bytes);
+		}
+		else {
+			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
+				disp_str("hd writing error.");
+
+			phys_copy(hdbuf, la, bytes);
+			port_write(REG_DATA, hdbuf, SECTOR_SIZE);
+			interrupt_wait();
+		}
+		bytes_left -= bytes;
+		la += bytes;
+	}
+}
+
+PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
 {	
 
-	int drive = DRV_OF_DEV(p->DEVICE);
+	// int drive = DRV_OF_DEV(p->DEVICE);
 
-	u64 pos = p->POSITION;
-	u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
+	// u64 pos = p->POSITION;
+	// u64	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
 
-	sect_nr += hd_infos[drive].part[p->DEVICE & 0x0FFFFF].base;
+	// sect_nr += hd_infos[drive].part[p->DEVICE & 0x0FFFFF].base;
 
-	u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
+	u32	sector_count =(count + SECTOR_SIZE - 1) / SECTOR_SIZE;
  
 
-	if(p->type == DEV_WRITE)
+	if(type == DEV_WRITE)
 	{
-		phys_copy(satabuf, buf, p->CNT);
+		phys_copy(satabuf, buf, count);
 	}
 
-	SATA_rdwt_sects(drive, p->type, sect_nr, count);
+	SATA_rdwt_sects(drive, type, sect_nr, sector_count);
 
-	if(p->type == DEV_READ)
+	if(type == DEV_READ)
 	{
-		phys_copy(buf, satabuf, p->CNT);
+		phys_copy(buf, satabuf, count);
 	}
 
 	return 1;
@@ -1277,4 +1086,30 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 	kern_kfree(driver_msg);
 	
 	return 0;
+}
+
+// added by mingxuan 2020-10-27
+// refact 20240328
+PUBLIC int orangefs_identify(int drive, u32 _sect_nr)
+{
+	struct fs_flags fs_flags_real;
+	hd_rdwt_base(drive, DEV_READ, (u32)(_sect_nr + 8), sizeof(struct fs_flags), &fs_flags_real);
+	return fs_flags_real.orange_flag == 0x11;
+}
+
+// added by ran
+// is_fat32_part函数的功能是判断分区是否为FAT32文件系统
+PUBLIC int fat32_identify(int drive, u32 _sect_nr)
+{
+	char sect_buf[SECTOR_SIZE];
+	hd_rdwt_base(drive, DEV_READ, _sect_nr, SECTOR_SIZE, sect_buf);
+
+	int fs_name;
+	fs_name = *(int*)(sect_buf + 0x52);
+	if (fs_name != 0x33544146)
+	{
+		return 0;
+	}
+	fs_name = *(int*)(sect_buf + 0x56);
+	return fs_name == 0x20202032;
 }

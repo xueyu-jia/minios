@@ -10,7 +10,7 @@ char *str2,*str3;
 void pthread_test3()
 {
 	int i;
-	str2 = malloc(10);
+	str2 = (char*)malloc(10);
 	*(str2+0) = 'M';
 	*(str2+1) = 'a';
 	*(str2+2) = '\0';
@@ -33,7 +33,7 @@ void pthread_test3()
 void pthread_test2()
 {
 	int i;
-	str3 = malloc(10);
+	str3 = (char*)malloc(10);
 	*(str3+0) = 'M';
 	*(str3+1) = 'z';
 	*(str3+2) = '\0';
@@ -308,8 +308,8 @@ void main(int arg,char *argv[])
 #include "util.h"
 #include "time.h"
 #include "syscall.h"
-#define O_CREAT 1
-#define O_RDWR 2
+// #define O_CREAT 1
+// #define O_RDWR 2
 #define PATH_DEL '\\'
 
 char workdev[16];
@@ -757,7 +757,7 @@ void main()
  *======================================================================*/
 //启动shell_0
 
-void main(int arg,char *argv[])
+int main(int arg,char *argv[])
 {
 	int stdin = open("/dev/tty0",O_RDWR);
 	int stdout= open("/dev/tty0",O_RDWR);
@@ -791,7 +791,7 @@ void main(int arg,char *argv[])
 		//execve(filename);
 	}
 	
-	return;
+	return 0;
 }
 
 

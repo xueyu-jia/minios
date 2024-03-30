@@ -10,7 +10,6 @@
 #include "proc.h"
 #include "clock.h"
 #include "proto.h"
-#include "global.h"
 #include "console.h"
 #include "buddy.h"
 #include "ahci.h"
@@ -120,7 +119,7 @@ PUBLIC int kernel_main()
 
 	// hd_open(0);
 	// hd_open(1); //modified by mingxuan 2020-10-27
-
+	register_fs_types();
 	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
 	{
 		hd_open(SATA_BASE+dev_index);

@@ -362,7 +362,8 @@ PUBLIC void hd_service();
 PUBLIC void hd_rdwt(MESSAGE *p);
 PUBLIC void hd_rdwt_sched(MESSAGE *p);
 PUBLIC void hd_ioctl(MESSAGE *p);
-
+PUBLIC int orangefs_identify(int drive, u32 _sect_nr);
+PUBLIC int fat32_identify(int drive, u32 _sect_nr);
 
 // add by sundong 2023.6.3 将读写扇区函数的封装由文件系统层放在了驱动层
 int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);

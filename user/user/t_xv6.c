@@ -9,6 +9,7 @@
 // #include "memlayout.h"
 #include "type.h"
 #include "stdio.h"
+#include "string.h"
 #include "syscall.h"
 
 char buf[8192];
@@ -304,7 +305,7 @@ void
 exectest(void)
 {
   printf("exec test\n");
-  if(execv("echo.bin", echoargv) < 0){
+  if(execv("echo.bin", echoargv) != 0){
     printf("exec echo failed\n");
     exit(-1);
   }
@@ -474,7 +475,8 @@ exitwait(void)
 void
 sharedfd(void)
 {
-  int fd, pid, i, n, nc, np;
+  int fd, pid, n, nc, np;
+  u32 i;
   char buf[10];
 
   printf("sharedfd test\n");
@@ -816,7 +818,7 @@ concreate(void)
       continue;
     if(de->d_name[0] == 'C' && de->d_name[2] == '\0'){
       i = de->d_name[1] - '0';
-      if(i < 0 || i >= sizeof(fa)){
+      if(i < 0 || i >= (int)sizeof(fa)){
         printf("concreate weird file %s\n", de->d_name);
         exit(-1);
       }
@@ -1615,7 +1617,7 @@ char uninit[10000];
 void
 bsstest(void)
 {
-  int i;
+  u32 i;
 
   printf("bss test\n");
   for(i = 0; i < sizeof(uninit); i++){
@@ -1639,7 +1641,7 @@ bigargtest(void)
   pid = fork();
   if(pid == 0){
     static char *args[MAXARG];
-    int i;
+    u32 i;
     for(i = 0; i < MAXARG-1; i++)
       args[i] = "bigargs test: failed\n                                                                                                                                                                                                       ";
     args[MAXARG-1] = 0;

@@ -8,7 +8,6 @@
 #include "const.h"
 #include "string.h"
 #include "time.h"
-#include "global.h"
 #include "buddy.h"
 #include "kmalloc.h"
 #include "ksignal.h"

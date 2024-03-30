@@ -1,6 +1,6 @@
 //#include "stdio.h"
-#include "../include/stdio.h"	//modified by mingxuan 2021-8-29
-
+#include "stdio.h"	//modified by mingxuan 2021-8-29
+#include "string.h"
 int global = 1; //added by mingxuan 2020-12-21
 
 /*======================================================================*
@@ -60,7 +60,7 @@ added by mingxuan 2019-5-18
 char bufw[BUF_SIZE];
 char bufr[BUF_SIZE];
 
-void main(int arg,char *argv[])
+int main(int arg,char *argv[])
 {
 
 	int fd;
@@ -103,5 +103,5 @@ void main(int arg,char *argv[])
 
 	exit(0);
 
-	return;
+	return 0;
 }

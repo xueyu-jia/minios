@@ -1,14 +1,15 @@
 /*************************************************************
  *        msg.c by Li Yingchi Jiao Yuanxiang 2021.12.20
  *************************************************************/
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/msg.h"
+#include "type.h"
+#include "const.h"
+#include "console.h"
+#include "clock.h"
+#include "string.h"
+#include "proc.h"
+#include "memman.h"
+#include "pagetable.h"
+#include "msg.h"
 
 // instances
 msg_queue q_list[MAX_MSQ_NUM];
@@ -59,7 +60,7 @@ int do_ftok(char* f, int flag)
 
 int sys_ftok()
 {
-	return do_ftok(get_arg(1), get_arg(2));
+	return do_ftok((char*)get_arg(1), get_arg(2));
 }
 
 int do_msgget(key_t key, int msgflg )
@@ -80,7 +81,7 @@ int do_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 
 int sys_msgsnd()
 {
-	return do_msgsnd(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
+	return do_msgsnd(get_arg(1), (const void*)get_arg(2), get_arg(3), get_arg(4));
 }
 
 
@@ -91,7 +92,7 @@ int do_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg)
 
 int sys_msgrcv()
 {
-	return do_msgrcv(get_arg(1), get_arg(2), get_arg(3), get_arg(4), get_arg(5));
+	return do_msgrcv(get_arg(1), (void*)get_arg(2), get_arg(3), get_arg(4), get_arg(5));
 }
 
 
@@ -188,8 +189,8 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg)
 	int rt_f = insert_full_list(msqid, new_msg);
 	if (rt_t < 0 || rt_f < 0)
 	{
-		kern_kfree(new_msg->msg.buf);
-		kern_kfree(new_msg);
+		kern_kfree((u32)new_msg->msg.buf);
+		kern_kfree((u32)new_msg);
 		return -1;
 	}
 	return 0;
@@ -336,7 +337,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf)
 		while (i_head)
 		{
 			list_item *temp_nxt = i_head->nxt.head_nxt;
-			kern_kfree(i_head);
+			kern_kfree((u32)i_head);
 			i_head = temp_nxt;
 		}
 		q_list[msqid].used = 0;
@@ -391,13 +392,13 @@ void rm_msg_node(int msqid, list_item *head)
 	else
 		f_pre->nxt.full_list_nxt = f_nxt;
 	//释放target内存
-	kern_kfree(target->msg.buf);
-	kern_kfree(target);
+	kern_kfree((u32)target->msg.buf);
+	kern_kfree((u32)target);
 	//修改队列信息
-	q_list[msqid].info.msg_lrpid = sys_get_pid();
+	q_list[msqid].info.msg_lrpid = kern_get_pid();
 	q_list[msqid].info.msg_qnum--;
 	q_list[msqid].info.__msg_cbytes -= size;
-	q_list[msqid].info.msg_rtime = sys_get_ticks();
+	q_list[msqid].info.msg_rtime = kern_get_ticks();
 	return;
 }
 
@@ -483,7 +484,7 @@ list_item *insert_head_node(int msqid, long type_new)
 	{
 		if (i->msg.type == type_new)
 		{
-			kern_kfree(new_head);
+			kern_kfree((u32)new_head);
 			return NULL;
 		}
 	}

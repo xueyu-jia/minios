@@ -88,7 +88,7 @@ struct tm* localtime(u32 timestamp, struct tm* tm_time){
 }
 
 // ** must ** disable int
-void get_rtc_datetime(struct tm* time){
+PRIVATE void get_rtc_datetime(struct tm* time){
 	int year, mon, day, hour, min, sec;
 	do{
 		year = readRTC(0x9);

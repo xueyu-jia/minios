@@ -658,7 +658,6 @@ PUBLIC struct vfs_dentry* fat32_lookup(struct vfs_inode* dir, const char* filena
 
 PUBLIC int fat32_create(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	// struct tm time;
-	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
 	struct vfs_inode* inode = fat_add_entry(dir, dentry_name(dentry), 0, timestamp);
 	inode->i_type = I_REGULAR;
@@ -711,7 +710,6 @@ PUBLIC int fat32_rmdir(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	// struct tm time;
-	// get_rtc_datetime(&time);
 	u32 timestamp = current_timestamp;
 	struct vfs_inode* inode = fat_add_entry(dir, dentry_name(dentry), 1, timestamp);
 	inode->i_type = I_DIRECTORY;

@@ -7,8 +7,8 @@
 
 #include "type.h"
 #include "const.h"
+#include "clock.h"
 #include "proc.h"
-#include "global.h"
 #include "string.h"
 #include "proto.h"
 

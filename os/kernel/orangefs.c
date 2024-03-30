@@ -3,7 +3,6 @@
 #include "type.h"
 #include "const.h"
 #include "string.h"
-#include "global.h"
 #include "proto.h"
 #include "vfs.h"
 #include "fs.h"

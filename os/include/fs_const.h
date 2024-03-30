@@ -42,6 +42,7 @@
 #define	NR_FILE_DESC	128	/* FIXME */	//modified by mingxuan 2019-5-19
 #define	NR_INODE	512	/* FIXME */
 #define	NR_SUPER_BLOCK	16
+#define NR_FS_TYPE 3
 
 /* APIs of file operation */
 // octol

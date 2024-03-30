@@ -7,7 +7,6 @@
 #include "protect.h"
 #include "string.h"
 #include "proc.h"
-#include "global.h"
 #include "proto.h"
 #include "buddy.h"
 #include "pagetable.h"
@@ -41,7 +40,7 @@ PUBLIC void switch_pde()
 /*======================================================================*
                           get_pde_index		add by visual 2016.4.28
  *======================================================================*/
-PUBLIC inline u32 get_pde_index(u32 AddrLin)
+PRIVATE inline u32 get_pde_index(u32 AddrLin)
 {							//由 线性地址 得到 页目录项编号
 	return (AddrLin >> 22); //高10位A31~A22
 }
@@ -49,7 +48,7 @@ PUBLIC inline u32 get_pde_index(u32 AddrLin)
 /*======================================================================*
                           get_pte_index		add by visual 2016.4.28
  *======================================================================*/
-PUBLIC inline u32 get_pte_index(u32 AddrLin)
+PRIVATE inline u32 get_pte_index(u32 AddrLin)
 {										   //由 线性地址 得到 页表项编号
 	return (((AddrLin)&0x003FFFFF) >> 12); //中间10位A21~A12,0x3FFFFF = 0000 0000 0011 1111 1111 1111 1111 1111
 }
@@ -334,19 +333,20 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	//if page fault happens in kernel, it's an error.
 	if (kernel_initial == 1)
 	{
-		disp_str("\n");
-		disp_color_str("Page Fault\n", 0x74);
-		disp_color_str("eip=", 0x74); //灰底红字
-		disp_int(eip);
-		disp_color_str("eflags=", 0x74);
-		disp_int(eflags);
-		disp_color_str("cs=", 0x74);
-		disp_int(cs);
-		disp_color_str("err_code=", 0x74);
-		disp_int(err_code);
-		disp_color_str("Cr2=", 0x74); //灰底红字
-		disp_int(cr2);
+		// disp_str("\n");
+		// disp_color_str("Page Fault\n", 0x74);
+		// disp_color_str("eip=", 0x74); //灰底红字
+		// disp_int(eip);
+		// disp_color_str("eflags=", 0x74);
+		// disp_int(eflags);
+		// disp_color_str("cs=", 0x74);
+		// disp_int(cs);
+		// disp_color_str("err_code=", 0x74);
+		// disp_int(err_code);
+		// disp_color_str("Cr2=", 0x74); //灰底红字
+		// disp_int(cr2);
 		halt();
+		proc_backtrace();
 	}
 
 	//获取该进程页目录物理地址
@@ -359,27 +359,28 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 		cr2_count++;
 		if (cr2_count == 5)
 		{
-			disp_str("\n");
-			disp_color_str("Page Fault\n", 0x74);
-			disp_color_str("eip=", 0x74); //灰底红字
-			disp_int(eip);
-			disp_color_str("eflags=", 0x74);
-			disp_int(eflags);
-			disp_color_str("cs=", 0x74);
-			disp_int(cs);
-			disp_color_str("err_code=", 0x74);
-			disp_int(err_code);
-			disp_color_str("Cr2=", 0x74); //灰底红字
-			disp_int(cr2);
-			disp_color_str("Cr3=", 0x74);
-			disp_int(p_proc_current->task.cr3);
-			//获取页目录中填写的内容
-			disp_color_str("Pde=", 0x74);
-			disp_int(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));
-			//获取页表中填写的内容
-			disp_color_str("Pte=", 0x74);
-			disp_int(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
+			// disp_str("\n");
+			// disp_color_str("Page Fault\n", 0x74);
+			// disp_color_str("eip=", 0x74); //灰底红字
+			// disp_int(eip);
+			// disp_color_str("eflags=", 0x74);
+			// disp_int(eflags);
+			// disp_color_str("cs=", 0x74);
+			// disp_int(cs);
+			// disp_color_str("err_code=", 0x74);
+			// disp_int(err_code);
+			// disp_color_str("Cr2=", 0x74); //灰底红字
+			// disp_int(cr2);
+			// disp_color_str("Cr3=", 0x74);
+			// disp_int(p_proc_current->task.cr3);
+			// //获取页目录中填写的内容
+			// disp_color_str("Pde=", 0x74);
+			// disp_int(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));
+			// //获取页表中填写的内容
+			// disp_color_str("Pte=", 0x74);
+			// disp_int(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
 			halt();
+			proc_backtrace();
 		}
 	}
 	else

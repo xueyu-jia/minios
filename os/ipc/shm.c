@@ -1,16 +1,19 @@
 /************************************************************
 ********************** add by dingleilei*********************/
 
-#include "../include/shm.h"
-// #include "../include/stdio.h"
-#include "../include/type.h"
-#include "../include/const.h"
-#include "../include/protect.h"
-#include "../include/string.h"
-#include "../include/proc.h"
-#include "../include/global.h"
-#include "../include/proto.h"
-#include "../include/spinlock.h"
+#include "shm.h"
+#include "type.h"
+#include "const.h"
+#include "proto.h"
+#include "console.h"
+#include "clock.h"
+#include "spinlock.h"
+#include "pagetable.h"
+#include "memman.h"
+#include "string.h"
+#include "syscall.h"
+#include "proc.h"
+
 struct spinlock lock_shmmemcpy;
 PUBLIC void do_shmdt(char *shmaddr);
 PUBLIC int do_shmget(int key, int size, int shmflg);
@@ -18,9 +21,9 @@ PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg);
 PUBLIC struct ipc_shm *do_shmctl(int shmid, int cmd, struct ipc_shm *buf);
 PUBLIC void *do_shmmemcpy(void *dst, const void *src, long unsigned int len);
 
-static int alignment(int vir_addr);
+// static int alignment(int vir_addr);
 static int find_out();
-static char key_available(key);
+// static char key_available(key);
 static int newseg(int key, int shmflg, int size);
 
 PUBLIC struct ipc_shm ids = {.perms_size = 10};
@@ -30,18 +33,19 @@ PUBLIC struct spinlock lock_msg = {
     .cpu = 0xffffffff};
 
 
-static char key_available(key)
-{
+// static char key_available(int key)
+// {
 
-    if (ids.perms[key].state == SHM_AVAILABLE)
-    {
-        return 1;
-    }
-    else if (ids.perms[key].state == BUSY)
-    {
-        return 0;
-    }
-}
+//     if (ids.perms[key].state == SHM_AVAILABLE)
+//     {
+//         return 1;
+//     }
+//     else if (ids.perms[key].state == SHM_BUSY)
+//     {
+//         return 0;
+//     }
+// 	return 0;
+// }
 
 
 static int newseg(int key, int id, int size)
@@ -54,7 +58,7 @@ static int newseg(int key, int id, int size)
     {
         disp_str("err key");
     }
-    ids.perms[id].state = BUSY; //代表这个shm（share memory）通道被一组id-key占用了
+    ids.perms[id].state = SHM_BUSY; //代表这个shm（share memory）通道被一组id-key占用了
     ids.perms[id].size = size;
     ids.perms[id].pid = p_proc_current->task.pid;
     ids.perms[id].key = key;
@@ -68,7 +72,7 @@ static int newseg(int key, int id, int size)
     void* a=ids.perms[id].phy_address;
 	// disp_str("phy_value: ");
 	// disp_int(a);//打印物理地址
-    if (ids.perms[id].phy_address == -1) //分配,失败返回-1
+    if (ids.perms[id].phy_address == (void*)-1) //分配,失败返回-1
     {
         disp_str(" fail mem");
         return -1;
@@ -181,36 +185,36 @@ PUBLIC int sys_shmget()
 /*======================================================================*
                               shmat
  *======================================================================*/
-PUBLIC int alignment(int vir_addr)
-{
-    int vir = 0;
-    int beh_twe = vir_addr & 0XFFF;
-    if (beh_twe == 0X0)
-    {
-        vir = vir_addr;
-    }
-    else
-    {
-        vir = vir_addr >> 12;
-        vir = vir + 1;
-    }
-    return vir;
-}
+// PUBLIC int alignment(int vir_addr)
+// {
+//     int vir = 0;
+//     int beh_twe = vir_addr & 0XFFF;
+//     if (beh_twe == 0X0)
+//     {
+//         vir = vir_addr;
+//     }
+//     else
+//     {
+//         vir = vir_addr >> 12;
+//         vir = vir + 1;
+//     }
+//     return vir;
+// }
 
 PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
 {
 
-    int vir_addr;
-    int phy_addr = ids.perms[shmid].phy_address;
+    u32 vir_addr;
+    u32 phy_addr = (u32)ids.perms[shmid].phy_address;
     // int size = ids.perms[shmid].size;
 
     if(phy_addr == NULL)
     {
-        ids.perms[shmid].phy_address = phy_malloc_4k();
-        phy_addr = ids.perms[shmid].phy_address;
+        ids.perms[shmid].phy_address = (void*)phy_malloc_4k();
+        phy_addr = (u32)ids.perms[shmid].phy_address;
     }
     
-    vir_addr = shmaddr;
+    vir_addr = (u32)shmaddr;
     
     // alignment(vir_addr);
     lin_mapping_phy(vir_addr, phy_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, PG_P | PG_USU | PG_RWW);
@@ -225,7 +229,7 @@ PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg)
 
 PUBLIC void *sys_shmat()
 {
-    return do_shmat(get_arg(1), get_arg(2), get_arg(3));
+    return do_shmat(get_arg(1), (char*)get_arg(2), get_arg(3));
 }
 
 /*======================================================================*
@@ -233,7 +237,7 @@ PUBLIC void *sys_shmat()
  *======================================================================*/
 PUBLIC void kern_shmdt(char *shmaddr)
 {
-    clear_pte(p_proc_current->task.pid, shmaddr); //并不释放物理页
+    clear_pte(p_proc_current->task.pid, (u32)shmaddr); //并不释放物理页
 
     return;
 }
@@ -245,7 +249,7 @@ PUBLIC void do_shmdt(char *shmaddr)
 
 PUBLIC void sys_shmdt()
 {
-    return do_shmdt(get_arg(1));
+    return do_shmdt((char*)get_arg(1));
 }
 /*======================================================================*
                               shmctl
@@ -263,7 +267,7 @@ PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf)
         // int size = ids.perms[shmid].size;
         ids.in_use--;
 
-        phy_free_4k(ids.perms[shmid].phy_address);
+        phy_free_4k((u32)ids.perms[shmid].phy_address);
         ids.perms[shmid].phy_address = NULL;
     }
     if (cmd == INFO)
@@ -290,7 +294,7 @@ PUBLIC struct ipc_shm *do_shmctl(int shmid, int cmd, struct ipc_shm *buf)
 
 PUBLIC struct ipc_shm *sys_shmctl()
 {
-    return do_shmctl(get_arg(1), get_arg(2), get_arg(3));
+    return do_shmctl(get_arg(1), get_arg(2), (struct ipc_shm*)get_arg(3));
 }
 
 PUBLIC void *kern_shmmemcpy(void *dst, const void *src, long unsigned int len)
@@ -338,5 +342,5 @@ PUBLIC void *do_shmmemcpy(void *dst, const void *src, long unsigned int len)
 
 PUBLIC void *sys_shmmemcpy()
 {
-    return do_shmmemcpy(get_arg(1), get_arg(2), get_arg(3));
+    return do_shmmemcpy((void*)get_arg(1), (const void*)get_arg(2), get_arg(3));
 }

@@ -1,5 +1,5 @@
 #include "proc.h"
-#include "global.h"
+#include "clock.h"
 
 
 /*						added by ZengHao & MaLinhan 2021.12.23						*/

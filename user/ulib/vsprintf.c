@@ -20,9 +20,10 @@
 #include "keyboard.h"
 #include "proto.h"
 */
-#include "../include/type.h"
-#include "../include/stdio.h"
-#include "../include/const.h"
+#include "type.h"
+#include "const.h"
+#include "stdio.h"
+#include "string.h"
 
 
 PUBLIC char getchar();

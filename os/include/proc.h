@@ -236,10 +236,24 @@ extern	PROCESS*	p_proc_next;
 extern	PROCESS		cpu_table[];
 extern	PROCESS		proc_table[];
 extern  TASK	task_table[NR_TASKS];
+extern	int		kernel_initial;
 //added by zcr
 #define proc2pid(x) (x - proc_table)
 
 //added by jiangfeng
 #define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
 
+PUBLIC int kern_get_pid();
+PUBLIC PROCESS* alloc_PCB();
+PUBLIC void free_PCB(PROCESS *p);
+PUBLIC void sys_yield();
+//PUBLIC void sys_sleep(int n); //deleted by mingxuan 2021-8-13
+PUBLIC void sys_sleep(); //modified by mingxuan 2021-8-13
+PUBLIC void sys_wakeup(void *channel);
+PUBLIC int ldt_seg_linear(PROCESS *p, int idx);
+PUBLIC void* va2la(int pid, void* va);
+
+PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
+PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
+PUBLIC void wait_event(void* event);
 #endif

@@ -1,8 +1,10 @@
 #include "hd.h"
-#include "global.h"
 #include "string.h"
 #include "vfs.h"
 #include "fs.h"
+
+PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
+PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
 
 int get_fs_dev(int drive, u32 fs_type)
 {

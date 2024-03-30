@@ -18,7 +18,6 @@
 
 // #define DEV_NAME_LEN 128	//mark
 // //#define NR_fs 3
-#define NR_FS_TYPE 3
 // #define NR_FS_OP 3		//modified by mingxuan 2020-10-18
 // #define NR_SB_OP 2		//added by mingxuan 2020-10-30
 
@@ -64,6 +63,6 @@ PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
 // PUBLIC struct vfs* vfs_alloc_vfs_entity();
 // PUBLIC int get_index(char path[]);
 // PUBLIC void init_vfs();
+PUBLIC void register_fs_types();
 PUBLIC void init_fs();
-
 #endif

@@ -5,7 +5,6 @@
 
 #include "spinlock.h"
 #include "proc.h"
-#include "global.h"
 #define lock_log(info) { disp_str(info); disp_int(p_proc_current->task.pid); disp_str(" ");}
 //extern int use_console_lock;
 

@@ -153,9 +153,11 @@ struct fs_type{
 	struct inode_operations * fs_iop;
 	struct superblock_operations * fs_sop;
 	struct dentry_operations * fs_dop;
+	int (*identify)(int drive, u32 start_sector);
 };
 
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
+extern struct fs_type fstype_table[NR_FS_TYPE];
 int get_fs_part_dev(int drive, int part, u32 fs_type);
 int get_fs_dev(int drive, u32 fs_type);
 int get_free_superblock();

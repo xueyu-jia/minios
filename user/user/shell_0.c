@@ -200,7 +200,7 @@ int match_build_in(int argc, char** argv){
 	return -1;
 }
 
-void main(int arg,char *argv[])
+int main(int arg,char *argv[])
 {
     /*
 	int stdin = open("dev_tty0",O_RDWR);
@@ -289,6 +289,6 @@ void main(int arg,char *argv[])
    		}
 	}
 
-	return ;
+	return 0;
 
 }

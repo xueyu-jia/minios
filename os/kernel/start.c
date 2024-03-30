@@ -7,7 +7,6 @@
 
 #include "type.h"
 #include "const.h"
-#include "global.h"
 #include "proto.h"
 #include "protect.h"
 #include "pagetable.h"

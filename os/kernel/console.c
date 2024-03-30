@@ -2,7 +2,6 @@
 #include "const.h"
 #include "string.h"
 #include "proto.h"
-#include "global.h"
 #include "tty.h"
 #include "console.h"
 #include "spinlock.h"

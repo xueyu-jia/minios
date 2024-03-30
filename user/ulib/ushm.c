@@ -27,12 +27,12 @@ static  char * shm_vmalloc_4k()
     {
         if(shmmen[i].in_use == 0)
         {
-            shmmen[i].in_use == 1;
-            return shmmen[i].addr;
+            shmmen[i].in_use = 1;
+            return (char*)shmmen[i].addr;
         }
     }
     udisp_str("no free shm mem\n");
-    return -1;
+    return NULL;
 }
 
 static void shm_free_4k( char * vaddr)
@@ -40,7 +40,7 @@ static void shm_free_4k( char * vaddr)
     int i;
     for(i=0;i<totalShmPage;i++)
     {
-        if(shmmen[i].addr == vaddr)
+        if((char*)shmmen[i].addr == vaddr)
         {
             shmmen[i].in_use = 0;
         }
@@ -59,17 +59,17 @@ void *shmat(int shmid, char *shmaddr, int shmflg)
     {
         shmaddr = shm_vmalloc_4k();
     }
-    else if(shmaddr < shmmen[0].addr || shmaddr > shmmen[totalShmPage -1].addr)
+    else if(shmaddr < (char*)shmmen[0].addr || shmaddr > (char*)shmmen[totalShmPage -1].addr)
     {
         shmaddr = shm_vmalloc_4k();
     }
     else
     {
-        addrlen = shmaddr - shmmen[0].addr;
+        addrlen = shmaddr - (char*)shmmen[0].addr;
         index = addrlen / num_4K;
         if(shmmen[index].in_use == 1)
         {
-            return shmmen[index].addr;
+            return (void*)shmmen[index].addr;
         }
         else
         {

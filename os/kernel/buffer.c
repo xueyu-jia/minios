@@ -1,6 +1,7 @@
 #include "const.h"
 #include "fs_const.h"
-#include "global.h"
+#include "proc.h"
+#include "clock.h"
 #include "vfs.h"
 #include "hd.h"
 #include "string.h"

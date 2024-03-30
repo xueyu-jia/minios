@@ -3,7 +3,6 @@
 ***********************************************************/
 // VFS   modified by jiangfeng 2024-03
 #include "const.h"
-#include "global.h"
 #include "string.h"
 #include "proto.h"
 #include "list.h"
@@ -16,8 +15,6 @@
 
 // PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
-PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
-PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
 PUBLIC struct vfs_dentry *vfs_root;
 
 // 实例文件系统调用：
@@ -280,13 +277,15 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
 	struct file_operations* f_op, 
 	struct inode_operations* i_op,
 	struct dentry_operations* d_op,
-	struct superblock_operations* s_op){
+	struct superblock_operations* s_op,
+	int (*identify)(int, u32)){
 	struct fs_type* fs = &fstype_table[fs_type];
 	fs->fstype_name = fstype_name;
 	fs->fs_fop = f_op;
 	fs->fs_iop = i_op;
 	fs->fs_dop = d_op;
 	fs->fs_sop = s_op;
+	fs->identify = identify;
 }
 
 // 文件名拆分：同时删除末尾多余的"/"
@@ -545,22 +544,28 @@ PRIVATE void init_fsroot() {
 	kern_init_char_dev();
 }
 
+PUBLIC void register_fs_types() {
+	register_fs_type("orangefs", ORANGE_TYPE,
+		&orange_file_ops, 
+		&orange_inode_ops,
+		NULL,
+		&orange_sb_ops,
+		orangefs_identify);
+		
+	register_fs_type("fat32", FAT32_TYPE,
+		&fat32_file_ops,
+		&fat32_inode_ops,
+		&fat32_dentry_ops,
+		&fat32_sb_ops,
+		fat32_identify);
+}
+
 PUBLIC void init_fs(){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
 	list_init(&inode_free_list);
 	inode_free_cnt = 0;
-	register_fs_type("orangefs", ORANGE_TYPE,
-		&orange_file_ops, 
-		&orange_inode_ops,
-		NULL,
-		&orange_sb_ops);
-	register_fs_type("fat32", FAT32_TYPE,
-		&fat32_file_ops,
-		&fat32_inode_ops,
-		&fat32_dentry_ops,
-		&fat32_sb_ops);
 	mount_root(SATA_BASE);
 	init_fsroot();
 }

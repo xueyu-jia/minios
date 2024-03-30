@@ -1,10 +1,5 @@
 #include "type.h"				
-#include "const.h"		
-// #include "protect.h"		
-// #include "string.h"				
-// #include "proc.h"				
-// #include "global.h"
-// #include "proto.h"
+#include "const.h"
 
 #define MEMMAN_FREES	4090		//32KB
 //#define MEMMAN_ADDR	0x01ff0000	//存memman，31M960K

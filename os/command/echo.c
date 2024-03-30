@@ -1,9 +1,9 @@
 #include "type.h"				
-#include "const.h"				
+#include "const.h"
+#include "clock.h"		
 #include "protect.h"						
 #include "string.h"				
-#include "proc.h"				
-#include "global.h"
+#include "proc.h"
 #include "proto.h"
 
 int disp_pos;

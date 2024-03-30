@@ -7,14 +7,16 @@
 
 #include "type.h"
 #include "const.h"
+#include "clock.h"
+#include "console.h"
 #include "proc.h"
-#include "global.h"
 #include "proto.h"
 #include "hd.h"
 #include "buffer.h"
 
 u32 cr3_ready;
 int     u_proc_sum;
+int		kernel_initial;
 PROCESS*	p_proc_current;
 PROCESS*	p_proc_next;
 PUBLIC	PROCESS			cpu_table[NR_CPUS];
@@ -271,4 +273,20 @@ PUBLIC void wait_event(void* event) {
 		yield();	//系统调用
   	}
 	p_proc_current->task.channel = 0;
+}
+
+PRIVATE void stack_backtrace(u32 ebp) {
+	disp_str("=>");
+	disp_int(*(((u32*)ebp)+1));
+}
+
+PUBLIC void proc_backtrace() {
+	u32 ebp;
+	__asm__ __volatile__("mov %%ebp, %0 ": "=r"(ebp));
+	for(int i = 0; i < 5; i++) {
+		stack_backtrace(ebp);
+		ebp = *((u32*)ebp);
+		if(ebp < KernelLinBase)break;
+	}
+	while(1);
 }

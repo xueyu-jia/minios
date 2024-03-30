@@ -14,7 +14,7 @@
 #define NO_EXCLUSION_SERVE 0xFF
 #define SHM_ERROR 0xFFFFFFFF
 #define SHM_AVAILABLE 0 //这个宏,不可改
-#define BUSY 0x0FFF
+#define SHM_BUSY 0x0FFF
 
 struct shm_perm
 {
