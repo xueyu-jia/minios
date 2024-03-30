@@ -40,7 +40,7 @@ PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p);
 PRIVATE int  out_hd_queue(HDQueue *hdq, RWInfo **p);
 PRIVATE void hd_rdwt_real(RWInfo *p);
 
-PRIVATE void get_part_table(int drive, int sect_nr, struct part_ent *entry);
+PRIVATE void read_part_table_sector(int drive, int sect_nr, void* sector_buf);
 PRIVATE void partition(int device, int style);
 PRIVATE void print_hdinfo(struct hd_info *hdi);
 PRIVATE void hd_identify(int drive);
@@ -148,8 +148,6 @@ PUBLIC void hd_close(int device)
 // 		low level hd read write count bytes, must start from sector boundary
 // 		count <= BLOCK_SIZE 
 PUBLIC int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) {
-	disp_str(" ");
-	disp_int(sect_nr);
 	u64 sect = (u64) sect_nr;
 	if (drive >= SATA_BASE && drive < SATA_LIMIT)
 	{
@@ -315,21 +313,18 @@ PUBLIC void hd_ioctl(MESSAGE * p)
 }
 
 /*****************************************************************************
- *                                get_part_table
+ *                                read_part_table_sector
  *****************************************************************************/
 /**
- * <Ring 1> Get a partition table of a drive.
+ * <Ring 1> Get a partition table of a drive. modify 20240331: 统一优化为读取所在的扇区，但是内核栈只有2K尽量减少 内核栈占用
  * 
  * @param drive   Drive nr (0 for the 1st disk, 1 for the 2nd, ...)n
  * @param sect_nr The sector at which the partition table is located.
  * @param entry   Ptr to part_ent struct.
  *****************************************************************************/
-PRIVATE void get_part_table(int drive, int _sect_nr, struct part_ent * entry)
+PRIVATE void read_part_table_sector(int drive, int _sect_nr, void* sect_buf)
 {
-	char buf[512];
-	hd_rdwt_base(drive, DEV_READ, (u32)_sect_nr, 512, buf);
-	memcpy(entry, buf + PARTITION_TABLE_OFFSET,
-	       sizeof(struct part_ent) * NR_PART_PER_DRIVE);
+	hd_rdwt_base(drive, DEV_READ, (u32)_sect_nr, SECTOR_SIZE, sect_buf);
 	return;
 }
 
@@ -364,10 +359,11 @@ PRIVATE void partition(int device, int style)
 	// added by ran
 	struct part_info *logical = hdi->part;
 
-	struct part_ent part_tbl[NR_SUB_PER_DRIVE];
+	char sector_buf[SECTOR_SIZE];
+	struct part_ent *part_tbl = (char*)sector_buf + PARTITION_TABLE_OFFSET; // first sector at most 4 item
 
 	if (style == P_PRIMARY) {
-		get_part_table(drive, 0, part_tbl);
+		read_part_table_sector(drive, 0, sector_buf);
 
 		int nr_prim_parts = 0;
 		for (i = 0; i < NR_PART_PER_DRIVE; i++) { /* 0~3 */
@@ -427,7 +423,7 @@ PRIVATE void partition(int device, int style)
 		for (i = 0; i < NR_SUB_PER_PART; i++) {
 			int dev_nr = nr_1st_sub + i;/* 5~*/
 
-			get_part_table(drive, s, part_tbl);
+			read_part_table_sector(drive, 0, sector_buf);
 
 			// hdi->logical[dev_nr].base = s + part_tbl[0].start_sect;
 			// hdi->logical[dev_nr].size = part_tbl[0].nr_sects;
@@ -438,30 +434,6 @@ PRIVATE void partition(int device, int style)
 			// added by ran
 			int boot_sec = hdi->part[dev_nr].base;
 
-			// added by mingxuan 2020-10-29
-			// struct fs_flags fs_flags_real;
-			// struct fs_flags *fs_flags_buf = &fs_flags_real;
-
-			// get_fs_flags(drive, hdi->logical[dev_nr].base+1, fs_flags_buf); //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is in 2nd sector, mingxuan
-			// modified by ran
-			// get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
-			
-			// if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-			// {
-			// 	// hdi->logical[dev_nr].fs_type = ORANGE_TYPE;
-			// 	// modified by ran
-			// 	logical[dev_nr].fs_type = ORANGE_TYPE;
-			// }
-			// deleted by ran
-			// else if(fs_flags_buf->fat32_flag1 == 0x534f4453 && fs_flags_buf->fat32_flag2 == 0x302e35) // FAT32 flags
-			// 	hdi->logical[dev_nr].fs_type = FAT32_TYPE;
-			// added end, mingxuan 2020-10-29
-
-			// added by ran
-			// else if (is_fat32_part(drive, boot_sec))
-			// {
-			// 	logical[dev_nr].fs_type = FAT32_TYPE;
-			// }
 			logical[dev_nr].fs_type = partition_get_fstype(drive, boot_sec);
 
 			s = ext_start_sect + part_tbl[1].start_sect;
@@ -478,18 +450,6 @@ PRIVATE void partition(int device, int style)
 
 		int boot_sec = hdi->part[dev_nr].base;
 
-		// struct fs_flags *fs_flags_buf = &fs_flags_real;
-
-		// get_fs_flags(drive, boot_sec + 1, fs_flags_buf); 
-
-		// if(fs_flags_buf->orange_flag == 0x11) // Orange's Magic
-		// {
-		// 	logical[dev_nr].fs_type = ORANGE_TYPE;
-		// }
-		// else if (is_fat32_part(drive, boot_sec))
-		// {
-		// 	logical[dev_nr].fs_type = FAT32_TYPE;
-		// }
 		logical[dev_nr].fs_type = partition_get_fstype(drive, boot_sec);
 
 		// assert(0);
@@ -1028,18 +988,18 @@ int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 // added by xw, 18/8/27
 int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
-	MESSAGE driver_msg;
-
-	driver_msg.type = io_type;
+	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
+	driver_msg->DEVICE = dev;
 
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; /// hu is: 512
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
+	driver_msg->POSITION = pos;
+	driver_msg->CNT = bytes; 
+	driver_msg->PROC_NR = proc_nr;
+	driver_msg->BUF = buf;
 
-	hd_rdwt_sched(&driver_msg);
+	hd_rdwt_sched(driver_msg);
+	kern_kfree(driver_msg);
 	return 0;
 }
 //~xw
@@ -1047,23 +1007,23 @@ int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 //add by sundong 2023.5.26
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
-	MESSAGE driver_msg;
-
-	driver_msg.type = io_type;
+	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
-	// attention
-	//  driver_msg.POSITION	= (unsigned long long)pos;
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; 
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
+	driver_msg->DEVICE = dev;
+
+	driver_msg->POSITION = pos;
+	driver_msg->CNT = bytes; 
+	driver_msg->PROC_NR = proc_nr;
+	driver_msg->BUF = buf;
+
 	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
 	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
 
 	/// replace the statement above.
 	// disp_int(proc_nr);
-	hd_rdwt(&driver_msg);
+	hd_rdwt(driver_msg);
+	kern_kfree(driver_msg);
 	return 0;
 }
 
