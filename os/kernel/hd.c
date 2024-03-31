@@ -423,7 +423,7 @@ PRIVATE void partition(int device, int style)
 		for (i = 0; i < NR_SUB_PER_PART; i++) {
 			int dev_nr = nr_1st_sub + i;/* 5~*/
 
-			read_part_table_sector(drive, 0, sector_buf);
+			read_part_table_sector(drive, s, sector_buf);
 
 			// hdi->logical[dev_nr].base = s + part_tbl[0].start_sect;
 			// hdi->logical[dev_nr].size = part_tbl[0].nr_sects;

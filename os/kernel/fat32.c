@@ -220,7 +220,7 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 			}else{// new alloc cluster not consecutive
 				info->next = alloc_fat_info(clus);
 			}
-			new = 1;
+			// new = 1;
 		}
 		clus_skip -= info->length;
 		info = info->next;
