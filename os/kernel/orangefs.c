@@ -4220,7 +4220,9 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 	int pos = file->fd_pos;
 	struct vfs_inode *pin = file->fd_dentry->d_inode;
 	int pos_end = min(pos + count, pin->i_size);
-	
+	if(pin->orange_inode.i_nr_blocks == 0) {
+		return 0;
+	}
 	int off = pos % BLOCK_SIZE;
 	int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
 	int rw_sect_max = pin->orange_inode.i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
@@ -4252,6 +4254,12 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* buf){
 	int pos = file->fd_pos;
 	struct vfs_inode *pin = file->fd_dentry->d_inode;
+	int sync_needed = 0;
+	if(pin->orange_inode.i_nr_blocks == 0) {
+		pin->orange_inode.i_start_block = orange_alloc_smap_bit(pin->i_sb, NR_DEFAULT_FILE_BLOCKS);
+		pin->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
+		sync_needed = 1;
+	}
 	int pos_end = min(pos + count, pin->orange_inode.i_nr_blocks * BLOCK_SIZE);
 	int off = pos % BLOCK_SIZE;
 	int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
@@ -4283,7 +4291,9 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 	{
 		/* update inode::size */
 		pin->i_size = file->fd_pos;
-
+		sync_needed = 1;
+	}
+	if (sync_needed == 1) {
 		/* write the updated i-node back to disk */
 		orange_sync_inode(pin);
 	}
@@ -4296,13 +4306,14 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 		return -1;
 	}
 	struct vfs_inode *newino = vfs_new_inode(dir->i_sb);
-	int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
+	// int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS); 
+	// create empty file not map sector first to save space
 	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
 	newino->i_sb = dir->i_sb;
 	newino->i_rdev = dir->i_rdev;
-	newino->orange_inode.i_start_block = free_sect_nr;
-	newino->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
+	newino->orange_inode.i_start_block = 0;
+	newino->orange_inode.i_nr_blocks = 0;
 	newino->i_size = 0;
 	newino->i_nlink = 1;
 	newino->i_mode = I_RWX;
@@ -4345,7 +4356,7 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 }
 
 int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
-	if(orange_check_dir_empty(dir) != 0){
+	if(orange_check_dir_empty(dentry->d_inode) != 0){
 		return -1;
 	}
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
