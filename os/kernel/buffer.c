@@ -242,23 +242,6 @@ static void put_sync_buf(buf_head *bh) {
 	ksem_post(&buf_dirty_sem, 1);
 }
 
-#define BUF_SYNC_DELAY_TICK	5
-static buf_head *get_sync_buf() {
-	ksem_wait(&buf_dirty_sem, 1);
-	acquire(&buf_lock);
-	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
-	if(bh) {
-		if(ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK) {
-			list_remove(&bh->b_dirty);
-		} else {
-			bh = NULL;
-			ksem_post(&buf_dirty_sem, 1);
-		}
-	}
-	release(&buf_lock);
-	return bh;
-}
-
 /*****************************************************************************
  *                                getblk
  *****************************************************************************/
@@ -280,9 +263,19 @@ buf_head *getblk(int dev, int block)
     {
         // 从lru 表中获取一个最近未使用的buf head
         bh = get_bh_lru();
+		if(bh->count) {
+			disp_str("warning: still used blk\n");
+		}
+		acquire(&bh->lock); // race with bsync
         // 如果是脏块就立即写回硬盘
         if (bh->dirty)
         {
+			// 必须将其从写回队列移除 20240402
+			list_remove(&bh->b_dirty);
+			// disp_int(bh->block);
+			// disp_str(":");
+			// disp_int(block);
+			// disp_str(" ");
             sync_buff(bh);
         }
         // 如果它被用过则，从hash表中删掉它
@@ -295,6 +288,7 @@ buf_head *getblk(int dev, int block)
         }
         bh->dev = dev;
         bh->block = block;
+		release(&bh->lock);
         //放到hash 表中
         put_bh_hashtbl(bh);
     }
@@ -398,21 +392,48 @@ void brelse(buf_head *bh)
 		if(kernel_initial == 1) {
 			sync_buff(bh);
 		} else {
+			release(&bh->lock);
 			put_sync_buf(bh);
+			return;
 		}
+		// disp_int(bh->block);
+		// disp_str(" ");
         // sync_buff(bh);
     }
     release(&bh->lock);
 
 }
 
+#define BUF_SYNC_DELAY_TICK	10
+static buf_head *get_sync_buf() {
+	ksem_wait(&buf_dirty_sem, 1);
+	acquire(&buf_lock);
+	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
+	if(bh) {
+		if(ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK) {
+			list_remove(&bh->b_dirty);
+		} else {
+			ksem_post(&buf_dirty_sem, 1);
+			release(&buf_lock);
+			sleep(1);
+			return NULL;
+		}
+	}
+	release(&buf_lock);
+	return bh;
+}
+
 PUBLIC void bsync_service() {
 	while(1) {
 		buf_head *bh = get_sync_buf();
 		if(bh) {
-			// disp_int(bh->block);
-			// disp_str(" ");
-			sync_buff(bh);
+			acquire(&bh->lock);
+			if(bh->dirty) { // 需要重新判断，有可能已经由getblk同步完了
+				// disp_int(bh->block);
+				// disp_str(" ");
+				sync_buff(bh);
+			}
+			release(&bh->lock);
 		}
 	}
 }

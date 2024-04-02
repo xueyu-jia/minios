@@ -99,7 +99,7 @@ ifeq ($(ROOT_PART_FS_TYPE),fat32)
 	ROOT_CP = cp
 	ROOT_MOUNTPOINT = root
 	ROOT_FS_MAKER = mkfs.vfat
-	ROOT_FS_MAKE_FLAG = -F 32 -s8
+	ROOT_FS_MAKE_FLAG = -F 32 -s4
 else ifeq ($(ROOT_PART_FS_TYPE),orangefs)
 	ROOT_CP = $(ORANGE_CP)
 	ROOT_MOUNTPOINT = $(ROOT_FS_PART)

@@ -1798,24 +1798,24 @@ main(int argc, char *argv[])
   opentest();
   writetest();
   writetest1();
-//   createtest();
+  createtest();
 
-//   openiputtest(); 
-//   exitiputtest();
-//   iputtest();
+  openiputtest(); 
+  exitiputtest();
+  iputtest();
 
-//   exitwait();
+  exitwait();
 
-//   rmdot();
-// //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
-//   // the test consider 15 bytes' name the same as 14 bytes' name
-//   bigfile();
-//   subdir();		
-//   unlinkread();
-//   dirfile();
-//   iref();
-//   forktest();
-//   bigdir(); // slow
+  rmdot();
+//   fourteen();	//fail	no error: xv6 only store 14 byte name, 
+  // the test consider 15 bytes' name the same as 14 bytes' name
+  bigfile();
+  subdir();		
+  unlinkread();
+  dirfile();
+  iref();
+  forktest();
+  bigdir(); // slow
   
 	// int fd = open("test", O_CREAT|O_RDWR, I_RW);
 	// for(int i=0; i < 200; i++){
@@ -1839,12 +1839,13 @@ main(int argc, char *argv[])
   6. read after unlink									vfs
   7. root /.. = /										vfs
   8. phy_kfree_4k addr error:missing type convert		const.h			
-  9. exit wait race										exit					
+  9. exit wait race										exit
+  10. buffer bsync race									buffer					
 
   todo:
   // rmdir cwd? rmdir/unlink effective after process exit  fixed
   // invalid check after unlinked file // checked: read should ok for unlinked file after open, fixed
-  fat32 bigwrite may fail: write first block lost data
+  // fat32 bigwrite may fail: write first block lost data
   
   */
 }

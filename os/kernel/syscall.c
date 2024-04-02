@@ -68,8 +68,13 @@ void sleep(int n) {
 	return _syscall1(_NR_sleep, n);
 }
 
-int open(const char* pathname, int flags, int mode) {
-	return _syscall3(_NR_open, pathname, flags, mode);
+int open(const char* pathname, int flags, ...) {
+	// syscall_log2("op ", pathname);
+	if(flags & O_CREAT){
+		int mode = *(((char*) &flags) + 4);
+		return _syscall3(_NR_open, pathname, flags, mode);
+	}
+	return _syscall2(_NR_open, pathname, flags);
 }
 
 int close(int fd) {
