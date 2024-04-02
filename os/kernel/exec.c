@@ -412,8 +412,12 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 
 	// added by mingxuan 2020-12-14
 	// 给lin_addr建立页映射, mingxuan
-//	for (; lin_addr < lin_limit; lin_addr++, file_offset++)
-	for (; lin_addr < lin_limit; lin_addr+=num_4K, file_offset+=num_4K)
+	//	for (; lin_addr < lin_limit; lin_addr++, file_offset++)
+	// 20240402: 此处如果不能保证elf中的地址4K对齐，会导致最高一部分没有分配空间
+	// 如lin_addr=0x8051FF4, lin_limit=0x805C220 末尾0x805C000~0x805C220未分配
+	// 下面的复制数据同样是这样的写法, 但是复制数据是应当按照elf中的位置完全对应的，最后一次复制也做了处理，所以没有问题
+	// for (; lin_addr < lin_limit; lin_addr+=num_4K, file_offset+=num_4K)
+	for (; lin_addr < lin_limit; lin_addr = (lin_addr & 0xFFFFF000) + num_4K)
 	{
 		//lin_mapping_phy(lin_addr, MAX_UNSIGNED_INT, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, attribute);
 		ker_umalloc_4k(lin_addr,p_proc_current->task.pid,attribute);           //edited by wang 2021.8.27
@@ -426,7 +430,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	for_flag = 0; //added by mingxuan 2021-8-8
 
 	//for(  ; lin_addr<lin_limit ; lin_addr+=num_4K,file_offset+=num_4K )	// modified by mingxuan 2020-12-14
-	for (; lin_addr < lin_limit, file_offset < file_limit; lin_addr += num_4K, file_offset += num_4K) // modified by mingxuan 2021-3-16
+	for (; lin_addr < lin_limit, file_offset < file_limit; lin_addr += num_4K) // modified by mingxuan 2021-3-16
 	{
 		for_flag = 1; //表示进入了for循环，离开for循环时需要做变量调整 //added by mingxuan 2021-3-16
 
@@ -437,6 +441,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
 			kern_vfs_read(fd, buf, num_4K);
 			memcpy(lin_addr, buf, num_4K); //modified by mingxuan 2020-12-14
+			file_offset += num_4K;
 		}
 		else
 		{ //剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
@@ -455,12 +460,13 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	// modified by mingxuan 2021-1-29, end
 
 	//added by mingxuan 2021-3-16
-	if (for_flag == 1) //表示进入了for循环，离开for循环时需要做变量调整
-	{
-		//减4K的原因是，最后一次for循环在判断时会自动加上4K
-		lin_addr -= num_4K;	   //added by mingxuan 2021-3-16
-		file_offset -= num_4K; //added by mingxuan 2021-3-16
-	}
+	// if (for_flag == 1) //表示进入了for循环，离开for循环时需要做变量调整
+	// {
+	// 	//减4K的原因是，最后一次for循环在判断时会自动加上4K
+	// 	lin_addr -= num_4K;	   //added by mingxuan 2021-3-16
+	// 	file_offset -= num_4K; //added by mingxuan 2021-3-16
+	// }
+	// 后面 lin_addr 和 file_offset都不再使用
 
 	//added by mingxuan 2021-3-16
 	if (lin_limit - lin_file_limit > 0)

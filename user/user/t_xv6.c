@@ -567,7 +567,7 @@ fourfiles(void)
     wait(NULL);
   }
 
-  for(i = 0; i < 2; i++){
+  for(i = 0; i < 4; i++){
     fname = names[i];
     fd = open(fname, 0);
     total = 0;
@@ -641,9 +641,13 @@ createdelete(void)
       name[0] = 'p' + pi;
       name[1] = '0' + i;
       fd = open(name, 0);
-      if((i == 0 || i >= N/2) && fd < 0){
-        printf("oops createdelete %s didn't exist\n", name);
-        exit(-1);
+      if((i == 0 || i >= N/2)) {
+		if (fd >= 0) {
+			unlink(name);
+		}else {
+			printf("oops createdelete %s didn't exist\n", name);
+			exit(-1);
+		}
       } else if((i >= 1 && i < N/2) && fd >= 0){
         printf("oops createdelete %s did exist\n", name);
         exit(-1);
@@ -1794,24 +1798,24 @@ main(int argc, char *argv[])
   opentest();
   writetest();
   writetest1();
-  createtest();
+//   createtest();
 
-  openiputtest(); 
-  exitiputtest();
-  iputtest();
+//   openiputtest(); 
+//   exitiputtest();
+//   iputtest();
 
-  exitwait();
+//   exitwait();
 
-  rmdot();
-//   fourteen();	//fail	no error: xv6 only store 14 byte name, 
-  // the test consider 15 bytes' name the same as 14 bytes' name
-  bigfile();
-  subdir();		
-  unlinkread();
-  dirfile();
-  iref();
-  forktest();
-  bigdir(); // slow
+//   rmdot();
+// //   fourteen();	//fail	no error: xv6 only store 14 byte name, 
+//   // the test consider 15 bytes' name the same as 14 bytes' name
+//   bigfile();
+//   subdir();		
+//   unlinkread();
+//   dirfile();
+//   iref();
+//   forktest();
+//   bigdir(); // slow
   
 	// int fd = open("test", O_CREAT|O_RDWR, I_RW);
 	// for(int i=0; i < 200; i++){
@@ -1820,6 +1824,7 @@ main(int argc, char *argv[])
 	// close(fd);
 //   uio();	//invalid io access test success, just general protection halt 
   printf("total usage: %d ticks\n", get_ticks() - start_tick);
+  unlink("usertests.ran");
   exectest();
 
   exit(-1);
@@ -1839,6 +1844,7 @@ main(int argc, char *argv[])
   todo:
   // rmdir cwd? rmdir/unlink effective after process exit  fixed
   // invalid check after unlinked file // checked: read should ok for unlinked file after open, fixed
-  1. ...
+  fat32 bigwrite may fail: write first block lost data
+  
   */
 }

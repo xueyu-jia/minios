@@ -277,7 +277,10 @@ PUBLIC void wait_event(void* event) {
 
 PRIVATE void stack_backtrace(u32 ebp) {
 	disp_str("=>");
+	disp_int(ebp);
+	disp_str("(");
 	disp_int(*(((u32*)ebp)+1));
+	disp_str(")\n");
 }
 
 PUBLIC void proc_backtrace() {
