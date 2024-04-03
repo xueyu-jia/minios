@@ -66,12 +66,16 @@ PRIVATE u32 fat_read_datetime(u16 date, u16 time, u8 centi_sec){
 	return mktime(&time_s);
 }
 
-PRIVATE struct fat_info* alloc_fat_info(int cluster_start){
+PRIVATE inline struct fat_info* alloc_fat_info(int cluster_start){
 	struct fat_info* ent = kern_kmalloc(sizeof(struct fat_info));
 	ent->cluster_start = cluster_start;
 	ent->length = 1;
 	ent->next = NULL;
 	return ent;
+}
+
+PRIVATE inline void free_fat_info(struct fat_info *info) {
+	kern_kfree((u32)info);
 }
 
 // if *bh not NULL, brelse origin blk
@@ -259,7 +263,7 @@ PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, u32 ino) {
 	return start + entry;
 }
 
-PRIVATE u32 fat_ino(struct vfs_inode* dir, int entry){
+PRIVATE inline u32 fat_ino(struct vfs_inode* dir, int entry){
 	return (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT) | (entry&(FAT_DPS-1));
 }
 
@@ -271,7 +275,7 @@ PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int 
 	return bread_sector(inode->i_rdev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
 }
 
-PRIVATE struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
+PRIVATE inline struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
 	return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
@@ -611,7 +615,7 @@ PUBLIC void fat32_put_inode(struct vfs_inode* inode){
 	struct fat_info* next;
 	for(struct fat_info* ent=inode->fat32_inode.fat_info; ent; ent = next){
 		next = ent->next;
-		kern_kfree(ent);
+		free_fat_info(ent);
 	}
 }
 

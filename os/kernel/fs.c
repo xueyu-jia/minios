@@ -48,7 +48,7 @@ PUBLIC int get_free_superblock()
 	}
 	return sb_index;
 }
-
+#define MAX_DEV_PATH	16
 int kern_init_block_dev()
 {
 	for (int i = 0; i < 12; i++)
@@ -60,7 +60,7 @@ int kern_init_block_dev()
 				if (hd_infos[i].part[j].size > 0)
 				{
 					int major = i,minor=j;
-					char dev_pathname[MAX_PATH];
+					char dev_pathname[MAX_DEV_PATH];
 					memset(dev_pathname, 0, sizeof(dev_pathname));
 
 					if (major < SATA_BASE)
@@ -113,7 +113,7 @@ int kern_init_char_dev()
 {
 	// struct super_block *sb = get_super_block(drive);
 	//real_createdir(sb, "dev");
-	char ttypath[MAX_PATH] = {"/dev/tty0"};
+	char ttypath[MAX_DEV_PATH] = {"/dev/tty0"};
 	for (int i = 0; i < NR_CONSOLES; ++i)
 	{
 		ttypath[strlen(ttypath) - 1] = '0' + i;

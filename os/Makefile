@@ -61,7 +61,9 @@ ORANGESKERNEL	= kernel.bin
 # 			os/kernel/buffer.o os/kernel/slab.o \
 # 			os/gdbstub/gdbstub_x86_int.o
 
-OBJS =  os/kernel/kernel.o $(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c)) os/klib/klib.a os/gdbstub/gdbstub_x86_int.o 
+OBJS =  os/kernel/kernel.o \
+	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c)) \
+	os/klib/klib.a os/gdbstub/gdbstub_x86_int.o 
 			
 #added by mingxuan 2021-2-28
 
