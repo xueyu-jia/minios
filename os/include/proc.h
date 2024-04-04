@@ -53,6 +53,7 @@
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
 #define NR_TASKS	2	//task_tty + hd_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
+#define READY_PROC_MAX 30	//xiaofeng
 
 //~xw
 
@@ -79,6 +80,7 @@ enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 
 #define NR_CHILD_MAX (NR_PCBS-NR_K_PCBS-1)    //定义最多子进程/线程数量	//add by visual 2016.5.26
 #define TYPE_PROCESS	0//进程//add by visual 2016.5.26
 #define TYPE_THREAD		1//线程//add by visual 2016.5.26
+#define TIME_SCALE		100
 
 typedef struct s_stackframe {	/* proc_ptr points here				↑ Low			*/
 	u32	gs;			/* ┓						│			*/
@@ -198,7 +200,15 @@ typedef struct s_proc {
 	void * retval;
 	u32 who_wait_flag;   
 
-	
+	int is_rt;			//flag for Real-time(T) and not-Real-time(F) process,added by xiaofeng 
+    int rt_priority;	//priority for Real-time process 
+
+	int nice;
+	int weight; 		//priority for not-Real-time process 
+	double vruntime;
+	u32 cpu_use;
+	u64 sum_cpu_use;
+
 
 }PROCESS_0;
 
@@ -225,5 +235,31 @@ typedef struct s_task {
 
 //added by zcr
 #define proc2pid(x) (x - proc_table)
+
+//added by zq
+//process entity 
+typedef struct sched_process_entity
+{
+	u32 pid;
+	PROCESS* p_process;
+	struct sched_process_entity* next;
+	struct sched_process_entity* prev;
+	//int pri;
+}sched_entity;
+
+typedef struct process_message
+{
+	u32 pid;
+	int nice;
+	double vruntime;
+	u64 sum_cpu_use;
+}proc_msg;
+
+u32 get_min_vruntime();
+sched_entity* get_curr_entity(PROCESS* current_proc);
+void in_rq(PROCESS* p_in);
+void out_rq(PROCESS* p_out);
+void rq_resort(sched_entity* changed_entity);
+
 
 #endif

@@ -140,6 +140,18 @@ PUBLIC int kernel_main()
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30
 
 	// ksem_init(&proc_table_sem,1); 	//init PCB sem
+	
+	//初始状态确保hd_service放在实时队列第一个
+	in_rq(&proc_table[1]);
+	in_rq(&proc_table[0]);
+
+	for(int pid=2; pid<NR_K_PCBS+1 ; pid++)
+	{
+		if(proc_table[pid].task.stat==READY)
+		{
+			in_rq(&proc_table[pid]);
+		}
+	}
 
 	/*************************************************************************
 	*第一个进程开始启动执行
@@ -220,6 +232,16 @@ PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pi
 		proc->task.stat = stat;				   //初始化状态 -1表示未初始化
 		proc->task.ticks = proc->task.priority = priority;	//时间片和优先级
 		//proc->task.regs.eip = eip;
+		
+		//CFS
+		proc->task.is_rt=false;
+		proc->task.rt_priority=1;
+		proc->task.nice=0;
+		proc->task.weight=nice_to_weight[proc->task.nice+20];
+		proc->task.vruntime=0;
+		proc->task.sum_cpu_use=0;
+		proc->task.cpu_use=0;
+
 }
 
 PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip){
@@ -252,6 +274,13 @@ PRIVATE int initialize_processes()
 	int pid;
 	u32 AddrLin, pte_addr_phy_temp, addr_phy_temp, err_temp; //edit by visual 2016.5.9
 
+	//added by zq
+	for(int i=0;i<READY_PROC_MAX;i++)
+	{
+		rt_rq_array[i].pid=1000;
+		rq_array[i].pid=1000;
+	}
+	
 	/* set common fields in PCB. added by xw, 18/5/25 */
 	p_proc = proc_table;
 	for (pid = 0; pid < NR_PCBS; pid++)
@@ -271,6 +300,7 @@ PRIVATE int initialize_processes()
 		p_proc->task.stat = READY;				   //状态
 		p_proc->task.ticks = p_proc->task.priority = 1;	//时间片和优先级*/
 		init_process(p_proc,p_task->name,READY,pid,1);//add by lcy 2023.10.22
+		p_proc->task.is_rt = true; //hd_service和tty进程设置为实时进程
 
 
 		/**************LDT*********************************/

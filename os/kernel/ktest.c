@@ -609,6 +609,14 @@ void initial()
 	//disp_int(sys_total_mem_size());
 	//disp_str("\n");
 
+	if(0!=fork())
+	{//非实时队列中至少存在一个进程
+		while(1);
+	}
+	else {
+		
+	}
+
 	//get_pid();
 	createdir("/dev");
 	init_block_dev(SATA_BASE);		//added by xiaofeng

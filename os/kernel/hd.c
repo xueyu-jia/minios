@@ -264,6 +264,7 @@ PUBLIC void hd_service()
 		out_hd_queue(&hdque, &rwinfo);
 		hd_rdwt_real(rwinfo);
 		rwinfo->proc->task.stat = READY;
+		in_rq(rwinfo->proc);
 		yield();
 		
 		//disp_str("H ");

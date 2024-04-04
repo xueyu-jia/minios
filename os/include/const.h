@@ -94,8 +94,9 @@
 // #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 //#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 //#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
-#define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
+// #define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
 
+#define NR_SYS_CALL		  67
 /* TTY */
 //added by mingxuan 2019-5-19
 #define NR_CONSOLES	3	/* consoles */
@@ -133,6 +134,7 @@
 #define ArgLinLimitMAX  		KernelLinBase  				//=(ArgLinBase+0x1000)大小：4K。
 #define	KernelLinBase			0xC0000000 					//内核线性起始地址(有0x30400的偏移)
 #define	KernelLinLimitMAX		(KernelLinBase+0x40000000) 	//大小：1G
+#define Kernel_space_max		(0x100000000-1)					// 4GB-1
 
 //added by mingxuan 2021-1-7
 #define MEMMAP_TEXT 	0x0
