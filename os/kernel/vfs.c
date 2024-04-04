@@ -513,13 +513,13 @@ PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
 		release(&superblock_lock);
 		return NULL;
 	}
+	list_init(&sb->sb_inode_list);
 	int state = file_sys->fs_sop->fill_superblock(sb, dev);
 	if(state){
 		//error
 		release(&superblock_lock);
 		return NULL;
 	}
-	list_init(&sb->sb_inode_list);
 	sb->used = 1;
 	release(&superblock_lock);
 	return sb;
