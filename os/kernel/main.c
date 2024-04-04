@@ -13,6 +13,7 @@
 #include "console.h"
 #include "buddy.h"
 #include "ahci.h"
+#include "dev.h"
 #include "blame.h"
 // #define GDBSTUB
 
@@ -104,6 +105,8 @@ PUBLIC int kernel_main()
 	/* initialize message queue */
 	init_msgq(); //added by yingchi 2021.12.24
 
+	init_devices();
+	register_fs_types();
 	init_clock(); // read rtc init, 放在硬盘、键盘后面初始化减少误差
 	/* enable interrupt, we should read information of some devices by interrupt.
 	 * Note that you must have initialized all devices ready before you enable
@@ -119,11 +122,7 @@ PUBLIC int kernel_main()
 
 	// hd_open(0);
 	// hd_open(1); //modified by mingxuan 2020-10-27
-	register_fs_types();
-	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
-	{
-		hd_open(SATA_BASE+dev_index);
-	}
+	init_open_hd();
 	//modified by mingxuan 2020-10-27
 	// hd_open(PRIMARY_SLAVE);
 	// hd_open(SECONDARY_MASTER);

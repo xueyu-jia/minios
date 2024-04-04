@@ -53,7 +53,7 @@ PRIVATE void hd_handler(int irq);
 PRIVATE int  waitfor(int mask, int val, int timeout);
 //~xw
 
-#define	DRV_OF_DEV(dev) ((dev>>20)&0x0FFF)
+#define	DRV_OF_DEV(dev) (((dev>>20)&0x0FFF) - DEV_HD_BASE)
 
 /*****************************************************************************
  *                                init_hd
@@ -124,7 +124,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 		hd_identify(drive);
 	}
 	if (hd_infos[drive].open_cnt++ == 0) {
-		partition(drive << 20, P_PRIMARY);
+		partition((drive + DEV_HD_BASE) << 20, P_PRIMARY);
 		//print_hdinfo(&hd_info[drive]);	//deleted by mingxuan 2021-2-7
 	}
 }
@@ -144,6 +144,41 @@ PUBLIC void hd_close(int device)
 	hd_infos[drive].open_cnt--;
 }
 
+PUBLIC void init_open_hd() {
+	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
+	{
+		hd_open(SATA_BASE+dev_index);
+	}
+}
+
+int get_hd_dev(int drive, u32 fs_type)
+{
+	int i;
+	for (i = 1; i < NR_PRIM_PER_DRIVE; i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
+	{
+		if (hd_infos[drive].part[i].fs_type == fs_type)
+			return MAKE_DEV(DEV_HD_BASE + drive, i);
+	}
+
+	// added by mingxuan 2020-10-29
+	for (i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++)
+	{
+		if (hd_infos[drive].part[i].fs_type == fs_type)
+			return MAKE_DEV(DEV_HD_BASE + drive, i);
+	}
+}
+
+int get_hd_part_dev(int drive, int part, u32 fs_type){
+	if( hd_infos[drive].part[part].fs_type == fs_type){
+		return MAKE_DEV(DEV_HD_BASE + drive, part);
+	}
+	disp_str("fatal: FSTYPE provided incorrect");
+	return -1;
+}
+
+u32 get_hd_fstype(int dev) {
+	return hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].fs_type;
+}
 // hd_rdwt_base
 // 		low level hd read write count bytes, must start from sector boundary
 // 		count <= BLOCK_SIZE 
@@ -359,7 +394,7 @@ PRIVATE void partition(int device, int style)
 	// added by ran
 	struct part_info *logical = hdi->part;
 
-	char sector_buf[SECTOR_SIZE];
+	char *sector_buf = kern_kmalloc(SECTOR_SIZE);
 	struct part_ent *part_tbl = (char*)sector_buf + PARTITION_TABLE_OFFSET; // first sector at most 4 item
 
 	if (style == P_PRIMARY) {
@@ -454,6 +489,7 @@ PRIVATE void partition(int device, int style)
 
 		// assert(0);
 	}
+	kern_kfree(sector_buf);
 }
 
 /*****************************************************************************

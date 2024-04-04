@@ -22,9 +22,10 @@ PRIVATE inline void _list_insert(struct list_node* new, struct list_node* prev, 
 	new->next = next;
 }
 
-PRIVATE inline void _list_remove(struct list_node* prev, struct list_node* next) {
+PRIVATE inline void _list_remove(struct list_node* self, struct list_node* prev, struct list_node* next) {
 	prev->next = next;
 	next->prev = prev;
+	self->next = self->prev = self;
 }
 
 #define list_add_first(node, list) _list_insert(node, (list), (list)->next)
@@ -32,11 +33,11 @@ PRIVATE inline void _list_remove(struct list_node* prev, struct list_node* next)
 #define list_add_last(node, list) _list_insert(node, (list)->prev, (list))
 
 #define list_move(node, list) do{\
-	_list_remove((node)->prev, (node)->next);\
+	_list_remove(node, (node)->prev, (node)->next);\
 	list_add_first(node, list);\
 }while(0)
 
-#define list_remove(node) _list_remove((node)->prev, (node)->next)
+#define list_remove(node) _list_remove(node, (node)->prev, (node)->next)
 
 #define list_for_each(head, entry, member) \
 for(entry = list_entry((head)->next, typeof(*entry), member);	\

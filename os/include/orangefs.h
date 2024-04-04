@@ -9,7 +9,7 @@
 #define	FS_ORANGE_H
 #include "type.h"
 #include "const.h"
-#include "vfs.h"
+#include "fs.h"
 /**
  * @def   MAGIC_V1
  * @brief Magic number of FS v1.0

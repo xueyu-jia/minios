@@ -19,22 +19,6 @@
 #define MAX_DNAME_LEN 32
 #define	MAX_PATH	256
 
-/* major device numbers (corresponding to kernel/global.c::dd_map[]) */
-#define	NO_DEV			0
-#define	DEV_FLOPPY		1
-#define	DEV_CDROM		2
-#define	DEV_HD			3
-#define	DEV_CHAR_TTY	13
-#define	DEV_SCSI		5
-#define	DEV_SATA		6
-
-/* make device number from major and minor numbers */
-#define	MAJOR_SHIFT		20
-#define	MAKE_DEV(a,b)		((a << MAJOR_SHIFT) | b)
-
-/* separate major and minor numbers from device number */
-#define	MAJOR(x)		((x >> MAJOR_SHIFT) & 0x0FFF)
-#define	MINOR(x)		(x & 0x0FFFFF)
 
 
 // #define	NR_FILES	64	//moved to proc.h. xw, 18/6/14
@@ -42,7 +26,7 @@
 #define	NR_FILE_DESC	128	/* FIXME */	//modified by mingxuan 2019-5-19
 #define	NR_INODE	512	/* FIXME */
 #define	NR_SUPER_BLOCK	16
-#define NR_FS_TYPE 3
+#define NR_FS_TYPE 4
 
 /* APIs of file operation */
 // octol
@@ -80,11 +64,3 @@
 //deleted by xw, 18/12/27
 //#define FSBUF_SIZE	0x100000	//added by xw, 18/6/17
 // #define FSBUF_SIZE	0x100000		//added by mingxuan 2019-5-17
-
-
-#define	IDE_BASE		0
-#define	IDE_LIMIT		4
-#define	SATA_BASE		4
-#define SATA_LIMIT		8
-#define	SCSI_BASE		8
-#define	SCSI_LIMIT		8

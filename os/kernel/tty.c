@@ -1,7 +1,7 @@
 #include "type.h"
 #include "const.h"
 #include "tty.h"
-#include "fs.h"
+#include "dev.h"
 #include "console.h"
 #include "keyboard.h"
 
