@@ -7,10 +7,7 @@ struct list_node{
 };
 typedef struct list_node list_head;
 
-#define offsetof(type, member) ((u32) &((type *)0)->member)
-
-#define list_entry(node, type, member) (		\
-	(type *)( (char *)(node) - offsetof(type,member) ))
+#define list_entry(node, type, member) (container_of(node, type, member))
 
 #define list_init(node)	\
 	(node)->prev = (node)->next = (node)

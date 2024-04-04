@@ -218,5 +218,7 @@
 //added by mingxuan 2019-5-19
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 #define	min(a,b)	((a) < (b) ? (a) : (b))
+#define offsetof(type, member) ((u32) &((type *)0)->member)
+#define container_of(ptr, type, member) (type *)( (char *)(ptr) - offsetof(type,member) )
 
 #endif /* _ORANGES_CONST_H_ */
