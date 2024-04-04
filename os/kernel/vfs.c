@@ -494,15 +494,17 @@ PRIVATE struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	return dentry;
 }
 
-PRIVATE struct super_block * vfs_read_super(int dev, int fstype){
-	// 对于 fstype NO_FS_TYPE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
-	if(fstype == NO_FS_TYPE) {
-		fstype = hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type;
-	}	
-	if(hd_infos[MAJOR(dev)].part[MINOR(dev)].fs_type != fstype){
-		// dismatch fstype
-		disp_str("fail: fstype not match");
-		return NULL;
+PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
+	if(dev) {
+		// 对于 fstype NO_FS_TYPE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
+		if(fstype == NO_FS_TYPE) {
+			fstype = get_hd_fstype(dev);
+		}else if(get_hd_fstype(dev) != fstype){
+			// dismatch fstype
+			disp_str("fail: fstype not match");
+			return NULL;
+		}
+		// todo: check hd busy
 	}
 	struct fs_type* file_sys = &fstype_table[fstype];
 	acquire(&superblock_lock);
@@ -517,12 +519,22 @@ PRIVATE struct super_block * vfs_read_super(int dev, int fstype){
 		release(&superblock_lock);
 		return NULL;
 	}
+	list_init(&sb->sb_inode_list);
 	sb->used = 1;
 	release(&superblock_lock);
 	return sb;
 }
 
-PRIVATE void mount_root(int root_dev){
+PRIVATE struct super_block * vfs_get_super(int dev, u32 fstype) {
+	for(int i = 0; i < NR_SUPER_BLOCK; i++) {
+		if(super_blocks[i].used && super_blocks[i].sb_dev == dev) {
+			return &super_blocks[i];
+		}
+	}
+	return vfs_read_super(dev, fstype);
+}
+
+PRIVATE void mount_root(int root_drive){
 	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了 2024-03-10 jiangfeng
 	#ifndef ROOT_FSTYPE
 	#define ROOT_FSTYPE "orangefs"
@@ -530,21 +542,30 @@ PRIVATE void mount_root(int root_dev){
 	int root_fstype = get_fstype_by_name(ROOT_FSTYPE);
 	int dev = -1;
 	#ifdef ROOT_PART
-		dev = get_fs_part_dev(root_dev, ROOT_PART, root_fstype);
+		dev = get_hd_part_dev(root_drive, ROOT_PART, root_fstype);
 	#else
-		dev = get_fs_dev(root_dev, root_fstype); // 自动匹配符合文件系统类型的第一个分区
+		dev = get_hd_dev(root_drive, root_fstype); // 自动匹配符合文件系统类型的第一个分区
 	#endif
-	struct super_block *sb = vfs_read_super(dev, root_fstype);
+	struct super_block *sb = vfs_get_super(dev, root_fstype);
 	vfs_root = sb->sb_root;
 }
 
 PRIVATE void init_fsroot() {
-	kern_vfs_mkdir("/dev", I_RWX);
+	// kern_vfs_mkdir("/dev", I_RWX);
+	struct super_block *dev_sb = vfs_get_super(NO_DEV, DEV_FS_TYPE);
+	insert_sub_dentry(vfs_root, dev_sb->sb_root);
 	kern_init_block_dev();
 	kern_init_char_dev();
 }
 
 PUBLIC void register_fs_types() {
+	register_fs_type("devfs", DEV_FS_TYPE, 
+		&devfs_file_ops,
+		&devfs_inode_ops,
+		NULL,
+		&devfs_sb_ops,
+		NULL);
+	
 	register_fs_type("orangefs", ORANGE_TYPE,
 		&orange_file_ops, 
 		&orange_inode_ops,
@@ -615,7 +636,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
         return -1;
 	}
 	int fstype = get_fstype_by_name(filesystemtype);
-	struct super_block *sb = vfs_read_super(dev, fstype);
+	struct super_block *sb = vfs_get_super(dev, fstype);
 	if(!sb){
 		vfs_put_dentry(dir_d);
 		return -1;

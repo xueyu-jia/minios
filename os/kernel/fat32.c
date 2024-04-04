@@ -880,7 +880,6 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	}
 	brelse(bh);
 	initlock(&FAT_SB(sb)->lock, "FAT");
-	list_init(&sb->sb_inode_list);
 	sb->sb_dev = dev;
 	sb->fs_type = FAT32_TYPE;
 	sb->sb_op = &fat32_sb_ops;

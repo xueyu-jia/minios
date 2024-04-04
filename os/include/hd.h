@@ -11,7 +11,7 @@
 #define	_ORANGES_HD_H_
 #include "type.h"
 #include "const.h"
-#include "fs_const.h"
+#include "dev.h"
 #include "proc.h"
 /**
  * @struct part_ent
@@ -355,8 +355,12 @@ typedef struct
 extern struct hd_info hd_infos[12];
 
 PUBLIC void init_hd();
+PUBLIC void init_open_hd();
 PUBLIC void hd_open(int device);
 PUBLIC void hd_close(int device);
+int get_hd_part_dev(int drive, int part, u32 fs_type);
+int get_hd_dev(int drive, u32 fs_type);
+u32 get_hd_fstype(int dev);
 PUBLIC void hd_service();
 
 PUBLIC void hd_rdwt(MESSAGE *p);

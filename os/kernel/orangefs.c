@@ -4373,7 +4373,6 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	buf_head * bh = bread(dev, 1);
 	struct super_block *psb = (struct super_block *)bh->buffer;
 	*sb = *psb;
-	list_init(&sb->sb_inode_list);
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
 	sb->sb_op = &orange_sb_ops;

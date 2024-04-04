@@ -11,8 +11,9 @@
 
 // added by mingxuan 2020-10-27
 # define NO_FS_TYPE		0x0	//added by mingxuan 2020-10-30
-# define ORANGE_TYPE 	0x1
-# define FAT32_TYPE	 	0x2
+# define DEV_FS_TYPE	0x1
+# define ORANGE_TYPE 	0x2
+# define FAT32_TYPE	 	0x3
 
 // # define TTY_FS_TYPE	0x3	//added by mingxuan 2020-10-30
 
