@@ -1,6 +1,7 @@
 #include "type.h"
 #include "const.h"
 #include "proc.h"
+#include "pagetable.h"
 
 /*======================================================================*
 					  sys_exit			  added by mingxuan 2021-1-6
@@ -99,7 +100,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//暂时不考虑过继, mingxuan 2021-1-6
 
 	//过继机制，added by dongzhangqi 2023-4-14
-	/*
+	
 	if(p_proc->task.info.child_p_num > 0){//有子进程
 		for(int i = 0;i < NR_CHILD_MAX;i++){
 			if(p_proc_current->task.info.child_process[i] !=0){//所有子进程都过继给init进程
@@ -117,7 +118,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 
 		}
 
-	}*/
+	}
 	
 
 	//暂时不考虑file exit, mingxuan 2021-1-6
@@ -170,7 +171,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//释放进程的所有页地址空间
 	free_all_phypage(p_proc->task.pid);
     free_all_pagetbl(p_proc->task.pid);
-    //free_pagedir(p_proc_current->task.pid);	//不能释放cr3，不然会崩 //deleted by mingxuan 2021-1-7
+    free_pagedir(p_proc_current->task.pid);
 
 	p_proc->task.info.child_p_num = 0;	//自己的子进程数量设为0
 

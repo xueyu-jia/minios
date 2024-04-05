@@ -26,7 +26,7 @@ USER_ULIB_DIR=user/ulib
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
 SRCUSER =  user/user/shell_0.c  user/user/shell_1.c user/user/echo.c \
-user/user/t_xv6.c  
+user/user/t_xv6.c  user/user/twait.c
 # user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c  \
 user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c  \
 user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \

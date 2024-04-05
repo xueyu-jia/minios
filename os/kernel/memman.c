@@ -1,5 +1,6 @@
 #include "memman.h"
 #include "buddy.h" //added by mingxuan 2021-3-8
+#include "pagetable.h"
 #include "shm.h"
 #include "proto.h"
 #include "string.h"
@@ -103,6 +104,7 @@ PUBLIC u32 do_kmalloc_4k() //无参数，从内核线性地址空间申请一页
 PUBLIC u32 phy_kmalloc_4k() //无参数，从内核线性地址空间申请一页内存
 {
 	page *page = alloc_pages(kbud, 0);
+	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
 	//disp_str("m");
 	if (res == 0)
@@ -168,7 +170,10 @@ PUBLIC u32 phy_kfree_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉
 
 	//disp_str("f");
     page *page = pfn_to_page(phy_to_pfn(phy_addr));
-	return free_pages(kbud, page, 0);
+	if (atomic_dec_and_test(&page->count)) {
+		return free_pages(kbud, page, 0);
+	}
+	return 0;
 }
 
 //added by mingxuan 2021-8-17
@@ -191,12 +196,18 @@ PUBLIC u32 do_malloc_4k() //无参数，从用户线性地址空间堆中申请�
 PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请一页内存
 {
 	page *page = alloc_pages(ubud, 0);
+	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
 	if (res == 0)
 		disp_color_str("phy_malloc_4k:alloc_pages Error,no memory", 0x74);
 	return res;
 }
 
+
+PUBLIC void phy_mapping_4k(u32 phy_addr) {
+	page *page = pfn_to_page(phy_to_pfn(phy_addr));
+	atomic_inc(&page->count);
+}
 //added by mingxuan 2021-8-16
 /* //deleted by mingxuan 2021-8-19, moved to syscallc.c
 PUBLIC u32 kern_malloc_4k()
@@ -257,7 +268,10 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 		}
 	}
 	page *page = pfn_to_page(phy_to_pfn(phy_addr));
-	return free_pages(ubud, page, 0);
+	if (atomic_dec_and_test(&page->count)) {
+		return free_pages(ubud, page, 0);
+	}
+	return 0;
 }
 
 //added by mingxuan 2021-8-16
@@ -299,6 +313,13 @@ PUBLIC u32 do_kfree_over4k(u32 addr)  //有unsigned int型参数addr，释放掉
 }
 
 */
+PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute) {
+	if (phyAddr != MAX_UNSIGNED_INT) {
+		phy_mapping_4k(phyAddr);
+	}
+	return lin_mapping_phy(AddrLin, phyAddr, pid, PG_P | PG_USU | PG_RWW, pte_attribute);
+}
+
 PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute)
 {
 
@@ -310,7 +331,7 @@ PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute)
 		return -1;
 	}
 
-	return lin_mapping_phy(AddrLin, MAX_UNSIGNED_INT, pid, PG_P | PG_USU | PG_RWW, pte_attribute);
+	return kern_mapping_4k(AddrLin, pid, MAX_UNSIGNED_INT, pte_attribute);
 }
 
 //added by wang 2021.8.24
@@ -350,12 +371,12 @@ PUBLIC u32 kern_malloc_4k() //modified by mingxuan 2021-8-19
 	//disp_int(p_proc_current->task.memmap.heap_lin_limit);
 	//p_proc_current->task.memmap.heap_lin_limit += num_4K;
 
-	lin_mapping_phy(AddrLin,				  //线性地址					//add by visual 2016.5.9
-					MAX_UNSIGNED_INT,		  //物理地址
-					p_proc_current->task.pid, //进程pid					//edit by visual 2016.5.19
-					PG_P | PG_USU | PG_RWW,	  //页目录的属性位
-					PG_P | PG_USU | PG_RWW);  //页表的属性位
-
+	// lin_mapping_phy(AddrLin,				  //线性地址					//add by visual 2016.5.9
+	// 				MAX_UNSIGNED_INT,		  //物理地址
+	// 				p_proc_current->task.pid, //进程pid					//edit by visual 2016.5.19
+	// 				PG_P | PG_USU | PG_RWW,	  //页目录的属性位
+	// 				PG_P | PG_USU | PG_RWW);  //页表的属性位
+	kern_mapping_4k(AddrLin, p_proc_current->task.pid, MAX_UNSIGNED_INT, PG_P | PG_USU | PG_RWW);
 	//update_heap_ptr(vaddr, 1);
 	//        Scan_free_area(ubud);
 	return AddrLin;

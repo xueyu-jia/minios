@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "proto.h"
 #include "buddy.h"
+#include "memman.h"
 #include "pagetable.h"
 
 
@@ -56,7 +57,7 @@ PRIVATE inline u32 get_pte_index(u32 AddrLin)
 /*======================================================================*
                           get_pde_phy_addr	add by visual 2016.4.28
  *======================================================================*/
-PUBLIC inline u32 get_pde_phy_addr(u32 pid)
+PRIVATE u32 get_pde_phy_addr(u32 pid)
 { //获取页目录物理地址
 	if (proc_table[pid].task.cr3 == 0)
 	{ //还没有初始化页目录
@@ -71,29 +72,36 @@ PUBLIC inline u32 get_pde_phy_addr(u32 pid)
 /*======================================================================*
                           get_pte_phy_addr	add by visual 2016.4.28
  *======================================================================*/
-PUBLIC inline u32 get_pte_phy_addr(u32 pid,		//页目录物理地址		//edit by visual 2016.5.19
-								   u32 AddrLin) //线性地址
-{												//获取该线性地址所属页表的物理地址
-	u32 PageDirPhyAddr = get_pde_phy_addr(pid); //add by visual 2016.5.19
-	if (-1 == PageDirPhyAddr)					//异常处理, added by mingxuan 2021-1-29
+PRIVATE inline u32 get_pte_phy_addr(u32 PageDirPhyAddr,		//页目录物理地址		//edit by visual 2016.5.19
+								   u32 AddrLin) 			//线性地址
+{															//获取该线性地址所属页表的物理地址
+	if (0 == PageDirPhyAddr)								//异常处理, added by mingxuan 2021-1-29
 		disp_str("Get PageDir Physical Address Error!\n");
 
 	return (*((u32 *)K_PHY2LIN(PageDirPhyAddr) + get_pde_index(AddrLin))) & 0xFFFFF000; //先找到该进程页目录首地址，然后计算出该线性地址对应的页目录项，再访问,最后注意4k对齐
 }
 
 /*======================================================================*
-                          get_page_phy_addr	add by visual 2016.5.9
+                          get_page_phy_addr	add by visual 2016.5.9  refact 20240405 jiangfeng
  *======================================================================*/
-PUBLIC inline u32 get_page_phy_addr(u32 pid,			 //页表物理地址				//edit by visual 2016.5.19
+PRIVATE inline u32 get_page_phy_addr_nopid(u32 PageTblPhyAddr,			 //页表物理地址				//edit by visual 2016.5.19
 									u32 AddrLin)		 //线性地址
 {														 //获取该线性地址对应的物理页物理地址
-	u32 PageTblPhyAddr = get_pte_phy_addr(pid, AddrLin); //add by visual 2016.5.19
+
 	if (0 == PageTblPhyAddr)							 //异常处理, added by mingxuan 2021-1-29
 		disp_str("Get PageTbl Physical Address Error!\n");
 
 	return (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin))) & 0xFFFFF000;
 }
 
+PUBLIC u32 get_page_phy_addr(u32 pid, u32 AddrLin) {
+	return get_page_phy_addr_nopid(
+		get_pte_phy_addr(
+			get_pde_phy_addr(pid), 
+			AddrLin), 
+		AddrLin
+		);
+}
 /*======================================================================*
                           pte_exist		add by visual 2016.4.28
  *======================================================================*/
@@ -262,62 +270,7 @@ PUBLIC int init_kernel_page()
 		: "m"(kernel_pde_addr_phy));
 }
 
-/*======================================================================*
-                           page_fault_handle		edit by visual 2016.5.9
- *======================================================================*/
-//modified by mingxuan 2021-1-11
-/*
-PUBLIC void page_fault_handler(	u32 vec_no,//异常编号，此时应该是14，代表缺页异常
-								u32 err_code,//错误码
-								u32 eip,//导致缺页的指令的线性地址
-								u32 cs,//发生错误时的代码段寄存器内容
-								u32 eflags)//时发生错误的标志寄存器内容
-{//缺页中断处理函数
-	//	打印出灰底红字的[Page Fault!]
-	//	修正该页错误
-	//	打印出灰底红字的[Solved]
-
-	//edit by visual 2016.4.28
-	u32 cr2 = read_cr2();				//add by visual 2016.5.9
-	u32 pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->task.pid);//获取该进程页目录物理地址
-	u32 pte_addr_phy_temp = get_pte_phy_addr(p_proc_current->task.pid,cr2);//获取该线性地址对应的页表的物理地址//edit by visual 2016.5.19
-
-	disp_str("\n");	//added by mingxuan 2021-1-11
-	disp_color_str("PAGE FAULT!",0x74);
-	disp_color_str("Cr2=",0x74);	//灰底红字
-	disp_int(cr2);
-	disp_color_str("eip=",0x74);	//灰底红字
-	disp_int(eip);
-	disp_color_str("eflags=",0x74);
-	disp_int(eflags);
-	disp_color_str("cs=",0x74);
-	disp_int(cs);
-	disp_color_str("err_code=",0x74);
-	disp_int(err_code);
-	disp_color_str("Cr3=",0x74);
-	disp_int(p_proc_current->task.cr3);//获取页目录中填写的内容
-	disp_color_str("Dir=",0x74);
-	disp_int(*((u32*)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));//获取页目录中填写的内容
-	disp_color_str("Tbl=",0x74);
-	disp_int(*((u32*)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));//获取页表中填写的内容
-
-	if( 0==pte_exist(pde_addr_phy_temp,cr2))
-	{//页表不存在
-		disp_color_str("[Tbl Fault!]",0x74);	//灰底红字
-		(*((u32*)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2))) |= PG_P;
-		disp_color_str("[Solved]",0x74);
-	}
-	else
-	{//只是缺少物理页
-		disp_color_str("[Page Fault!]",0x74);	//灰底红字
-		(*((u32*)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)))|= PG_P;
-		disp_color_str("[Solved]",0x74);
-	}
-	refresh_page_cache();
-}
-*/
-
-//modified by xw, 18/6/11
+//modified by xw, 18/6/11; mingxuan 2021-1-11
 PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14，代表缺页异常
 							   u32 err_code, //错误码
 							   u32 eip,		 //导致缺页的指令的线性地址
@@ -333,18 +286,18 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	//if page fault happens in kernel, it's an error.
 	if (kernel_initial == 1)
 	{
-		// disp_str("\n");
-		// disp_color_str("Page Fault\n", 0x74);
-		// disp_color_str("eip=", 0x74); //灰底红字
-		// disp_int(eip);
-		// disp_color_str("eflags=", 0x74);
-		// disp_int(eflags);
-		// disp_color_str("cs=", 0x74);
-		// disp_int(cs);
-		// disp_color_str("err_code=", 0x74);
-		// disp_int(err_code);
-		// disp_color_str("Cr2=", 0x74); //灰底红字
-		// disp_int(cr2);
+		disp_str("\n");
+		disp_color_str("Page Fault\n", 0x74);
+		disp_color_str("eip=", 0x74); //灰底红字
+		disp_int(eip);
+		disp_color_str("eflags=", 0x74);
+		disp_int(eflags);
+		disp_color_str("cs=", 0x74);
+		disp_int(cs);
+		disp_color_str("err_code=", 0x74);
+		disp_int(err_code);
+		disp_color_str("Cr2=", 0x74); //灰底红字
+		disp_int(cr2);
 		halt();
 		proc_backtrace();
 	}
@@ -352,33 +305,33 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	//获取该进程页目录物理地址
 	pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->task.pid);
 	//获取该线性地址对应的页表的物理地址
-	pte_addr_phy_temp = get_pte_phy_addr(p_proc_current->task.pid, cr2);
+	pte_addr_phy_temp = get_pte_phy_addr(pde_addr_phy_temp, cr2);
 
 	if (cr2 == cr2_save)
 	{
 		cr2_count++;
 		if (cr2_count == 5)
 		{
-			// disp_str("\n");
-			// disp_color_str("Page Fault\n", 0x74);
-			// disp_color_str("eip=", 0x74); //灰底红字
-			// disp_int(eip);
-			// disp_color_str("eflags=", 0x74);
-			// disp_int(eflags);
-			// disp_color_str("cs=", 0x74);
-			// disp_int(cs);
-			// disp_color_str("err_code=", 0x74);
-			// disp_int(err_code);
-			// disp_color_str("Cr2=", 0x74); //灰底红字
-			// disp_int(cr2);
-			// disp_color_str("Cr3=", 0x74);
-			// disp_int(p_proc_current->task.cr3);
-			// //获取页目录中填写的内容
-			// disp_color_str("Pde=", 0x74);
-			// disp_int(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));
-			// //获取页表中填写的内容
-			// disp_color_str("Pte=", 0x74);
-			// disp_int(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
+			disp_str("\n");
+			disp_color_str("Page Fault\n", 0x74);
+			disp_color_str("eip=", 0x74); //灰底红字
+			disp_int(eip);
+			disp_color_str("eflags=", 0x74);
+			disp_int(eflags);
+			disp_color_str("cs=", 0x74);
+			disp_int(cs);
+			disp_color_str("err_code=", 0x74);
+			disp_int(err_code);
+			disp_color_str("Cr2=", 0x74); //灰底红字
+			disp_int(cr2);
+			disp_color_str("Cr3=", 0x74);
+			disp_int(p_proc_current->task.cr3);
+			//获取页目录中填写的内容
+			disp_color_str("Pde=", 0x74);
+			disp_int(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));
+			//获取页表中填写的内容
+			disp_color_str("Pte=", 0x74);
+			disp_int(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
 			halt();
 			proc_backtrace();
 		}
@@ -430,82 +383,6 @@ PUBLIC u32 vmalloc(	u32 size)
 }
 */
 
-/*======================================================================*
-*                          lin_mapping_phy		add by visual 2016.5.9
-*将线性地址映射到物理地址上去,函数内部会分配物理地址
-*======================================================================*/
-PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
-						   u32 phy_addr,	  //物理地址,若为MAX_UNSIGNED_INT(0xFFFFFFFF)，则表示需要由该函数判断是否分配物理地址，否则将phy_addr直接和AddrLin建立映射
-						   u32 pid,			  //进程pid						//edit by visual 2016.5.19
-						   u32 pde_Attribute, //页目录中的属性位
-						   u32 pte_Attribute) //页表中的属性位
-{
-	u32 pte_addr_phy;
-	u32 pde_addr_phy = get_pde_phy_addr(pid); //add by visual 2016.5.19
-
-	if (0 == pte_exist(pde_addr_phy, AddrLin))
-	{ //页表不存在，创建一个，并填进页目录中
-		//pte_addr_phy = (u32)do_kmalloc_4k(); //为页表申请一页
-		pte_addr_phy = (u32)phy_kmalloc_4k(); //为页表申请一页	//modified by mingxuan 2021-8-16
-
-		memset((void *)K_PHY2LIN(pte_addr_phy), 0, num_4K); //add by visual 2016.5.26
-
-		if (pte_addr_phy < 0 || (pte_addr_phy & 0x3FF) != 0) //add by visual 2016.5.9
-		{
-			disp_color_str("lin_mapping_phy Error:pte_addr_phy", 0x74);
-			return -1;
-		}
-
-		write_page_pde(pde_addr_phy,   //页目录物理地址
-					   AddrLin,		   //线性地址
-					   pte_addr_phy,   //页表物理地址
-					   pde_Attribute); //属性
-	}
-	else
-	{											  //页表存在，获取该页表物理地址
-		pte_addr_phy = get_pte_phy_addr(pid,	  //进程pid			//edit by visual 2016.5.19
-										AddrLin); //线性地址
-	}
-
-	if (MAX_UNSIGNED_INT == phy_addr) //add by visual 2016.5.19
-	{								  //由函数申请内存
-		if (0 == phy_exist(pte_addr_phy, AddrLin))
-		{ //无物理页，申请物理页并修改phy_addr
-			if (AddrLin >= K_PHY2LIN(0))
-				//phy_addr = do_kmalloc_4k();//从内核物理地址申请一页
-				phy_addr = phy_kmalloc_4k(); //从内核物理地址申请一页	//modified by mingxuan 2021-8-16
-			else
-			{
-				//disp_str("%");
-				//phy_addr = do_malloc_4k();//从用户物理地址空间申请一页
-				phy_addr = phy_malloc_4k(); //从用户物理地址空间申请一页	//modified by mingxuan 2021-8-14
-			}
-		}
-		else
-		{
-			//有物理页，什么也不做,直接返回，必须返回
-			return 0;
-		}
-	}
-	else
-	{	//指定填写phy_addr
-		//不用修改phy_addr
-	}
-
-	if (phy_addr < 0 || (phy_addr & 0x3FF) != 0)
-	{
-		disp_color_str("lin_mapping_phy:phy_addr ERROR", 0x74);
-		return -1;
-	}
-
-	write_page_pte(pte_addr_phy,   //页表物理地址
-				   AddrLin,		   //线性地址
-				   phy_addr,	   //物理页物理地址
-				   pte_Attribute); //属性
-	refresh_page_cache();
-
-	return 0;
-}
 
 //added by mingxuan 2021-8-25
 PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
@@ -544,9 +421,10 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 	{								  //由函数申请内存
 		if (0 == phy_exist(pte_addr_phy, AddrLin))
 		{ //无物理页，申请物理页并修改phy_addr
-			if (AddrLin >= K_PHY2LIN(0))
+			if (AddrLin >= K_PHY2LIN(0)){
 				//phy_addr = do_kmalloc_4k();//从内核物理地址申请一页
 				phy_addr = phy_kmalloc_4k(); //从内核物理地址申请一页	//modified by mingxuan 2021-8-16
+			}
 			else
 			{
 				//disp_str("%");
@@ -557,7 +435,9 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 		else
 		{
 			//有物理页，什么也不做,直接返回，必须返回
-			return 0;
+			// return 0;
+			// 20240405 对于已经存在的页表项可能需要更新权限属性，故不能直接返回
+			phy_addr = get_page_phy_addr_nopid(pte_addr_phy, AddrLin);
 		}
 	}
 	else
@@ -570,6 +450,9 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 		disp_color_str("lin_mapping_phy:phy_addr ERROR", 0x74);
 		return -1;
 	}
+	if(phy_addr == 0) {
+		pte_Attribute &= ~PG_P;
+	}
 
 	write_page_pte(pte_addr_phy,   //页表物理地址
 				   AddrLin,		   //线性地址
@@ -580,6 +463,19 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 	return 0;
 }
 
+/*======================================================================*
+*                          lin_mapping_phy		add by visual 2016.5.9
+*将线性地址映射到物理地址上去,函数内部会分配物理地址
+*======================================================================*/
+PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
+						   u32 phy_addr,	  //物理地址,若为MAX_UNSIGNED_INT(0xFFFFFFFF)，则表示需要由该函数判断是否分配物理地址，否则将phy_addr直接和AddrLin建立映射
+						   u32 pid,			  //进程pid						//edit by visual 2016.5.19
+						   u32 pde_Attribute, //页目录中的属性位
+						   u32 pte_Attribute) //页表中的属性位
+{
+	u32 pde_addr_phy = get_pde_phy_addr(pid); //add by visual 2016.5.19
+	return lin_mapping_phy_nopid(AddrLin, phy_addr, pde_addr_phy, pde_Attribute, pte_Attribute);	
+}
 
 // used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
 PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
@@ -607,7 +503,7 @@ void clear_kernel_pagepte_low()
 {
 	u32 page_num = *(u32 *)PageTblNumAddr;
 	memset((void *)(K_PHY2LIN(KernelPageTblAddr)), 0, 4 * page_num);			 //从内核页目录中清除内核页目录项前8项
-	memset((void *)(K_PHY2LIN(KernelPageTblAddr + 0x1000)), 0, 4096 * page_num); //从内核页表中清除线性地址的低端映射关系
+	memset((void *)(K_PHY2LIN(KernelPageTblAddr + num_4K)), 0, num_4K * page_num); //从内核页表中清除线性地址的低端映射关系
 	refresh_page_cache();
 }
 
@@ -620,7 +516,7 @@ void clear_kernel_pagepte_low()
 //added by mingxuan 2021-1-4
 PUBLIC void clear_pte(u32 pid, u32 AddrLin)
 {
-	u32 pte_phy_addr = get_pte_phy_addr(pid, AddrLin);
+	u32 pte_phy_addr = get_pte_phy_addr(get_pde_phy_addr(pid), AddrLin);
 	write_page_pte(pte_phy_addr, AddrLin, 0, 0);
 }
 
@@ -636,21 +532,14 @@ PUBLIC void clear_pde(u32 pid, u32 AddrLin)
 //added by mingxuan 2021-1-4
 PUBLIC void free_phypage(u32 pid, u32 AddrLin)
 {
-	//u32 page_phy_addr = get_page_phy_addr(pid, AddrLin);
-
-	//do_free_4k(page_phy_addr);
-	//phy_free_4k(page_phy_addr); //modified by mingxuan 2021-8-14
-	//clear_pte(pid, AddrLin);
-
 	ker_ufree_4k(pid,AddrLin);
-
 }
 
 //释放页表，并清除该页表对应的页目录表项
 //added by mingxuan 2021-1-4
 PUBLIC void free_pagetbl(u32 pid, u32 AddrLin)
 {
-	u32 pagetbl_phy_addr = get_pte_phy_addr(pid, AddrLin);
+	u32 pagetbl_phy_addr = get_pte_phy_addr(get_pde_phy_addr(pid), AddrLin);
 	//do_kfree_4k(pagetbl_phy_addr);
 	phy_kfree_4k(pagetbl_phy_addr); //modified by mingxuan 2021-8-16
 	clear_pde(pid, AddrLin);
@@ -663,6 +552,7 @@ PUBLIC void free_pagedir(u32 pid)
 	u32 pagedir_phy_addr = get_pde_phy_addr(pid);
 	//do_kfree_4k(pagedir_phy_addr);
 	phy_kfree_4k(pagedir_phy_addr); //modified by mingxuan 2021-8-16
+	p_proc_current->task.cr3 = 0;
 }
 
 //added by mingxuan 2021-1-7
@@ -683,6 +573,7 @@ PUBLIC u32 get_seg_base(pid, type) //modified by mingxuan 2021-8-17
 		return proc_table[pid].task.memmap.arg_lin_base;
 	else if (type == MEMMAP_KERNEL)
 		return proc_table[pid].task.memmap.kernel_lin_base;
+	return 0;
 }
 
 //added by mingxuan 2021-1-7
@@ -703,6 +594,7 @@ PUBLIC u32 get_seg_limit(pid, type) //modified by mingxuan 2021-8-17
 		return proc_table[pid].task.memmap.arg_lin_limit;
 	else if (type == MEMMAP_KERNEL)
 		return proc_table[pid].task.memmap.kernel_lin_limit;
+	return 0;
 }
 
 //释放进程的某个段对应的所有物理页
@@ -737,7 +629,7 @@ PUBLIC void free_seg_phypage(u32 pid, u8 type)
 	if (type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
 	{
 		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射,如何处理还需要再思考, mingxuan 2021-1-7
-		for (addr_lin = base; addr_lin > limit; addr_lin -= num_4K)
+		for (addr_lin = limit; addr_lin < UPPER_BOUND_4K(base); addr_lin += num_4K)
 		{
 			free_phypage(pid, addr_lin);
 		}
@@ -745,7 +637,7 @@ PUBLIC void free_seg_phypage(u32 pid, u8 type)
 
 	else //释放其他段
 	{
-		for (addr_lin = base; addr_lin < limit; addr_lin += num_4K)
+		for (addr_lin = base; addr_lin < UPPER_BOUND_4K(limit); addr_lin += num_4K)
 		{
 			free_phypage(pid, addr_lin);
 		}
@@ -757,10 +649,11 @@ PUBLIC void free_seg_phypage(u32 pid, u8 type)
 PUBLIC void free_all_phypage(u32 pid)
 {
 	//释放代码段，text_hold为1就释放掉.为0不处理
-	if (proc_table[pid].task.info.text_hold == 1)
-	{
-		free_seg_phypage(pid, MEMMAP_TEXT);
-	}
+	// if (proc_table[pid].task.info.text_hold == 1)
+	// {
+	// 全局页管理引入计数，不用再管代码持有问题
+	free_seg_phypage(pid, MEMMAP_TEXT);
+	// }
 	free_seg_phypage(pid, MEMMAP_DATA);
 	free_seg_phypage(pid, MEMMAP_VPAGE);
 	free_seg_phypage(pid, MEMMAP_HEAP);
@@ -786,7 +679,7 @@ PUBLIC void free_seg_pagetbl(u32 pid, u8 type)
 	//释放栈
 	if (type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
 	{
-		for (addr_lin = base - num_4K; addr_lin > limit; addr_lin -= num_4M)
+		for (addr_lin = limit; addr_lin < base; addr_lin += num_4M)
 		{
 			if (1 == pte_exist(get_pde_phy_addr(pid), addr_lin)) //解决重复释放的问题
 			{
@@ -909,7 +802,7 @@ void update_heap_ptr(u32 vaddr,int tag)
 *======================================================================*/
 u32 get_pte(u32 addrLin)
 {
-	u32 pte_phy_addr = get_pte_phy_addr(p_proc_current->task.pid, addrLin);
+	u32 pte_phy_addr = get_pte_phy_addr(get_pde_phy_addr(p_proc_current->task.pid), addrLin);
 	u32 pte_index = get_pte_index(addrLin);
 	return (*((u32 *)K_PHY2LIN(pte_phy_addr) + pte_index));
 }

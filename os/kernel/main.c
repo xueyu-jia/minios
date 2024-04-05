@@ -230,11 +230,11 @@ PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u3
 		proc->task.esp_save_int->eip = eip;
 }
 
-// [start,end] 地址段分配页表，如果不存在分配物理页并填写页表，否则忽略 固定地址start<end
+// [start,end) 地址段分配页表，如果不存在分配物理页并填写页表，否则忽略 固定地址start<end
 PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
 	u32 addr;
 	int err_temp;
-	for (addr = low; addr <= high; addr += num_4K)
+	for (addr = low; addr < UPPER_BOUND_4K(high); addr += num_4K)
 	{ 
 		err_temp=ker_umalloc_4k(addr,pid,attr);          //edited by wang 2021.8.27
 
@@ -248,7 +248,7 @@ PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
 
 // 调用此函数分配页表
 PRIVATE void init_proc_pages(PROCESS* p_proc){
-	int pid = p_proc - proc_table;
+	int pid = p_proc->task.pid;
 	if (0 != init_proc_page(pid))
 	{
 		disp_color_str("kernel_main Error:init_proc_page", 0x74);

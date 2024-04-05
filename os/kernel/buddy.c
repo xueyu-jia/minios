@@ -237,8 +237,11 @@ PRIVATE void add_to_free_list(page *page, buddy *bud,u32 order) {
 	} else {
 		struct page * node;
 		node = area->free_list;
-		while (node->next) {
+		while (node != page && node->next) {
 			node = node->next;
+		}
+		if(node == page) {
+			disp_color_str("buddy: add_to_free_list, already in freelist\n", 0x74);
 		}
 		node->next = page;
 	}

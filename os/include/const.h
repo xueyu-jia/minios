@@ -111,6 +111,7 @@
 #define	BigKernelSize			0x2000000           //大内核的大小32M，edited by wang 2021.8.27 
 #define K_PHY2LIN(x)		(((u32)x)+0xC0000000)	//内核中物理地址转线性地址		//add by visual 2016.5.10
 #define K_LIN2PHY(x)		(((u32)x)-0xC0000000)	//added by xw, 18/8/27
+#define UPPER_BOUND_4K(x)	(((x)&0xFFF)?(((x)&0xFFFFF000) + num_4K):(x))
 #define num_4B	0x4			//4B大小
 #define num_1K	0x400		//1k大小
 #define num_4K	0x1000		//4k大小

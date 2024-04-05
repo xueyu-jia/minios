@@ -8,30 +8,15 @@
 #include "elf.h"
 #include "vfs.h"//added by xyx && wjh 2021-12-31
 #include "buddy.h"// added by wang 2021.8.27
+#include "memman.h"
+#include "pagetable.h"
 
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute);
+PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(char *path);
 
-//PUBLIC u32 do_execve(char *path);  deleted by xyx&&wjh 2021-12-31
-//PUBLIC u32 kern_execve(char *path); deleted by xyx&&wjh 2021-12-31
-
-// PRIVATE char *exec_path(char* path);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
-
-/*  deleted by xyx&&wjh 2021-12-31   */
-//added by mingxuan 2021-8-11
-//PUBLIC u32 sys_execve(void *uesp)
-//{
-//	return do_execve(get_arg(uesp, 1));
-//}
-
-//PUBLIC u32 do_execve(char *path)
-//{
-	//return kern_execve(path);
-//}
-/*   end deleted  */
 
 
 /*    added by xyx&&wjh 2021.12.31  */
@@ -66,18 +51,11 @@ PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ])
 
 
 /*======================================================================*
-*                          sys_exec		add by visual 2016.5.23
+*                          kern_exec		add by visual 2016.5.23
 *exec系统调用功能实现部分
 *======================================================================*/
-//PUBLIC u32 sys_execve(char *path)
-//PUBLIC u32 do_execve(char *path)	//modified by mingxuan 2021-8-11
 PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mingxuan 2021-8-11
 {
-	//disable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
-	Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
-	Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
-	Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
 	u32 addr_lin;
 	u32 err_temp;
 	u32 pde_addr_phy, addr_phy_temp;
@@ -87,22 +65,8 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	if (0 == path)
 	{
 		disp_color_str("exec: path ERROR!", 0x74);
-
-		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
-		//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
-		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
-		//因proc_stat和we_flag的改动而改动
-
-		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
 		return -1;
 	}
-
-
-    //path = exec_path(path);//added by xyx&&wjh 2021.12.31
 
 	/*******************打开文件************************/
 	u32 fd = kern_vfs_open(path, O_RDONLY);
@@ -110,71 +74,17 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	if (fd == -1)
 	{
 		disp_str("sys_exec open error!\n"); //added by mingxuan 2020-12-22
-		//printf("sys_exec open error!\n");	//deleted by mingxuan 2019-5-23
-
-		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它
-		//因此需要把state设置为IDLE，否则会发生缺页, mingxuan 2021-1-30
-		//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
-
-		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-		//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-		// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
-		//因proc_stat和we_flag的改动而改动
-
-		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
 		return -1;
 	}
-	// u32 fd = fake_open(path,"r");	//modified by xw, 18/5/30
+
+	Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
+	Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
+	Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
 
 	/*************获取elf信息**************/
 	read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
 
-    /*    added by xyx&&wjh   2021-12-31  */ //目前这个execve传参算是完全搞不懂了，自己写一个吧
-    // char **p = argv;
-	
-	// char arg_stack[num_4B];
-	// int stack_len = 0;
-
-	// if (p != NULL)
-	// {
-	// 	while (*p++)
-	// 	{
-	// 		stack_len += sizeof(char *);
-	// 	}
-
-	// 	//disp_int(stack_len,0x71);
-
-	// 	*((int*)(&arg_stack[stack_len])) = 0;
-	// 	stack_len += sizeof(char*);
-	// 	//disp_int(stack_len,0x74);
-		
-	// 	int tmp;
-	// 	char **q = (char**)arg_stack;
-	// 	for (p = argv; *p != 0; p++) {
-	// 		*q++ = &arg_stack[stack_len];
-	// 		strcpy(&arg_stack[stack_len], *p);
-	// 		tmp = strlen(*p);
-	// 		//disp_int(tmp,0x74);
-	// 		stack_len += tmp;
-
-	// 		arg_stack[stack_len] = 0;
-	// 		stack_len++;
-	// 		//disp_int(stack_len,0x74);
-	// 	}
-	// 	u8* orig_stack = (u8*)(ArgLinBase);
-
-	// 	//disp_int(orig_stack);
-
-	// 	int delta = (int)(void*)arg_stack - (int)orig_stack;
-	// 	//disp_int(delta, 0x71);
-	// 	int argc = 0;
-	// 	if (stack_len) {	// has args
-	// 		char **q = (char**)arg_stack;
-	// 		for (; *q != 0; q++,argc++)
-	// 			*q -= delta;
-	// 	}
-	// }
+    //原有execve传参重构，自己写一个吧 2023.12.25
 	// 处理参数 argc 放在 ebp + 8 (ArgLinBase - 4); argv 放在 ebp + 12
 	// err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
 	// low<--               ---stack---           -->high(base)
@@ -191,7 +101,7 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	}
 	char** args_base = (char**)(ArgLinBase + 4);
 	char* args_raw_base = ((char*)args_base) + num_4B * (argc + 1);
-	*(int*)(ArgLinBase-4) = argc;
+	// *(int*)(ArgLinBase-4) = argc;
 	*(char***)(ArgLinBase) = args_base;
 	for(char** p = argv; p != 0 && *p != 0; p++){
 		len = strlen(*p);
@@ -201,11 +111,11 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	}
 	*args_base = 0;
 	
-     /*   end added   */
-
 	/*************释放进程内存****************/
 	//目前还没有实现 思路是：数据、代码根据text_info和data_info属性决定释放深度，其余内存段可以完全释放
-
+	int pid = p_proc_current->task.pid;
+	free_seg_phypage(pid, MEMMAP_TEXT);
+	free_seg_phypage(pid, MEMMAP_DATA);
 	/*************根据elf的program复制文件信息**************/
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 	if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr))
@@ -223,37 +133,15 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
-		goto close_on_error; //使用了const指针传递
+		goto close_on_error;
 	}
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
 	/*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
 	exec_pcb_init(path);
-	// addr_lin = p_proc_current->task.memmap.arg_lin_base ;
-	// memcpy(addr_lin, arg_stack, num_4K);
-
-	// /*    added by xyx&&wjh 2021-12-31  */
-	// for( addr_lin = p_proc_current->task.memmap.arg_lin_base ; addr_lin < p_proc_current->task.memmap.arg_lin_limit ; addr_lin+=num_4K )
-	// {
-	// 	err_temp = ker_umalloc_4k(addr_lin, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
-		
-	// 	if( err_temp!=0 )
-	// 	{
-	// 		disp_color_str("kernel_main Error:lin_mapping_phy",0x74);
-	// 		//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
-	// 		//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-	// 		p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
-
-	// 		//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-	// 		p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-
-	// 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-	// 		return -1;
-	// 	}
-	// 	memcpy((void*)addr_lin, (void*)arg_stack, num_4K);
-	// }
-   /*   end added   */
-
+	free_seg_phypage(pid, MEMMAP_VPAGE);
+	free_seg_phypage(pid, MEMMAP_HEAP);
+	free_seg_phypage(pid, MEMMAP_STACK);
 	/***********************代码、数据、堆、栈***************************/
 	//代码、数据已经处理，将eip重置即可
 	//p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;						 //进程入口线性地址 deleted by lcy 2023.10.25
@@ -269,51 +157,22 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	//*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;		 //added by xw, 17/12/11
 	*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = (u32)p_proc_current->task.memmap.stack_lin_base; //added by lcy 2023.10.25
 
-/*    added by xyx&&wjh  2021-12-31  */
-	// p_proc_current->task.regs.ecx = argc; /* argc */
-	// *((u32*)(p_reg + ECXREG - P_STACKTOP)) = p_proc_current->task.regs.ecx;
-	// p_proc_current->task.regs.edx = (u32)orig_stack; /* argv */
-	// *((u32*)(p_reg + EDXREG - P_STACKTOP)) = p_proc_current->task.regs.edx;
-/*   end added   */
-
 
 	//u32 stack_lin_base = addr_lin=p_proc_current->task.memmap.stack_lin_base - num_4K;	//added vy mingxuan 2021-8-24
-	for (addr_lin = p_proc_current->task.memmap.stack_lin_base; addr_lin > p_proc_current->task.memmap.stack_lin_limit; addr_lin -= num_4K)
+	for (addr_lin = p_proc_current->task.memmap.stack_lin_limit; 
+		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.stack_lin_base); addr_lin += num_4K)
 	{
-		/*
-		err_temp = lin_mapping_phy(	addr_lin,//线性地址						//add by visual 2016.5.9
-									MAX_UNSIGNED_INT,//物理地址						//edit by visual 2016.5.19
-									p_proc_current->task.pid,//进程pid			//edit by visual 2016.5.19
-									PG_P  | PG_USU | PG_RWW,//页目录的属性位
-									PG_P  | PG_USU | PG_RWW);//页表的属性位
-*/
 		//进程栈上分配物理页，所以调用ker_umalloc_4k,  wang 2021.8.27
 		err_temp = ker_umalloc_4k(addr_lin, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW); //edited by wang 2021.8.27
 		if (err_temp != 0)
 		{
 			disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
 
-			//如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
-			//因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-			//p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
-
-			//提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan 2021-1-30
-			//p_proc_current->task.we_flag = ZOMBY; //added by mingxuan 2021-1-30
-			// p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
-			//因proc_stat和we_flag的改动而改动
-
-			//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
 			goto close_on_error;
 		}
 	}
 
-	//added by mingxuan 2021-8-24, for test
-	//u32 page_phy_addr = get_page_phy_addr(p_proc_current->task.pid, p_proc_current->task.memmap.stack_lin_limit);
-	//page_phy_addr = get_page_phy_addr(p_proc_current->task.pid, p_proc_current->task.memmap.stack_lin_limit + num_4B);
-	//page_phy_addr = get_page_phy_addr(p_proc_current->task.pid, p_proc_current->task.memmap.stack_lin_limit + num_4B + num_4B);
-
-	//堆    用户还没有申请，所以没有分配，只在PCB表里标示了线性起始位置
+	*(int*)(ArgLinBase-4) = argc;
 
 	kern_vfs_close(fd);
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
@@ -321,10 +180,16 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	//disp_color_str("]",0x72);//灰底绿字
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
-	//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
-
 	return 0;
+fatal_error:
+	kern_kfree(Echo_Ehdr);
+	kern_kfree(Echo_Phdr);
+	kern_kfree(Echo_Shdr);
+	kern_exit(-1);
 close_on_error:
+	kern_kfree(Echo_Ehdr);
+	kern_kfree(Echo_Phdr);
+	kern_kfree(Echo_Shdr);
 	kern_vfs_close(fd);
 	return -1;
 }
@@ -364,7 +229,7 @@ close_on_error:
 *                          exec_elfcpy		add by visual 2016.5.23
 *复制elf中program到内存中
 *======================================================================*/
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
+PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
 {
 	u32 lin_addr = Echo_Phdr->p_vaddr;
 	u32 lin_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_memsz;
@@ -373,39 +238,6 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	u32 file_limit = Echo_Phdr->p_offset + Echo_Phdr->p_filesz;
 
 	u32 lin_file_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_filesz; //added by mingxuan 2021-3-16
-
-	/*	//deleted by mingxuan 2021-1-29
-	u8 ch;
-	//u32 pde_addr_phy = get_pde_phy_addr(p_proc_current->task.pid); //页目录物理地址			//delete by visual 2016.5.19
-	//u32 addr_phy = do_malloc(Echo_Phdr->p_memsz);//申请物理内存					//delete by visual 2016.5.19
-
-	for(  ; lin_addr<lin_limit ; lin_addr++,file_offset++ )
-	{
-		lin_mapping_phy(lin_addr,MAX_UNSIGNED_INT,p_proc_current->task.pid,PG_P  | PG_USU | PG_RWW,attribute);//说明：PDE属性尽量为读写，因为它要映射1024个物理页，可能既有数据，又有代码	//edit by visual 2016.5.19
-		if( file_offset<file_limit )
-		{//文件中还有数据，正常拷贝
-			//modified by xw, 18/5/30
-			// seek(file_offset);
-			// read(fd,&ch,1);
-
-			//fake_seek(file_offset); //deleted by mingxuan 2019-5-22
-			//real_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2019-5-22
-			do_vlseek(fd, file_offset, SEEK_SET);	//modified by mingxuan 2019-5-24
-
-			//fake_read(fd,&ch,1); //deleted by mingxuan 2019-5-22
-			//real_read(fd, &ch, 1); //modified by mingxuan 2019-5-22
-			do_vread(fd, &ch, 1);	//modified by mingxuan 2019-5-24
-			//~xw	file_offset += num_4K;	//added by mingxuan 2021-3-9
-
-			*((u8*)lin_addr) = ch;//memcpy((void*)lin_addr,&ch,1);
-		}
-		else
-		{
-			//已初始化数据段拷贝完毕，剩下的是未初始化的数据段，在内存中填0
-			*((u8*)lin_addr) = 0;//memset((void*)lin_addr,0,1);
-		}
-	}
-	*/
 
 	// modified by mingxuan 2021-1-29, start
 	char *buf = kern_kmalloc_4k();; // added by mingxuan 2020-12-14
@@ -417,11 +249,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	// 如lin_addr=0x8051FF4, lin_limit=0x805C220 末尾0x805C000~0x805C220未分配
 	// 下面的复制数据同样是这样的写法, 但是复制数据是应当按照elf中的位置完全对应的，最后一次复制也做了处理，所以没有问题
 	// for (; lin_addr < lin_limit; lin_addr+=num_4K, file_offset+=num_4K)
-	for (; lin_addr < lin_limit; lin_addr = (lin_addr & 0xFFFFF000) + num_4K)
-	{
-		//lin_mapping_phy(lin_addr, MAX_UNSIGNED_INT, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, attribute);
-		ker_umalloc_4k(lin_addr,p_proc_current->task.pid,attribute);           //edited by wang 2021.8.27
-	}
+	// 页表操作移到exec_load
 
 	lin_addr = Echo_Phdr->p_vaddr;	  // added by mingxuan 2020-12-14
 	file_offset = Echo_Phdr->p_offset; // added by mingxuan 2020-12-14
@@ -430,7 +258,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	for_flag = 0; //added by mingxuan 2021-8-8
 
 	//for(  ; lin_addr<lin_limit ; lin_addr+=num_4K,file_offset+=num_4K )	// modified by mingxuan 2020-12-14
-	for (; lin_addr < lin_limit, file_offset < file_limit; lin_addr += num_4K) // modified by mingxuan 2021-3-16
+	for (; lin_addr < lin_limit && file_offset < file_limit; ) // modified by mingxuan 2021-3-16
 	{
 		for_flag = 1; //表示进入了for循环，离开for循环时需要做变量调整 //added by mingxuan 2021-3-16
 
@@ -442,19 +270,17 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 			kern_vfs_read(fd, buf, num_4K);
 			memcpy(lin_addr, buf, num_4K); //modified by mingxuan 2020-12-14
 			file_offset += num_4K;
+			lin_addr += num_4K;
 		}
 		else
 		{ //剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
 
-			//do_vlseek(fd, file_offset, SEEK_SET); // added by mingxuan 2020-12-14
-
-			//memcpy(buf, 0, num_4K);	//给buf清除脏数据,清0	// added by mingxuan 2020-12-14 //deleted by mingxuan 2020-12-18
 			u32 left_size = file_limit - file_offset;
 			kern_vfs_lseek(fd, file_offset, SEEK_SET); //modified by mingxuan 2021-8-19
 			kern_vfs_read(fd, buf, left_size);
 			memcpy(lin_addr, buf, left_size); //modified by mingxuan 2021-3-16
-
-			file_offset = file_offset + left_size; //added by mingxuan 2021-3-16
+			file_offset += left_size; //added by mingxuan 2021-3-16
+			lin_addr += left_size;
 		}
 	}
 	// modified by mingxuan 2021-1-29, end
@@ -466,13 +292,13 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr, u32 attribute) // 这部�
 	// 	lin_addr -= num_4K;	   //added by mingxuan 2021-3-16
 	// 	file_offset -= num_4K; //added by mingxuan 2021-3-16
 	// }
-	// 后面 lin_addr 和 file_offset都不再使用
-
+	// 后面 lin_addr 和 file_offset都不再使用 20240402
 	//added by mingxuan 2021-3-16
 	if (lin_limit - lin_file_limit > 0)
 	{
 		memset(lin_file_limit, 0, lin_limit - lin_file_limit);
 	}
+	kern_kfree_4k(buf);
 
 	return 0;
 }
@@ -490,65 +316,51 @@ PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Ech
 		disp_color_str("exec_load: elf ERROR!", 0x74);
 		return -1;
 	}
-
-	//added by mingxuan 2021-1-31
-	u32 min_text_lin_base = 0x8048000; //用来处理text_lin_*存在多个段的情况
-	u32 max_text_lin_base = 0x8048000; //用来处理text_lin_*存在多个段的情况
-
-	//我们还不能确定elf中一共能有几个program，但就目前我们查看过的elf文件中，只出现过两中program，一种.text（R-E）和一种.data（RW-）
-	for (ph_num = 0; ph_num < Echo_Ehdr->e_phnum; ph_num++)
-	{
-		if (0 == Echo_Phdr[ph_num].p_memsz)
-		{ //最后一个program
-			break;
-		}
-
-		//if( Echo_Phdr[ph_num].p_flags == 0x5 ) //0x101,可读可执行
-		if (Echo_Phdr[ph_num].p_flags == 0x4 || Echo_Phdr[ph_num].p_flags == 0x5) //100b:只读; 101b:可读可执行	//modified by mingxuan 2021-1-30
-		//这样修改的原因：把.text, .rodata, .frame合并，一起赋给text_lin_*, mingxuan 2021-1-31
-		{ //.text .rodata .eh_frame
-
-			//added by mingxuan 2020-12-25
-			if (p_proc_current->task.pid >= NR_K_PCBS) //前4个是系统进程,pid大于4的是用户进程 此处应使用宏，硬编码之后进程数都变了也找不到位置改
-			{
-				//清空子进程对代码段的映射的所有页表项
-				//modified by mingxuan 2021-1-4
-				u32 addr_lin = 0;
-				for (addr_lin = Echo_Phdr[ph_num].p_vaddr; addr_lin < Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz; addr_lin += num_4K)
-				{
-					clear_pte(p_proc_current->task.pid, addr_lin);
+	u32 text_lin_base = 0, text_lin_limit = 0, data_lin_base = 0, data_lin_limit = 0;
+	Elf32_Phdr* phdr;
+	for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum; ph_num++, phdr++) {
+		if (phdr->p_type == ELF_LOAD) {
+			if(phdr->p_flags == 0x6) { // have read/write permission
+				if(data_lin_base) {
+					data_lin_base = min(data_lin_base, phdr->p_vaddr);
+					data_lin_limit = max(data_lin_limit, phdr->p_vaddr + phdr->p_memsz);
+				} else {
+					data_lin_base = phdr->p_vaddr;
+					data_lin_limit = phdr->p_vaddr + phdr->p_memsz;
+				}
+			} else if(phdr->p_flags & 0x4){ // no write, can read
+				if(text_lin_base) {
+					text_lin_base = min(text_lin_base, phdr->p_vaddr);
+					text_lin_limit = max(text_lin_limit, phdr->p_vaddr + phdr->p_memsz);
+				} else {
+					text_lin_base = phdr->p_vaddr;
+					text_lin_limit = phdr->p_vaddr + phdr->p_memsz;
 				}
 			}
-
-			exec_elfcpy(fd, &Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWR); //进程代码段
-
-			//modified by mingxuan 2021-1-30
-			//如果存在多个段(.text .rodata .eh_frame),text_lin_base一定是最低端地址
-			if (Echo_Phdr[ph_num].p_vaddr <= min_text_lin_base)
-			{
-				min_text_lin_base = Echo_Phdr[ph_num].p_vaddr;
-				p_proc_current->task.memmap.text_lin_base = min_text_lin_base;
-			}
-			//如果存在多个段(.text .rodata .eh_frame),text_lin_limit一定是最高地址的lin_base+最高地址的段的size
-			if (Echo_Phdr[ph_num].p_vaddr >= max_text_lin_base)
-			{
-				max_text_lin_base = Echo_Phdr[ph_num].p_vaddr;
-				p_proc_current->task.memmap.text_lin_limit = max_text_lin_base + Echo_Phdr[ph_num].p_memsz;
-			}
-		}
-		else if (Echo_Phdr[ph_num].p_flags == 0x6)						//110，读写
-		{																//.data .bss
-			exec_elfcpy(fd, &Echo_Phdr[ph_num], PG_P | PG_USU | PG_RWW); //进程数据段
-			p_proc_current->task.memmap.data_lin_base = Echo_Phdr[ph_num].p_vaddr;
-			p_proc_current->task.memmap.data_lin_limit = Echo_Phdr[ph_num].p_vaddr + Echo_Phdr[ph_num].p_memsz;
-		}
-
-		else
-		{
-			disp_color_str("exec_load: unKnown elf'program!", 0x74);
-			return -1;
 		}
 	}
+	u32 lin_addr;
+	for (lin_addr = data_lin_base; lin_addr < UPPER_BOUND_4K(data_lin_limit); lin_addr += num_4K)
+	{
+		ker_umalloc_4k(lin_addr,p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+		// disp_int(lin_addr);
+		// disp_str("=>");
+		// disp_int(get_page_phy_addr(p_proc_current->task.pid, lin_addr));
+		// disp_str("\n");
+	}
+	for (lin_addr = text_lin_base; lin_addr < UPPER_BOUND_4K(text_lin_limit); lin_addr += num_4K)
+	{
+		ker_umalloc_4k(lin_addr,p_proc_current->task.pid, PG_P | PG_USU | PG_RWR);
+	}
+	for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum; ph_num++, phdr++) {
+		if (phdr->p_type == ELF_LOAD) {
+			exec_elfcpy(fd, phdr);
+		}
+	}
+	p_proc_current->task.memmap.data_lin_base = data_lin_base;
+	p_proc_current->task.memmap.data_lin_limit = data_lin_limit;
+	p_proc_current->task.memmap.text_lin_base = text_lin_base;
+	p_proc_current->task.memmap.text_lin_limit = text_lin_limit;
 	return 0;
 }
 
@@ -590,7 +402,6 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.memmap.stack_lin_base = StackLinBase;				   //栈基址
 	p_proc_current->task.memmap.stack_lin_limit = StackLinBase - 0x4000;	   //栈界限（使用时注意栈的生长方向）
 	p_proc_current->task.memmap.arg_lin_base = ArgLinBase;					   //参数内存基址
-	//p_proc_current->task.memmap.arg_lin_limit = ArgLinBase;	deleted byxyx&&wjh  2021-12-31				   //参数内存界限
 	p_proc_current->task.memmap.arg_lin_limit =  ArgLinLimitMAX;//added byxyx&&wjh  2021-12-31		
 	p_proc_current->task.memmap.kernel_lin_base = KernelLinBase;			   //内核基址
 	p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size; //内核大小初始化为8M

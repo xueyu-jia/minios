@@ -39,7 +39,7 @@ typedef struct{
 	u32	p_flags;				//该program	读写权限
 	u32	p_align;				//该program	对齐方式
 }Elf32_Phdr;
-
+#define ELF_LOAD	1
 
 /*********************************************
 *		section头(段头)
