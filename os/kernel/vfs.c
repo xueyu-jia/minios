@@ -225,6 +225,7 @@ PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 		}
 		if(!dentry->d_inode) {
 			free_dentry(dentry);
+			return;
 		}
 	}
 	release(&dentry->lock);
@@ -455,7 +456,7 @@ PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int
 			inode->i_fop = &tty_file_ops;
 			break;
 		case I_BLOCK_SPECIAL:
-			inode->i_size = hd_infos[MAJOR(dev)].part[MINOR(dev)].size << SECTOR_SIZE_SHIFT;
+			inode->i_size = hd_infos[MAJOR(dev)-DEV_HD_BASE].part[MINOR(dev)].size << SECTOR_SIZE_SHIFT;
 			inode->i_fop = &blk_file_ops;
 		default:
 			break;
@@ -780,14 +781,14 @@ PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
 		return -1;
 	}
 	struct vfs_inode * inode = file->fd_dentry->d_inode;
-	int size;
+	u64 size;
 	acquire(&inode->lock);
 	if(!inode_allow_lseek(inode->i_type)){
 		return -1;
 	}
 	size = inode->i_size;
 	release(&inode->lock);
-	int _offset = -1;
+	u64 _offset = -1;
 	switch (whence)
 	{
 		case SEEK_SET:
@@ -980,9 +981,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 	}
 	release(&inode->lock);
 	struct vfs_dentry* sub;
-	// while(sub = dentry->d_subdirs){
-	// 	delete_dentry(sub, dentry);
-	// }
+	// clear sub dentry
 	while(!list_empty(&dentry->d_subdirs)){
 		sub = list_entry(&dentry->d_subdirs.next, struct vfs_dentry, d_list);
 		delete_dentry(sub, dentry);

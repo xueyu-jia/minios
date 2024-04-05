@@ -1,6 +1,7 @@
 #include "dev.h"
 #include "string.h"
 #include "memman.h"
+#include "hd.h"
 #include "fs.h"
 #include "spinlock.h"
 #include "proto.h"
@@ -128,11 +129,11 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 	struct dirent* dent = start;
 	char dev_name[8];
 	memset(dev_name, 0, 8);
-	dirent_read(dent, 1, 1);
+	dirent_fill(dent, 1, 1);
 	strcpy(dent->d_name, ".");
 	count -= dent->d_len;
 	dent = dirent_next(dent);
-	dirent_read(dent, 1, 2);
+	dirent_fill(dent, 1, 2);
 	strcpy(dent->d_name, "..");
 	count -= dent->d_len;
 	dent = dirent_next(dent);
@@ -146,7 +147,7 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 				if(!(i == 0 && dev_struct->dev_type == DEV_BLOCK_TYPE)) {
 					itoa(i, dev_name + minor_name, 10);
 				} 
-				dirent_read(dent, MAKE_DEV(dev_struct->dev_major, i), strlen(dev_name));
+				dirent_fill(dent, MAKE_DEV(dev_struct->dev_major, i), strlen(dev_name));
 				strcpy(dent->d_name, dev_name);
 				count -= dent->d_len;
 				dent = dirent_next(dent);
@@ -177,9 +178,11 @@ PUBLIC void devfs_read_inode(struct vfs_inode *inode) {
 		{
 		case DEV_BLOCK_TYPE:
 			inode->i_type = I_BLOCK_SPECIAL;
+			inode->i_size = hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].size << SECTOR_SIZE_SHIFT;
 			break;
 		case DEV_CHAR_TYPE:
 			inode->i_type = I_CHAR_SPECIAL;
+			inode->i_size = 0;
 		default:
 			break;
 		}

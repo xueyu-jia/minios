@@ -4085,7 +4085,7 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 				continue;
 			}
 
-			dirent_read(dent, pde->inode_nr, MAX_FILENAME_LEN);
+			dirent_fill(dent, pde->inode_nr, MAX_FILENAME_LEN);
 			strncpy(dent->d_name, pde->name, MAX_DNAME_LEN);
 			count -= dent->d_len;
 			dent = dirent_next(dent);

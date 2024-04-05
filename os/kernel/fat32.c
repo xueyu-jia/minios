@@ -747,7 +747,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 
 PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
-	int start, pos, end, len;
+	u64 start, pos, end, len;
 	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
@@ -771,7 +771,7 @@ PUBLIC int fat32_read(struct file_desc* file, unsigned int count, char* buf){
 
 PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* buf){
 	struct vfs_inode* inode = file->fd_dentry->d_inode;
-	int start, pos, end, len;
+	u64 start, pos, end, len;
 	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
@@ -807,11 +807,11 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 	struct vfs_dentry* dentry = NULL;
 	struct dirent* dent = start;
 	if(dir->i_no == FAT_ROOT_INO){
-		dirent_read(dent, FAT_ROOT_INO, 1);
+		dirent_fill(dent, FAT_ROOT_INO, 1);
 		strcpy(dent->d_name, ".");
 		count -= dent->d_len;
 		dent = dirent_next(dent);
-		dirent_read(dent, FAT_ROOT_INO, 2);
+		dirent_fill(dent, FAT_ROOT_INO, 2);
 		strcpy(dent->d_name, "..");
 		count -= dent->d_len;
 		dent = dirent_next(dent);
@@ -822,7 +822,7 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 		if(count < dirent_len(strlen(full_name))) {
 			break;
 		}
-		dirent_read(dent, fat_ino(dir, entry), strlen(full_name));
+		dirent_fill(dent, fat_ino(dir, entry), strlen(full_name));
 		strcpy(dent->d_name, full_name);
 		count -= dent->d_len;
 		dent = dirent_next(dent);

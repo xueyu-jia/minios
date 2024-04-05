@@ -28,7 +28,7 @@ struct vfs_inode{
 	u32 i_b_cdev; // for char special inode
 	u32 i_nlink; // file linked
 	atomic_t i_count; // reference count
-	u32 i_size;  // file size in byte
+	u64 i_size;  // file size in byte
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
 	u32 i_atime; // access time (use UTC timestamp, 下同)
@@ -90,7 +90,7 @@ struct file_desc {
 	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
 	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
-	int		fd_pos;		/**< Current position for R/W. */
+	u64		fd_pos;		/**< Current position for R/W. */
 	struct vfs_dentry *fd_dentry;
 	struct file_operations* fd_ops;
 };
@@ -104,7 +104,7 @@ struct dirent{
 };
 #define dirent_next(dent) ((struct dirent*)(((char*)dent)+(dent->d_len)))
 #define dirent_len(name_len) ((name_len) + 9) // 2*int+end'\0'
-#define dirent_read(dent, ino, name_len) do{	\
+#define dirent_fill(dent, ino, name_len) do{	\
 	(dent)->d_ino = ino;\
 	(dent)->d_len = dirent_len(name_len);\
 }while(0)

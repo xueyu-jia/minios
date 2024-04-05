@@ -439,9 +439,9 @@ PUBLIC void bsync_service() {
 }
 
 PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf){
-	int pos = file->fd_pos;
+	u64 pos = file->fd_pos;
 	struct vfs_inode *inode = file->fd_dentry->d_inode;
-	int pos_end = min(pos + count, inode->i_size);
+	u64 pos_end = min(pos + count, inode->i_size);
 	int off = pos % BLOCK_SIZE;
 	int rw_blk_min = (pos >> BLOCK_SIZE_SHIFT);
 	int rw_blk_max = (pos_end >> BLOCK_SIZE_SHIFT);
@@ -477,9 +477,9 @@ PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf)
 }
 
 PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
-	int pos = file->fd_pos;
+	u64 pos = file->fd_pos;
 	struct vfs_inode *inode = file->fd_dentry->d_inode;
-	int pos_end = min(pos + count, inode->i_size);
+	u64 pos_end = min(pos + count, inode->i_size);
 	int off = pos % BLOCK_SIZE;
 	int rw_blk_min = (pos >> BLOCK_SIZE_SHIFT);
 	int rw_blk_max = (pos_end >> BLOCK_SIZE_SHIFT);
