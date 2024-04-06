@@ -284,7 +284,8 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	cr2 = read_cr2();
 
 	//if page fault happens in kernel, it's an error.
-	if (kernel_initial == 1)
+	// if (kernel_initial == 1) // 事实上，内核线性地址造成的缺页中断都不正常吧
+	if (cr2 >= KernelLinBase)
 	{
 		disp_str("\n");
 		disp_color_str("Page Fault\n", 0x74);
@@ -341,7 +342,19 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 		cr2_save = cr2;
 		cr2_count = 0;
 	}
-
+	// 这种粗暴的缺页处理办法会导致内存混乱的，连页表里保存的物理地址是什么都不检查
+	// if (0 == pte_exist(pde_addr_phy_temp, cr2))
+	// { //页表不存在
+	// 	// disp_color_str("[Pde Fault!]",0x74);	//灰底红字
+	// 	(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2))) |= PG_P;
+	// 	// disp_color_str("[Solved]",0x74);
+	// }
+	// else
+	// { //只是缺少物理页
+	// 	// disp_color_str("[Pte Fault!]",0x74);	//灰底红字
+	// 	(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2))) |= PG_P;
+	// 	// disp_color_str("[Solved]",0x74);
+	// }
 	if (0 == pte_exist(pde_addr_phy_temp, cr2))
 	{ //页表不存在
 		// disp_color_str("[Pde Fault!]",0x74);	//灰底红字

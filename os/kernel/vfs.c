@@ -330,12 +330,12 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 	}else if(!strcmp(name, ".")){
 		dentry = dir;
 	}else if(!strcmp(name, "..")){
-		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
-			dir = dir->d_vfsmount->mnt_mountpoint;
-		}
 		if(dir == vfs_root) {
 			dentry = vfs_root;
 		} else {
+			while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
+				dir = dir->d_vfsmount->mnt_mountpoint;
+			}
 			dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
 		}
 	}
@@ -535,6 +535,19 @@ PRIVATE struct super_block * vfs_get_super(int dev, u32 fstype) {
 	return vfs_read_super(dev, fstype);
 }
 
+// return mounted root
+PRIVATE struct vfs_dentry *kern_mount_dev(int dev, u32 fstype, const char *dev_name, struct vfs_dentry * mnt) {
+	struct super_block *sb = vfs_get_super(dev, fstype);
+	if(!sb){
+		return NULL;
+	}
+	sb->sb_root->d_vfsmount = add_vfsmount(dev_name, mnt, sb->sb_root, sb);
+	if(mnt) {
+		mnt->d_mounted = 1;
+	}
+	return sb->sb_root;
+}
+
 PRIVATE void mount_root(int root_drive){
 	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了 2024-03-10 jiangfeng
 	#ifndef ROOT_FSTYPE
@@ -547,14 +560,16 @@ PRIVATE void mount_root(int root_drive){
 	#else
 		dev = get_hd_dev(root_drive, root_fstype); // 自动匹配符合文件系统类型的第一个分区
 	#endif
-	struct super_block *sb = vfs_get_super(dev, root_fstype);
-	vfs_root = sb->sb_root;
+	// struct super_block *sb = vfs_get_super(dev, root_fstype);
+	vfs_root = kern_mount_dev(dev, root_fstype, "/", NULL);
 }
 
 PRIVATE void init_fsroot() {
-	// kern_vfs_mkdir("/dev", I_RWX);
-	struct super_block *dev_sb = vfs_get_super(NO_DEV, DEV_FS_TYPE);
-	insert_sub_dentry(vfs_root, dev_sb->sb_root);
+	kern_vfs_mkdir("/dev", I_RWX);
+	struct vfs_dentry *dev_dir = _do_lookup(vfs_root, "dev", 0);
+	kern_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
+	vfs_put_dentry(dev_dir);
+// 	struct super_block *dev_sb = vfs_get_super(NO_DEV, DEV_FS_TYPE);
 	kern_init_block_dev();
 	kern_init_char_dev();
 }
@@ -637,12 +652,13 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
         return -1;
 	}
 	int fstype = get_fstype_by_name(filesystemtype);
-	struct super_block *sb = vfs_get_super(dev, fstype);
-	if(!sb){
+	char dev_name[16];
+	vfs_get_path(block_dev, dev_name, 16);
+	struct vfs_dentry * mnt_root = kern_mount_dev(dev, fstype, dev_name, dir_d);
+	if(!mnt_root){
 		vfs_put_dentry(dir_d);
 		return -1;
 	}
-	sb->sb_root->d_vfsmount = add_vfsmount(block_dev, dir_d, sb->sb_root, sb);
 	dir_d->d_mounted = 1;
 	vfs_put_dentry(dir_d);
 	return 0;

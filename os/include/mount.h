@@ -3,7 +3,7 @@
 #define NR_MNT   10
 
 struct vfs_mount{
-	struct vfs_dentry * mnt_dev;
+	char mnt_devname[12];
 	struct vfs_dentry * mnt_mountpoint;
 	struct vfs_dentry * mnt_root;
     struct super_block* mnt_sb;
@@ -11,5 +11,5 @@ struct vfs_mount{
 };
 // PUBLIC int get_fs_index(u8 index_mnt_table);
 PUBLIC struct vfs_mount* lookup_vfsmnt(struct vfs_dentry* mountpoint);
-PUBLIC struct vfs_mount* add_vfsmount(struct vfs_dentry* dev_path, 
+PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path, 
 	struct vfs_dentry * mnt_mountpoint, struct vfs_dentry* mnt_root, struct super_block* sb);
