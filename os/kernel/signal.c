@@ -188,6 +188,19 @@ void process_signal() {
     if(sig == -1) {
         return ;
     }
+	// add default signal
+	void *handler =  p_proc_current->task.sig_handler[sig];
+	if(handler == SIG_DFL) {
+		switch (sig)
+		{
+		case SIGINT:
+			do_exit(sig);
+			break;
+		default:
+			break;
+		}
+	}
+
     //  change this proc(B)'s eip to warper function
     // warp function includes { handler, signal_return }
     // then first execuate handler function

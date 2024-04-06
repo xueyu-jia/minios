@@ -4371,8 +4371,8 @@ void orange_deleteinode(struct vfs_inode* inode){
 
 int orange_fill_superblock(struct super_block* sb, int dev){
 	buf_head * bh = bread(dev, 1);
-	struct super_block *psb = (struct super_block *)bh->buffer;
-	*sb = *psb;
+	struct orange_sb_info *psb = (struct orange_sb_info*)bh->buffer;
+	*(ORANGE_SB(sb)) = *psb;
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
 	sb->sb_op = &orange_sb_ops;

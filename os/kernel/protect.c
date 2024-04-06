@@ -415,7 +415,9 @@ PUBLIC void exception_handler(int vec_no, int err_code, int eip, int cs, int efl
 
 	//added by xw, 18/12/19
 	disp_str("\n");
-
+	proc_backtrace();
+	// halt();
+	do_exit(-1);
 	//added by xw, 18/12/19
 	p_proc_current->task.stat = KILLED;
 

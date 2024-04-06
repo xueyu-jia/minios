@@ -111,11 +111,13 @@ PUBLIC struct vfs_dentry *devfs_lookup(struct vfs_inode *dir, const char *filena
 				itoa(i, dev_name + minor_name, 10);
 				if(!strcmp(dev_name, filename)) {
 					dev = MAKE_DEV(dev_struct->dev_major, i);
+					goto found;
 				}
 			}
 			minor_bit >>= 1;
 		}
 	}
+found:
 	release(&devices_lock);
 	if(dev) {
 		struct vfs_inode *inode = vfs_get_inode(dir->i_sb, dev);

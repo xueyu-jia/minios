@@ -239,6 +239,7 @@ PUBLIC struct vfs_dentry* remove_vfsmnt(struct vfs_dentry* entry){
 		}
 		mnt++;
 	}
+	mnt->mnt_sb->sb_vfsmount = NULL;
 	release(&mnt_table_lock);
 	return mountpoint;
 }

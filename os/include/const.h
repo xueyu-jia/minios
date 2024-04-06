@@ -220,6 +220,8 @@
 #define	max(a,b)	((a) > (b) ? (a) : (b))
 #define	min(a,b)	((a) < (b) ? (a) : (b))
 #define offsetof(type, member) ((u32) &((type *)0)->member)
-#define container_of(ptr, type, member) (type *)( (char *)(ptr) - offsetof(type,member) )
+#define container_of(ptr, type, member)  ({\
+	const typeof( ((type *)0)->member ) *__mptr = (ptr); \
+	(type *)( (char *)(__mptr) - offsetof(type,member)); })
 
 #endif /* _ORANGES_CONST_H_ */

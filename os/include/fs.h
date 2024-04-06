@@ -78,6 +78,7 @@ struct super_block {
    * the following item(s) are only present in memory
    */
   	struct vfs_dentry* sb_root;
+	struct vfs_mount* sb_vfsmount;
 	list_head sb_inode_list;
 	struct superblock_operations * sb_op;
 	int	sb_dev; 	/**< the super block's home device */

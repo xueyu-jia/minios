@@ -279,6 +279,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 {											 //缺页中断处理函数
 	u32 pde_addr_phy_temp;
 	u32 pte_addr_phy_temp;
+	u32 phy_addr;
 	u32 cr2;
 
 	cr2 = read_cr2();
@@ -287,62 +288,26 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	// if (kernel_initial == 1) // 事实上，内核线性地址造成的缺页中断都不正常吧
 	if (cr2 >= KernelLinBase)
 	{
-		disp_str("\n");
-		disp_color_str("Page Fault\n", 0x74);
-		disp_color_str("eip=", 0x74); //灰底红字
-		disp_int(eip);
-		disp_color_str("eflags=", 0x74);
-		disp_int(eflags);
-		disp_color_str("cs=", 0x74);
-		disp_int(cs);
-		disp_color_str("err_code=", 0x74);
-		disp_int(err_code);
-		disp_color_str("Cr2=", 0x74); //灰底红字
-		disp_int(cr2);
-		halt();
-		proc_backtrace();
+		goto fatal;
 	}
-
+	// if (cr2 == cr2_save) 同一个地址允许无条件缺页5次，难免太抽象了吧
+	// {
+	// 	cr2_count++;
+	// 	if (cr2_count == 5)
+	// 	{
+	// 		goto fatal;
+	// 	}
+	// }
+	// else
+	// {
+	// 	cr2_save = cr2;
+	// 	cr2_count = 0;
+	// }
 	//获取该进程页目录物理地址
 	pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->task.pid);
 	//获取该线性地址对应的页表的物理地址
 	pte_addr_phy_temp = get_pte_phy_addr(pde_addr_phy_temp, cr2);
-
-	if (cr2 == cr2_save)
-	{
-		cr2_count++;
-		if (cr2_count == 5)
-		{
-			disp_str("\n");
-			disp_color_str("Page Fault\n", 0x74);
-			disp_color_str("eip=", 0x74); //灰底红字
-			disp_int(eip);
-			disp_color_str("eflags=", 0x74);
-			disp_int(eflags);
-			disp_color_str("cs=", 0x74);
-			disp_int(cs);
-			disp_color_str("err_code=", 0x74);
-			disp_int(err_code);
-			disp_color_str("Cr2=", 0x74); //灰底红字
-			disp_int(cr2);
-			disp_color_str("Cr3=", 0x74);
-			disp_int(p_proc_current->task.cr3);
-			//获取页目录中填写的内容
-			disp_color_str("Pde=", 0x74);
-			disp_int(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2)));
-			//获取页表中填写的内容
-			disp_color_str("Pte=", 0x74);
-			disp_int(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
-			halt();
-			proc_backtrace();
-		}
-	}
-	else
-	{
-		cr2_save = cr2;
-		cr2_count = 0;
-	}
-	// 这种粗暴的缺页处理办法会导致内存混乱的，连页表里保存的物理地址是什么都不检查
+	// 这种粗暴的缺页处理办法会导致内存混乱的，连页表里保存的物理地址是什么都不检查就置为有效了
 	// if (0 == pte_exist(pde_addr_phy_temp, cr2))
 	// { //页表不存在
 	// 	// disp_color_str("[Pde Fault!]",0x74);	//灰底红字
@@ -355,19 +320,56 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	// 	(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2))) |= PG_P;
 	// 	// disp_color_str("[Solved]",0x74);
 	// }
-	if (0 == pte_exist(pde_addr_phy_temp, cr2))
-	{ //页表不存在
-		// disp_color_str("[Pde Fault!]",0x74);	//灰底红字
-		(*((u32 *)K_PHY2LIN(pde_addr_phy_temp) + get_pde_index(cr2))) |= PG_P;
-		// disp_color_str("[Solved]",0x74);
+
+	// 目前MiniOS还没有交换页面的选项，最常见的正常缺页可能就是用户栈空间超出初始的16k，给分配一个好了
+	if (0 == pte_exist(pde_addr_phy_temp, cr2) || 0 == phy_exist(pte_addr_phy_temp, cr2)) {
+		goto try_alloc_new;
+	} else { //此处有物理页，那是为什么缺页中断？
+		phy_addr = (*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
+		u32 attr = phy_addr&0xFFF;
+		phy_addr = phy_addr&0xFFFFF000;
+		// 检查是否为合法物理地址?
+		if((phy_addr) < ((big_kernel)?KUWALL2:KUWALL1)) { // 错误的物理页，这不对吧, 
+			goto fatal;
+		} else {
+			// 检查权限
+			if((err_code & 2) && (attr & PG_RWW == 0)) {// 缺页原因为写入，页面无写权限
+				disp_str("error: page read only");
+				goto fatal;
+			}
+		}
 	}
-	else
-	{ //只是缺少物理页
-		// disp_color_str("[Pte Fault!]",0x74);	//灰底红字
-		(*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2))) |= PG_P;
-		// disp_color_str("[Solved]",0x74);
+	return;
+try_alloc_new:
+	switch (cr2)
+	{
+		case StackLinLimitMAX ... StackLinBase:
+			ker_umalloc_4k(cr2, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+			p_proc_current->task.memmap.stack_lin_limit = 
+				min(p_proc_current->task.memmap.stack_lin_limit, cr2&0xFFFFF000);
+			break;
+		
+		default:
+			goto fatal; //不应访问的线性地址，用户程序在非法访存？	
 	}
 	refresh_page_cache();
+	return;
+fatal:
+	disp_str("\n");
+	disp_color_str("Page Fault\n", 0x74);
+	disp_color_str("eip=", 0x74); //灰底红字
+	disp_int(eip);
+	disp_color_str("eflags=", 0x74);
+	disp_int(eflags);
+	disp_color_str("cs=", 0x74);
+	disp_int(cs);
+	disp_color_str("err_code=", 0x74);
+	disp_int(err_code);
+	disp_color_str("Cr2=", 0x74); //灰底红字
+	disp_int(cr2);
+	proc_backtrace();
+	// halt();
+	do_exit(-1);
 }
 
 

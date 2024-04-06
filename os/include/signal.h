@@ -3,7 +3,10 @@
 ***********************************************************/
 
 #ifndef SIGNAL_H
-#define SIGNAL_H 
+#define SIGNAL_H
+
+#define SIG_DFL 	((void*)1)
+#define SIG_IGN		((void*)0)
 #define SIGINT 2
 //#include <stdint.h>
 //#include <stdbool.h>

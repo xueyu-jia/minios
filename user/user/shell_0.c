@@ -229,10 +229,10 @@ int main(int arg,char *argv[])
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 
-	#define TEST_CMD_NUM 0
+	#define TEST_CMD_NUM 2
 	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
-		// "mkdir ora",
-		// "mount /dev/sda1 ora orangefs",
+		"mkdir fat",
+		"mount /dev/sda1 fat fat32",
 		// "cd ora",
 		// "/t_xv6.bin",
 	};

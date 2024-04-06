@@ -262,7 +262,7 @@ PRIVATE void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 	*(--p) = 0;
 	int len;
 	while(dir != vfs_root){
-		while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
+		while(dir != vfs_root && dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
 		len = strlen(dentry_name(dir));
@@ -333,7 +333,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		if(dir == vfs_root) {
 			dentry = vfs_root;
 		} else {
-			while(dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
+			while(dir != vfs_root && dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 				dir = dir->d_vfsmount->mnt_mountpoint;
 			}
 			dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
@@ -541,7 +541,11 @@ PRIVATE struct vfs_dentry *kern_mount_dev(int dev, u32 fstype, const char *dev_n
 	if(!sb){
 		return NULL;
 	}
-	sb->sb_root->d_vfsmount = add_vfsmount(dev_name, mnt, sb->sb_root, sb);
+	if(sb->sb_vfsmount) {
+		disp_str("device already mounted");
+		return NULL;
+	}
+	sb->sb_vfsmount = sb->sb_root->d_vfsmount =  add_vfsmount(dev_name, mnt, sb->sb_root, sb);
 	if(mnt) {
 		mnt->d_mounted = 1;
 	}
