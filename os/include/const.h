@@ -129,7 +129,7 @@
 #define ShareLinBase			(HeapLinLimitMAX+0x100000) 			//共享内存的起始地址	共享内存与堆顶有1M空闲
 #define ShareLinLimitMAX		(ShareLinBase + 0x100000)	//大小：1M
 #define StackLinLimitMAX		(ShareLinLimitMAX+ 0x100000)//栈的大小： 1G-128M-4K（注意栈的基址和界限方向）
-#define StackLinBase			(ArgLinBase-num_4B)			//=(StackLinLimitMAX+1G-128M-4K-4B)栈的起始地址,放在参数位置之前（注意堆栈的增长方向）
+#define StackLinBase			(ArgLinBase)			//=(StackLinLimitMAX+1G-128M-4K)栈的起始地址,放在参数位置之前（注意堆栈的增长方向）
 #define ArgLinBase 				(KernelLinBase-0x1000)		//参数存放位置起始地址，放在3G前，暂时还没没用到
 #define ArgLinLimitMAX  		KernelLinBase  				//=(ArgLinBase+0x1000)大小：4K。
 #define	KernelLinBase			0xC0000000 					//内核线性起始地址(有0x30400的偏移)

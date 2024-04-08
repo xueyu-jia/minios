@@ -200,14 +200,27 @@ int match_build_in(int argc, char** argv){
 	return -1;
 }
 
-int main(int arg,char *argv[])
+void printstring(char *prompt, char **p) {
+    char *pstr = NULL;
+    printf("%s%p", prompt, p);
+    if(*p) {
+        while(((pstr)=(*p++),pstr)) {
+            printf("\n%s", pstr);
+        }
+    }
+    printf("\n");
+}
+
+int main(int arg,char *argv[],char *envp[])
 {
     /*
 	int stdin = open("dev_tty0",O_RDWR);
 	int stdout= open("dev_tty0",O_RDWR);
 	int stderr= open("dev_tty0",O_RDWR);
 	*/
-
+	printf("argc:%d\n", arg);
+    printstring("argv:", argv);
+    printstring("env:", envp);
     char buf[1024];
 	char pwd[MAX_PATH];
     int pid;

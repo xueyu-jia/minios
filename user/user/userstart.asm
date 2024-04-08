@@ -3,8 +3,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-extern main
-extern exit
+extern 	main
+extern 	exit
 bits 32
 
 [section .text]
@@ -12,10 +12,7 @@ bits 32
 global _start
 
 _start:
-	;push 	eax
-	; push 	edx
-	; push	ecx
 	call 	main
 	push	eax
-	call exit
+	call    exit
 	hlt

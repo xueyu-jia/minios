@@ -784,7 +784,11 @@ int main(int arg,char *argv[])
 // 	execve("fat0/shell_0.bin",NULL,NULL);
 // #endif
 // #ifdef ORANGE_BOOT
-	execve("shell_0.bin",NULL,NULL);
+		char *env[2] = {
+			"PATH=/bin",
+			NULL
+		};
+		execve("shell_0.bin",NULL,env);
 // #endif
 		//execve("fat0/shell_0.bin",NULL,NULL);
 

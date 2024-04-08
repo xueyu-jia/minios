@@ -38,7 +38,7 @@ iputtest(void)
     printf("unlink ../iputdir failed\n");
     exit(-1);
   }
-  if(chdir("/") < 0){
+  if(chdir("..") < 0){
     printf("chdir / failed\n");
     exit(-1);
   }

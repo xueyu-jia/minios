@@ -14,6 +14,8 @@
 PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(char *path);
+PRIVATE int exec_count_args(char **pstr, int *count);
+PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst);
 
 PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
@@ -85,32 +87,43 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
 
     //原有execve传参重构，自己写一个吧 2023.12.25
-	// 处理参数 argc 放在 ebp + 8 (ArgLinBase - 4); argv 放在 ebp + 12
+	// 处理参数 argc 放在 main ebp + 8 (ArgLinBase); argv 放在 ebp + 12
 	// err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
 	// low<--               ---stack---           -->high(base)
-	//  | user main ebp | _start rt |        argc           |  argv    | argv[0]... argv[argc-1]|... argv raw data
-	//  |               |           | StackLinBase(pcb esp) |ArgLinBase|
-	int argc = 0, len = 0, arg_content = 0;
-	for(char** p = argv; p != 0 && *p != 0; p++){
-		arg_content += strlen(*p) + 1;
-		argc++;
-	}
+	//  | 				user main stack		|   argc 					|  argv    | envp	| argv[0]... argv[argc-1]| 0 |... argv raw data | env data |
+	//  |       main esp  |  call main rt	|	StackLinBase/ArgLinBase |
+	// int argc = 0, len = 0, arg_content = 0;
+	// for(char** p = argv; p != 0 && *p != 0; p++){
+	// 	arg_content += strlen(*p) + 1;
+	// 	argc++;
+	// }
+	int argc, env_space, arr = 0, space = 0;
+	space += exec_count_args(argv, &arr);
+	argc = arr;
+	env_space = space;
+	space += exec_count_args(envp, &arr);
 	// 补充: 参数数量不能超过最大值
-	if(argc > MAXARG || ((argc + 2)*4 + arg_content > num_4K)) {
+	// if(argc > MAXARG || ((argc + 4)*4 + arg_content > num_4K)) {
+	if(argc > MAXARG || (arr + 5)*4 + space > num_4K) {// argc + argv + envp + 1(args end 0) + 1(env end 0)
 		goto close_on_error;
 	}
-	char** args_base = (char**)(ArgLinBase + 4);
-	char* args_raw_base = ((char*)args_base) + num_4B * (argc + 1);
-	// *(int*)(ArgLinBase-4) = argc;
-	*(char***)(ArgLinBase) = args_base;
-	for(char** p = argv; p != 0 && *p != 0; p++){
-		len = strlen(*p);
-		strcpy(args_raw_base, *p);
-		*(args_base++) = args_raw_base;
-		args_raw_base += len + 1;
-	}
-	*args_base = 0;
-	
+	char** args_base = (char**)(ArgLinBase + 12);
+	char** envs_base = args_base + argc + 1;
+	char* args_raw_base = ((char*)args_base) + num_4B * (arr + 2);
+	// *(int*)(ArgLinBase) = argc;
+	// *(char***)(ArgLinBase+4) = args_base;
+	// for(char** p = argv; p != 0 && *p != 0; p++){
+	// 	len = strlen(*p);
+	// 	strcpy(args_raw_base, *p);
+	// 	*(args_base++) = args_raw_base;
+	// 	args_raw_base += len + 1;
+	// }
+	// *args_base = 0;
+	*((int*)ArgLinBase) = argc;
+	*((char***)(ArgLinBase+4)) = args_base;
+	*((char***)(ArgLinBase+8)) = envs_base;
+	exec_copy_args(argv, args_base, args_raw_base);
+	exec_copy_args(envp, envs_base, args_raw_base + env_space);
 	/*************释放进程内存****************/
 	//目前还没有实现 思路是：数据、代码根据text_info和data_info属性决定释放深度，其余内存段可以完全释放
 	int pid = p_proc_current->task.pid;
@@ -171,8 +184,6 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 			goto close_on_error;
 		}
 	}
-
-	*(int*)(ArgLinBase-4) = argc;
 
 	kern_vfs_close(fd);
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
@@ -417,5 +428,27 @@ PRIVATE int exec_pcb_init(char *path)
 	p_proc_current->task.info.text_hold = 1; //是否拥有代码
 	p_proc_current->task.info.data_hold = 1; //是否拥有数据
 
+	return 0;
+}
+
+PRIVATE int exec_count_args(char **pstr, int *count) {
+	char *p = NULL;
+	int space = 0;
+	while(pstr && (p = *pstr++, p)) {
+		space += strlen(p) + 1;
+		(*count)++;
+	}
+	return space;
+}
+
+PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst) {
+	char *p = NULL;
+	int len = 0;
+	while(pstr && (p = *pstr++, p)) {
+		strcpy(dst, p);
+		*(parr++) = dst;
+		dst += strlen(p) + 1;
+	}
+	*(parr++) = 0;
 	return 0;
 }
