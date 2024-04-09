@@ -134,6 +134,7 @@ int free_pages(buddy *bud, page *page, u32 order) {
 	struct page *buddy;
     u32 pfn = page_to_pfn(page);
     u32 max_order = MAX_ORDER - 1;
+	u32 free_order = order;
 
 continue_merging:
 	while (order < max_order) {
@@ -158,7 +159,7 @@ done_merging:
 	//将该page加入对应order的free_list中
 	add_to_free_list(page, bud, order);
 
-    bud->current_mem_size += block_size[order];
+    bud->current_mem_size += block_size[free_order];
     return 0;
 }
 

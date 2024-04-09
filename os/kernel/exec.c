@@ -15,7 +15,7 @@ PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr);
 PRIVATE u32 exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(char *path);
 PRIVATE int exec_count_args(char **pstr, int *count);
-PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst);
+PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst, int dst_delta);
 
 PUBLIC u32 do_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
 PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]);//added by xyx&&wjh 2021.12.31
@@ -63,7 +63,6 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	u32 pde_addr_phy, addr_phy_temp;
 
 	char *p_reg; //point to a register in the new kernel stack, added by xw, 17/12/11
-
 	if (0 == path)
 	{
 		disp_color_str("exec: path ERROR!", 0x74);
@@ -82,53 +81,50 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 	Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
 	Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
 	Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
+	char *_path = kern_kmalloc(strlen(path) + 1);
+	strcpy(_path, path);
 
 	/*************获取elf信息**************/
-	read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr); //注意第一个取了地址，后两个是数组，所以没取地址，直接用了数组名
+	err_temp = read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr);
 
+	if(0 != err_temp) {
+		disp_str("not valid elf file");
+		goto close_on_error;
+	}
     //原有execve传参重构，自己写一个吧 2023.12.25
 	// 处理参数 argc 放在 main ebp + 8 (ArgLinBase); argv 放在 ebp + 12
 	// err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
 	// low<--               ---stack---           -->high(base)
 	//  | 				user main stack		|   argc 					|  argv    | envp	| argv[0]... argv[argc-1]| 0 |... argv raw data | env data |
 	//  |       main esp  |  call main rt	|	StackLinBase/ArgLinBase |
-	// int argc = 0, len = 0, arg_content = 0;
-	// for(char** p = argv; p != 0 && *p != 0; p++){
-	// 	arg_content += strlen(*p) + 1;
-	// 	argc++;
-	// }
 	int argc, env_space, arr = 0, space = 0;
 	space += exec_count_args(argv, &arr);
 	argc = arr;
 	env_space = space;
 	space += exec_count_args(envp, &arr);
+	space += (arr + 5)*4; // argc + argv + envp + 1(args end 0) + 1(env end 0)
 	// 补充: 参数数量不能超过最大值
-	// if(argc > MAXARG || ((argc + 4)*4 + arg_content > num_4K)) {
-	if(argc > MAXARG || (arr + 5)*4 + space > num_4K) {// argc + argv + envp + 1(args end 0) + 1(env end 0)
+	if(argc > MAXARG || space > num_4K) {
 		goto close_on_error;
 	}
-	char** args_base = (char**)(ArgLinBase + 12);
+	char *page_buf = kern_kmalloc_4k(); // 使用临时分配的页保存新进程的参数，因为要复制的参数有可能就位于原进程的参数区
+	char** args_base = (char**)(page_buf + 12);
 	char** envs_base = args_base + argc + 1;
-	char* args_raw_base = ((char*)args_base) + num_4B * (arr + 2);
-	// *(int*)(ArgLinBase) = argc;
-	// *(char***)(ArgLinBase+4) = args_base;
-	// for(char** p = argv; p != 0 && *p != 0; p++){
-	// 	len = strlen(*p);
-	// 	strcpy(args_raw_base, *p);
-	// 	*(args_base++) = args_raw_base;
-	// 	args_raw_base += len + 1;
-	// }
-	// *args_base = 0;
-	*((int*)ArgLinBase) = argc;
-	*((char***)(ArgLinBase+4)) = args_base;
-	*((char***)(ArgLinBase+8)) = envs_base;
-	exec_copy_args(argv, args_base, args_raw_base);
-	exec_copy_args(envp, envs_base, args_raw_base + env_space);
+	char* args_raw_base = ((char*)(page_buf + 12)) + num_4B * (arr + 2);
+	int delta = ArgLinBase - (u32)page_buf; // 存入的地址应该是进程访问的页的地址而非临时页中数据的地址，所以有一步换算
+	*((int*)page_buf) = argc;
+	*((char***)(page_buf+4)) = (char*)args_base + delta;
+	*((char***)(page_buf+8)) = (char*)envs_base + delta;
+	exec_copy_args(argv, args_base, args_raw_base, delta);
+	exec_copy_args(envp, envs_base, args_raw_base + env_space, delta);
 	/*************释放进程内存****************/
-	//目前还没有实现 思路是：数据、代码根据text_info和data_info属性决定释放深度，其余内存段可以完全释放
+	// 除了page dir全部可以释放
 	int pid = p_proc_current->task.pid;
-	free_seg_phypage(pid, MEMMAP_TEXT);
-	free_seg_phypage(pid, MEMMAP_DATA);
+	free_all_phypage(pid);
+	free_all_pagetbl(pid);
+	err_temp = ker_umalloc_4k(ArgLinBase, pid, PG_P | PG_USU | PG_RWW);
+	memcpy((void*)ArgLinBase, page_buf, space);
+	kern_kfree_4k(page_buf);
 	/*************根据elf的program复制文件信息**************/
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 	if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr))
@@ -146,15 +142,13 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 
 		//enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by mingxuan 2021-1-31
 
-		goto close_on_error;
+		goto fatal_error;
 	}
 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
 	/*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
-	exec_pcb_init(path);
-	free_seg_phypage(pid, MEMMAP_VPAGE);
-	free_seg_phypage(pid, MEMMAP_HEAP);
-	free_seg_phypage(pid, MEMMAP_STACK);
+	exec_pcb_init(_path);
+	
 	/***********************代码、数据、堆、栈***************************/
 	//代码、数据已经处理，将eip重置即可
 	//p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;						 //进程入口线性地址 deleted by lcy 2023.10.25
@@ -185,19 +179,25 @@ PUBLIC u32 kern_execve(char *path, char *argv[], char *envp[ ]) //modified by mi
 		}
 	}
 
-	kern_vfs_close(fd);
 	//disp_color_str("\n[exec success:",0x72);//灰底绿字
 	//disp_color_str(path,0x72);//灰底绿字
 	//disp_color_str("]",0x72);//灰底绿字
 	//disp_free();	//for test, added by mingxuan 2021-1-7
-
-	return 0;
-fatal_error:
+	kern_kfree(_path);
 	kern_kfree(Echo_Ehdr);
 	kern_kfree(Echo_Phdr);
 	kern_kfree(Echo_Shdr);
+	kern_vfs_close(fd);
+	return 0;
+fatal_error:
+	kern_kfree(_path);
+	kern_kfree(Echo_Ehdr);
+	kern_kfree(Echo_Phdr);
+	kern_kfree(Echo_Shdr);
+	kern_vfs_close(fd);
 	kern_exit(-1);
 close_on_error:
+	kern_kfree(_path);
 	kern_kfree(Echo_Ehdr);
 	kern_kfree(Echo_Phdr);
 	kern_kfree(Echo_Shdr);
@@ -441,12 +441,12 @@ PRIVATE int exec_count_args(char **pstr, int *count) {
 	return space;
 }
 
-PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst) {
+PRIVATE int exec_copy_args(char **pstr, char **parr, char *dst, int dst_delta) {
 	char *p = NULL;
 	int len = 0;
 	while(pstr && (p = *pstr++, p)) {
 		strcpy(dst, p);
-		*(parr++) = dst;
+		*(parr++) = dst + dst_delta;
 		dst += strlen(p) + 1;
 	}
 	*(parr++) = 0;

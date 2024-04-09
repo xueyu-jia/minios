@@ -223,6 +223,7 @@ PRIVATE int fork_mem_cpy(u32 ppid,u32 pid)
 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
 		ker_ufree_4k(ppid, SharePageBase);	
 	}
+	free_pagetbl(ppid, SharePageBase);
 
 	return 0;		
 }

@@ -202,7 +202,7 @@ int match_build_in(int argc, char** argv){
 
 void printstring(char *prompt, char **p) {
     char *pstr = NULL;
-    printf("%s%p", prompt, p);
+    printf("%s", prompt);
     if(*p) {
         while(((pstr)=(*p++),pstr)) {
             printf("\n%s", pstr);
@@ -242,7 +242,7 @@ int main(int arg,char *argv[],char *envp[])
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 
-	#define TEST_CMD_NUM 2
+	#define TEST_CMD_NUM 0
 	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
 		"mkdir fat",
 		"mount /dev/sda1 fat fat32",

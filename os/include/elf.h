@@ -25,7 +25,7 @@ typedef struct{
 	u16	e_shnum;				//section header table 中有多少个条目
 	u16	e_shstrndx;				//section header table 中字符索引 
 }Elf32_Ehdr;
-
+#define EM_386	3
 /*******************************************
 *		program头(程序头)
 **********************************************/
@@ -58,5 +58,5 @@ typedef struct
 	u32 s_entsize;	//该section 若有固定项目，则给出固定项目的大小，如符号表
 }Elf32_Shdr;
 
-PUBLIC void read_elf(u32 fd,Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr);
+PUBLIC int read_elf(u32 fd,Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr);
 #endif

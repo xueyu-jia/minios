@@ -8,10 +8,12 @@
 //modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址空间申请一段大小为size的内存
 {
-	if (size <= (1 << MAX_BUFF_ORDER))
+	if (size <= (1 << MAX_BUFF_ORDER)) {
 		return kmalloc(size);
-	else
-		return kmalloc_over4k(size);
+	} else if(size == num_4K) {
+		return phy_kmalloc_4k();
+	}
+	return kmalloc_over4k(size);
 }
 
 //added by mingxuan 2021-8-16
@@ -106,7 +108,8 @@ PUBLIC u32 phy_kmalloc_4k() //无参数，从内核线性地址空间申请一�
 	page *page = alloc_pages(kbud, 0);
 	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
-	//disp_str("m");
+	// disp_str(" ka");
+	// disp_int(res);
 	if (res == 0)
 		disp_color_str("phy_kmalloc_4k: alloc_pages Error,no memory", 0x74);
 	return res;
@@ -168,7 +171,8 @@ PUBLIC u32 phy_kfree_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉
 		}
 	}
 
-	//disp_str("f");
+	// disp_str(" kf");
+	// disp_int(phy_addr);
     page *page = pfn_to_page(phy_to_pfn(phy_addr));
 	if (atomic_dec_and_test(&page->count)) {
 		return free_pages(kbud, page, 0);
@@ -198,6 +202,8 @@ PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请
 	page *page = alloc_pages(ubud, 0);
 	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
+	// disp_str(" a");
+	// disp_int(res);
 	if (res == 0)
 		disp_color_str("phy_malloc_4k:alloc_pages Error,no memory", 0x74);
 	return res;
@@ -205,6 +211,8 @@ PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请
 
 
 PUBLIC void phy_mapping_4k(u32 phy_addr) {
+	// disp_str(" m");
+	// disp_int(phy_addr);
 	page *page = pfn_to_page(phy_to_pfn(phy_addr));
 	atomic_inc(&page->count);
 }
@@ -267,6 +275,8 @@ PUBLIC u32 phy_free_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉�
 			return 0;
 		}
 	}
+	// disp_str(" f");
+	// disp_int(phy_addr);
 	page *page = pfn_to_page(phy_to_pfn(phy_addr));
 	if (atomic_dec_and_test(&page->count)) {
 		return free_pages(ubud, page, 0);

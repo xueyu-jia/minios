@@ -171,7 +171,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//释放进程的所有页地址空间
 	free_all_phypage(p_proc->task.pid);
     free_all_pagetbl(p_proc->task.pid);
-    free_pagedir(p_proc_current->task.pid);
+    free_pagedir(p_proc->task.pid);
 
 	p_proc->task.info.child_p_num = 0;	//自己的子进程数量设为0
 

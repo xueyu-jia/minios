@@ -44,10 +44,16 @@ void read_Shdr(u32 fd,Elf32_Shdr *File_Shdr,u32 offset)
 	return;
 }
 
-PUBLIC void read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr)
+PUBLIC int read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr)
 {
 	int i;
 	read_Ehdr(fd,Echo_Ehdr,0);
+	if((*(u32*)Echo_Ehdr->e_ident) != 0x464C457F) {
+		return -1;
+	}
+	if(Echo_Ehdr->e_machine != EM_386) {
+		return -1;
+	}
 	for(i = 0; i < Echo_Ehdr->e_phnum; i++)
 	{
 		read_Phdr(fd,&Echo_Phdr[i],Echo_Ehdr->e_phoff + Echo_Ehdr->e_phentsize * i);
@@ -56,7 +62,7 @@ PUBLIC void read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_S
 	{
 		read_Shdr(fd,&Echo_Shdr[i],Echo_Ehdr->e_shoff + Echo_Ehdr->e_shentsize * i);
 	}
-	return;
+	return 0;
 }
 
 PUBLIC void disp_Elf(Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr Echo_Phdr[])

@@ -17,6 +17,9 @@ PUBLIC	int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 								 u32 pte_Attribute);
 PUBLIC	void free_all_phypage(u32 pid);
 PUBLIC void free_seg_phypage(u32 pid, u8 type);
+PUBLIC	void free_all_pagetbl(u32 pid);
+PUBLIC void free_pagetbl(u32 pid, u32 AddrLin);
+PUBLIC void free_pagedir(u32 pid);
 PUBLIC	void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);//add by visual 2016.4.19
 PUBLIC	u32 get_page_phy_addr(u32 pid,u32 AddrLin);//线性地址
 PUBLIC	void clear_kernel_pagepte_low();		//add by visual 2016.5.12
