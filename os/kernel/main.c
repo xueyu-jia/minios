@@ -358,8 +358,6 @@ PRIVATE int initialize_processes()
 	// p_proc->task.info.child_process[NR_CHILD_MAX];//子进程列表
 	p_proc->task.info.child_t_num = 0; //子线程数量
 	// p_proc->task.info.child_thread[NR_CHILD_MAX];//子线程列表
-	p_proc->task.info.text_hold = 1; //是否拥有代码
-	p_proc->task.info.data_hold = 1; //是否拥有数据
 	// p_proc->task.memmap.text_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在中赋新值
 	// p_proc->task.memmap.text_lin_limit = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
 	// p_proc->task.memmap.data_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值

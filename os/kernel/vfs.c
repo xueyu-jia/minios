@@ -656,8 +656,8 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
         return -1;
 	}
 	int fstype = get_fstype_by_name(filesystemtype);
-	char dev_name[16];
-	vfs_get_path(block_dev, dev_name, 16);
+	char dev_name[MNT_DEVNAME_LEN];
+	vfs_get_path(block_dev, dev_name, MNT_DEVNAME_LEN);
 	struct vfs_dentry * mnt_root = kern_mount_dev(dev, fstype, dev_name, dir_d);
 	if(!mnt_root){
 		vfs_put_dentry(dir_d);
@@ -1166,6 +1166,10 @@ PUBLIC int do_vgetcwd(char *buf, int size)
 {
     return (int)kern_vfs_getcwd(buf, size);
 }
+
+PUBLIC int do_vstat() {
+	
+}
 /*======================================================================*
                               sys_* 系列函数
  *======================================================================*/
@@ -1225,10 +1229,14 @@ PUBLIC int sys_readdir() {
 
 //added by ran
 PUBLIC int sys_chdir() {
-  return do_vchdir((const char*)get_arg(1));
+	return do_vchdir((const char*)get_arg(1));
 }
 
 //added by ran
 PUBLIC int sys_getcwd() {
-  return (int)do_vgetcwd((char*)get_arg(1), (int)get_arg(2));
+	return (int)do_vgetcwd((char*)get_arg(1), (int)get_arg(2));
+}
+
+PUBLIC int sys_stat() {
+
 }

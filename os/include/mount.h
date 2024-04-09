@@ -1,9 +1,9 @@
 #include "type.h"
 #include "vfs.h"
 #define NR_MNT   10
-
+#define MNT_DEVNAME_LEN	16
 struct vfs_mount{
-	char mnt_devname[12];
+	char mnt_devname[MNT_DEVNAME_LEN];
 	struct vfs_dentry * mnt_mountpoint;
 	struct vfs_dentry * mnt_root;
     struct super_block* mnt_sb;

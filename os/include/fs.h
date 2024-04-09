@@ -24,7 +24,7 @@
 struct vfs_inode{
 	u32 i_no;
 	struct super_block* i_sb;
-	u32 i_rdev;   // real device
+	u32 i_dev;   // real device
 	u32 i_b_cdev; // for char special inode
 	u32 i_nlink; // file linked
 	atomic_t i_count; // reference count
@@ -32,7 +32,7 @@ struct vfs_inode{
 	int i_type;  // char/blk/mnt/dir...
 	int i_mode;  // permission ==> I_R/W/X
 	u32 i_atime; // access time (use UTC timestamp, 下同)
-	u32	i_ctime; // create time
+	u32	i_crtime; // create time
 	u32 i_mtime; // modify time
 	// list_head i_dentry; // connected dentry list，待定
 	struct list_node i_list; // recently used inodes list

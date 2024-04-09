@@ -45,18 +45,18 @@ struct fat_fsinfo{
 };
 
 struct fat_dir_entry{
-	char name[8], ext[3];
-	u8 attr;
-	u8 res; // 0
-	u8 ctime_10ms;
-	u16 ctime;
-	u16 cdate;
-	u16 adate;
-	u16 start_h;
-	u16 mtime;
-	u16 mdate;
-	u16 start_l;
-	u32 size;
+	char name[8], ext[3];	// 短文件名/扩展名
+	u8 attr;		//	属性 
+	u8 res; 		//	保留，0
+	u8 ctime_10ms;	//	创建时间10ms [0~199]
+	u16 ctime;		//	创建时间
+	u16 cdate;		//	创建日期
+	u16 adate;		//	访问日期
+	u16 start_h;	//	起始簇号(高2字节)
+	u16 mtime;		//	修改时间
+	u16 mdate;		//	修改日期
+	u16 start_l;	//	起始簇号(低2字节)
+	u32 size;		//	文件大小(字节)
 };
 #define FAT_ENTRY_SIZE 32
 #define FAT_DPS		16 //(SECTOR_SIZE/FAT_ENTRY_SIZE)
@@ -66,16 +66,17 @@ struct fat_dir_entry{
 #define FAT_DOTDOT	"..         "
 
 struct fat_dir_slot{
-	u8 order;
-	char name0_4[10];
-	u8 attr;
-	u8 res; // 0
-	u8 checksum;
+	u8 order;		//	长目录项序号
+	char name0_4[10];//	长文件名，16位unicode,每个长文件名目录项13个字符
+	u8 attr;		//	属性,与短目录项一致
+	u8 res; 		//	0
+	u8 checksum;	//	对应短文件名校验码
 	char name5_10[12];
-	u16 start; // 0 in ldir
+	u16 start; 		//	长目录项中为0
 	char name11_12[4];
 };
 
+//	FAT目录项属性
 #define ATTR_RO		1
 #define ATTR_HIDDEN 2
 #define ATTR_SYSTEM 4
@@ -83,6 +84,8 @@ struct fat_dir_slot{
 #define ATTR_DIR	16
 #define ATTR_ARCH	32
 #define ATTR_LNAME (ATTR_RO|ATTR_HIDDEN|ATTR_SYSTEM|ATTR_VOL)
+
+//	FAT短文件名目录项第一个字节标志/长文件名目录项order标志
 #define DIR_LDIR_END 0x40
 #define DIR_DELETE	0xE5
 

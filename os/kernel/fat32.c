@@ -272,7 +272,7 @@ PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int 
 	if(clus_sector == -1){
 		return NULL;
 	}
-	return bread_sector(inode->i_rdev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
+	return bread_sector(inode->i_dev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
 }
 
 PRIVATE inline struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
@@ -531,9 +531,9 @@ PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name,
 	}
 	dir->i_mtime = timestamp; 
 	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
-	inode->i_rdev = dir->i_sb->sb_dev;
+	inode->i_dev = dir->i_sb->sb_dev;
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
-	inode->i_atime = inode->i_ctime = inode->i_mtime = timestamp;
+	inode->i_atime = inode->i_crtime = inode->i_mtime = timestamp;
 	fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
 	struct fat_dir_entry de;
 	memset(&de, 0, sizeof(struct fat_dir_entry));
@@ -557,7 +557,7 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		cluster_start = FAT_SB(sb)->root_cluster;
 		inode->i_mode = I_RWX;
 		inode->i_type = I_DIRECTORY;
-		inode->i_ctime = 0;
+		inode->i_crtime = 0;
 		inode->i_mtime = 0;
 		inode->i_atime = 0;
 	}else{
@@ -566,12 +566,12 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		inode->i_mode = (entry->attr & ATTR_RO)? I_R|I_X : I_RWX;
 		inode->i_type = (entry->attr & ATTR_DIR)? I_DIRECTORY: I_REGULAR;
 		inode->i_size = entry->size;
-		inode->i_ctime = fat_read_datetime(entry->cdate, entry->ctime, entry->ctime_10ms);
+		inode->i_crtime = fat_read_datetime(entry->cdate, entry->ctime, entry->ctime_10ms);
 		inode->i_mtime = fat_read_datetime(entry->mdate, entry->mtime, 0);
 		inode->i_atime = fat_read_datetime(entry->adate, 0, 0);
 	}
 	inode->i_sb = sb;
-	inode->i_rdev = sb->sb_dev;
+	inode->i_dev = sb->sb_dev;
 	inode->i_no = ino;
 	int cnt = fill_fat_info(sb, cluster_start, &inode->fat32_inode.fat_info);
 	if(!inode->i_size){
@@ -593,7 +593,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	u32 ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
-		&((struct fat_dir_entry*)bread_sector(inode->i_rdev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
+		&((struct fat_dir_entry*)bread_sector(inode->i_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
 	if(!de){
 		return -1;
 	}
@@ -733,7 +733,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	memcpy(de.name, FAT_DOTDOT, 11);
 	de.attr = ATTR_DIR;
 	de.size = dir->i_size;
-	fat_update_datetime(dir->i_ctime, &de.cdate, &de.ctime, &de.ctime_10ms);
+	fat_update_datetime(dir->i_crtime, &de.cdate, &de.ctime, &de.ctime_10ms);
 	fat_update_datetime(dir->i_mtime, &de.mdate, &de.mtime, NULL);
 	fat_update_datetime(dir->i_atime, &de.adate, NULL, NULL);
 	fat_write_shortname(inode, &de, 1);

@@ -190,7 +190,7 @@ PUBLIC void devfs_read_inode(struct vfs_inode *inode) {
 		}
 		inode->i_fop = dev_struct->dev_fop;
 	}
-	inode->i_ctime = current_timestamp;
+	inode->i_crtime = current_timestamp;
 	inode->i_nlink = 1;
 }
 
