@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "string.h"
+#include "env.h"
 #define MAX_ARGC	8
 #define NUM_BUILTIN_CMD	13
 #define CMD_LEN	8
@@ -266,6 +267,34 @@ void printstring(char *prompt, char **p) {
     printf("\n");
 }
 
+int test_command(char *completed, const char * cmd) {
+	char *path = getenv("PATH"), *pstr;
+	int status, fd;
+	char sample[4];
+	struct stat statbuf;
+	while(path != NULL) {
+		pstr = strchr(path, ';');
+		strncpy(completed, path, pstr-path);
+		completed[pstr-path] = 0;
+		strcat(completed, cmd);
+		status = stat(completed, &statbuf);
+		if(status == 0 && statbuf.st_type == I_REGULAR){
+			fd = open(completed, O_RDONLY);
+			lseek(fd, 0, SEEK_SET);
+			read(fd, sample, 4);
+			close(fd);
+			if(sample[1]=='E' && sample[2]=='L' && sample[3]=='F') {
+				return 0;
+			}
+		}
+		if(*pstr == NULL){
+			break;
+		}
+		path = pstr + 1;
+	}
+	return -1;
+}
+
 int main(int arg,char *argv[],char *envp[])
 {
     /*
@@ -276,7 +305,8 @@ int main(int arg,char *argv[],char *envp[])
 	printf("argc:%d\n", arg);
     printstring("argv:", argv);
     printstring("env:", envp);
-    char buf[1024];
+    char buf[512];
+	char cmd[512];
 	char pwd[MAX_PATH];
     int pid;
     int times = 0;
@@ -335,6 +365,13 @@ int main(int arg,char *argv[],char *envp[])
 				printf("%s exit %d", cmds[cmdid].cmd_name, ret);
 				continue;
 			}
+			// test cmd exec file
+			int rt = test_command(cmd, buf);
+			if(-1 == rt) {
+				printf("command not found:%s\n", buf);
+				continue;
+			}
+			args[0] = cmd;
 			int pid = fork();
 			if(pid!=0)
 			{	//father
@@ -345,7 +382,7 @@ int main(int arg,char *argv[],char *envp[])
 			}
 			else
 			{	//child
-				if(execve(buf, args, NULL)!=0)
+				if(execve(cmd, args, NULL)!=0)
 				{
 					printf("exec failed: file not found!");
                 	exit(-1);

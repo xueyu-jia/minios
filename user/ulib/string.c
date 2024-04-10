@@ -111,3 +111,13 @@ int strncmp(const char *s1, const char *s2, int n)
     }
     return 0;
 }
+
+char *strchr(const char *str, char c) {
+	char *p;
+	for(p = str; *p; p++) {
+		if(*p == c) {
+			break;
+		}
+	}
+	return p;
+}

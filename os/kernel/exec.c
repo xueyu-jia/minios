@@ -91,9 +91,8 @@ PUBLIC u32 kern_execve(
     }
     // 原有execve传参重构，自己写一个吧 2023.12.25
     //  处理参数 argc 放在 main ebp + 8 (ArgLinBase); argv 放在 ebp + 12
-    //  err_temp = ker_umalloc_4k(ArgLinBase, p_proc_current->task.pid, PG_P |
-    //  PG_USU | PG_RWW); low<--               ---stack--- -->high(base)
-    //   | 				user main stack		|   argc 					|  argv
+    // low<--     ---stack---       -->high(base)
+    //   | 		user main stack		|   argc 					|  argv
     //   | envp	| argv[0]... argv[argc-1]| 0 |... argv raw data | env data | |
     //   main esp  |  call main rt	|	StackLinBase/ArgLinBase |
     int argc, env_space, arr = 0, space = 0;

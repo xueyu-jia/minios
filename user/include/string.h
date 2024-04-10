@@ -8,5 +8,5 @@ char* strncpy(char * dest, const char *src, int n);
 int strlen(const char* p_str);
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, int n);
-
+char *strchr(const char *str, char c);
 #endif
