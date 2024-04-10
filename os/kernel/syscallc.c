@@ -150,7 +150,8 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_pthread_exit]			=	sys_pthread_exit,
 	[_NR_pthread_join]			=	sys_pthread_join,
 	// [_NR_init_char_dev]			=	sys_init_char_dev,
-	[_NR_get_time]				=	sys_get_time
+	[_NR_get_time]				=	sys_get_time,
+	[_NR_stat]					=	sys_stat
 	};
 
 // #define TEST_FOR_SEMAPHORE

@@ -108,7 +108,9 @@ PUBLIC struct vfs_dentry *devfs_lookup(struct vfs_inode *dir, const char *filena
 		u32 minor_bit = dev_struct->dev_minor_map;
 		for(int i = 0;minor_bit && i < 32; i++) {
 			if(minor_bit & 1) {
-				itoa(i, dev_name + minor_name, 10);
+				if(i != 0 || dev_struct->dev_type != DEV_BLOCK_TYPE) {
+					itoa(i, dev_name + minor_name, 10);
+				}
 				if(!strcmp(dev_name, filename)) {
 					dev = MAKE_DEV(dev_struct->dev_major, i);
 					goto found;
@@ -190,7 +192,7 @@ PUBLIC void devfs_read_inode(struct vfs_inode *inode) {
 		}
 		inode->i_fop = dev_struct->dev_fop;
 	}
-	inode->i_crtime = current_timestamp;
+	inode->i_crtime = inode->i_atime = inode->i_mtime = current_timestamp;
 	inode->i_nlink = 1;
 }
 

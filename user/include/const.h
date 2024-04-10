@@ -5,8 +5,8 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#ifndef	_ORANGES_CONST_H_
-#define	_ORANGES_CONST_H_
+#ifndef	_USER_CONST_H_
+#define	_USER_CONST_H_
 
 /*最大整数定义*/
 #define MAX_UNSIGNED_INT 0xFFFFFFFF		//最大的无符号整形

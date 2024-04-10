@@ -39,6 +39,8 @@ PRIVATE char* i2a(int val, int base, char ** ps)
 	if (q) {
 		i2a(q, base, ps);
 	}
+	// udisp_int(val);
+	// udisp_str(" ");
 	*(*ps)++ = (m < 10) ? (m + '0') : (m - 10 + 'A');
 
 	return *ps;
@@ -80,10 +82,17 @@ PUBLIC int vsprintf(char *buf, const char *fmt, va_list args)
 		else {
 			cs = ' ';
 		}
-		while (((unsigned char)(*fmt) >= '0') && ((unsigned char)(*fmt) <= '9')) {
-			align_nr *= 10;
-			align_nr += *fmt - '0';
+		if(*fmt == '*') {
+			align_nr = *((int*)p_next_arg);
+			p_next_arg += 4;
 			fmt++;
+		}
+		else {
+			while (((unsigned char)(*fmt) >= '0') && ((unsigned char)(*fmt) <= '9')) {
+				align_nr *= 10;
+				align_nr += *fmt - '0';
+				fmt++;
+			}
 		}
 
 		char * q = inner_buf;

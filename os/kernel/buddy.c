@@ -6,6 +6,7 @@
 #include "console.h"
 #include "buddy.h"
 #include "kmalloc.h"
+#include "memman.h"
 #include "proto.h"
 
 struct page mem_map[ALL_PAGES];

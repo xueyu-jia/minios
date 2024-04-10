@@ -241,7 +241,7 @@ PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
 		if (err_temp != 0)
 		{
 			disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
-			return -1;
+			return ;
 		}
 	}
 }
@@ -252,7 +252,7 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	if (0 != init_proc_page(pid))
 	{
 		disp_color_str("kernel_main Error:init_proc_page", 0x74);
-		return -1;
+		return ;
 	}
 	p_proc->task.memmap.heap_lin_base = HeapLinBase;
 	p_proc->task.memmap.heap_lin_limit = HeapLinBase; //堆的界限将会一直动态变化
@@ -320,7 +320,7 @@ PRIVATE int initialize_processes()
 		char* name;
 		int task_privilege = 0;
 		if(pid < NR_TASKS){
-			entry = p_task->initial_eip;
+			entry = (u32)p_task->initial_eip;
 			name = p_task->name;
 			task_privilege = 1;
 			p_task++;

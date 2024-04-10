@@ -1,7 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #define MAX_ARGC	8
-#define NUM_BUILTIN_CMD	12
+#define NUM_BUILTIN_CMD	13
 #define CMD_LEN	8
 
 #define SHELL_TEST
@@ -60,11 +60,20 @@ int do_mount(int argc, char** argv){
 	return mount(argv[1], argv[2], argv[3], 0, NULL);
 }
 
+void print_time(u32 timestamp) {
+	char buf[32] = {0};
+	struct tm time= {0};
+	localtime(timestamp, &time);
+	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", &time);
+	printf("%s", buf);
+}
+
 int do_date(int argc, char** argv){
 	struct tm time= {0};
+	char buf[32] = {0};
 	get_time(&time);
-	printf("%d-%02d-%02d %02d:%02d:%02d\n", 
-	time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
+	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", &time);
+	printf("%s\n", buf);
 	return 0;
 }
 
@@ -156,6 +165,52 @@ int do_chkmem(int argc, char** argv) {
 	return 0;
 }
 
+char *inodetype2str(int type) {
+	switch (type)
+	{
+	case I_REGULAR:
+		return "Regular file";
+	case I_DIRECTORY:
+		return "Directory";
+	case I_CHAR_SPECIAL:
+		return "Char special file";
+	case I_BLOCK_SPECIAL:
+		return "Block special file";
+	default:
+		break;
+	}
+	return "Unknown";
+}
+
+int do_stat(int argc, char **argv) {
+	if(argc < 2) {
+		printf("usage: stat %%path\n");
+		return -1;
+	}
+	struct stat statbuf;
+	int st = stat(argv[1], &statbuf);
+	if(st != 0) {
+		printf("%s not found!", argv[1]);
+		return -1;
+	}
+	printf("File name:%s\n", argv[1]);
+	printf("size:%d  inode:%d  type:%s  ", 
+		(u32)statbuf.st_size, statbuf.st_ino, inodetype2str(statbuf.st_type));
+	if(statbuf.st_type == I_BLOCK_SPECIAL 
+	|| statbuf.st_type == I_CHAR_SPECIAL) {
+		u32 dev = statbuf.st_rdev;
+		printf("device: %d,%d", dev>>20, dev& 0x0FFFFF);
+	}
+	printf("\nLast access:");
+	print_time(statbuf.st_atim);
+	printf("\nLast modified:");
+	print_time(statbuf.st_mtim);
+	printf("\nCreation:");
+	print_time(statbuf.st_crtim);
+	printf("\n");
+	return 0;
+}
+
 struct cmd cmds[NUM_BUILTIN_CMD];
 int num_cmd;
 
@@ -239,6 +294,7 @@ int main(int arg,char *argv[],char *envp[])
 	reg_cmd("unlink", do_unlink);
 	reg_cmd("rmdir", do_rmdir);
 	reg_cmd("chkmem", do_chkmem);
+	reg_cmd("stat", do_stat);
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 

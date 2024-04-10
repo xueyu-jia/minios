@@ -5,6 +5,7 @@
 #define VFS_H
 #include "const.h"
 #include "fs.h"
+#include "stat.h"
 // mark
 //#define NR_DEV 10
 // #define NR_FS 16		//modified by mingxuan 2020-10-18
@@ -44,6 +45,7 @@ PUBLIC int sys_rmdir();
 PUBLIC int sys_readdir();
 PUBLIC int sys_chdir(); //added by ran
 PUBLIC int sys_getcwd(); //added by ran
+PUBLIC int sys_stat();
 
 PUBLIC int do_vopen(const char *path, int flags, int mode);
 PUBLIC int do_vclose(int fd);
@@ -59,7 +61,7 @@ PUBLIC int do_vrmdir(const char *dirname);
 PUBLIC int do_vchdir(const char *path); //added by ran
 //PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
 PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
-
+PUBLIC int do_vstat(const char *pathname, struct stat* statbuf);
 // PUBLIC int set_vfstable(u32 device, char *target);
 // PUBLIC struct vfs* vfs_alloc_vfs_entity();
 // PUBLIC int get_index(char path[]);

@@ -5,6 +5,7 @@
 #include "const.h"
 #include "time.h"
 #include "fcntl.h"
+#include "stat.h"
 #include "../include/signal.h"
 #include "../include/ushm.h"
 #include "../include/msg.h"
@@ -72,7 +73,7 @@
 #define _NR_pthread_exit                59
 #define _NR_pthread_join                60
 #define _NR_get_time					61
-
+#define _NR_stat						62
 #define INT_VECTOR_SYS_CALL             0x90
 
 /* 无参数的系统调用 */
@@ -209,5 +210,5 @@ int umount(const char *target);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
 int get_time(struct tm* time);
-
+int stat(const char *pathname, struct stat* statbuf);
 #endif

@@ -35,7 +35,7 @@ char* strcpy(char* p_dst, char* p_src){
 	return p_dst;
 }
 
-int strlen(char* p_str){
+int strlen(const char* p_str){
 	int cnt = 0;
 	while(*(p_str++)){
 		cnt++;

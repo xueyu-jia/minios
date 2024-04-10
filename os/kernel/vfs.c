@@ -12,6 +12,7 @@
 #include "vfs.h"
 #include "hd.h"
 #include "mount.h"
+#include "stat.h"
 
 // PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
@@ -1099,6 +1100,26 @@ PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
     return buf;
 }
 
+PUBLIC int kern_vfs_stat(const char *path, struct stat *statbuf) {
+	struct vfs_dentry *dentry = vfs_lookup(path);
+	if(NULL == dentry) {
+		return -1;
+	}
+	struct vfs_inode *inode = dentry->d_inode;
+	statbuf->st_dev = inode->i_dev;
+	statbuf->st_ino = inode->i_no;
+	statbuf->st_type = inode->i_type;
+	statbuf->st_mode = inode->i_mode;
+	statbuf->st_nlink = inode->i_nlink;
+	statbuf->st_rdev = inode->i_b_cdev;
+	statbuf->st_size = inode->i_size;
+	statbuf->st_atim = inode->i_atime;
+	statbuf->st_mtim = inode->i_mtime;
+	statbuf->st_crtim = inode->i_crtime;
+	vfs_put_dentry(dentry);
+	return 0;
+}
+
 //// do_xx
 PUBLIC int do_vopen(const char *path, int flags, int mode) 
 {
@@ -1167,8 +1188,8 @@ PUBLIC int do_vgetcwd(char *buf, int size)
     return (int)kern_vfs_getcwd(buf, size);
 }
 
-PUBLIC int do_vstat() {
-	
+PUBLIC int do_vstat(const char *pathname, struct stat* statbuf) {
+	return (int)kern_vfs_stat(pathname, statbuf);
 }
 /*======================================================================*
                               sys_* 系列函数
@@ -1238,5 +1259,5 @@ PUBLIC int sys_getcwd() {
 }
 
 PUBLIC int sys_stat() {
-
+	return do_vstat((const char*)get_arg(1), (struct stat*)get_arg(2));
 }

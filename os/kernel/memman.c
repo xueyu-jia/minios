@@ -9,7 +9,7 @@
 PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址空间申请一段大小为size的内存
 {
 	if (size <= (1 << MAX_BUFF_ORDER)) {
-		return kmalloc(size);
+		return (u32)kmalloc(size);
 	} else if(size == num_4K) {
 		return phy_kmalloc_4k();
 	}
@@ -25,7 +25,7 @@ PUBLIC u32 kern_kmalloc(u32 size)
 //分配一段内存,并初始化为0
 PUBLIC u32 kern_kzalloc(u32 size)
 {
-	void *p = K_PHY2LIN(phy_kmalloc(size));
+	void *p = (void*)K_PHY2LIN(phy_kmalloc(size));
 	memset(p,0,size);
 	return (u32)p;
 }
@@ -408,7 +408,7 @@ PUBLIC u32 sys_malloc_4k()
 //
 PUBLIC int sys_free_4k()
 {
-	return do_free_4k(get_arg(1));
+	return do_free_4k((void*)get_arg(1));
 }
 
 PUBLIC int do_free_4k(void *AddrLin)
@@ -424,7 +424,7 @@ PUBLIC int kern_free_4k(void *AddrLin) //modified by mingxuan 2021-8-19
 
 	phy_addr = get_page_phy_addr(p_proc_current->task.pid, (int)AddrLin); //获取物理页的物理地址
 
-	clear_pte(p_proc_current->task.pid, AddrLin);
+	clear_pte(p_proc_current->task.pid, (u32)AddrLin);
 
 	//    update_heap_ptr(AddrLin,-1); //update heap pointer
 	update_heap_limit(p_proc_current->task.pid, -1); //update heap limit edited by wang 2021.8.26

@@ -21,6 +21,7 @@
 #include "fs.h"
 #include "ahci.h"
 #include "semaphore.h"
+#include "memman.h"
 #include "blame.h"
 
 //added by xw, 18/8/28
@@ -117,7 +118,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 		hd_infos[drive].part[0].base = 0;
 		/* Total Nr of User Addressable Sectors */
 		hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
-		kern_kfree(buf);
+		kern_kfree((u32)buf);
 	}
 	else if(drive < SATA_BASE)
 	{
@@ -250,7 +251,7 @@ PRIVATE void hd_rdwt_real(RWInfo *p)
 
 PUBLIC void hd_rdwt_sched(MESSAGE *p)
 {
-	RWInfo* rwinfo = kern_kmalloc(sizeof(RWInfo));
+	RWInfo* rwinfo = (RWInfo*) kern_kmalloc(sizeof(RWInfo));
 	int size = p->CNT;
 	void *buffer;
 	
@@ -394,8 +395,8 @@ PRIVATE void partition(int device, int style)
 	// added by ran
 	struct part_info *logical = hdi->part;
 
-	char *sector_buf = kern_kmalloc(SECTOR_SIZE);
-	struct part_ent *part_tbl = (char*)sector_buf + PARTITION_TABLE_OFFSET; // first sector at most 4 item
+	char *sector_buf = (char*)kern_kmalloc(SECTOR_SIZE);
+	struct part_ent *part_tbl = (struct part_ent *)((char*)sector_buf + PARTITION_TABLE_OFFSET); // first sector at most 4 item
 
 	if (style == P_PRIMARY) {
 		read_part_table_sector(drive, 0, sector_buf);
@@ -489,7 +490,7 @@ PRIVATE void partition(int device, int style)
 
 		// assert(0);
 	}
-	kern_kfree(sector_buf);
+	kern_kfree((u32)sector_buf);
 }
 
 /*****************************************************************************
@@ -826,7 +827,7 @@ PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
 	hd_cmd_out(&cmd,drive);
 
 	int bytes_left = count;
-	void *la = buf;	//attention here!
+	char* la = buf;	//attention here!
 
 	while (bytes_left) {
 		int bytes = min(SECTOR_SIZE, bytes_left);
@@ -973,7 +974,7 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		/*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
 		disable_int();
 		port->ci = 1<<slot;			// Issue command
-		wait_event(&sata_wait_flag);
+		wait_event((void *)&sata_wait_flag);
 		enable_int();
 	}
 	
@@ -1024,7 +1025,7 @@ int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 // added by xw, 18/8/27
 int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
-	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
 	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
 	driver_msg->DEVICE = dev;
@@ -1035,7 +1036,7 @@ int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 	driver_msg->BUF = buf;
 
 	hd_rdwt_sched(driver_msg);
-	kern_kfree(driver_msg);
+	kern_kfree((u32)driver_msg);
 	return 0;
 }
 //~xw
@@ -1043,7 +1044,7 @@ int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 //add by sundong 2023.5.26
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 {
-	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
 	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
 	driver_msg->DEVICE = dev;
@@ -1059,7 +1060,7 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 	/// replace the statement above.
 	// disp_int(proc_nr);
 	hd_rdwt(driver_msg);
-	kern_kfree(driver_msg);
+	kern_kfree((u32)driver_msg);
 	return 0;
 }
 
@@ -1068,7 +1069,7 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 {
 	// driver_msg will be used in hd_service(another process) why use stack memory??? jiangfeng 20240323
 	// MESSAGE driver_msg;
-	MESSAGE *driver_msg = kern_kmalloc(sizeof(MESSAGE));
+	MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
 	driver_msg->type = io_type;
 	// driver_msg.DEVICE	= MINOR(dev);
 	driver_msg->DEVICE = dev;
@@ -1079,7 +1080,7 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 	driver_msg->BUF = buf;
 
 	hd_rdwt_sched(driver_msg);
-	kern_kfree(driver_msg);
+	kern_kfree((u32)driver_msg);
 	
 	return 0;
 }

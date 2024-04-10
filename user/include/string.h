@@ -5,7 +5,7 @@ void memset(void* p_dst, char ch, int size);
 char* strcat(char *dst, const char *src);
 char* strcpy(char* p_dst, char* p_src);
 char* strncpy(char * dest, const char *src, int n);
-int strlen(char* p_str);
+int strlen(const char* p_str);
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, int n);
 

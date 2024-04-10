@@ -259,3 +259,7 @@ int pthread_join(pthread_t thread, void **retval){
 int get_time(struct tm* time){
 	return _syscall1(_NR_get_time, time);
 }
+
+int stat(const char *pathname, struct stat* statbuf) {
+	return _syscall2(_NR_stat, pathname, statbuf);
+}

@@ -59,8 +59,8 @@ void mouse_handler(int irq){
 			if(p_tty->console==&console_table[current_console]){
 				p_tty->mouse_left_button = mouse_in.buf[0]&0x01;
 				
-				u8 mid_button = mouse_in.buf[0]&0b100;
-				if(mid_button==0b100){
+				u8 mid_button = mouse_in.buf[0]&0x4;
+				if(mid_button==0x4){
 					p_tty->mouse_mid_button = 1;
 				}else{
 					p_tty->mouse_mid_button = 0;

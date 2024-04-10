@@ -17,4 +17,9 @@ struct tm
   long int __tm_gmtoff;		/* Seconds east of UTC.  */
   const char *__tm_zone;	/* Timezone abbreviation.  */
 };
+#define UTC 			0
+#define LOCAL_TIMEZONE	+8// timestamp use UTC， localtime UTC+8
+struct tm* gmtime(u32 timestamp, struct tm* tm_time);
+struct tm* localtime(u32 timestamp, struct tm* tm_time);
+int strftime(char *s, int max, const char *fmt, struct tm* tm_time);
 #endif

@@ -207,7 +207,7 @@ int mount(const char *source, const char *target,const char *filesystemtype, uns
 int umount(const char *target);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
-
+int stat(const char *pathname, struct stat* statbuf);
 
 /* syscallc.c */		//edit by visual 2016.4.6
 PUBLIC int   sys_get_ticks();           /* sys_call */

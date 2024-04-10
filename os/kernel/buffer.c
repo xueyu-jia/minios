@@ -71,8 +71,8 @@ void init_buffer(int num_block)
 		list_init(&buf_hash_table[i]);
 	}
 	for(int i = 0; i < num_block; i++) {
-		bh = kern_kzalloc(sizeof(buf_head));
-		bh->buffer = kern_kzalloc(BLOCK_SIZE);
+		bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
+		bh->buffer = (void*)kern_kzalloc(BLOCK_SIZE);
 		initlock(&bh->lock, NULL);
 		list_init(&bh->b_lru);
 		list_init(&bh->b_hash);
