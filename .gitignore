@@ -5,6 +5,8 @@
 /.vscode/*
 /tmp/*
 .idea
+/.VSC*/*
+/*.assets/*
 
 # ignore *.bin
 *.bin

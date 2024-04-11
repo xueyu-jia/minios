@@ -142,8 +142,9 @@ PUBLIC int kernel_main()
 	// ksem_init(&proc_table_sem,1); 	//init PCB sem
 	
 	//初始状态确保hd_service放在实时队列第一个
-	in_rq(&proc_table[1]);
+	// in_rq(&proc_table[1]);
 	in_rq(&proc_table[0]);
+	in_rq(&proc_table[1]);
 
 	for(int pid=2; pid<NR_K_PCBS+1 ; pid++)
 	{

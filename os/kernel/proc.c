@@ -21,13 +21,21 @@
 #include "../include/global.h"
 #include "../include/proto.h"
 
+
+PRIVATE int test_cfs()
+{	
+	if(p_proc_current->task.stat == READY || rt_rq->next->p_process->task.stat == READY)
+		return true;
+	else	
+		return false;
+}
 /*======================================================================*
                               cfs_schedule
  *======================================================================*/
 
 void cfs_sched()
 {
-	if(rt_runtime<sysctl_sched_rt_runtime && rt_rq->next!=NULL)//rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
+	if(rt_runtime<sysctl_sched_rt_runtime && rt_rq->next!=NULL && test_cfs())//rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
 	{
 		if(p_proc_current->task.is_rt==true)
 		{

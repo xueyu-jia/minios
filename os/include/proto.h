@@ -64,7 +64,7 @@ void initial();
 /* keyboard.c */
 //added by mingxuan 2019-5-19
 PUBLIC void init_kb();
-PUBLIC void keyboard_read();
+PUBLIC void keyboard_read(TTY* p_tty);
 
 /* tty.c */
 //added by mingxuan 2019-5-19

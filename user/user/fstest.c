@@ -1,4 +1,5 @@
 #include "../include/stdio.h"
+// #include "../include/string.h"
 /*
  * orangfs文件系统下
  * 长路径
@@ -9,8 +10,19 @@
  * 打开文件、关闭文件
  * 
 */
+
+int user_test(int order, int val, int is_true, char* test_messege);
+int strncmp(const char *p, const char *q, int n);
 void main(int argc,char *argv[])
-{
+{	
+	int test_order = 0;
+	if(fork() == 0){
+		// 子进程一直循环，父进程读写硬盘产生的中断实际上会在子进程运行时触发
+		// 如果报错：SATA handler:No error but interrupt
+		// 说明子进程没有映射sata寄存器的端口（AHCI的端口）
+		child_function();
+		while(1){};
+	}
 	// 创建长目录
 	char path[128], buff[128], filename[128];
 	int ret, fd;
@@ -26,7 +38,8 @@ void main(int argc,char *argv[])
 		path[i++] = 'a' + (i % 26);
 		path[i++] = 'a' + (i % 26);
 		path[i] = 'a' + (i % 26);
-		createdir(path);
+		ret = createdir(path);
+		user_test(test_order++, ret, ret==0, "createdir");
 	}
 	printf("path:%s\n", path);
 	printf("path length :%d\n", strlen(path));
@@ -39,42 +52,100 @@ void main(int argc,char *argv[])
 	filename[i] = 0;
 	printf("path + filename length :%d\n", strlen(filename));
 	fd = open(filename, O_CREAT|O_RDWR);
+	user_test(test_order++, fd, fd>=0, "open file");
 	if(fd >= 0){
-		write(fd, filename, 128);
-		close(fd);
-	}else{
-		printf("open file error/n");
-		exit(0);
-		return 0;
+		ret = write(fd, filename, strlen(filename));
+		user_test(test_order++, ret, ret==strlen(filename), "write data");
+		ret = close(fd);
+		user_test(test_order++, ret, ret==0, "close the file");
 	}
 
 	// 打开文件并读入数据
 	fd = open(filename, O_RDWR);
-	read(fd, buff, 128);
-	close(fd);
+	user_test(test_order++, fd, fd>=0, "open the file");
+	ret = read(fd, buff, 128);
+	user_test(test_order++, ret, ret>=0, "read the file");
+	ret = close(fd);
+	user_test(test_order++, ret, ret==0, "close the file");
+	ret = strncmp(filename, buff, strlen(filename));
+	user_test(test_order++, ret, ret==0, "write and read cmp");
+
 	printf("file content: \n%s\n", buff);
 	printf("content length :%d\n", strlen(buff));
 
 	// 删除不存在的目录
-	ret = deletedir("error");
-	printf("delete error path ret:%d\n", ret);
+	ret = deletedir("errordir");
+	user_test(test_order++, ret, ret!=0, "delete error dir");
 
 	// 删除有文件的目录
 	ret = deletedir(path);
-	for(int j = 0; j < 100000000; j++);
-	printf("delete 1 ret:%d\n", ret);
+	// for(int j = 0; j < 100000000; j++);
+	user_test(test_order++, ret, ret!=0, "delete a dir which have files");
 	
 	// 删除文件,然后再删除目录
 	ret = unlink(filename);
-	for(int j = 0; j < 100000000; j++);
-	printf("delete file ret:%d\n", ret);
+	// for(int j = 0; j < 100000000; j++);
+	user_test(test_order++, ret, ret==0, "delete file");
 	
 	ret = deletedir(path);
-	for(int j = 0; j < 100000000; j++);
-	printf("delete 2 ret:%d\n", ret);
+	// for(int j = 0; j < 100000000; j++);
+	user_test(test_order++, ret, ret==0, "delete empty dir");
 	
+	printf("FINISHED!!!\n");
 	exit(0);
 	return 0;
 
 
+}
+
+int user_test(int order, int val, int is_true, char* test_messege)
+{
+	printf("test %d: %s ", order, test_messege);
+	if(is_true){
+		printf("SUCCEED!\n");
+	}else{
+		printf("ERROR VAL: %d\n", val);
+		exit(-1);
+	}
+	return is_true;
+}
+
+int child_function()
+{
+	char child_filename[] = "child_file";
+	char child_buf[128];
+	int ret, fd;
+	int test_order = 0;
+
+	fd = open(child_filename, O_CREAT|O_RDWR);
+	user_test(test_order++, fd, fd>=0, "child open file");
+	if(fd >= 0){
+		ret = write(fd, child_filename, strlen(child_filename));
+		user_test(test_order++, ret, ret==strlen(child_filename), "child write data");
+		ret = close(fd);
+		user_test(test_order++, ret, ret==0, "child close the file");
+	}
+
+	// 打开文件并读入数据
+	fd = open(child_filename, O_RDWR);
+	user_test(test_order++, fd, fd>=0, "child open the file");
+	ret = read(fd, child_buf, 128);
+	user_test(test_order++, ret, ret>=0, "child read the file");
+	ret = close(fd);
+	user_test(test_order++, ret, ret==0, "child close the file");
+	ret = strncmp(child_filename, child_buf, strlen(child_filename));
+	user_test(test_order++, ret, ret==0, "child write and read cmp");
+
+	printf("CHILD FINISHED!!!\n");
+	while(1);
+}
+
+int strncmp(const char *p, const char *q, int n)
+{
+	while (n > 0 && *p && *p == *q)
+		n--, p++, q++;
+	if (n == 0)
+		return 0;
+	else
+		return (int) ((unsigned char) *p - (unsigned char) *q);
 }
