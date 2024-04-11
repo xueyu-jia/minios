@@ -230,26 +230,31 @@ build_fs:
 	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
 	sudo $(CP) $(CP_FLAG) kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
 
+	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
+		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
+	fi
 #初始化根文件系统
 	sudo $(ROOT_FS_MAKER) $(ROOT_FS_MAKE_FLAG) $(ROOT_FS_PART)
 	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo mount $(ROOT_FS_PART) $(ROOT_MOUNTPOINT);	\
+		sudo mkdir $(ROOT_MOUNTPOINT)/bin;\
 	fi
 # 在启动盘放置init.bin启动文件
-	sudo $(ROOT_CP)  user/init/init.bin $(ROOT_MOUNTPOINT)/init.bin
+# sudo $(ROOT_CP)  user/init/init.bin $(ROOT_MOUNTPOINT)/init.bin
 
-# 在此处根据USER_TEST变量添加用户程序的文件 user/dir/file.bin ==> root/file.bin
-	$(foreach USER_TEST,$(ORANGESUSER),\
-		sudo $(ROOT_CP)  $(USER_TEST) $(ROOT_MOUNTPOINT)/$(notdir $(USER_TEST));\
+# 在此处根据USER_TEST变量添加用户程序的文件 user/dir/file.bin ==> root/bin/file.bin
+	$(foreach USER_BIN,$(ORANGESBIN),\
+		sudo $(ROOT_CP) $(USER_BIN) $(ROOT_MOUNTPOINT)/bin/$(basename $(notdir $(USER_BIN)));\
+	)
+	
+	$(foreach USER_RAW, $(ORANGESRAW),\
+		sudo $(ROOT_CP) $(USER_RAW) $(ROOT_MOUNTPOINT)/$(notdir $(USER_RAW));\
 	)
 
 	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
 		sudo umount $(ROOT_MOUNTPOINT) ; \
 	fi
 
-	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
-	fi
 
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
 		sudo losetup -d $(INS_DEV); \

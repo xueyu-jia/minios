@@ -121,3 +121,21 @@ char *strchr(const char *str, char c) {
 	}
 	return p;
 }
+
+char* strrchr(const char *s, char c)
+{
+    if (!s)
+    {
+        return 0;
+    }
+	char *r = 0;
+	while (*s)
+	{
+		if (*s == c)
+		{
+			r = s;
+		}
+		++s;
+	}
+	return r;
+}

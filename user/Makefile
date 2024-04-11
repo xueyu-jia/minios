@@ -22,11 +22,11 @@ LDFLAGS_user_gdb	= -m elf_i386					#added by mingxuan 2021-8-21
 USER_SRC_DIR=user/user
 USER_INIT_DIR=user/init
 USER_ULIB_DIR=user/ulib
+USER_SYS_DIR=user/system
 
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
-SRCUSER =  user/user/shell_0.c  user/user/shell_1.c user/user/echo.c \
-user/user/t_xv6.c  user/user/twait.c
+USER_SRC =  shell_0.c  shell_1.c echo.c t_xv6.c  twait.c test_0.c
 # user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c  \
 user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c  \
 user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \
@@ -34,35 +34,36 @@ user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \
 # user/user/rwtest1.c  user/user/sig_0.c    user/user/test12.c  user/user/test_3.c  user/user/test5.c   user/user/test8.c     user/user/t_pthr02.c \
 # user/user/sema1.c    user/user/sig_1.c    user/user/test13.c  user/user/test3.c   user/user/test_6.c  user/user/test9.c     user/user/t_pthr03.c \
 #$(wildcard $(USER_SRC_DIR)/*.c)
-OBJSUSER = $(subst .c,.o, $(SRCUSER))
-
-ORANGESUSER = $(subst .o,.bin, $(OBJSUSER))
-
-#added by mingxuan 2021-8-21
-GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
-
+OBJSUSER = $(subst .c,.o,$(addprefix $(USER_SRC_DIR)/, $(USER_SRC)))
+OBJSSYS = $(subst .c,.o,$(wildcard $(USER_SYS_DIR)/*.c))
 OBJSULIB = $(subst .c,.o, $(wildcard $(USER_ULIB_DIR)/*.c ))
 # OBJSULIB 	= user/ulib/syscall.o user/ulib/string.o user/ulib/printf.o user/ulib/vsprintf.o user/ulib/scanf.o\
 # 			user/ulib/signal.o user/ulib/malloc.o user/ulib/ushm.o
 
-OBJSINIT	= user/init/init.o user/init/util.o user/init/initstart.o	#added by mingxuan 2021-4-6
+OBJSINIT	= user/init/init.o user/init/initstart.o	#added by mingxuan 2021-4-6
+
+ORANGESBIN = $(subst .o,.bin, $(OBJSUSER) $(OBJSSYS)) $(ORANGESINIT)
+
+ORANGESRAW = $(wildcard user/raw/*)
+#added by mingxuan 2021-8-21
+GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
+
 
 GDBBIN = user/init/init.gdb.bin	#added by mingxuan 2021-4-6
 
-include user/init/makefile	 #added by mingxuan 2019-5-19
 
 # All Phony Targets
 .PHONY : everything clean_user realclean_user # install_elf  modified by mingxuan 2019-5-19 modified by sundong 2023.5.18
 
-# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-2-7
-# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) install_elf clean_user # modified by mingxuan 2021-8-8
-everything : $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESUSER) $(GDBBINUSER) #install_elf modified by mingxuan 2021-8-21 modified by sundong 2023.5.18
+# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(ORANGESBIN) install_elf clean_user # modified by mingxuan 2021-2-7
+# everything : realclean_user $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESBIN) install_elf clean_user # modified by mingxuan 2021-8-8
+everything : $(OBJSULIB) $(ORANGESINIT) $(GDBBIN) $(ORANGESBIN) $(GDBBINUSER) #install_elf modified by mingxuan 2021-8-21 modified by sundong 2023.5.18
 
 clean_user :
 	rm -f $(OBJSINIT) $(OBJSUSER) $(OBJSULIB)
 
 realclean_user :
-	rm -f $(ORANGESINIT) $(ORANGESUSER) $(OBJSULIB) $(OBJSINIT) $(OBJSUSER) $(GDBBIN) $(GDBBINUSER) user/ulib/*.o user/user/userstart.o
+	rm -f $(ORANGESINIT) $(ORANGESBIN) $(OBJSULIB) $(OBJSINIT) $(OBJSUSER) $(GDBBIN) $(GDBBINUSER) user/ulib/*.o user/user/userstart.o
 
 #install_elf:
 #	cd user/init && \
@@ -76,9 +77,6 @@ $(GDBBIN) : $(OBJSINIT)
 
 $(ORANGESINIT) : $(OBJSINIT)
 	$(LD) $(LDFLAGS_init) -o $(ORANGESINIT) $(OBJSINIT) $(OBJSULIB)
-
-user/init/util.o: user/init/util.c user/init/util.h user/include/stdio.h
-	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
 
 user/init/init.o: user/init/init.c user/include/stdio.h
 	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
@@ -99,10 +97,16 @@ user/user/userstart.o: user/user/userstart.asm
 	$(ASM) $(ASMKFLAGS) -o $@ $<
 
 # added by mingxuan 2021-2-7
-user/user/%.o: user/user/%.c
+$(USER_SRC_DIR)/%.o: $(USER_SRC_DIR)/%.c
 	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
 
-user/user/%.bin : user/user/%.o user/user/userstart.o $(OBJSULIB)
+$(USER_SRC_DIR)/%.bin : $(USER_SRC_DIR)/%.o user/user/userstart.o $(OBJSULIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+user/system/%.o: $(USER_SYS_DIR)/%.c
+	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
+# $$(USER_SYS_DIR)
+user/system/%.bin : $(USER_SYS_DIR)/%.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 user/user/%.gdb.bin : user/user/%.o user/user/userstart.o $(OBJSULIB)

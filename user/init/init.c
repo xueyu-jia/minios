@@ -2,71 +2,71 @@
 #include "../include/stdio.h"	//modified by mingxuan 2021-4-5
 #include "../include/malloc.h"	//added by mingxuan 2021-4-5
 
-int global=0;
+// int global=0;
 
-char *str2,*str3;
+// char *str2,*str3;
 
 
-void pthread_test3()
-{
-	int i;
-	str2 = (char*)malloc(10);
-	*(str2+0) = 'M';
-	*(str2+1) = 'a';
-	*(str2+2) = '\0';
+// void pthread_test3()
+// {
+// 	int i;
+// 	str2 = (char*)malloc(10);
+// 	*(str2+0) = 'M';
+// 	*(str2+1) = 'a';
+// 	*(str2+2) = '\0';
 	
-	while(1)
-	{
-		if(str3!=0)
-		{
-			udisp_str("pth3");
-			(*(str2+1)) += 1;
-			udisp_str(str3);
-			udisp_str(" ");
-		}		
-		i=10000;
-		while(--i){}
-	}
-}
+// 	while(1)
+// 	{
+// 		if(str3!=0)
+// 		{
+// 			udisp_str("pth3");
+// 			(*(str2+1)) += 1;
+// 			udisp_str(str3);
+// 			udisp_str(" ");
+// 		}		
+// 		i=10000;
+// 		while(--i){}
+// 	}
+// }
 
 
-void pthread_test2()
-{
-	int i;
-	str3 = (char*)malloc(10);
-	*(str3+0) = 'M';
-	*(str3+1) = 'z';
-	*(str3+2) = '\0';
+// void pthread_test2()
+// {
+// 	int i;
+// 	str3 = (char*)malloc(10);
+// 	*(str3+0) = 'M';
+// 	*(str3+1) = 'z';
+// 	*(str3+2) = '\0';
 	
-	// pthread_create(pthread_test3);	
-	while(1)
-	{
-		if(str2!=0)
-		{
-			udisp_str("pth2");
-			(*(str3+1)) -=1;
-			udisp_str(str2);
-			udisp_str(" ");
-		}
+// 	// pthread_create(pthread_test3);	
+// 	while(1)
+// 	{
+// 		if(str2!=0)
+// 		{
+// 			udisp_str("pth2");
+// 			(*(str3+1)) -=1;
+// 			udisp_str(str2);
+// 			udisp_str(" ");
+// 		}
 		
-		i=10000;
-		while(--i){}
-	}
-}
+// 		i=10000;
+// 		while(--i){}
+// 	}
+// }
 
-void pthread_test1()
-{
-	int i;
-	// pthread_create(pthread_test2);
-	while(1)
-	{
-		udisp_str("pth1");
-		udisp_int(++global);
-		udisp_str(" ");
-		i=10000;
-		while(--i){}
-	}
-}
+// void pthread_test1()
+// {
+// 	int i;
+// 	// pthread_create(pthread_test2);
+// 	while(1)
+// 	{
+// 		udisp_str("pth1");
+// 		udisp_int(++global);
+// 		udisp_str(" ");
+// 		i=10000;
+// 		while(--i){}
+// 	}
+// }
 
 /*======================================================================*
                           Syscall Pthread Test
@@ -305,61 +305,60 @@ void main(int arg,char *argv[])
 
 // added by rzr, pgw, 2020
 
-#include "util.h"
 #include "time.h"
 #include "syscall.h"
 // #define O_CREAT 1
 // #define O_RDWR 2
-#define PATH_DEL '\\'
+// #define PATH_DEL '\\'
 
-char workdev[16];
-char workdir[256];
+// char workdev[16];
+// char workdir[256];
 
 //deleted by mingxuan 2021-8-7
 
-int argc;
-char argv[8][256];
+// int argc;
+// char argv[8][256];
 
-extern int tty;
+// extern int tty;
 
-void parse_args(char *rbuf)
-{
-	argc = 0;
-	char *iptr = rbuf;
-	char *optr = argv[argc];
-	while (*iptr != '\n')
-	{
-		if (*iptr != ' ')
-		{
-			*optr++ = *iptr++;
-			continue;
-		}
-		*optr = 0;
-		++iptr;
-		optr = argv[++argc];
-	}
-	*optr = 0;
-	++argc;
-}
+// void parse_args(char *rbuf)
+// {
+// 	argc = 0;
+// 	char *iptr = rbuf;
+// 	char *optr = argv[argc];
+// 	while (*iptr != '\n')
+// 	{
+// 		if (*iptr != ' ')
+// 		{
+// 			*optr++ = *iptr++;
+// 			continue;
+// 		}
+// 		*optr = 0;
+// 		++iptr;
+// 		optr = argv[++argc];
+// 	}
+// 	*optr = 0;
+// 	++argc;
+// }
 
 
-char* strchrs(char *s1, char *s2)
-{
-	while (*s1)
-	{
-		char *r = s2;
-		while (*r)
-		{
-			if (*s1 == *r)
-			{
-				return s1;
-			}
-			++r;
-		}
-		++s1;
-	}
-	return 0;
-}
+// char* strchrs(char *s1, char *s2)
+// {
+// 	while (*s1)
+// 	{
+// 		char *r = s2;
+// 		while (*r)
+// 		{
+// 			if (*s1 == *r)
+// 			{
+// 				return s1;
+// 			}
+// 			++r;
+// 		}
+// 		++s1;
+// 	}
+// 	return 0;
+// }
 
 // void builtin_cat()
 // {
@@ -785,10 +784,10 @@ int main(int arg,char *argv[])
 // #endif
 // #ifdef ORANGE_BOOT
 		char *env[2] = {
-			"PATH=/bin;/",
+			"PATH=/bin;.",
 			NULL
 		};
-		execve("shell_0.bin",NULL,env);
+		execve("/bin/shell_0",NULL,env);
 // #endif
 		//execve("fat0/shell_0.bin",NULL,NULL);
 

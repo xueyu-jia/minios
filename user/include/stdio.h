@@ -75,6 +75,7 @@ int  atoi(const     char  *nptr);
 
 PUBLIC	int	vsprintf(char *buf, const char *fmt, va_list args);
 PUBLIC	int	sprintf(char *buf, const char *fmt, ...);
+PUBLIC  int fprintf(int fd, const char *fmt,...);
 PUBLIC	int	printf(const char *fmt, ...); 
 PUBLIC  int scanf(char *str, ...);
 char getchar();         //added by mingxuan 2019-5-23

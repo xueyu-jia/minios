@@ -650,7 +650,7 @@ void initial()
 // 	execve("fat0/init.bin",NULL,NULL);
 // #endif
 // #ifdef ORANGE_BOOT
-	execve("init.bin",NULL,NULL);
+	execve("/bin/init",NULL,NULL);
 // #endif
 	//execve("fat0/test_0.bin");
 	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6

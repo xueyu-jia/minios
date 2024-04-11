@@ -13,10 +13,10 @@ void main(int arg,char *argv[])
 //	printf("%d\n", global);	//deleted by mingxuan 2021-3-17
 	
 	//printf("initial ubuddy\n");
-        //test_malloc();
-        //test_free();
-        //test_alloc_free_page();
-        //test_malloc_free_over_4K();        
+        test_malloc();
+        test_free();
+        test_alloc_free_page();
+        test_malloc_free_over_4K();        
 
         //get_pid();
 

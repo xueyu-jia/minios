@@ -9,4 +9,5 @@ int strlen(const char* p_str);
 int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, int n);
 char *strchr(const char *str, char c);
+char* strrchr(const char *s, char c);
 #endif

@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "string.h"
+#include "malloc.h"
 #include "env.h"
 #define MAX_ARGC	8
 #define NUM_BUILTIN_CMD	13
@@ -188,27 +189,28 @@ int do_stat(int argc, char **argv) {
 		printf("usage: stat %%path\n");
 		return -1;
 	}
-	struct stat statbuf;
-	int st = stat(argv[1], &statbuf);
+	struct stat *pstatbuf = (struct stat *)malloc(sizeof(struct stat));
+	int st = stat(argv[1], pstatbuf);
 	if(st != 0) {
 		printf("%s not found!", argv[1]);
 		return -1;
 	}
 	printf("File name:%s\n", argv[1]);
 	printf("size:%d  inode:%d  type:%s  ", 
-		(u32)statbuf.st_size, statbuf.st_ino, inodetype2str(statbuf.st_type));
-	if(statbuf.st_type == I_BLOCK_SPECIAL 
-	|| statbuf.st_type == I_CHAR_SPECIAL) {
-		u32 dev = statbuf.st_rdev;
+		(u32)pstatbuf->st_size, pstatbuf->st_ino, inodetype2str(pstatbuf->st_type));
+	if(pstatbuf->st_type == I_BLOCK_SPECIAL 
+	|| pstatbuf->st_type == I_CHAR_SPECIAL) {
+		u32 dev = pstatbuf->st_rdev;
 		printf("device: %d,%d", dev>>20, dev& 0x0FFFFF);
 	}
 	printf("\nLast access:");
-	print_time(statbuf.st_atim);
+	print_time(pstatbuf->st_atim);
 	printf("\nLast modified:");
-	print_time(statbuf.st_mtim);
+	print_time(pstatbuf->st_mtim);
 	printf("\nCreation:");
-	print_time(statbuf.st_crtim);
+	print_time(pstatbuf->st_crtim);
 	printf("\n");
+	free(pstatbuf);
 	return 0;
 }
 
@@ -276,6 +278,7 @@ int test_command(char *completed, const char * cmd) {
 		pstr = strchr(path, ';');
 		strncpy(completed, path, pstr-path);
 		completed[pstr-path] = 0;
+		strcat(completed, "/");
 		strcat(completed, cmd);
 		status = stat(completed, &statbuf);
 		if(status == 0 && statbuf.st_type == I_REGULAR){
