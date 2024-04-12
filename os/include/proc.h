@@ -51,7 +51,7 @@
 // #define NR_K_PCBS 10		//add by visual 2016.4.5
 #define NR_PCBS		64								//modified by zhenhao 2023.3.5
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
-#define NR_TASKS	2	//task_tty + hd_service		//modified by mingxuan 2019-5-19
+#define NR_TASKS	3	//task_tty + hd_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 #define READY_PROC_MAX 30	//xiaofeng
 
@@ -260,6 +260,6 @@ sched_entity* get_curr_entity(PROCESS* current_proc);
 void in_rq(PROCESS* p_in);
 void out_rq(PROCESS* p_out);
 void rq_resort(sched_entity* changed_entity);
-
+PUBLIC void idle();
 
 #endif

@@ -35,42 +35,42 @@ PRIVATE int test_cfs()
 
 void cfs_sched()
 {
-	if(rt_runtime<sysctl_sched_rt_runtime && rt_rq->next!=NULL && test_cfs())//rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
+	if(rt_runtime<sysctl_sched_rt_runtime && rt_rq->next!=NULL)//rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
 	{
 		if(p_proc_current->task.is_rt==true)
 		{
-			if(p_proc_current->task.stat == READY && p_proc_current->task.rt_priority>rt_rq->next->p_process->task.rt_priority)
+			if(p_proc_current->task.stat == READY && \
+				p_proc_current->task.rt_priority>rt_rq->next->p_process->task.rt_priority)
 			{
 				p_proc_next=p_proc_current;
-			}else
-			{
+			}else{
 				p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
 				p_proc_current->task.cpu_use=0;
 
 				p_proc_next=rt_rq->next->p_process;
 			}
-		}else
-		{
+		}else{
 			p_proc_current->task.vruntime+=p_proc_current->task.cpu_use*1024/p_proc_current->task.weight;
 			p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
 			p_proc_current->task.cpu_use=0;
 
 			p_proc_next=rt_rq->next->p_process;
 		}
-	}else
-	{
+	}else{
 		//update vruntime/sum_cpu_use
 		if(p_proc_current->task.is_rt==false)
 		{
-			p_proc_current->task.vruntime+=p_proc_current->task.cpu_use*(double)1024/p_proc_current->task.weight;
+			p_proc_current->task.vruntime += \
+				p_proc_current->task.cpu_use*(double)1024/p_proc_current->task.weight;
 		}
 		p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
 		p_proc_current->task.cpu_use=0;
 
 		if(rq->next==NULL)
 		{
-			proc_table[NR_K_PCBS+1].task.stat=READY; //IDLE
-			in_rq(&proc_table[NR_K_PCBS+1]);
+			disp_str("-cfs-");	//mark debug
+			proc_table[NR_K_PCBS-2].task.stat=READY; //IDLE
+			in_rq(&proc_table[NR_K_PCBS-2]);
 			p_proc_next=rq->next->p_process;
 			return;
 		}
@@ -135,14 +135,13 @@ u32 get_min_vruntime()
 	return min_vruntime;
 }
 
+// 返回指定PCB的调度实体sched_entity
 sched_entity* get_curr_entity(PROCESS* current_proc)
 {
 	sched_entity* pos=rq->next;
 
-	while(pos!=NULL)
-	{
-		if(pos->p_process == current_proc)
-		{
+	while(pos!=NULL){
+		if(pos->p_process == current_proc){
 			return pos;
 		}
 		pos=pos->next;
@@ -150,6 +149,8 @@ sched_entity* get_curr_entity(PROCESS* current_proc)
 	return 0;
 }
 
+// 删除指定节点（但没释放该节点的空间，只是用pid=1000标空了）
+// 并将该节点的PCB重新插入链表
 void rq_resort(sched_entity* changed_entity)//only for rq
 {
 	changed_entity->pid=1000;//mark empty
@@ -178,7 +179,7 @@ void in_rq(PROCESS* p_in)
 			new_entity=&rt_rq_array[i];
 		}else
 		{
-			return;
+			return;			//mark 这里没做错误处理和提示，之后要加上
 		}
 		new_entity->pid=p_in->task.pid;
 		new_entity->p_process=p_in;
@@ -233,7 +234,7 @@ void in_rq(PROCESS* p_in)
 			new_entity=&rq_array[i];
 		}else
 		{
-			return;
+			return;			//mark 这里没做错误处理和提示，之后要加上
 		}
 		new_entity->pid=p_in->task.pid;
 		new_entity->p_process=p_in;
@@ -630,4 +631,12 @@ PUBLIC void wait_event(void* event) {
   	} else {
 		yield();	//系统调用
   	}
+}
+
+PUBLIC void idle()
+{
+	while(1){
+		// disp_str("-idle-"); //mark debug
+		yield();
+	};
 }

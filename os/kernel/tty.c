@@ -114,7 +114,8 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 #define TTY_FIRST (tty_table)
 #define TTY_END (tty_table+NR_CONSOLES)
 
-PUBLIC void task_tty(){
+PUBLIC void task_tty()
+{
     TTY* p_tty;
     for(p_tty = TTY_FIRST ; p_tty<TTY_END;p_tty++){
             init_tty(p_tty);
@@ -134,6 +135,7 @@ PUBLIC void task_tty(){
     //轮询
     while(1){
         ksem_wait(&tty_full, 1);
+        // disp_str("-tty-");  //mark debug
         // disp_str("1-");
         for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
 			do {

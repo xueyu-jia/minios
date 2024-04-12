@@ -58,7 +58,9 @@ PUBLIC	TASK	task_table[NR_TASKS] = {//{TestA, STACK_SIZE_TASK, "TestA"},	//edit 
 										//{TestB, STACK_SIZE_TASK, "TestB"},	//deleted by mingxuan 2019-5-19
 										//{TestC, STACK_SIZE_TASK, "TestC"},	//deleted by mingxuan 2019-5-19
 										{hd_service, STACK_SIZE_TASK, "hd_service"},
-										{task_tty, STACK_SIZE_TASK, "task_tty"}};	//added by xw, 18/8/27
+										{task_tty, STACK_SIZE_TASK, "task_tty"},
+										{idle, STACK_SIZE_TASK, "task_idle"}
+										};	//added by xw, 18/8/27
 
 
 PUBLIC	irq_handler		irq_table[NR_IRQ];
