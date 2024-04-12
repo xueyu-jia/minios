@@ -62,7 +62,7 @@ ORANGESKERNEL	= kernel.bin
 # 			os/gdbstub/gdbstub_x86_int.o
 
 OBJS =  os/kernel/kernel.o \
-	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c)) \
+	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c) $(wildcard os/fs/*.c)) \
 	os/klib/klib.a os/gdbstub/gdbstub_x86_int.o 
 			
 #added by mingxuan 2021-2-28
@@ -127,6 +127,9 @@ os/kernel/%.o : os/kernel/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/ipc/%.o : os/ipc/%.c
+	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+
+os/fs/%.o : os/fs/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm

@@ -477,11 +477,16 @@ PRIVATE struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	}
 	if(i_ops){
 		dentry = alloc_dentry(file_name); 
+		state = -1; // default err
 		// negative dentry, create call will get inode
 		if(type == I_DIRECTORY){
-			state = i_ops->mkdir(dir, dentry, mode);
+			if(i_ops->mkdir){
+				state = i_ops->mkdir(dir, dentry, mode);
+			}
 		}else{ // regular file
-			state = i_ops->create(dir, dentry, mode);
+			if(i_ops->mkdir){
+				state = i_ops->create(dir, dentry, mode);
+			}
 		}
 		if(state != 0){// error
 			vfs_put_dentry(dentry);

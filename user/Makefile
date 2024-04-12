@@ -26,7 +26,7 @@ USER_SYS_DIR=user/system
 
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
-USER_SRC =  shell_0.c  shell_1.c echo.c t_xv6.c  twait.c test_0.c
+USER_SRC =  t_xv6.c  twait.c test_0.c 
 # user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c  \
 user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c  \
 user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \
@@ -46,7 +46,7 @@ ORANGESBIN = $(subst .o,.bin, $(OBJSUSER) $(OBJSSYS)) $(ORANGESINIT)
 
 ORANGESRAW = $(wildcard user/raw/*)
 #added by mingxuan 2021-8-21
-GDBBINUSER = user/user/shell_0.gdb.bin user/user/test_1.gdb.bin
+GDBBINUSER =
 
 
 GDBBIN = user/init/init.gdb.bin	#added by mingxuan 2021-4-6

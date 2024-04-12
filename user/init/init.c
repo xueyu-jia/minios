@@ -787,7 +787,7 @@ int main(int arg,char *argv[])
 			"PATH=/bin;.",
 			NULL
 		};
-		execve("/bin/shell_0",NULL,env);
+		execve("/bin/shell",NULL,env);
 // #endif
 		//execve("fat0/shell_0.bin",NULL,NULL);
 

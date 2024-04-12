@@ -165,12 +165,12 @@ PUBLIC char* fgets(char *str, int size, int fd){
 	cs= str;
 	while(size && (c=fgetc(fd)) != EOF ){
 		if( (*cs=c)=='\n' ){
-			*cs = '\0';
 			break;
 		}
 		cs++;
 		size--;
 	}
+	*cs = '\0';
 	return str;
 }
 
@@ -180,11 +180,11 @@ PUBLIC char* gets(char *str){
 	cs= str;
 	while( (c=getchar()) != EOF ){
 		if( (*cs=c)=='\n' ){
-			*cs = '\0';
 			break;
 		}
 		cs++;
 	}
+	*cs = '\0';
 	return str;
 }
 
