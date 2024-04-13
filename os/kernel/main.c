@@ -146,6 +146,7 @@ PUBLIC int kernel_main()
 	in_rq(&proc_table[0]);
 	// in_rq(&proc_table[1]);
 	in_rq(&proc_table[2]);
+	// in_rq(&proc_table[16]);
 	for(int pid=3; pid<NR_K_PCBS+1 ; pid++)
 	{
 		if(proc_table[pid].task.stat==READY)
@@ -236,7 +237,7 @@ PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pi
 		
 		//CFS
 		proc->task.is_rt=false;
-		proc->task.rt_priority=1;
+		proc->task.rt_priority=-1;
 		proc->task.nice=0;
 		proc->task.weight=nice_to_weight[proc->task.nice+20];
 		proc->task.vruntime=0;
@@ -299,7 +300,7 @@ PRIVATE int initialize_processes()
 
 		init_process(p_proc,p_task->name,READY,pid,1);//add by lcy 2023.10.22
 		p_proc->task.is_rt = true; //hd_service和tty进程设置为实时进程
-
+		p_proc->task.rt_priority = 1;
 		if(pid == 2){
 			init_process(p_proc,p_task->name,READY,pid,1);
 			p_proc->task.is_rt = false;

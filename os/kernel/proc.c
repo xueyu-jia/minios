@@ -68,12 +68,13 @@ void cfs_sched()
 
 		if(rq->next==NULL)
 		{
-			disp_str("-cfs-");	//mark debug
-			proc_table[NR_K_PCBS-2].task.stat=READY; //IDLE
-			in_rq(&proc_table[NR_K_PCBS-2]);
+			// disp_str("-cfs-");	//mark debug
+			proc_table[2].task.stat=READY; //IDLE
+			in_rq(&proc_table[2]);
 			p_proc_next=rq->next->p_process;
 			return;
 		}
+		// disp_int(rq->next->p_process->task.pid);
 
 		if(p_proc_current->task.stat != READY || p_proc_current->task.is_rt==true)
 		{
@@ -81,16 +82,12 @@ void cfs_sched()
 		}else 
 		{
 			sched_entity* curr_entity=get_curr_entity(p_proc_current);
-			/* if(p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
-			{
-				//resort
-				rq_resort(curr_entity);
-				p_proc_next=rq->next->p_process;
-			}else
-			{
-				p_proc_next=p_proc_current;
-			} */
-			if(curr_entity->next !=NULL && p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
+			// if(curr_entity == NULL){
+			// 	disp_str("cfs_sched error1: cannot find the curr_entity");
+			// 	while(1){};
+			// }
+			if(curr_entity != NULL && curr_entity->next !=NULL && \
+				p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
 			{
 				//resort
 				rq_resort(curr_entity);
@@ -146,7 +143,7 @@ sched_entity* get_curr_entity(PROCESS* current_proc)
 		}
 		pos=pos->next;
 	}
-	return 0;
+	return NULL;
 }
 
 // 删除指定节点（但没释放该节点的空间，只是用pid=1000标空了）
@@ -179,6 +176,7 @@ void in_rq(PROCESS* p_in)
 			new_entity=&rt_rq_array[i];
 		}else
 		{
+			disp_str("in_rq error1: cannot find a rq_array\n");
 			return;			//mark 这里没做错误处理和提示，之后要加上
 		}
 		new_entity->pid=p_in->task.pid;
@@ -196,17 +194,6 @@ void in_rq(PROCESS* p_in)
 		{
 			sched_entity* pos=rt_rq->next;
 			//avoid re_in_rq
-			/* while(pos!=NULL)
-			{
-				if(pos->p_process->task.pid==p_in->task.pid)
-				{
-					return;
-				}else
-				{
-					pos=pos->next;
-				}
-			} */
-
 			pos=rt_rq;
 			while(pos->next!=NULL && pos->next->p_process->task.rt_priority>new_entity->p_process->task.rt_priority) pos=pos->next;
 			if(pos->next==NULL)
@@ -234,6 +221,7 @@ void in_rq(PROCESS* p_in)
 			new_entity=&rq_array[i];
 		}else
 		{
+			disp_str("in_rq error2: cannot find a rq_array\n");
 			return;			//mark 这里没做错误处理和提示，之后要加上
 		}
 		new_entity->pid=p_in->task.pid;
@@ -251,17 +239,6 @@ void in_rq(PROCESS* p_in)
 		{
 			sched_entity* pos=rq->next;
 			//avoid re_in_rq
-			/* while(pos!=NULL)
-			{
-				if(pos->p_process->task.pid==p_in->task.pid)
-				{
-					return;
-				}else
-				{
-					pos=pos->next;
-				}
-			} */
-			
 			pos=rq;
 			while(pos->next!=NULL && pos->next->p_process->task.vruntime<=new_entity->p_process->task.vruntime) pos=pos->next;
 			if(pos->next==NULL)
@@ -269,8 +246,7 @@ void in_rq(PROCESS* p_in)
 				pos->next=new_entity;
 				new_entity->prev=pos;
 				rq_tail=new_entity;
-			}else
-			{
+			}else{
 				new_entity->prev=pos;
 				new_entity->next=pos->next;
 				pos->next->prev=new_entity;
@@ -637,6 +613,7 @@ PUBLIC void idle()
 {
 	while(1){
 		// disp_str("-idle-"); //mark debug
-		yield();
+		out_rq(p_proc_current);
+		// yield();
 	};
 }

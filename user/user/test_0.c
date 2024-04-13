@@ -18,6 +18,7 @@ void main(int arg,char *argv[])
                 int exit_status;
                 wait_(&exit_status);
                 printf("exit_status:%d", exit_status);
+                exit(0);
             }else{
                 //child
                 if(execve("test_1.bin", NULL, NULL)!=0){

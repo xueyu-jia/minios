@@ -9,12 +9,13 @@ int user_test(int order, int val, int is_true, char* test_messege)
 		printf("SUCCEED!\n");
 	}else{
 		printf("ERROR VAL: %d\n", val);
+		printf("\n!!!TEST_1 ERROR!!!\n\n");
 		exit(-1);
 	}
 	return is_true;
 }
 
-int child_function(char *child_filename)
+int test1_function(char *child_filename)
 {
 	// char child_filename[] = "child_file";
 	char child_buf[128];
@@ -60,7 +61,7 @@ int strncmp(const char *p, const char *q, int n)
 
 void main(int argc,char *argv[])
 {
-	child_function("filename");
+	test1_function("filename");
 	exit(0);
 	return;
 }

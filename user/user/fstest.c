@@ -105,6 +105,7 @@ int user_test(int order, int val, int is_true, char* test_messege)
 		printf("SUCCEED!\n");
 	}else{
 		printf("ERROR VAL: %d\n", val);
+		printf("\nfstest error!!\n\n");
 		exit(-1);
 	}
 	return is_true;

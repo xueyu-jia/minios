@@ -103,7 +103,7 @@ PUBLIC  int AHCI_init()//遍历pci设备，找到AHCI  by qianglong	2022.5.17
 
 	err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址					//add by visual 2016.5.9
 										ahci_info[0].ABAR, //物理地址
-										63,
+										2,
 										PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 										PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）	
 
