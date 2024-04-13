@@ -33,12 +33,20 @@
 #include "../gdbstub/gdbstub.h"
 
 //added by lcy, 2023.10.22
-#define k_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-#define k_ds ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-#define k_es ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-#define k_fs ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-#define k_ss ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-#define k_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK
+#define k_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL
+#define k_ds ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL
+#define k_es ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL
+#define k_fs ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL
+#define k_ss ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL
+#define k_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_KRNL
+
+#define task_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define task_ds ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define task_es ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define task_fs ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define task_ss ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
+#define task_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK
+
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -145,7 +153,7 @@ PUBLIC int kernel_main()
 	in_rq(&proc_table[1]);
 	in_rq(&proc_table[0]);
 	// in_rq(&proc_table[1]);
-	in_rq(&proc_table[2]);
+	// in_rq(&proc_table[2]);
 	// in_rq(&proc_table[16]);
 	for(int pid=3; pid<NR_K_PCBS+1 ; pid++)
 	{
@@ -301,11 +309,11 @@ PRIVATE int initialize_processes()
 		init_process(p_proc,p_task->name,READY,pid,1);//add by lcy 2023.10.22
 		p_proc->task.is_rt = true; //hd_service和tty进程设置为实时进程
 		p_proc->task.rt_priority = 1;
-		if(pid == 2){
-			init_process(p_proc,p_task->name,READY,pid,1);
-			p_proc->task.is_rt = false;
-			p_proc->task.weight = nice_to_weight[39];
-		}
+		// if(pid == 2){
+		// 	init_process(p_proc,p_task->name,READY,pid,1);
+		// 	p_proc->task.is_rt = false;
+		// 	p_proc->task.weight = nice_to_weight[39];
+		// }
 
 
 		/**************LDT*********************************/
@@ -314,6 +322,17 @@ PRIVATE int initialize_processes()
 		p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_TASK << 5;
 		memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 		p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_TASK << 5;
+
+		if(pid == 2){
+			init_process(p_proc,p_task->name,READY,pid,1);
+			p_proc->task.is_rt = false;
+			p_proc->task.weight = nice_to_weight[39];
+			p_proc->task.ldt_sel = (selector_ldt >> 3) << 3;
+			memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
+			p_proc->task.ldts[0].attr1 = DA_C | PRIVILEGE_KRNL << 5;
+			memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
+			p_proc->task.ldts[1].attr1 = DA_DRW | PRIVILEGE_KRNL << 5;
+		}
 
 
 		/**************线性地址布局初始化**********************************/ //	add by visual 2016.5.4
@@ -359,8 +378,12 @@ PRIVATE int initialize_processes()
 		/***************some field about process switch****************************/
 		//初始化内核栈			added by lcy 2023.10.25
 		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11    //changed by lcy, 2023.10.24
-		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)StackLinBase,(u32)p_task->initial_eip);
-
+		init_reg(p_proc,task_cs,task_ds,task_es,task_fs,task_ss,  \
+				task_gs,0x1202,(u32)StackLinBase,(u32)p_task->initial_eip);
+		if(pid == 2){
+			init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202, \
+				(u32)StackLinBase,(u32)p_task->initial_eip);
+		}
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context
@@ -413,7 +436,7 @@ PRIVATE int initialize_processes()
 		/***************some field about process switch****************************/
 		//初始化内核栈			added by lcy 2023.10.25
 		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11		//changed by lcy, 2023.10.24
-		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)NULL,(u32)NULL);
+		init_reg(p_proc,task_cs,task_ds,task_es,task_fs,task_ss,task_gs,0x1202,(u32)NULL,(u32)NULL);
 
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
@@ -514,7 +537,7 @@ PRIVATE int initialize_processes()
 		/***************some field about process switch****************************/
 		//初始化内核栈			added by lcy 2023.10.25
 		p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11  	//changed by lcy, 2023.10.24
-		init_reg(p_proc,k_cs,k_ds,k_es,k_fs,k_ss,k_gs,0x1202,(u32)StackLinBase,(u32)initial);
+		init_reg(p_proc,task_cs,task_ds,task_es,task_fs,task_ss,task_gs,0x1202,(u32)StackLinBase,(u32)initial);
 
 		//p_proc->task.save_type = 1;
 		p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,

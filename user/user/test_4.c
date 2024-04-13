@@ -74,9 +74,10 @@ void main(int arg, char *argv[])
 		}
 	}
 
-	while (1)
-	{
-	}
+	// while (1)
+	// {
+	// }
+	exit(0);
 	return;
 }
 

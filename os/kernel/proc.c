@@ -320,16 +320,6 @@ PUBLIC void free_PCB(PROCESS *p)
                            yield and sleep
  *======================================================================*/
 //used for processes to give up the CPU
-/* //deleted by mingxuan 2021-8-13
-PUBLIC void sys_yield()
-{
-//	p_proc_current->task.ticks--;
-	p_proc_current->task.ticks = 0;
-//	save_context();
-	sched();	//Modified by xw, 18/4/19
-}
-*/
-//modified by mingxuan 2021-8-13
 PUBLIC void sys_yield()
 {
 	do_yield();
@@ -615,5 +605,7 @@ PUBLIC void idle()
 		// disp_str("-idle-"); //mark debug
 		out_rq(p_proc_current);
 		// yield();
+		// asm volatile("hlt");
+		asm volatile("sti; hlt": : :"memory");
 	};
 }
