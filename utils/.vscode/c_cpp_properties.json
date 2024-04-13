@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/include/fuse3/"
+            ],
+            "compilerArgs": ["-Wall", "-I/usr/include/fuse3", "-lfuse3", "-lpthread"],
+            "defines": ["_XOPEN_SOURCE"],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "compilerPath": "/usr/bin/gcc",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

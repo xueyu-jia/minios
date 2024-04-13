@@ -46,7 +46,7 @@ USING_GRUB_CHAINLOADER = false
 GRUB_PART_NUM=5
 #选择启动分区的文件系统格式，目前仅支持fat32和orangefs
 BOOT_PART_FS_TYPE=fat32
-ROOT_PART_FS_TYPE=fat32
+ROOT_PART_FS_TYPE=orangefs
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
 #使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
@@ -70,42 +70,39 @@ else
 	WRITE_DISK=$(INS_DEV)
 endif
 
-ORANGE_CP=./o_copy
+ORANGE_MOUNT=utils/orangefs_mount
+ORANGE_MAKER=utils/orangefs_mkfs
 
 ifeq ($(BOOT_PART_FS_TYPE),fat32)
 	BOOT_PART_FS_MAKER = mkfs.vfat
 	BOOT_PART_FS_MAKE_FLAG = -F 32 -s8
-	CP = cp
-	CP_FLAG = -fv
+	BOOT_MOUNT = mount
 	BOOT =boot.bin
 	BOOT_SIZE = 420
 # FAT32规范规定os_boot的前89个字节是FAT32的配置信息
 	BOOT_SEEK=90
-	BOOT_PART_MOUNTPOINT = iso
-
 else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
-	BOOT_PART_FS_MAKER = ./o_mkfs
+	BOOT_PART_FS_MAKER = $(ORANGE_MAKER)
 	BOOT_PART_FS_MAKE_FLAG = 
-	CP = $(ORANGE_CP)
+	BOOT_MOUNT = $(ORANGE_MOUNT)
 	BOOT=orangefs_boot.bin
 	BOOT_SIZE =512
 # orangefs boot直接放在分区的0号扇区
 	BOOT_SEEK=0
-	BOOT_PART_MOUNTPOINT =$(BOOT_PART)
 endif
+BOOT_PART_MOUNTPOINT = iso
 
 # config root fs param
 ifeq ($(ROOT_PART_FS_TYPE),fat32)
-	ROOT_CP = cp
-	ROOT_MOUNTPOINT = root
+	ROOT_MOUNT = mount
 	ROOT_FS_MAKER = mkfs.vfat
 	ROOT_FS_MAKE_FLAG = -F 32 -s4
 else ifeq ($(ROOT_PART_FS_TYPE),orangefs)
-	ROOT_CP = $(ORANGE_CP)
-	ROOT_MOUNTPOINT = $(ROOT_FS_PART)
-	ROOT_FS_MAKER = ./o_mkfs
+	ROOT_MOUNT = $(ORANGE_MOUNT)
+	ROOT_FS_MAKER = $(ORANGE_MAKER)
 	ROOT_FS_MAKE_FLAG =
 endif
+ROOT_MOUNTPOINT = root
 
 
 
@@ -178,6 +175,12 @@ ifeq ($(USING_GRUB_CHAINLOADER),true)
 	$(info GRUB_CONFIG=$(GRUB_CONFIG))
 endif
 
+ifneq ($(findstring orangefs,$(BOOT_PART_FS_TYPE) $(ROOT_PART_FS_TYPE)),)
+ifneq ($(wildcard $(ORANGE_MAKER) $(ORANGE_MOUNT)), $(ORANGE_MAKER) $(ORANGE_MOUNT))
+	$(error orangefs needed but orangefs_mount and orangefs_mkfs not ready, please cd into "utils" and execute make)
+endif
+endif
+
 
 build_img:
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
@@ -188,11 +191,9 @@ build_img:
 # added by mingxuan 2020-10-22
 build_grub:
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		sudo losetup -P $(INS_DEV) $(WRITE_DISK) && \
-		sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART); \
-	else \
-		sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART); \
+		sudo losetup -P $(INS_DEV) $(WRITE_DISK); \
 	fi
+	sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART)
 	
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
@@ -222,38 +223,28 @@ build_fs:
 # FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	sudo dd if=os/boot/mbr/$(BOOT) of=$(BOOT_PART) bs=1 count=$(BOOT_SIZE) seek=$(BOOT_SEEK) conv=notrunc
 
-#orangefs有专用的cp 不需要挂载到linux目录下，其他如fat32需要挂载
-	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo mount $(BOOT_PART) $(BOOT_PART_MOUNTPOINT) ; \
-	fi
+	sudo $(BOOT_MOUNT) $(BOOT_PART) $(BOOT_PART_MOUNTPOINT)
 
-	sudo $(CP) $(CP_FLAG) os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
-	sudo $(CP) $(CP_FLAG) kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
+	sudo cp os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
+	sudo cp kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
 
-	@if [[ "$(BOOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo umount $(BOOT_PART_MOUNTPOINT) ; \
-	fi
+	sudo umount $(BOOT_PART_MOUNTPOINT)
 #初始化根文件系统
 	sudo $(ROOT_FS_MAKER) $(ROOT_FS_MAKE_FLAG) $(ROOT_FS_PART)
-	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo mount $(ROOT_FS_PART) $(ROOT_MOUNTPOINT);	\
-		sudo mkdir $(ROOT_MOUNTPOINT)/bin;\
-	fi
-# 在启动盘放置init.bin启动文件
-# sudo $(ROOT_CP)  user/init/init.bin $(ROOT_MOUNTPOINT)/init.bin
-
+	
+	sudo $(ROOT_MOUNT) $(ROOT_FS_PART) $(ROOT_MOUNTPOINT)
+	
+	sudo mkdir $(ROOT_MOUNTPOINT)/bin
 # 在此处根据USER_TEST变量添加用户程序的文件 user/dir/file.bin ==> root/bin/file.bin
 	$(foreach USER_BIN,$(ORANGESBIN),\
-		sudo $(ROOT_CP) $(USER_BIN) $(ROOT_MOUNTPOINT)/bin/$(basename $(notdir $(USER_BIN)));\
+		sudo cp $(USER_BIN) $(ROOT_MOUNTPOINT)/bin/$(basename $(notdir $(USER_BIN)));\
 	)
 	
 	$(foreach USER_RAW, $(ORANGESRAW),\
-		sudo $(ROOT_CP) $(USER_RAW) $(ROOT_MOUNTPOINT)/$(notdir $(USER_RAW));\
+		sudo cp $(USER_RAW) $(ROOT_MOUNTPOINT)/$(notdir $(USER_RAW));\
 	)
 
-	@if [[ "$(ROOT_PART_FS_TYPE)" != "orangefs" ]]; then \
-		sudo umount $(ROOT_MOUNTPOINT) ; \
-	fi
+	sudo umount $(ROOT_MOUNTPOINT)
 
 
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
