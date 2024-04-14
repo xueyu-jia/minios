@@ -1,5 +1,5 @@
 /*
-  Orangefs Utils with FUSE
+  Orangefs mount with FUSE
 */
 
 #define FUSE_USE_VERSION 34
@@ -83,7 +83,7 @@ void orangefs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name)
         struct orange_inode* pin = orangefs_iget(res);
         struct orange_inode* dir = orangefs_iget(parent);
         pin->deleted = 1;
-        fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, pos, " ", 0);
+        // fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, pos, " ", 0);
         orangefs_write_direntry(dir, pos, "", 0);
         fuse_reply_err(req, 0);
     }else {
@@ -99,7 +99,7 @@ void orangefs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name){
         struct orange_inode* dir = orangefs_iget(parent);
         if(orangefs_dir_empty(pin) == 0){
             pin->deleted = 1;
-            fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, pos, " ", 0);
+            // fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, pos, " ", 0);
             orangefs_write_direntry(dir, pos, "", 0);
             fuse_reply_err(req, 0);
         }else {
@@ -129,10 +129,10 @@ void orangefs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
         if(new_ino != 0) {
             fuse_reply_err(req, EEXIST);
         }else {
-            fuse_log(FUSE_LOG_DEBUG, "add dirent(%d, %s, %d)\n", newparent, newname, old_ino);
+            // fuse_log(FUSE_LOG_DEBUG, "add dirent(%d, %s, %d)\n", newparent, newname, old_ino);
             orangefs_add_direntry(newparent, newname, old_ino);
             struct orange_inode *dir=orangefs_iget(parent);
-            fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, old_pos, " ", 0);
+            // fuse_log(FUSE_LOG_DEBUG, "write dirent(%d.%d, %s, %d)\n", parent, old_pos, " ", 0);
             orangefs_write_direntry(dir, old_pos, "", 0);
         }
         break;
@@ -166,10 +166,10 @@ void orangefs_forget(fuse_req_t req, fuse_ino_t ino, uint64_t nlookup)
 {
     if(nlookup == 0){
         struct orange_inode* pin = orangefs_iget(ino);
-        fuse_log(FUSE_LOG_DEBUG, "forget %d\n", ino);
-        if(pin->deleted){
-            fuse_log(FUSE_LOG_DEBUG, "free [%d,%d)\n", pin->i_start_block, pin->i_start_block+pin->i_nr_blocks);
-        }
+        // fuse_log(FUSE_LOG_DEBUG, "forget %d\n", ino);
+        // if(pin->deleted){
+            // fuse_log(FUSE_LOG_DEBUG, "free [%d,%d)\n", pin->i_start_block, pin->i_start_block+pin->i_nr_blocks);
+        // }
         orangefs_iforget_may_drop((int)ino, pin);
     }
     fuse_reply_none(req);
@@ -364,7 +364,7 @@ void orangefs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
         memset(&e, 0, sizeof(e));
 		e.ino = ino;
 		e.attr_timeout = 1.0;
-		e.entry_timeout = 10.0;
+		e.entry_timeout = 1.0;
 		orangefs_stat(e.ino, &e.attr);
         fuse_reply_entry(req, &e);
     }else {
