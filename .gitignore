@@ -5,6 +5,8 @@
 /.vscode/*
 /tmp/*
 .idea
+utils/orangefs_mount
+utils/orangefs_mkfs
 
 # ignore *.bin
 *.bin
