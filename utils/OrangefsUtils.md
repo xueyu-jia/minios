@@ -1,4 +1,0 @@
-# OrangefsUtils 组件说明
-由于原本的orangefs文件处理可执行文件单独放在另一仓库，且其中的实现大量依赖MiniOS原来的orangefs代码，包袱太重
-故此处结合linux libfuse另外实现orangefs在linux下的功能，使得其能够通过linux常规命令实现各种文件操作
-目前除删除unlink以及rmdir没有实现，其余均可正常使用
