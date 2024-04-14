@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+// #include <fuse_log.h>
 #include "orangefs.h"
 #include "orangefs_disk.h"
 
 static struct orange_sb superblock;
 static list_head inode_list;
-int flog = -1;
+pthread_mutex_t cache_lock = PTHREAD_MUTEX_INITIALIZER;
+
 int orangefs_fillsuper() {
     disk_read(1, 0, sizeof(struct orange_sb), &superblock);
     list_init(&inode_list);
@@ -16,14 +18,22 @@ int orangefs_fillsuper() {
     return 0;
 }
 
+// free inode cache, mutex lock required
+static void orangefs_clear_inodecache(struct inode_cache *ic)
+{
+    free(ic->iptr);
+    list_remove(&ic->ilist);
+    free(ic);
+}
+
 void orangefs_free() {
     struct inode_cache *ic;
+    pthread_mutex_lock(&cache_lock);
     while(!list_empty(&inode_list)) {
         ic = list_front(&inode_list, struct inode_cache, ilist);
-        free(ic->iptr);
-        list_remove(&ic->ilist);
-        free(ic);
+        orangefs_clear_inodecache(ic);
     }
+    pthread_mutex_unlock(&cache_lock);
     disk_close();
 }
 
@@ -75,6 +85,23 @@ finish:
     return total - cnt;
 }
 
+// free bitmap in [start, end)
+static void orangefs_free_bitmap(int blk_base, int start, int end)
+{
+    if(start >= end){
+        return;
+    }
+    int start_byte = start/8, end_byte = (end/8)+1;
+    int len = end_byte - start_byte;
+    u8 *buf = malloc(end_byte - start_byte);
+    disk_read(blk_base, start_byte, len, buf);
+    buf[0] &= ((1 << (start&7))-1);
+    memset(buf+1, 0, len - 2);
+    buf[len-1] &= (~((1 << (end&7))-1));
+    disk_write(blk_base, start_byte, len, buf);
+    free(buf);
+}
+
 int orangefs_allocinode() { // return inode_nr
     int index;
     if(orangefs_alloc_bitmap(2, superblock.nr_imap_blocks, 1, &index) == 1)
@@ -94,12 +121,32 @@ void orangefs_allocsector(struct orange_inode * pin) {
     // fuse_log(FUSE_LOG_DEBUG, "alloc sec:[%d,%d)\n", pin->i_start_block, pin->i_nr_blocks + pin->i_start_block);
 }
 
+void orangefs_iforget_may_drop(int ino, struct orange_inode* inode) {
+    if(inode->deleted) {
+        orangefs_free_bitmap(2, ino, ino + 1);
+        orangefs_free_bitmap(2 + superblock.nr_imap_blocks, 
+            inode->i_start_block, inode->i_start_block + inode->i_nr_blocks);
+    }
+    pthread_mutex_lock(&cache_lock);
+    struct inode_cache * ic = NULL, *target = NULL;
+    list_for_each(&inode_list, ic, ilist) {
+        if(ic->iptr == inode) {
+            target = ic;
+        }
+    }
+    if(target){
+        orangefs_clear_inodecache(target);
+    }
+    pthread_mutex_unlock(&cache_lock);
+}
+
 struct orange_inode *orangefs_iget(int ino) {
     struct orange_inode *inode = NULL;
     struct inode_cache * ic = NULL;
     if(ino <= 0){
         return NULL;
     }
+    pthread_mutex_lock(&cache_lock);
     list_for_each(&inode_list, ic, ilist) {
         if(ic->ino == ino) {
             inode = ic->iptr;
@@ -107,7 +154,8 @@ struct orange_inode *orangefs_iget(int ino) {
         }
     }
     if(NULL == inode) {
-        inode = malloc(ORANGE_INODE_SIZE);
+        inode = malloc(sizeof(struct orange_inode));
+        memset(inode, 0, sizeof(struct orange_inode));
         orangefs_readinode(ino, inode);
         list_for_each(&inode_list, ic, ilist) {
             if(ic->ino >= ino) {
@@ -119,11 +167,12 @@ struct orange_inode *orangefs_iget(int ino) {
         new_ic->ino = ino;
         _list_insert(&ic->ilist, ic->ilist.prev, &ic->ilist);
     }
+    pthread_mutex_unlock(&cache_lock);
     return inode;
 }
 
 // 0 for not found
-int orangefs_find(int parent, const char *name) {
+int orangefs_find(int parent, const char *name, int* rt_pos) {
     struct orange_inode* dir = orangefs_iget(parent);
     struct orange_direntry dirent;
     memset(&dirent, 0, ORANGE_DIRENT_SIZE);
@@ -138,12 +187,51 @@ int orangefs_find(int parent, const char *name) {
                 continue;
             }
             if(strncmp(dirent.name, name, MAX_FILENAME_LEN) == 0) {
+                if(rt_pos){
+                    *rt_pos = p + pos;
+                }
                 return dirent.inode_nr;
             }
         }
         p += ORANGE_BLK_SIZE;
     }
     return 0;
+}
+
+// 0 for empty
+int orangefs_dir_empty(struct orange_inode *dir) {
+    struct orange_direntry dirent;
+    memset(&dirent, 0, ORANGE_DIRENT_SIZE);
+    int p = 0, pos;
+    for(int blk=dir->i_start_block; 
+        blk < dir->i_start_block+dir->i_nr_blocks; blk++)
+    {
+        for(pos=0; pos < ORANGE_BLK_SIZE; pos += ORANGE_DIRENT_SIZE) 
+        {
+            disk_read(blk, pos, ORANGE_DIRENT_SIZE, &dirent);
+            if(dirent.inode_nr == 0) {
+                continue;
+            }
+            if((strcmp(dirent.name, ".") == 0) || (strcmp(dirent.name, "..") == 0)){
+                continue;
+            }
+            return -1;
+        }
+        if (p + pos >= dir->i_size){
+            goto out;
+        }
+        p += ORANGE_BLK_SIZE;
+    }
+out:
+    return 0;
+}
+
+void orangefs_write_direntry(struct orange_inode *dir, int pos, const char*name, int ino){
+    struct orange_direntry dirent;
+    memset(&dirent, 0, ORANGE_DIRENT_SIZE);
+    strncpy(dirent.name, name, MAX_FILENAME_LEN);
+    dirent.inode_nr = ino;
+    disk_write(dir->i_start_block, pos, ORANGE_DIRENT_SIZE, &dirent);
 }
 
 int orangefs_add_direntry(int parent, const char *name, int ino) {
@@ -175,10 +263,7 @@ int orangefs_add_direntry(int parent, const char *name, int ino) {
         return -1;
     }
 findfree:
-    strncpy(dirent.name, name, MAX_FILENAME_LEN);
-    dirent.inode_nr = ino;
-    disk_write(blk, pos, ORANGE_DIRENT_SIZE, &dirent);
-    // fuse_log(FUSE_LOG_DEBUG, "add dirent(%d, %s, %d)\n", parent, name, ino);
+    orangefs_write_direntry(dir, p + pos, name, ino);
     return 0;
 }
 

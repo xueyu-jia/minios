@@ -34,7 +34,7 @@ else
 endif
 
 orangefs_mount: orangefs_mount.c $(ORANGEFS_BASE)
-	$(CC) $^ $(FUSE_CFLAGS) -o $@
+	$(CC) $^ $(FUSE_CFLAGS)  -lpthread -o $@
 
 orangefs_mkfs: orangefs_mkfs.c $(ORANGEFS_BASE)
-	$(CC) $^ -o $@
+	$(CC) $^  -lpthread -o $@
