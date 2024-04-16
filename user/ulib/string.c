@@ -26,7 +26,7 @@ char* strcat(char *dst, const char *src)
     return dst;
 }
 
-char* strcpy(char* p_dst, char* p_src){
+char* strcpy(char* p_dst, const char* p_src){
 	char c = 0, *p = p_dst;
 	do{
 		c = *(p_src++);
@@ -112,14 +112,18 @@ int strncmp(const char *s1, const char *s2, int n)
     return 0;
 }
 
-char *strchr(const char *str, char c) {
+char *strchr(const char *s, char c) {
+	if (!s)
+    {
+        return 0;
+    }
 	char *p;
-	for(p = str; *p; p++) {
+	for(p = s; *p; p++) {
 		if(*p == c) {
 			break;
 		}
 	}
-	return p;
+	return (*p == c)? p: 0;
 }
 
 char* strrchr(const char *s, char c)

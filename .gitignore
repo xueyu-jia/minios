@@ -4,6 +4,7 @@
 # ignore all files in the ** directory
 /.vscode/*
 /tmp/*
+/build/
 .idea
 utils/orangefs_mount
 utils/orangefs_mkfs

@@ -286,10 +286,10 @@ PRIVATE void stack_backtrace(u32 ebp) {
 PUBLIC void proc_backtrace() {
 	u32 ebp;
 	__asm__ __volatile__("mov %%ebp, %0 ": "=r"(ebp));
-	for(int i = 0; i < 5; i++) {
+	for(int i = 0; ebp && i < 8 ; i++) {
 		stack_backtrace(ebp);
 		ebp = *((u32*)ebp);
-		if(ebp < KernelLinBase)break;
+		// if(ebp < KernelLinBase)break;
 	}
 	while(1);
 }

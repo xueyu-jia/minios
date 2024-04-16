@@ -21,7 +21,7 @@ AR		= ar
 
 ASMBFLAGS	= -I os/boot/floppy/include/	#added by mingxuan 2019-5-17
 ASMBFLAGS_mbr   = -I os/boot/mbr/include/	#added by mingxuan 2019-5-17
-ASMKFLAGS	= -I os/include/ -f elf
+ASMKFLAGS	= -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
@@ -110,7 +110,7 @@ $(ORANGESKERNEL) : $(OBJS)
 	$(LD) $(LDFLAGS_kernel) -o $(ORANGESKERNEL) $(OBJS)
 
 os/kernel/kernel.o : os/kernel/kernel.asm os/include/sconst.inc
-	$(ASM) $(ASMKFLAGS) -o $@ $<
+	$(ASM) -I os/include/ $(ASMKFLAGS) -o $@ $<
 
 
 kernel.gdb.bin : $(OBJS)
@@ -133,14 +133,14 @@ os/fs/%.o : os/fs/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
-	nasm -I os/gdbstub/ -f elf -o $@ $<
+	$(ASM) -I os/gdbstub/ -f elf -o $@ $<
 
 # =================== klib ==========================
 os/klib/klib.a:  $(OBJSKLIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSKLIB)
 
 os/klib/kliba.o : os/klib/kliba.asm
-	$(ASM) $(ASMKFLAGS) -o $@ $<
+	$(ASM) -I os/include/ $(ASMKFLAGS) -o $@ $<
 
 os/klib/%.o: os/klib/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<

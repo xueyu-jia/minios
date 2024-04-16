@@ -7,7 +7,7 @@ char *getenv(const char *key) {
     char *split;
     for(char *pstr = *ENVP_LIN; pstr; pstr++) {
         split = strchr(pstr, '=');
-        if(*split != '\0') {
+        if(split != 0) {
             if(strncmp(key, pstr, split-pstr) == 0) {
                 return split+1;
             }

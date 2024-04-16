@@ -159,7 +159,7 @@ PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
 	// 	ent->d_nxt->d_pre = ent->d_pre;
 	// }
 	list_remove(&ent->d_list);
-	ent->d_parent = NULL;
+	// ent->d_parent = NULL; // parent saved,因为存在此dentry已被删除但仍有引用的情况，比如rmdir ../cwd, cd ..
 }
 
 // 0 for empty, else -1
@@ -262,7 +262,7 @@ PRIVATE void vfs_get_path(struct vfs_dentry* dir, char* buf, int size){
 	char*p = path + MAX_PATH;
 	*(--p) = 0;
 	int len;
-	while(dir != vfs_root){
+	while(dir && dir != vfs_root){
 		while(dir != vfs_root && dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
 			dir = dir->d_vfsmount->mnt_mountpoint;
 		}
@@ -905,6 +905,7 @@ PUBLIC int kern_vfs_unlink(const char *path){
 			goto err;
 		}
 		inode->i_nlink--;
+		dentry->d_inode = NULL;
 	}
 	release(&inode->lock);
 	delete_dentry(dentry, dir);
@@ -971,9 +972,13 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 
 PUBLIC int kern_vfs_rmdir(const char* path){
 	char dir_path[MAX_PATH] = {0};
+	if((strcmp(path, "/") == 0)) {
+		disp_str("rm root dir will damage system");
+		return -1;
+	}
 	char* file_name = strip_dir_path(path, dir_path);
-	if(file_name[strlen(file_name) - 1] == '.') {
-		disp_str(". in name end is invalid ");
+	if((strcmp(file_name, ".") == 0)||(strcmp(file_name, "..") == 0)) {
+		disp_str("path ended with . or .. is invalid ");
 		return -1;
 	}
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
@@ -1004,6 +1009,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 			goto err;
 		}
 		inode->i_nlink--;
+		dentry->d_inode = NULL;
 	}
 	release(&inode->lock);
 	struct vfs_dentry* sub;

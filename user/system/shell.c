@@ -90,6 +90,7 @@ int test_command(char *completed, const char * cmd) {
 	struct stat statbuf;
 	while(path != NULL) {
 		pstr = strchr(path, ';');
+		if(pstr == 0)pstr = path + strlen(path);
 		strncpy(completed, path, pstr-path);
 		completed[pstr-path] = 0;
 		strcat(completed, "/");
@@ -117,7 +118,7 @@ int test_command(char *completed, const char * cmd) {
 }
 
 void do_command(int argc, char** args) {
-	char cmd[512];
+	char cmd[256];
 	int cmdid = match_build_in(argc, args);
 	if(cmdid != -1){
 		int ret = cmds[cmdid].handler(argc, args);
@@ -172,17 +173,17 @@ int main(int arg,char *argv[],char *envp[])
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
 	#ifdef SHELL_TEST
-	// #define TEST_CMD_LEN_LIMIT	32
+	#define TEST_CMD_LEN_LIMIT	32
 
-	// #define TEST_CMD_NUM 0
-	// char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
-	// 	"mkdir fat",
-	// 	"mount /dev/sda1 fat fat32",
-	// 	// "cd ora",
-	// 	// "/t_xv6.bin",
-	// };
+	#define TEST_CMD_NUM 2
+	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
+		"mkdir test",
+		"rm -r test",
+		// "cd ora",
+		// "/t_xv6.bin",
+	};
 	
-	// pre = TEST_CMD_NUM;
+	pre = TEST_CMD_NUM;
 	#endif
 	if(arg > 1) {
 		do_command(arg - 1, &argv[1]);
@@ -200,11 +201,12 @@ int main(int arg,char *argv[],char *envp[])
 			printf("%s\n", buf);
 			pre--;
 		}else{
-			gets(buf);
-		}
-		#else 
+		#endif
 			
 		fgets(buf, BUF_SIZE, fd);
+		#ifdef SHELL_TEST
+		}
+		#endif
 		len = strlen(buf);
 		if(fd != STD_IN && len == 0){
 			// printf("%d", fd);
@@ -212,7 +214,6 @@ int main(int arg,char *argv[],char *envp[])
 			fd = STD_IN;
 			// while(1);
 		}
-		#endif
 		if(len != 0 && buf[0] != '#')
 		{
 			printf("input: %s\n", buf);

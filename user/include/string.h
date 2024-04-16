@@ -3,7 +3,7 @@
 void* memcpy(void* p_dst, void*  p_src, int size);//void* memcpy(void* es:p_dst, void* ds:p_src, int size);
 void memset(void* p_dst, char ch, int size);
 char* strcat(char *dst, const char *src);
-char* strcpy(char* p_dst, char* p_src);
+char* strcpy(char* p_dst, const char* p_src);
 char* strncpy(char * dest, const char *src, int n);
 int strlen(const char* p_str);
 int strcmp(const char *s1, const char *s2);
