@@ -290,6 +290,6 @@ void rt_prio(int prio) {
 	return _syscall1(_NR_rt_prio, prio);
 }
 
-void get_proc_msg(struct proc_msg* msg) {
+void get_proc_msg(proc_msg* msg) {
 	return _syscall1(_NR_get_proc_msg, msg);
 }

@@ -54,6 +54,15 @@ void cfs_sched()
 			p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
 			p_proc_current->task.cpu_use=0;
 
+			sched_entity* curr_entity=get_curr_entity(p_proc_current);
+
+			if(curr_entity != NULL && curr_entity->next !=NULL && \
+				p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
+			{
+				//resort
+				rq_resort(curr_entity);
+			}
+
 			p_proc_next=rt_rq->next->p_process;
 		}
 	}else{
@@ -69,8 +78,9 @@ void cfs_sched()
 		if(rq->next==NULL)
 		{
 			// disp_str("-cfs-");	//mark debug
-			proc_table[2].task.stat=READY; //IDLE
-			in_rq(&proc_table[2]);
+			int idle_pid = kern_get_pid_byname("task_idle");
+			proc_table[idle_pid].task.stat=READY; //IDLE
+			in_rq(&proc_table[idle_pid]);
 			p_proc_next=rq->next->p_process;
 			return;
 		}
@@ -607,5 +617,5 @@ PUBLIC void idle()
 		// yield();
 		// asm volatile("hlt");
 		asm volatile("sti; hlt": : :"memory");
-	};
+	}
 }

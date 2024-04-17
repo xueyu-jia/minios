@@ -21,20 +21,140 @@
 // 	printf(" %d ",get_pid());
 // 	exit(get_pid());
 // }
-int main()
+// int main()
+// {
+// 	if(fork()!=0){
+// 		for(int i = 0; i < 10; i++){
+// 			printf("parent:%d\n", i);
+// 		}
+// 		int childStatues;
+// 		wait_(&childStatues);
+// 		exit(0);
+// 		return 0;
+// 	}
+// 	int ret;
+// 	ret = execve("fstest.bin", NULL, NULL);
+// 	if(ret != 0)	printf("execv error in userprograme\n");
+// 	exit(0);
+// 	return 0;
+// }
+
+void test_fucntion_1()
 {
 	if(fork()!=0){
-		for(int i = 0; i < 10; i++){
-			printf("parent:%d\n", i);
+		// parent
+		for(unsigned int i = 0; i < 4294; i++){
+			printf("a ");
 		}
-		int childStatues;
-		wait_(&childStatues);
 		exit(0);
-		return 0;
 	}
-	int ret;
-	ret = execve("fstest.bin", NULL, NULL);
-	if(ret != 0)	printf("execv error in userprograme\n");
+	//child
+	for(unsigned int i = 0; i < 4294; i++){
+		printf("b ");
+	}
 	exit(0);
-	return 0;
+}
+
+void test_fucntion_2()
+{
+	if(fork()!=0){
+		// parent
+		
+		for(unsigned int i = 0; i < 4294; i++){
+			printf("a ");
+		}
+		exit(0);
+	}
+	//child
+	nice(-6);
+	for(unsigned int i = 0; i < 4294; i++){
+		printf("b ");
+	}
+	exit(0);
+}
+
+void test_fucntion_3()
+{
+	if(fork()!=0){
+		// parent
+		nice(-6);
+		int a = 0;
+		for(int j = 0; j < 10; j++)
+		for(int x = 0; x < 10; x++){
+			int a = 0;
+			for(unsigned int i = 0; i < 429400; i++){
+			// printf("a ");
+			a++;
+			}
+		}
+		
+		proc_msg msg;
+		get_proc_msg(&msg);
+		print_PCB(&msg);
+		exit(0);
+	}
+	//child
+	int a = 0;
+	for(unsigned int i = 0; i < 429400; i++){
+		// printf("b ");
+		a++;
+	}
+	exit(0);
+}
+
+void test_fucntion_4()
+{
+	if(fork()==0){
+		// chile
+		set_rt(TRUE);
+		for(unsigned int i = 0; i < 4294; i++){
+			printf("a ");
+		}
+		exit(0);
+	}
+	//parent
+	for(unsigned int i = 0; i < 4294; i++){
+		printf("b ");
+	}
+	exit(0);
+}
+
+void test_fucntion_5()
+{
+	if(fork()!=0){
+		// parent
+		nice(-6);
+		set_rt(TRUE);
+		int a = 0;
+		for(int j = 0; j < 10; j++)
+		for(int x = 0; x < 10; x++){
+			int a = 0;
+			for(unsigned int i = 0; i < 429400; i++){
+			// printf("a ");
+			a++;
+			}
+		}
+		
+		proc_msg msg;
+		get_proc_msg(&msg);
+		print_PCB(&msg);
+		exit(0);
+	}
+	//child
+	int a = 0;
+	for(unsigned int i = 0; i < 429400; i++){
+		// printf("b ");
+		a++;
+	}
+	exit(0);
+}
+
+void print_PCB(proc_msg *msg)
+{
+	printf("\npid = %d; nice = %d; vruntime = %d; cpu_time = %d\n",	\
+			msg->pid, msg->nice, msg->vruntime, msg->sum_cpu_use);
+}
+int main()
+{
+	test_fucntion_5();
 }

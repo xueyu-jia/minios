@@ -70,6 +70,11 @@
 #define _NR_init_block_dev				59
 #define _NR_pthread_exit                60
 #define _NR_pthread_join                61
+#define _NR_init_char_dev				62
+#define _NR_nice		 				63 	// added by zq
+#define _NR_set_rt		 				64
+#define _NR_rt_prio		 				65
+#define _NR_get_proc_msg				66 
 
 #define INT_VECTOR_SYS_CALL             0x90
 
@@ -145,6 +150,14 @@
 	retval;						       							\
 })
 
+typedef struct process_message
+{
+	u32 pid;
+	int nice;
+	double vruntime;
+	u64 sum_cpu_use;
+}proc_msg;
+
 int get_ticks();
 int get_pid();
 void* malloc_4k();
@@ -207,5 +220,10 @@ int umount(const char *target);
 int init_block_dev(int drive);
 void pthread_exit(void *retval);
 int pthread_join(pthread_t pthread, void **retval);
+int init_char_dev(int drive);
+void nice(int val);
+void set_rt(int turn_rt);
+void rt_prio(int prio);
+void get_proc_msg(proc_msg* msg);
 
 #endif
