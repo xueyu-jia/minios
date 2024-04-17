@@ -40,6 +40,6 @@ struct key2id_form
     int id;
     struct key2id_form *next;
 } Key_TO_Id_Form;*/
-extern struct spinlock lock_shmmemcpy;
+struct spinlock lock_shmmemcpy;
 u32 phy_free_4k(u32 phy_addr);
 #endif

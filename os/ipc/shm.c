@@ -28,7 +28,7 @@ PUBLIC struct spinlock lock_msg = {
     .locked = 0,
     .name = "ipc_lock",
     .cpu = 0xffffffff};
-struct spinlock lock_shmmemcpy;
+
 
 static char key_available(key)
 {

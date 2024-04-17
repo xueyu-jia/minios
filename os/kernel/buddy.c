@@ -12,7 +12,6 @@ buddy *ubud = &ubuddy;
 
 u32 MemInfo[256] = {0}; //存放FMIBuff后1k内容
 u32 block_size[MAX_ORDER];     //the block size of each order
-struct page mem_map[ALL_PAGES];
 
 int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
 u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27

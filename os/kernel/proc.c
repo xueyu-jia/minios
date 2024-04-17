@@ -21,282 +21,42 @@
 #include "../include/global.h"
 #include "../include/proto.h"
 
-
-PRIVATE int test_cfs()
-{	
-	if(p_proc_current->task.stat == READY || rt_rq->next->p_process->task.stat == READY)
-		return true;
-	else	
-		return false;
-}
 /*======================================================================*
-                              cfs_schedule
+                              schedule
  *======================================================================*/
-
-void cfs_sched()
+PUBLIC void schedule()
 {
-	if(rt_runtime<sysctl_sched_rt_runtime && rt_rq->next!=NULL)//rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
+	PROCESS* p;
+	int	 greatest_ticks = 0;
+
+	//Added by xw, 18/4/21
+	if (p_proc_current->task.stat == READY && p_proc_current->task.ticks > 0) {
+		p_proc_next = p_proc_current;	//added by xw, 18/4/26
+		return;
+	}
+
+	while (!greatest_ticks)
 	{
-		if(p_proc_current->task.is_rt==true)
+		for (p = proc_table; p < proc_table+NR_PCBS; p++)		//edit by visual 2016.4.5
 		{
-			if(p_proc_current->task.stat == READY && \
-				p_proc_current->task.rt_priority>rt_rq->next->p_process->task.rt_priority)
+			if (p->task.stat == READY && p->task.ticks > greatest_ticks)  //edit by visual 2016.4.5
 			{
-				p_proc_next=p_proc_current;
-			}else{
-				p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
-				p_proc_current->task.cpu_use=0;
-
-				p_proc_next=rt_rq->next->p_process;
-			}
-		}else{
-			p_proc_current->task.vruntime+=p_proc_current->task.cpu_use*1024/p_proc_current->task.weight;
-			p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
-			p_proc_current->task.cpu_use=0;
-
-			sched_entity* curr_entity=get_curr_entity(p_proc_current);
-
-			if(curr_entity != NULL && curr_entity->next !=NULL && \
-				p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
-			{
-				//resort
-				rq_resort(curr_entity);
+				greatest_ticks = p->task.ticks;
+				// p_proc_current = p;
+				p_proc_next	= p;	//modified by xw, 18/4/26
 			}
 
-			p_proc_next=rt_rq->next->p_process;
 		}
-	}else{
-		//update vruntime/sum_cpu_use
-		if(p_proc_current->task.is_rt==false)
-		{
-			p_proc_current->task.vruntime += \
-				p_proc_current->task.cpu_use*(double)1024/p_proc_current->task.weight;
-		}
-		p_proc_current->task.sum_cpu_use+=p_proc_current->task.cpu_use;
-		p_proc_current->task.cpu_use=0;
 
-		if(rq->next==NULL)
+		if (!greatest_ticks)
 		{
-			// disp_str("-cfs-");	//mark debug
-			int idle_pid = kern_get_pid_byname("task_idle");
-			proc_table[idle_pid].task.stat=READY; //IDLE
-			in_rq(&proc_table[idle_pid]);
-			p_proc_next=rq->next->p_process;
-			return;
-		}
-		// disp_int(rq->next->p_process->task.pid);
-
-		if(p_proc_current->task.stat != READY || p_proc_current->task.is_rt==true)
-		{
-			p_proc_next=rq->next->p_process;
-		}else 
-		{
-			sched_entity* curr_entity=get_curr_entity(p_proc_current);
-			// if(curr_entity == NULL){
-			// 	disp_str("cfs_sched error1: cannot find the curr_entity");
-			// 	while(1){};
-			// }
-			if(curr_entity != NULL && curr_entity->next !=NULL && \
-				p_proc_current->task.vruntime > curr_entity->next->p_process->task.vruntime)
+			for (p = proc_table; p < proc_table+NR_PCBS; p++) //edit by visual 2016.4.5
 			{
-				//resort
-				rq_resort(curr_entity);
-			}
-			p_proc_next=rq->next->p_process;
-			
-
-			if(rq_tail->p_process->task.vruntime>0xFFFFF)//vruntime-min_vruntime,avoid overflow and time waste
-			{
-				sched_entity* pos=rq->next;
-				double min_vruntime=get_min_vruntime();
-				
-				while(pos!=NULL)
-				{
-					pos->p_process->task.vruntime-=min_vruntime;
-					pos=pos->next;
-				}
+				p->task.ticks = p->task.priority;
 			}
 		}
 	}
-}
-
-void schedule()
-{
-	cfs_sched();
 	cr3_ready = p_proc_next->task.cr3;
-}
-
-u32 get_min_vruntime()
-{
-	sched_entity* pos=rq->next;
-	u32 min_vruntime=0xFFFFFF;
-
-	while(pos!=NULL)
-	{
-		if(min_vruntime > pos->p_process->task.vruntime)
-		{
-			min_vruntime=pos->p_process->task.vruntime;
-		}
-		pos=pos->next;
-	}
-	return min_vruntime;
-}
-
-// 返回指定PCB的调度实体sched_entity
-sched_entity* get_curr_entity(PROCESS* current_proc)
-{
-	sched_entity* pos=rq->next;
-
-	while(pos!=NULL){
-		if(pos->p_process == current_proc){
-			return pos;
-		}
-		pos=pos->next;
-	}
-	return NULL;
-}
-
-// 删除指定节点（但没释放该节点的空间，只是用pid=1000标空了）
-// 并将该节点的PCB重新插入链表
-void rq_resort(sched_entity* changed_entity)//only for rq
-{
-	changed_entity->pid=1000;//mark empty
-	changed_entity->prev->next=changed_entity->next;
-	if(changed_entity->next!=NULL)
-	{
-		changed_entity->next->prev=changed_entity->prev;
-	}else
-	{
-		rq_tail=changed_entity->prev;
-	}
-
-	in_rq(changed_entity->p_process);//reinsert
-}
-
-void in_rq(PROCESS* p_in)
-{
-	if(p_in->task.is_rt==true)//real time process
-	{
-		int i=0;
-		sched_entity *new_entity;
-
-		for(;i<READY_PROC_MAX && rt_rq_array[i].pid<NR_PCBS;i++);
-		if(i<READY_PROC_MAX)
-		{
-			new_entity=&rt_rq_array[i];
-		}else
-		{
-			disp_str("in_rq error1: cannot find a rq_array\n");
-			return;			//mark 这里没做错误处理和提示，之后要加上
-		}
-		new_entity->pid=p_in->task.pid;
-		new_entity->p_process=p_in;
-		new_entity->next=NULL;
-		new_entity->prev=NULL;
-		
-		//new_entity.pri=p_in->task.rt_priority;
-		if(rt_rq==rt_rq_tail)//rq is empty
-		{
-			rt_rq->next=new_entity;
-			new_entity->prev=rt_rq;
-			rt_rq_tail=new_entity;
-		}else//not empty,find propery position
-		{
-			sched_entity* pos=rt_rq->next;
-			//avoid re_in_rq
-			pos=rt_rq;
-			while(pos->next!=NULL && pos->next->p_process->task.rt_priority>new_entity->p_process->task.rt_priority) pos=pos->next;
-			if(pos->next==NULL)
-			{
-				pos->next=new_entity;
-				new_entity->prev=pos;
-				rt_rq_tail=new_entity;
-			}else
-			{
-				new_entity->prev=pos;
-				new_entity->next=pos->next;
-				pos->next->prev=new_entity;
-				pos->next=new_entity;
-			}
-		}
-
-	}else//not real time process
-	{
-		int i=0;
-		sched_entity *new_entity;
-		
-		for(;i<READY_PROC_MAX && rq_array[i].pid<NR_PCBS;i++);
-		if(i<READY_PROC_MAX)
-		{
-			new_entity=&rq_array[i];
-		}else
-		{
-			disp_str("in_rq error2: cannot find a rq_array\n");
-			return;			//mark 这里没做错误处理和提示，之后要加上
-		}
-		new_entity->pid=p_in->task.pid;
-		new_entity->p_process=p_in;
-		new_entity->next=NULL;
-		new_entity->prev=NULL;
-
-		//new_entity.pri=p_in->task.vruntime;
-		if(rq==rq_tail)//rq is empty
-		{
-			rq->next=new_entity;
-			new_entity->prev=rq;
-			rq_tail=new_entity;
-		}else//not empty,find propery position
-		{
-			sched_entity* pos=rq->next;
-			//avoid re_in_rq
-			pos=rq;
-			while(pos->next!=NULL && pos->next->p_process->task.vruntime<=new_entity->p_process->task.vruntime) pos=pos->next;
-			if(pos->next==NULL)
-			{
-				pos->next=new_entity;
-				new_entity->prev=pos;
-				rq_tail=new_entity;
-			}else{
-				new_entity->prev=pos;
-				new_entity->next=pos->next;
-				pos->next->prev=new_entity;
-				pos->next=new_entity;
-			}
-		}
-	}
-}
-
-void out_rq(PROCESS* p_out)
-{
-	sched_entity *pos;
-	if(p_out->task.is_rt==true)//real time process
-	{
-		pos=rt_rq->next;
-	}else//not real time process
-	{
-		pos=rq->next;
-	}
-	while(pos!=NULL && pos->pid!=p_out->task.pid) pos=pos->next;
-	if(pos!=NULL)//found
-	{
-		pos->prev->next=pos->next;
-		if(pos->next!=NULL)
-		{
-			pos->next->prev=pos->prev;
-		}else
-		{
-			if(p_out->task.is_rt==true)//real time process
-			{
-				rt_rq_tail=pos->prev;
-			}else//not real time process
-			{
-				rq_tail=pos->prev;
-			}
-		}
-		pos->next=NULL;
-		pos->prev=NULL;
-		pos->pid=1000; //mark empty
-	}
 }
 
 /*======================================================================*
@@ -330,6 +90,16 @@ PUBLIC void free_PCB(PROCESS *p)
                            yield and sleep
  *======================================================================*/
 //used for processes to give up the CPU
+/* //deleted by mingxuan 2021-8-13
+PUBLIC void sys_yield()
+{
+//	p_proc_current->task.ticks--;
+	p_proc_current->task.ticks = 0;
+//	save_context();
+	sched();	//Modified by xw, 18/4/19
+}
+*/
+//modified by mingxuan 2021-8-13
 PUBLIC void sys_yield()
 {
 	do_yield();
@@ -343,8 +113,7 @@ PUBLIC void do_yield()
 //added by mingxuan 2021-8-14
 PUBLIC void kern_yield()
 {
-	// p_proc_current->task.ticks = 0;	/* modified by xw, 18/4/27 */
-	p_proc_current->task.vruntime+=5;
+	p_proc_current->task.ticks = 0;	/* modified by xw, 18/4/27 */
 	sched();	//Modified by xw, 18/4/19
 }
 
@@ -383,7 +152,6 @@ PUBLIC void kern_sleep(int n)
 
 	while(ticks - ticks0 < n){
 		p_proc_current->task.stat = SLEEPING;
-		out_rq(p_proc_current);
 		sched();	//Modified by xw, 18/4/19
 	}
 }
@@ -393,130 +161,14 @@ PUBLIC void kern_sleep(int n)
  */
 PUBLIC void sys_wakeup(void *channel)
 {
-	PROCESS *p, *target_p;
-	target_p = NULL;
+	PROCESS *p;
 
 	for(p = proc_table; p < proc_table + NR_PCBS; p++){
 		if(p->task.stat == SLEEPING && p->task.channel == channel){
 			p->task.stat = READY;
-			target_p = p;
-			break;
 		}
 	}
-	if(target_p != NULL){
-		if(target_p->task.is_rt==false)
-		{
-			target_p->task.vruntime=get_min_vruntime();//min_vruntime
-		}
-		in_rq(target_p);
-	}
 }
-
-
-PUBLIC void sys_nice()
-{
-	do_nice(get_arg(1));
-}
-
-PUBLIC void do_nice(int inc)
-{
-	return kern_nice(inc);
-}
-
-//added by zq
-PUBLIC void kern_nice(int inc)
-{
-	if(p_proc_current->task.is_rt==true) return;
-
-	if(inc<-20) inc=-20;
-	else if(inc>19) inc=19;
-
-	if(inc+p_proc_current->task.nice < -20)
-	{
-		p_proc_current->task.nice=-20;
-	}else if(inc+p_proc_current->task.nice > 19)
-	{
-		p_proc_current->task.nice=19;
-	}else
-	{
-		p_proc_current->task.nice+=inc;
-	}
-	p_proc_current->task.weight=nice_to_weight[p_proc_current->task.nice+20]; 
-}
-
-// void sys_exit()
-// {
-// 	p_proc_current->task.stat = IDLE;
-// 	out_rq(p_proc_current);
-// 	sched();
-// }
-
-PUBLIC void sys_set_rt()
-{
-	do_set_rt(get_arg(1));
-}
-
-PUBLIC void do_set_rt(int turn_rt)
-{
-	kern_set_rt(turn_rt);
-}
-
-PUBLIC void kern_set_rt(int turn_rt)
-{
-	if(turn_rt==true && p_proc_current->task.is_rt==false) // not rt change to rt process
-	{
-		out_rq(p_proc_current);
-		p_proc_current->task.is_rt=true;
-	}else if(turn_rt==false && p_proc_current->task.is_rt==true)//rt change to not rt process
-	{
-		out_rq(p_proc_current);
-		p_proc_current->task.is_rt=false;
-	}else
-	{
-		return;
-	}
-	in_rq(p_proc_current);
-	sched();
-}
-
-PUBLIC void sys_rt_prio()
-{
-	do_rt_prio(get_arg(1));
-}
-
-PUBLIC void do_rt_prio(int prio)
-{
-	kern_rt_prio(prio);
-}
-
-PUBLIC void kern_rt_prio(int prio)
-{
-	if(prio<0 || p_proc_current->task.is_rt==false) return;
-	else
-	{
-		p_proc_current->task.rt_priority=prio;
-	}
-	sched();
-}
-
-PUBLIC void sys_get_proc_msg()
-{
-	do_get_proc_msg(get_arg(1));
-}
-
-PUBLIC void do_get_proc_msg(proc_msg* msg)
-{
-	kern_get_proc_msg(msg);
-}
-
-PUBLIC void kern_get_proc_msg(proc_msg* msg)
-{
-	msg->pid=p_proc_current->task.pid;
-	msg->nice=p_proc_current->task.nice;
-	msg->sum_cpu_use=p_proc_current->task.sum_cpu_use;
-	msg->vruntime=p_proc_current->task.vruntime;
-}
-
 /*
 	added by cjjx 2021-12-25
 */
@@ -524,39 +176,35 @@ PUBLIC void kern_get_proc_msg(proc_msg* msg)
 // Reacquires lock when awakened.
 void wait_for_sem(void *chan, struct spinlock *lk)
 {
-	if (0 == p_proc_current)
+	if(0 == p_proc_current)
 		// printf("p_proc_current is unknow!");
-		return;
-	if (0 == lk)
+		return 0; 
+	if(0 == lk)
 		// printf("lk is unknow!");
-		return;
-	// Must acquire ptable.lock in order to
-	// change p->state and then call sched.
-	// Once we hold ptable.lock, we can be
-	// guaranteed that we won't miss any wakeup
-	// (wakeup runs with ptable.lock locked),
-	// so it's okay to release lk.
+		return 0; 
+  // Must acquire ptable.lock in order to
+  // change p->state and then call sched.
+  // Once we hold ptable.lock, we can be
+  // guaranteed that we won't miss any wakeup
+  // (wakeup runs with ptable.lock locked),
+  // so it's okay to release lk.
 
-	// Go to sleep.
-	p_proc_current->task.channel = chan;
-	p_proc_current->task.stat = SLEEPING;
-	out_rq(p_proc_current);
-	
-	release(lk);
+  // Go to sleep.
+  p_proc_current->task.channel = chan;
+  p_proc_current->task.stat = SLEEPING;
+  release(lk);
+  
+  u32 ringlevel = get_ring_level();
+  if (ringlevel == 0) {
+  	sched();
+  } else {
+	yield();
+  }
+  
+  acquire(lk);
+  // Tidy up.
+  p_proc_current->task.channel = 0;
 
-	u32 ringlevel = get_ring_level();
-	if (ringlevel == 0)
-	{
-		sched();
-	}
-	else
-	{
-		yield();
-	}
-
-	acquire(lk);
-	// Tidy up.
-	p_proc_current->task.channel = 0;
 }
 
 /*
@@ -589,6 +237,7 @@ PUBLIC void* va2la(int pid, void* va)
 
 	return (void*)la;
 }
+//~zcr
 
 /**
  * @brief 将进程状态置为睡眠，直至事件发生
@@ -600,22 +249,10 @@ PUBLIC void wait_event(void* event) {
 	p_proc_current->task.channel = event;
 	p_proc_current->task.stat = SLEEPING;
 	
-	out_rq(p_proc_current);
 	u32 ringlevel = get_ring_level();
   	if (ringlevel == 0) {
   		sched();	//非系统调用（sched中有为cr3赋值的操作，只有ring0级别才能执行）
   	} else {
 		yield();	//系统调用
   	}
-}
-
-PUBLIC void idle()
-{
-	while(1){
-		// disp_str("-idle-"); //mark debug
-		out_rq(p_proc_current);
-		// yield();
-		// asm volatile("hlt");
-		asm volatile("sti; hlt": : :"memory");
-	}
 }

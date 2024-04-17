@@ -41,7 +41,7 @@ ASMKFLAGS	= -I include/ -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 
-CFLAGS		= -I include/ -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 -nostdlib
+CFLAGS		= -I include/ -m32 -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 
 
 LDFLAGS_kernel	= -m elf_i386 -s -Ttext $(ENTRYPOINT) #modified by mingxuan 2021-3-29
 #LDFLAGS_init	= -m elf_i386 -s -T../user/init/lds

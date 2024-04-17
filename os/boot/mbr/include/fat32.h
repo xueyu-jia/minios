@@ -55,12 +55,12 @@ struct Directory_Entry {
     u32 DIR_FileSize;
 } __attribute__((packed)); 
 
-extern struct BPB bpb;
-extern u32 fat_start_sec;
-extern u32 data_start_sec;
-extern u32 elf_off; 
-extern u32 fat_now_sec;
-extern u32 elf_first;
+struct BPB bpb;
+u32 fat_start_sec;
+u32 data_start_sec;
+u32 elf_off; 
+u32 fat_now_sec;
+u32 elf_first;
 
 
 /* u32 get_next_clus_number(u32 current_clus);

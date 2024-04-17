@@ -217,7 +217,6 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
 		sys_wakeup(p_father);
 		p_proc->task.stat = ZOMBY; //modified by dongzhangqi 2023.6.2
-		out_rq(p_proc);
 		
 	}
 

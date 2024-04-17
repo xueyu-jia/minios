@@ -33,8 +33,6 @@ extern	char		task_stack[];
 extern  TASK        task_table[];
 extern	irq_handler	irq_table[];
 
-extern int nice_to_weight[];
-
 /* tty */
 //added by mingxuan 2019-5-19
 #include "tty.h"
@@ -58,17 +56,3 @@ struct memfree{
 #include "fs_const.h"
 #include "hd.h"
 extern struct hd_info hd_info[12];   //added by mingxuan 2020-10-27
-
-//added by zq
-extern sched_entity* rt_rq;     //实时进程队列(real time running queue)   
-extern sched_entity* rt_rq_tail;     
-extern sched_entity  rt_rq_array[];
-
-extern sched_entity* rq;           
-extern sched_entity* rq_tail;   
-extern sched_entity  rq_array[]; 
-
-extern int sysctl_sched_rt_period; 
-extern int sysctl_sched_rt_runtime;
-extern int rt_runtime;
-extern int rt_period;

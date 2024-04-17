@@ -3,7 +3,6 @@
 *************************************************/
 #include "const.h"  //added by mingxuan 2019-5-19
 #include "type.h" //added by mingxuan 2019-5-19
-#include "syscall.h"
 
 #ifndef _STDIO_H_  //added by mingxuan 2019-5-19
 #define _STDIO_H_  //added by mingxuan 2019-5-19

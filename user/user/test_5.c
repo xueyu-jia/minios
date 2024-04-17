@@ -107,7 +107,7 @@ int main(int arg, char *argv[])
 		}
 		exit(0);
 	}else{
-		wait_(NULL);
+		wait_();
 	}
 	
 	int pid2 = fork();
@@ -125,7 +125,7 @@ int main(int arg, char *argv[])
 		}
 		exit(0);
 	}else{
-		wait_(NULL);
+		wait_();
 	}
 
 	q2 = msgget(key2, 0);

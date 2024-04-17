@@ -277,19 +277,3 @@ int pthread_join(pthread_t thread, void **retval){
 int init_char_dev(int drive){
 	return _syscall1(_NR_init_char_dev,drive);
 }
-
-void nice(int val) {
-	return _syscall1(_NR_nice, val);
-}
-
-void set_rt(int turn_rt) {
-	return _syscall1(_NR_set_rt, turn_rt);
-}
-
-void rt_prio(int prio) {
-	return _syscall1(_NR_rt_prio, prio);
-}
-
-void get_proc_msg(proc_msg* msg) {
-	return _syscall1(_NR_get_proc_msg, msg);
-}

@@ -1,160 +1,125 @@
 #include "../include/stdio.h"
 
-// int global = 1;
-// char str[12];
+int global = 1;
+//char *str = "abcd";
+char str[12];
 
-// void main(int arg,char *argv[])
-// {
+void main(int arg,char *argv[])
+{
 
 
-// 	//printf("%s\n",str);		//deleted by mingxuan 2021-3-17
-// 	printf("%s\n","abcd");
-// 	printf("%d\n", global);	//deleted by mingxuan 2021-3-17
+	//printf("%s\n",str);		//deleted by mingxuan 2021-3-17
+	printf("%s\n","abcd");
+	printf("%d\n", global);	//deleted by mingxuan 2021-3-17
 	
-// 	//malloc(1024);
+	//malloc(1024);
 
-// 	if(0==mount("dev_sdb", "fat1", NULL, NULL, NULL))
-// 	{
-// 		printf("mount sdb to fat1\n");
-// 	}
+	if(0==mount("dev_sdb", "fat1", NULL, NULL, NULL))
+	{
+		printf("mount sdb to fat1\n");
+	}
 
-// 	printf(" %d ",get_pid());
-// 	exit(get_pid());
-// }
-// int main()
+	printf(" %d ",get_pid());
+	exit(get_pid());
+}
+// #include "stdio.h"
+// // #define BUG1
+// #define SIMPLE
+// void pthread_test1(int *x)
 // {
-// 	if(fork()!=0){
-// 		for(int i = 0; i < 10; i++){
-// 			printf("parent:%d\n", i);
-// 		}
-// 		int childStatues;
-// 		wait_(&childStatues);
-// 		exit(0);
-// 		return 0;
-// 	}
-// 	int ret;
-// 	ret = execve("fstest.bin", NULL, NULL);
-// 	if(ret != 0)	printf("execv error in userprograme\n");
-// 	exit(0);
-// 	return 0;
+// 	test(1);
+// 	while(1){}
 // }
 
-void test_fucntion_1()
-{
-	if(fork()!=0){
-		// parent
-		for(unsigned int i = 0; i < 4294; i++){
-			printf("a ");
-		}
-		exit(0);
-	}
-	//child
-	for(unsigned int i = 0; i < 4294; i++){
-		printf("b ");
-	}
-	exit(0);
-}
+// void pthread_test2(int *x)
+// {
+// 	test(2);
+// 	while(1){}
+// }
 
-void test_fucntion_2()
-{
-	if(fork()!=0){
-		// parent
-		
-		for(unsigned int i = 0; i < 4294; i++){
-			printf("a ");
-		}
-		exit(0);
-	}
-	//child
-	nice(-6);
-	for(unsigned int i = 0; i < 4294; i++){
-		printf("b ");
-	}
-	exit(0);
-}
+// void pthread_test3(int *x)
+// {
+// 	test(3);
+// }
 
-void test_fucntion_3()
-{
-	if(fork()!=0){
-		// parent
-		nice(-6);
-		int a = 0;
-		for(int j = 0; j < 10; j++)
-		for(int x = 0; x < 10; x++){
-			int a = 0;
-			for(unsigned int i = 0; i < 429400; i++){
-			// printf("a ");
-			a++;
-			}
-		}
-		
-		proc_msg msg;
-		get_proc_msg(&msg);
-		print_PCB(&msg);
-		exit(0);
-	}
-	//child
-	int a = 0;
-	for(unsigned int i = 0; i < 429400; i++){
-		// printf("b ");
-		a++;
-	}
-	exit(0);
-}
+// void pthread_test4(int *x)
+// {
+// 	test(4);
+// }
+// /*======================================================================*
+//                           Syscall Pthread Test
+// added by xw, 18/4/27
+//  *======================================================================*/
 
-void test_fucntion_4()
-{
-	if(fork()==0){
-		// chile
-		set_rt(TRUE);
-		for(unsigned int i = 0; i < 4294; i++){
-			printf("a ");
-		}
-		exit(0);
-	}
-	//parent
-	for(unsigned int i = 0; i < 4294; i++){
-		printf("b ");
-	}
-	exit(0);
-}
+// int main(int arg,char *argv[])
+// {
+// 	/* 
+// 	* added by cjjx 2021-12-20
+// 	* 测试get_pid,getppid,pthread_self的正确性
+// 	*/
+// 	// int i=0;
+// 	// int *thread;
+// 	// printf("now  ");
+// 	// printf("%d\n",get_pid());
+// 	// printf("parent  ");
+// 	// printf("%d\n",getppid());
+// 	// printf("thread  ");
+// 	// printf("%d\n",pthread_self());
+// 	// return 0;
+// 	/* 
+// 	* added by cjjx 2021-12-24
+// 	* 自加操作问题测试
+// 	*/
+// 	// int i=1000;
+// 	// int thread,thread2;
+// 	// pthread_create((void*)thread,NULL,pthread_test1,NULL);
+// 	// pthread_create((void*)thread2,NULL,pthread_test2,NULL);
 
-void test_fucntion_5()
-{
-	if(fork()!=0){
-		// parent
-		nice(-6);
-		set_rt(TRUE);
-		int a = 0;
-		for(int j = 0; j < 10; j++)
-		for(int x = 0; x < 10; x++){
-			int a = 0;
-			for(unsigned int i = 0; i < 429400; i++){
-			// printf("a ");
-			a++;
-			}
-		}
-		
-		proc_msg msg;
-		get_proc_msg(&msg);
-		print_PCB(&msg);
-		exit(0);
-	}
-	//child
-	int a = 0;
-	for(unsigned int i = 0; i < 429400; i++){
-		// printf("b ");
-		a++;
-	}
-	exit(0);
-}
+// 	/* 
+// 	* added by cjjx 2021-12-26
+// 	* 生产者消费者问题测试
+// 	*/
+// 	int thread1,thread2,thread3,thread4,thread5;
+// 	int temp = 1;
 
-void print_PCB(proc_msg *msg)
-{
-	printf("\npid = %d; nice = %d; vruntime = %d; cpu_time = %d\n",	\
-			msg->pid, msg->nice, msg->vruntime, msg->sum_cpu_use);
-}
-int main()
-{
-	test_fucntion_5();
-}
+// #ifndef SIMPLE
+// 	pthread_create((void*)thread1,NULL,pthread_test3,NULL);
+// #ifndef BUG1
+// 	for (int i = 0; i < 1000000; i++)
+// 	{
+// 		i++;
+// 	}
+// #endif
+// 	pthread_create((void*)thread2,NULL,pthread_test3,NULL);
+// #ifndef BUG1
+// 	for (int i = 0; i < 1000000; i++)
+// 	{
+// 		i++;
+// 	}
+// #endif
+// 	pthread_create((void*)thread3,NULL,pthread_test3,NULL);
+// #ifndef BUG1
+// 	for (int i = 0; i < 1000000; i++)
+// 	{
+// 		i++;
+// 	}
+// #endif
+// 	pthread_create((void*)thread4,NULL,pthread_test4,NULL);
+// #ifndef BUG1
+// 	for (int i = 0; i < 1000000; i++)
+// 	{
+// 		i++;
+// 	}
+// #endif
+// 	pthread_create((void*)thread5,NULL,pthread_test4,NULL);
+// #endif
+
+// #ifdef SIMPLE
+// 	pthread_create(&thread1,NULL,pthread_test1,&temp);
+// 	pthread_create(&thread2,NULL,pthread_test2,&temp);
+// #endif
+
+// while(1){}
+
+// return 0;
+// }

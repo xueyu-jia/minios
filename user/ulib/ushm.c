@@ -27,7 +27,7 @@ static  char * shm_vmalloc_4k()
     {
         if(shmmen[i].in_use == 0)
         {
-            shmmen[i].in_use = 1;
+            shmmen[i].in_use == 1;
             return shmmen[i].addr;
         }
     }

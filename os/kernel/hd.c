@@ -254,8 +254,7 @@ PUBLIC void hd_service()
 	RWInfo *rwinfo;
 	
 	while(1)
-	{	
-		// disp_str("-hd-"); //mark debug
+	{
 		// //the hd queue is not empty when out_hd_queue return 1.
 		// while(out_hd_queue(&hdque, &rwinfo))
 		// {
@@ -265,7 +264,6 @@ PUBLIC void hd_service()
 		out_hd_queue(&hdque, &rwinfo);
 		hd_rdwt_real(rwinfo);
 		rwinfo->proc->task.stat = READY;
-		in_rq(rwinfo->proc);
 		yield();
 		
 		//disp_str("H ");

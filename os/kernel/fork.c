@@ -91,7 +91,6 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 		
 		//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
 		p_child->task.stat = READY;
-		in_rq(p_child);
 	}
 
 	//disp_free();	//for test, added by mingxuan 2021-1-7
@@ -237,9 +236,6 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	esp_save_context = p_child->task.esp_save_context;
 
 	p_child->task = p_proc_current->task;
-
-	p_child->task.cpu_use = 0;
-	p_child->task.sum_cpu_use = 0;
 	//note that syscalls can be interrupted now! the state of child can only be setted
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
