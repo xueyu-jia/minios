@@ -58,7 +58,9 @@ PUBLIC	TASK	task_table[NR_TASKS] = {//{TestA, STACK_SIZE_TASK, "TestA"},	//edit 
 										//{TestB, STACK_SIZE_TASK, "TestB"},	//deleted by mingxuan 2019-5-19
 										//{TestC, STACK_SIZE_TASK, "TestC"},	//deleted by mingxuan 2019-5-19
 										{hd_service, STACK_SIZE_TASK, "hd_service"},
-										{task_tty, STACK_SIZE_TASK, "task_tty"}};	//added by xw, 18/8/27
+										{task_tty, STACK_SIZE_TASK, "task_tty"},
+										{idle, STACK_SIZE_TASK, "task_idle"}
+										};	//added by xw, 18/8/27
 
 
 PUBLIC	irq_handler		irq_table[NR_IRQ];
@@ -142,8 +144,39 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {	sys_get_ticks, 									//1s
 														sys_init_block_dev,
 														sys_pthread_exit, //add by dongzhangqi 2023.5.17
 														sys_pthread_join,
-														sys_init_char_dev
+														sys_init_char_dev,
+														sys_nice,         //add by zq
+														sys_set_rt,
+														sys_rt_prio,
+														sys_get_proc_msg
 														};
 
 PUBLIC TTY tty_table[NR_CONSOLES];			//added by mingxuan 2019-5-19
 PUBLIC CONSOLE console_table[NR_CONSOLES];	//added by mingxuan 2019-5-19
+
+//added by zq
+int nice_to_weight[40] = {
+ /* -20 */     88761,     71755,     56483,     46273,     36291,
+ /* -15 */     29154,     23254,     18705,     14949,     11916,
+ /* -10 */      9548,      7620,      6100,      4904,      3906,
+ /*  -5 */      3121,      2501,      1991,      1586,      1277,
+ /*   0 */      1024,       820,       655,       526,       423,
+ /*   5 */       335,       272,       215,       172,       137,
+ /*  10 */       110,        87,        70,        56,        45,
+ /*  15 */        36,        29,        23,        18,        15
+};  
+
+sched_entity head1 = {-1,NULL,NULL,NULL};
+sched_entity* rt_rq = &head1;
+sched_entity* rt_rq_tail = &head1;  
+sched_entity  rt_rq_array[READY_PROC_MAX];
+
+sched_entity head2 = {-1,NULL,NULL,NULL};
+sched_entity* rq = &head2;
+sched_entity* rq_tail = &head2;  
+sched_entity  rq_array[READY_PROC_MAX];
+
+int sysctl_sched_rt_period = 10; 
+int sysctl_sched_rt_runtime = 9;
+int rt_runtime;
+int rt_period;

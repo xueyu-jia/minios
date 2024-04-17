@@ -37,5 +37,7 @@ typedef struct s_console
 #define GRAY_CHAR		(MAKE_COLOR(BLACK, BLACK) | BRIGHT)
 #define RED_CHAR		(MAKE_COLOR(BLUE, RED) | BRIGHT)
 
-
+PUBLIC void init_screen(TTY* tty);
+PUBLIC void out_char(CONSOLE* con, char ch);
+PUBLIC void select_console(int nr_console);
 #endif /* _ORANGES_CONSOLE_H_ */

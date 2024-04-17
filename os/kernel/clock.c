@@ -37,6 +37,21 @@ PUBLIC void clock_handler(int irq)
 		return;
 	}
 	
+	rt_period++;
+	if(p_proc_current->task.is_rt==true)
+	{
+		rt_runtime++;
+	}
+	
+	if(rt_period>sysctl_sched_rt_period) //initialize 
+	{
+		rt_period=rt_runtime=0;
+	}
+
+	if(p_proc_current->task.is_rt==false)
+	{
+		p_proc_current->task.cpu_use++;
+	}
 	p_proc_current->task.ticks--;
 	sys_wakeup(&ticks);
 

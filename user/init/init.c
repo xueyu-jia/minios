@@ -763,25 +763,28 @@ void main(int arg,char *argv[])
 	int stderr= open("/dev/tty0",O_RDWR);
 
 	printf("init:toatal_mem_size=%x\n",total_mem_size());
+	int child_pid, waitpid, child_status;
+	while(1){
+		child_pid = fork();
+		if(0 == child_pid){
+			//child
+			execve("shell_0.bin",NULL,NULL);
+			// execve("test_0.bin",NULL,NULL);
 
-	//char filename[30] = "fat0/shell_0.bin";
-	//printf("hello world!\n");
-	if(0!=fork())
-	{//father
-		while(1);
-	}
-	else
-	{//child
-		// execve("fat0/shell_0.bin");
-// #ifdef FAT32_BOOT
-// 	execve("fat0/shell_0.bin",NULL,NULL);
-// #endif
-// #ifdef ORANGE_BOOT
-	execve("shell_0.bin",NULL,NULL);
-// #endif
-		//execve("fat0/shell_0.bin",NULL,NULL);
+			// child error
+			printf("execve shell error\n");
+			exit(1);
+		}
 
-		//execve(filename);
+		// parent
+		waitpid = wait_(&child_status);
+		// if(waitpid == child_pid){
+		// 	break;
+		// }else if(waitpid < 0){
+		// 	printf("init:wait return an error\n");
+		// 	while(1){};
+		// 	exit(1);
+		// }
 	}
 	
 	return;

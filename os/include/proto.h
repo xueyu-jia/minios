@@ -64,7 +64,7 @@ void initial();
 /* keyboard.c */
 //added by mingxuan 2019-5-19
 PUBLIC void init_kb();
-PUBLIC void keyboard_read();
+PUBLIC void keyboard_read(TTY* p_tty);
 
 /* tty.c */
 //added by mingxuan 2019-5-19
@@ -347,3 +347,10 @@ PUBLIC int sys_init_block_dev();
 void *kmalloc(u32 size);
 int kfree(u32 object);
 PUBLIC int sys_init_char_dev();
+
+/*proc.c*/
+PUBLIC void sys_nice();//lzq
+PUBLIC void sys_set_rt();  //turn_rt is true,process was change to rt process;
+                                //false,process was change to not rt process
+PUBLIC void sys_rt_prio();
+PUBLIC void sys_get_proc_msg();

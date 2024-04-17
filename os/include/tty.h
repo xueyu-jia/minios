@@ -49,5 +49,6 @@ typedef struct s_tty
 	struct s_console *	console;
 }TTY;
 
+PUBLIC void wake_the_tty();
 
 #endif /* _ORANGES_TTY_H_ */

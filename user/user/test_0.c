@@ -1,51 +1,37 @@
 #include "stdio.h"
-
-int global = 1;
-//char *str = "abcd";
-char str[12];
+/*
+ * 父进程第一次fork，子进程1执行fstest（该进程还会再fork一次）
+ * 第二次fork， 父进程等待，子进程调用test_1
+ * 共四个进程，其中一个子进程读写长路径文件、一个子进程少量读写文件后一直循环
+ *  一个子进程少量读写文件，父进程堵塞等待一个子进程结束
+ */
 
 void main(int arg,char *argv[])
 {
-
-
-	//printf("%s\n",str);		//deleted by mingxuan 2021-3-17
-//	printf("%s\n","abcd");
-//	printf("%d\n", global);	//deleted by mingxuan 2021-3-17
-	
-	//printf("initial ubuddy\n");
-        //test_malloc();
-        //test_free();
-        //test_alloc_free_page();
-        //test_malloc_free_over_4K();        
-
-        //get_pid();
-
-        umount("fat0");
-
-        printf("total_mem_size:%x\n",total_mem_size());
-
-       
-
-        malloc(4096);
-
-        //get_pid();
-
-        printf("total_mem_size:%x\n",total_mem_size());
-    
-        malloc(4000);
-
-        printf("total_mem_size:%x\n",total_mem_size());
-
-
-        exit(6);
-//        while(1)
-//        {
-//
-//        }
-
-//	printf(" %d\n",get_pid());
-//	exit(get_pid());
-        
+        if(fork()!=0){	
+            //father
+            // int exit_status;
+            // wait_(&exit_status);
+            // printf("exit_status:%d", exit_status);
+            if(fork()!=0){
+                // father
+                int exit_status;
+                wait_(&exit_status);
+                printf("exit_status:%d", exit_status);
+                exit(0);
+            }else{
+                //child
+                if(execve("test_1.bin", NULL, NULL)!=0){
+                    printf("exec failed: file not found!");
+                }
+            }
+        }else{	
+            //child
+            if(execve("fstest.bin", NULL, NULL)!=0){
+                printf("exec failed: file not found!");
+            }
+        }
+        exit(0);
 }
 
 
