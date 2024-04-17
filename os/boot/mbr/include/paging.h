@@ -74,7 +74,7 @@
 #define PTE_ADDR(pte)	((phyaddr_t) (pte) & ~0xFFF)
 #define PTE_FLAG(pte)	((size_t) (pte) & 0xFFF)
 
-struct ARDStruct
+typedef struct ARDStruct
 {
 	u32 dwBaseAddrLow;
 	u32 dwBaseAddrHigh;

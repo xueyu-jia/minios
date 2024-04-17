@@ -19,6 +19,13 @@ struct fat32_fd{
 };
 struct fat32_fd elf_fd;
 
+struct BPB bpb;
+u32 fat_start_sec;
+u32 data_start_sec;
+u32 elf_off; 
+u32 fat_now_sec;
+u32 elf_first;
+
 #include "string.h"
 /*
 获取下一个扇区号

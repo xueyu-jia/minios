@@ -50,7 +50,7 @@ typedef struct buddy
 page* alloc_pages(buddy *bud, u32 order);   //分配2^order页的页块
 int free_pages(buddy *bud, page *page, u32 order);
 
-struct page mem_map[ALL_PAGES];
+extern struct page mem_map[ALL_PAGES];
 #define phy_to_pfn(x)   ((x) / PAGE_SIZE)
 #define pfn_to_phy(x)   ((x) * PAGE_SIZE)
 #define pfn_to_page(x)  (mem_map + (x))

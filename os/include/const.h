@@ -94,8 +94,9 @@
 // #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 //#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 //#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
-#define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
+// #define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
 
+#define NR_SYS_CALL		  67
 /* TTY */
 //added by mingxuan 2019-5-19
 #define NR_CONSOLES	3	/* consoles */
