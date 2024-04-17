@@ -905,7 +905,6 @@ PUBLIC int kern_vfs_unlink(const char *path){
 			goto err;
 		}
 		inode->i_nlink--;
-		dentry->d_inode = NULL;
 	}
 	release(&inode->lock);
 	delete_dentry(dentry, dir);
@@ -1009,7 +1008,6 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 			goto err;
 		}
 		inode->i_nlink--;
-		dentry->d_inode = NULL;
 	}
 	release(&inode->lock);
 	struct vfs_dentry* sub;

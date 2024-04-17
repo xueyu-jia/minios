@@ -208,10 +208,14 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 {
 	int drive = DRV_OF_DEV(p->DEVICE);
 	u64 pos = p->POSITION;
+	struct part_info *info = &hd_infos[drive].part[p->DEVICE & 0x0F];
 	//We only allow to R/W from a SECTOR boundary:
 	u32	sect_nr = (pos >> SECTOR_SIZE_SHIFT);
-
-	sect_nr += hd_infos[drive].part[p->DEVICE & 0x0F].base;
+	if(sect_nr > info->size) {
+		disp_str("read/write sector out of range!\n");
+		return;
+	}
+	sect_nr += info->base;
 	// u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
 
 	void *la = (void *)va2la(p->PROC_NR, p->BUF);

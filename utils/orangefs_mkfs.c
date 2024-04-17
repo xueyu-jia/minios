@@ -52,8 +52,13 @@ int main(int argc, char **argv)
 	
 	/*      secter map      */
 	memset(fsbuf, 0, ORANGE_BLK_SIZE);
-	for (i = 0; i < sb.nr_smap_blocks; i++)
+	for (i = 0; i < sb.nr_smap_blocks; i++){
+        if(i*ORANGE_BLK_SIZE*8 > total_blks){
+            int off = max(total_blks - (i-1)*ORANGE_BLK_SIZE*8, 0);
+            memset(fsbuf + off, 0xFF, ORANGE_BLK_SIZE-off);
+        }
 		disk_write(2 + sb.nr_imap_blocks + i, 0, ORANGE_BLK_SIZE, fsbuf);
+    }
 
 	// root
     int root = orangefs_allocinode();

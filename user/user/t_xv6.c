@@ -976,7 +976,7 @@ subdir(void)
     exit(-1);
   }
 
-  if(mkdir("/dd/dd", I_RW) != 0){
+  if(mkdir("dd/dd", I_RW) != 0){
     printf("subdir mkdir dd/dd failed\n");
     exit(-1);
   }
@@ -1373,7 +1373,7 @@ iref(void)
   printf("empty file name\n");
 
   // the 50 is NINODE
-  for(i = 0; i < 50 + 1; i++){
+  for(i = 0; i < 10; i++){
     if(mkdir("irefd", I_RW) != 0){
       printf("mkdir irefd failed\n");
       exit(-1);

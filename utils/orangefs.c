@@ -68,7 +68,7 @@ static int orangefs_alloc_bitmap(int blk_base, int blk_nr, int cnt, int *pindex)
                     j++;
                 }
                 buf[i] = c;
-                if(cnt == 0){
+                if(cnt == 0 || j < 8){
                     disk_write(blk_base + blk, 0, ORANGE_BLK_SIZE, buf);
                     goto finish;
                 }
@@ -239,6 +239,10 @@ int orangefs_add_direntry(int parent, const char *name, int ino) {
     struct orange_direntry dirent;
     memset(&dirent, 0, ORANGE_DIRENT_SIZE);
     int blk, pos, p = 0;
+    if (dir->i_nr_blocks == 0) {
+        orangefs_allocsector(dir);
+        orangefs_syncinode((int)parent, dir);
+    }
     // fuse_log(FUSE_LOG_DEBUG, "dir %d(%d)\n", parent, dir->i_size);
     for(blk=dir->i_start_block; 
         blk < dir->i_start_block+dir->i_nr_blocks; blk++)
