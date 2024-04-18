@@ -693,6 +693,9 @@ PUBLIC int kern_vfs_umount(const char *target){
 PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	int i;
 	char dir_path[MAX_PATH] = {0};
+	if((!path) || strlen(path) == 0) {
+		return NULL;
+	}
 	char* file_name = strip_dir_path(path, dir_path);
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct vfs_inode *inode = NULL;
@@ -882,6 +885,9 @@ PUBLIC int kern_vfs_creat(const char* path, int mode){
 
 PUBLIC int kern_vfs_unlink(const char *path){
 	char dir_path[MAX_PATH] = {0};
+	if((!path) || strlen(path) == 0) {
+		return -1;
+	}
 	char* file_name = strip_dir_path(path, dir_path);
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	if(!dir){
@@ -920,6 +926,9 @@ err:
 
 PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 	char dir_path[MAX_PATH] = {0};
+	if((!path) || strlen(path) == 0) {
+		return -1;
+	}
 	char* file_name = strip_dir_path(path, dir_path);
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct vfs_inode *inode = NULL;
@@ -945,6 +954,9 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 
 PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 	char dir_path[MAX_PATH] = {0};
+	if((!path) || strlen(path) == 0) {
+		return -1;
+	}
 	char* file_name = strip_dir_path(path, dir_path);
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct vfs_inode *inode = NULL;
@@ -971,6 +983,9 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 
 PUBLIC int kern_vfs_rmdir(const char* path){
 	char dir_path[MAX_PATH] = {0};
+	if((!path) || strlen(path) == 0) {
+		return -1;
+	}
 	if((strcmp(path, "/") == 0)) {
 		disp_str("rm root dir will damage system");
 		return -1;

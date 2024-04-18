@@ -293,3 +293,19 @@ void get_time(struct tm* time){
 int stat(const char *pathname, struct stat* statbuf) {
 	return _syscall2(_NR_stat, pathname, statbuf);
 }
+
+void nice(int val) {
+	return _syscall1(_NR_nice, val);
+}
+
+void set_rt(int turn_rt) {
+	return _syscall1(_NR_set_rt, turn_rt);
+}
+
+void rt_prio(int prio) {
+	return _syscall1(_NR_rt_prio, prio);
+}
+
+void get_proc_msg(proc_msg* msg) {
+	return _syscall1(_NR_get_proc_msg, msg);
+}

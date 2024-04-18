@@ -371,7 +371,9 @@ PUBLIC u32 kern_malloc_4k() //modified by mingxuan 2021-8-19
 	u32 AddrLin;
 
 	AddrLin = get_heap_limit(p_proc_current->task.pid);
-
+	if(AddrLin == 0x4801100){
+		while(1);
+	}
 	update_heap_limit(p_proc_current->task.pid, 1);
 
 	//AddrLin = p_proc_current->task.memmap.heap_lin_limit;

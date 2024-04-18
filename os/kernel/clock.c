@@ -32,28 +32,9 @@ PUBLIC void clock_handler(int irq)
 		return;
 	}
 	
-	p_proc_current->task.ticks--;
+	proc_update();
 	sys_wakeup(&ticks);
 
-	//to make syscall reenter, deleted by xw, 17/12/11
-	/*
-	if (k_reenter != 0) {
-		return;
-	}
-	*/
-
-	/*	//Moved into schedule(). xw, 18/4/21
-	if (p_proc_current->task.ticks > 0) {
-		//do you know why this statement is added here? p_proc_current doesn't change if schedule() below 
-		//isn't called. if you know the reason, please contact me at dongxuwei@163.com. added by xw, 17/12/16
-//		cr3_ready = p_proc_current->task.cr3;  //add by visual 2016.5.26		
-		return;
-	}
-	*/
-
-//	schedule();
-//	cr3_ready = p_proc_current->task.cr3;			//add by visual 2016.4.5
-//	sched();
 }
 
 PUBLIC void init_clock(){

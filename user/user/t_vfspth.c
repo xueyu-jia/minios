@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
     getcwd(tmp, MAX_PATH);
     EXPECT_ZERO(strcmp(cwd, tmp), cd into dir/.. not change cwd)
     int fd;
-    EXPECT_NONNEG(open("test_path/f", O_CREAT, 0), creat and open file)
+    EXPECT_NONNEG(fd = open("test_path/f", O_CREAT, 0), creat and open file)
     close(fd);
     EXPECT_NEG(rmdir("test_path"), rm non-empty dir)
     EXPECT_ZERO(unlink("./test_path/f"), unlink file)

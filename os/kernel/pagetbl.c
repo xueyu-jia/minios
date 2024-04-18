@@ -27,6 +27,48 @@ PUBLIC void switch_pde()
 	cr3_ready = p_proc_current->task.cr3;
 }
 
+/*======================================================================*
+                           init_page_pte		add by visual 2016.4.19
+*该函数只初始化了进程的高端（内核端）地址页表
+ *======================================================================*/
+PUBLIC u32 init_page_pte(u32 pid)
+{ //页表初始化函数
+
+	u32 AddrLin, pde_addr_phy_temp, pte_addr_phy_temp, err_temp;
+
+	//pde_addr_phy_temp = do_kmalloc_4k();//为页目录申请一页
+	pde_addr_phy_temp = phy_kmalloc_4k(); //为页目录申请一页	//modified by mingxuan 2021-8-16
+
+	memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0, num_4K); //add by visual 2016.5.26
+
+	if (pde_addr_phy_temp < 0 || (pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
+	{
+		disp_color_str("init_page_pte Error:pde_addr_phy_temp", 0x74);
+		return -1;
+	}
+
+	proc_table[pid].task.cr3 = pde_addr_phy_temp; //初始化了进程表中cr3寄存器变量，属性位暂时不管
+
+	/*********************页表初始化部分*********************************/
+	u32 phy_addr = 0;
+    //kernel_size edited by wang 2021.8.27
+	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
+	{														//只初始化内核部分，3G后的线性地址映射到物理地址开始处
+		err_temp = lin_mapping_phy(AddrLin,					//线性地址					//add by visual 2016.5.9
+								   phy_addr,				//物理地址
+								   pid,						//进程pid						//edit by visual 2016.5.19
+								   PG_P | PG_USU | PG_RWW,	//页目录的属性位（用户权限）			//edit by visual 2016.5.26
+								   PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
+		if (err_temp != 0)
+		{
+			disp_color_str("init_page_pte Error:lin_mapping_phy", 0x74);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /***************************地址转换过程***************************
 *
 *第一步，CR3包含着页目录的起始地址，用32位线性地址的最高10位A31~A22作为页目录的页目录项的索引，
@@ -371,32 +413,6 @@ fatal:
 	// halt();
 	do_exit(-1);
 }
-
-
-
-/*======================================================================*
-*                         vmalloc		add by visual 2016.5.4
-*从堆中分配size大小的内存，返回线性地址
-*======================================================================*/
-//deleted by wang 2021.8.10
-/*
-PUBLIC u32 vmalloc(	u32 size)
-{
-	u32 temp;
-	if(p_proc_current->task.info.type == TYPE_PROCESS )
-	{//进程直接就是标识
-		temp= p_proc_current->task.memmap.heap_lin_limit;
-		p_proc_current->task.memmap.heap_lin_limit += size;
-	}
-	else
-	{//线程需要取父进程的标识
-		temp= *((u32*)p_proc_current->task.memmap.heap_lin_limit);
-		(*((u32*)p_proc_current->task.memmap.heap_lin_limit)) += size;
-	}
-
-	return temp;
-}
-*/
 
 
 //added by mingxuan 2021-8-25

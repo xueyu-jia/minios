@@ -2,6 +2,7 @@
 #define PAGETABLE_H
 #include "type.h"
 #include "const.h"
+PUBLIC	u32 init_page_pte(u32 pid);
 PUBLIC	int init_kernel_page();
 PUBLIC	int init_proc_page(u32 pid);	//edit by visual 2016.4.28
 PUBLIC	int kern_kmapping_phy(u32 phy_addr, u32 nr_pages);

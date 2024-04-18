@@ -12,7 +12,7 @@ static inline uint
 cmpxchg(uint oldval, uint newval, volatile uint* lock_addr)
 {
   uint result;
-  asm volatile("lock; cmpxchg %0, %2" :
+  asm volatile("lock\n cmpxchg %0, %2" :
                "+m" (*lock_addr), "=a" (result) :
                "r"(newval), "1"(oldval) :
                "cc");
@@ -25,7 +25,7 @@ initlock(struct spinlock *lock, char *name)
   lock->name = name;
   lock->locked = 0;
   lock->cpu = 0xffffffff;
-  }
+}
 
 // Acquire the lock.
 // Loops (spins) until the lock is acquired.

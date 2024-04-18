@@ -15,7 +15,6 @@ int main(int argc, char** argv) {
 	}
 	int cnt, len, total = MAX_HEX;
 	int line_len = 16;
-	char c;
 	if(argc == 5) {
 		total = min(MAX_HEX, atoi(argv[4]));
 	}

@@ -38,6 +38,7 @@ void kb_handler(int irq){
 			kb_in.p_head = kb_in.buf;
 		}
 		kb_in.count++;
+		wake_the_tty();
 	}
 
 };
@@ -83,7 +84,7 @@ void mouse_handler(int irq){
 				}
 			}
 		}
-		
+		wake_the_tty();
 		mouse_in.count=0;
 	}
 

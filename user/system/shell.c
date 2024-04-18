@@ -166,9 +166,7 @@ int main(int arg,char *argv[],char *envp[])
 	env = envp;
     char buf[BUF_SIZE];
 	char pwd[MAX_PATH];
-    int pid, len;
-    int times = 0;
-	int pre = 0;
+    int len;
 	char * args[MAX_ARGC];
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
@@ -176,6 +174,7 @@ int main(int arg,char *argv[],char *envp[])
 	#define TEST_CMD_LEN_LIMIT	32
 
 	#define TEST_CMD_NUM 2
+	int pre = 0;
 	char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
 		"mkdir test",
 		"rm -r test",

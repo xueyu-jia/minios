@@ -410,12 +410,13 @@ static buf_head *get_sync_buf() {
 	acquire(&buf_lock);
 	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
 	if(bh) {
-		if(ticks - bh->dirty_tick > BUF_SYNC_DELAY_TICK) {
+        int delay = ticks - bh->dirty_tick;
+		if(delay > BUF_SYNC_DELAY_TICK) {
 			list_remove(&bh->b_dirty);
 		} else {
-			ksem_post(&buf_dirty_sem, 1);
 			release(&buf_lock);
-			sleep(1);
+			ksem_post(&buf_dirty_sem, 1);
+			sleep(BUF_SYNC_DELAY_TICK - delay + 1);
 			return NULL;
 		}
 	}

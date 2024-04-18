@@ -3,9 +3,12 @@
 
 # ignore all files in the ** directory
 /.vscode/*
+/.VSCodeCounter/*
 /tmp/*
 /build/
 .idea
+/.VSC*/*
+/*.assets/*
 utils/orangefs_mount
 utils/orangefs_mkfs
 

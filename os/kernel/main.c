@@ -19,23 +19,18 @@
 
 #include "../gdbstub/gdbstub.h"
 
-//added by lcy, 2023.10.22 与权限信息 RPL 存在耦合，不利于简化，不如这样：
-// #define k_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-// #define k_ds ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-// #define k_es ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-// #define k_fs ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-// #define k_ss ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_TASK
-// #define k_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_TASK
-#define k_cs (((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define k_ds (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define k_es (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define k_fs (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL) 
-#define k_ss (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define k_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK)
+//added by lcy, 2023.10.22 
+//与权限信息 RPL 存在耦合，不利于简化，不如这样： 20240418
+#define common_cs (((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_ds (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_es (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_fs (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL) 
+#define common_ss (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK)
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
-PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pid,int priority);//added by lcy, 2023.10.22
+PRIVATE void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice);//added by lcy, 2023.10.22
 PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip);//added by lcy, 2023.10.25
 
 /*======================================================================*
@@ -67,6 +62,7 @@ PUBLIC int kernel_main()
 	//init();//内存管理模块的初始化  add by liang
 	//buddy_init();	//modified by mingxuan 2021-3-8	//moved to kernel_main, mingxuan 2021-8-25
 
+	sched_init();
 	//initialize PCBs, added by xw, 18/5/26
 	error = initialize_processes();
 	if (error != 0)
@@ -85,16 +81,6 @@ PUBLIC int kernel_main()
 	*device initialization
 	added by xw, 18/6/4
 	*************************************************************************/
-	/* initialize 8253 PIT */
-	// ticks = 0; //initialize system-wide ticks
-	// out_byte(TIMER_MODE, RATE_GENERATOR);
-	// out_byte(TIMER0, (u8)(TIMER_FREQ / HZ));
-	// out_byte(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
-
-	// /* initialize clock-irq */
-	// put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
-	// enable_irq(CLOCK_IRQ);					   /* 让8259A可以接收时钟中断 */
-
 	init_kb(); //added by mingxuan 2019-5-19
 
 	AHCI_init();
@@ -107,6 +93,7 @@ PUBLIC int kernel_main()
 
 	init_devices();
 	register_fs_types();
+	/* initialize 8253 PIT */
 	init_clock(); // read rtc init, 放在硬盘、键盘后面初始化减少误差
 	/* enable interrupt, we should read information of some devices by interrupt.
 	 * Note that you must have initialized all devices ready before you enable
@@ -135,6 +122,20 @@ PUBLIC int kernel_main()
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30
 
 	// ksem_init(&proc_table_sem,1); 	//init PCB sem
+	
+	//初始状态确保hd_service放在实时队列第一个
+	// in_rq(&proc_table[1]);
+	// in_rq(&proc_table[0]);
+	// in_rq(&proc_table[1]);
+	// in_rq(&proc_table[2]);
+	// in_rq(&proc_table[16]);
+	// for(int pid=3; pid<NR_K_PCBS+1 ; pid++)
+	// {
+	// 	if(proc_table[pid].task.stat==READY)
+	// 	{
+	// 		in_rq(&proc_table[pid]);
+	// 	}
+	// }
 
 	/*************************************************************************
 	*第一个进程开始启动执行
@@ -168,23 +169,12 @@ PUBLIC int kernel_main()
 	disp_int(kern_total_mem_size());
 	disp_str("\n");
 	initlock(&video_mem_lock, "vmem");
-	kernel_initial = 0; //kernel initialization is done. added by xw, 18/5/31
+	kernel_initial = 0; 
+	//kernel initialization is done. added by xw, 18/5/31
 
 	//test_kbud_mem_size();
 	//test_kfree();
-	/*
-        int test,tmp;
-        test=5;
-        disp_str("pte test:   addrLin=");
-        disp_int(&test);
-        disp_str("  pid=");
-        disp_int(p_proc_current->task.pid);
-        disp_str("   pte=");
-        disp_int(get_pte(&test));
-        disp_str("  tmp pte=");
-        disp_int(get_pte(&tmp));
-        disp_str("\n");
-*/
+
 	#ifdef BLAME_STAT
 		stat_init();// stat performance
 	#endif
@@ -210,12 +200,25 @@ PRIVATE int initialize_cpus()
 进程基本信息初始化（name、stat等）
 added by lcy, 2023.10.22
 ***************************************************************************/
-PRIVATE void init_process(PROCESS *proc,char name[32],enum proc_stat stat,int pid,int priority){
+PRIVATE void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice){
 		strcpy(proc->task.p_name, name); //名称
 		proc->task.pid = pid;					   //pid
 		proc->task.stat = stat;				   //初始化状态 -1表示未初始化
-		proc->task.ticks = proc->task.priority = priority;	//时间片和优先级
+		proc->task.ticks = proc->task.priority = 1;	//时间片和优先级
 		//proc->task.regs.eip = eip;
+		
+		//CFS
+		proc->task.is_rt=is_rt;
+		if(is_rt) {
+			proc->task.rt_priority=priority_or_nice;
+		}else {
+			proc->task.nice=priority_or_nice;
+			proc->task.weight=nice_to_weight[proc->task.nice+20];
+		}
+		proc->task.vruntime=0;
+		proc->task.sum_cpu_use=0;
+		proc->task.cpu_use=0;
+
 }
 
 PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip){
@@ -268,10 +271,9 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, pid ,PG_P | PG_USU | PG_RWW);
 }
 
-PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, int task, u32 entry){
-	u8 privilege = task? PRIVILEGE_TASK: PRIVILEGE_USER;
-	u32 eflags = task? 0x1202 : 0x202;
-	u32 rpl = task? RPL_TASK: RPL_USER;
+PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry){
+	u8 privilege = rpl;
+	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
 	p_proc->task.ldt_sel = ldt_sel;
 	memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
 	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
@@ -283,7 +285,8 @@ PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, int task, u32 entr
 	////初始化内核栈
 	/***************some field about process switch****************************/
 	p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11    //changed by lcy, 2023.10.24
-	init_reg(p_proc,k_cs|rpl,k_ds|rpl,k_es|rpl,k_fs|rpl,k_ss|rpl,k_gs|rpl, eflags,(u32)StackLinBase, entry);
+	init_reg(p_proc,	common_cs|rpl,	common_ds|rpl,	common_es|rpl,
+		common_fs|rpl,	common_ss|rpl,	common_gs|rpl,	eflags,	(u32)StackLinBase, entry);
 
 	//p_proc->task.save_type = 1;
 	p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
@@ -310,7 +313,7 @@ PRIVATE int initialize_processes()
 	***************************************************************************/
 	int pid;
 	// u32 AddrLin, pte_addr_phy_temp, addr_phy_temp, err_temp; //edit by visual 2016.5.9
-
+	
 	/* set common fields in PCB. added by xw, 18/5/25 */
 	p_proc = proc_table;
 	for (pid = 0; pid < NR_PCBS; pid++)
@@ -318,16 +321,23 @@ PRIVATE int initialize_processes()
 		// get entry, name, privilege;
 		u32 entry = NULL;
 		char* name;
-		int task_privilege = 0;
+		int ready = 0;
+		int rpl = RPL_USER;
+		int is_rt = false;
+		int rtpriority_or_nice = 0;
 		if(pid < NR_TASKS){
 			entry = (u32)p_task->initial_eip;
 			name = p_task->name;
-			task_privilege = 1;
+			ready = p_task->ready;
+			rpl = p_task->rpl;
+			is_rt = p_task->rt;
+			rtpriority_or_nice = p_task->priority_nice;
 			p_task++;
 		}else if(pid == PID_INIT){
 			entry = (u32)initial;
 			name = "initial";
-			task_privilege = 1;
+			rpl = RPL_TASK;
+			ready = 1;
 		}else if(pid < NR_K_PCBS){
 			name = "TASK";
 		}else{
@@ -335,12 +345,15 @@ PRIVATE int initialize_processes()
 		}
 		//init operations
 		memset(p_proc,0,sizeof(PROCESS));//by qianglong
-		init_proc_ldt_regs(p_proc, selector_ldt, task_privilege, entry);
+		init_proc_ldt_regs(p_proc, selector_ldt, rpl, entry);
 		if(entry){
-			init_process(p_proc, name, READY, pid,1);
+			init_process(p_proc, name, (ready ? READY: SLEEPING), pid, is_rt, rtpriority_or_nice);
 			init_proc_pages(p_proc);
 		}else{
-			init_process(p_proc, name, FREE, pid, -1);
+			init_process(p_proc, name, FREE, pid, -1, 0);
+		}
+		if(ready) {
+			in_rq(p_proc);
 		}
 		for (int j = 0; j < NR_FILES; j++)
 		{

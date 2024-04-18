@@ -69,10 +69,11 @@ PUBLIC u32 kern_execve(
     }
 
     /*******************打开文件************************/
-    u32 fd = kern_vfs_open(path, O_RDONLY);
+    u32 fd = kern_vfs_open(path, O_RDONLY, 0);
 
     if (fd == -1) {
-        disp_str("sys_exec open error!\n"); // added by mingxuan 2020-12-22
+        disp_str(path);
+        disp_str(":sys_exec open error!\n"); // added by mingxuan 2020-12-22
         return -1;
     }
 

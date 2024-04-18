@@ -228,7 +228,7 @@ writetest1(void)
   for(;;){
     i = read(fd, buf, 512);
     if(i == 0){
-      if(n == MAXFILE - 1){
+      if(n < MAXFILE){
         printf("read only %d blocks from big", n);
         exit(-1);
       }

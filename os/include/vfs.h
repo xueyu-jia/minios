@@ -47,25 +47,11 @@ PUBLIC int sys_chdir(); //added by ran
 PUBLIC int sys_getcwd(); //added by ran
 PUBLIC int sys_stat();
 
-PUBLIC int do_vopen(const char *path, int flags, int mode);
-PUBLIC int do_vclose(int fd);
-PUBLIC int do_vread(int fd, char *buf, int count);
-PUBLIC int do_vwrite(int fd, const char *buf, int count);
-PUBLIC int do_vunlink(const char *path);
-PUBLIC int do_vlseek(int fd, int offset, int whence);
-PUBLIC int do_vcreat(const char *pathname);
-PUBLIC int do_vclosedir(DIR* dirp);
-PUBLIC int do_vopendir(const char *dirname);
-PUBLIC int do_vmkdir(const char *dirname, int mode);
-PUBLIC int do_vrmdir(const char *dirname);
-PUBLIC int do_vchdir(const char *path); //added by ran
-//PUBLIC char* do_vgetcwd(char *buf, int size); //added by ran
-PUBLIC int do_vgetcwd(char *buf, int size); //modified by mingxuan 2021-8-15
-PUBLIC int do_vstat(const char *pathname, struct stat* statbuf);
-// PUBLIC int set_vfstable(u32 device, char *target);
-// PUBLIC struct vfs* vfs_alloc_vfs_entity();
-// PUBLIC int get_index(char path[]);
-// PUBLIC void init_vfs();
+PUBLIC int kern_vfs_open(const char *path, int flags, int mode);
+PUBLIC int kern_vfs_close(int fd);
+PUBLIC int kern_vfs_read(int fd, char *buf, int count);
+PUBLIC int kern_vfs_lseek(int fd, int offset, int whence);
+
 PUBLIC void register_fs_types();
 PUBLIC void init_fs();
 #endif

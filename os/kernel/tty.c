@@ -4,11 +4,17 @@
 #include "dev.h"
 #include "console.h"
 #include "keyboard.h"
+#include "semaphore.h"
 
 
 TTY         tty_table[NR_CONSOLES];
 
 PUBLIC  int current_console;  //当前显示在屏幕上的console
+PRIVATE struct Semaphore tty_empty;
+PRIVATE struct Semaphore tty_full;
+
+PUBLIC void    wake_the_tty();
+
 
 PRIVATE void put_key(TTY* tty, u32 key)
 {
@@ -19,7 +25,14 @@ PRIVATE void put_key(TTY* tty, u32 key)
 			tty->ibuf_head = tty->ibuf;
 		tty->ibuf_cnt++;
         tty->ibuf_read_cnt++;
+        // ksem_post(&tty_full, 1);
 	}
+}
+
+PUBLIC void wake_the_tty()
+{   //让tty的锁永远小于等于1
+    if(tty_full.value < 1)
+        ksem_post(&tty_full, 1);
 }
 
 PUBLIC void in_process(TTY* p_tty , u32 key){
@@ -93,6 +106,10 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 
 }
 
+#define TTY_FIRST (tty_table)
+#define TTY_END (tty_table+NR_CONSOLES)
+
+
 PRIVATE void init_tty(TTY* p_tty){
     p_tty->ibuf_read_cnt=p_tty->ibuf_cnt =  0;
     p_tty->status = TTY_STATE_DISPLAY;
@@ -107,6 +124,7 @@ PRIVATE void init_tty(TTY* p_tty){
     //disp_int(det);
     init_screen(p_tty);
 }
+
 
 PRIVATE void tty_mouse(TTY* tty){
     if (is_current_console(tty->console)){
@@ -199,10 +217,11 @@ PRIVATE void tty_dev_write(TTY* tty){
     }
 }
 
-PUBLIC void task_tty(){
+PUBLIC void task_tty()
+{
     TTY* p_tty;
     for(p_tty = TTY_FIRST ; p_tty<TTY_END;p_tty++){
-            init_tty(p_tty);
+        init_tty(p_tty);
     }
     p_tty = tty_table;
 
@@ -215,9 +234,12 @@ PUBLIC void task_tty(){
     out_byte(CRTC_ADDR_REG,CURSOR_L);
     out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
     enable_int( );
-    
+    ksem_init(&tty_full, 0);
     //轮询
     while(1){
+        ksem_wait(&tty_full, 1);
+        // disp_str("-tty-");  //mark debug
+        // disp_str("1-");
         for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
 			do {
                 tty_mouse(p_tty);   /* tty判断鼠标操作 */
@@ -225,20 +247,18 @@ PUBLIC void task_tty(){
                 tty_dev_write(p_tty); /* 把tty缓存区的数据写到这个tty占有的显存 */
 
 			} while (p_tty->ibuf_cnt);
+            // disp_int("1-");
 		}
+        // yield();
     }
 
 }
-
-
-
-
 
 /*****************************************************************************
  *                                tty_write
  ****************************************************************************
 
- *  当fd=STD_OUT时，write()系统调用转发到此函数
+ *  当fd=STD_OUT时，write()系统调用转发到此函数 不走task_tty
  *****************************************************************************/
 PUBLIC void tty_write(TTY* tty, char* buf, int len)
 {
@@ -252,7 +272,7 @@ PUBLIC void tty_write(TTY* tty, char* buf, int len)
  *                                tty_read
  ****************************************************************************
 
- *  当fd=STD_IN时，read()系统调用转发到此函数
+ *  当fd=STD_IN时，read()系统调用转发到此函数 不走task_tty
  *****************************************************************************/
 PUBLIC int tty_read(TTY* tty, char* buf, int len){
     int i = 0;

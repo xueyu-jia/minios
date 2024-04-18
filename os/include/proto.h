@@ -307,9 +307,11 @@ PUBLIC int sys_mount();
 PUBLIC int sys_umount();
 
 
-/*slab.c*/
-void *kmalloc(u32 size);
-int kfree(u32 object);
-
+/*proc.c*/
+PUBLIC void sys_nice();//lzq
+PUBLIC void sys_set_rt();  //turn_rt is true,process was change to rt process;
+                                //false,process was change to not rt process
+PUBLIC void sys_rt_prio();
+PUBLIC void sys_get_proc_msg();
 PUBLIC int sys_get_time();
 #endif

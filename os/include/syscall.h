@@ -64,6 +64,10 @@
 #define _NR_pthread_join                60
 #define _NR_get_time					61
 #define _NR_stat						62
+#define _NR_nice		 				63 	// added by zq
+#define _NR_set_rt		 				64
+#define _NR_rt_prio		 				65
+#define _NR_get_proc_msg				66 
 #define INT_VECTOR_SYS_CALL             0x90
 
 /* 无参数的系统调用 */

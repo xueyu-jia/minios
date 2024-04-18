@@ -4,72 +4,8 @@
 #include "pagetable.h"
 
 /*======================================================================*
-					  sys_exit			  added by mingxuan 2021-1-6
+					  kern_exit			  added by mingxuan 2021-1-6
  *======================================================================*/
-//PUBLIC void sys_exit(int status) //status为子进程返回的状态
-//PUBLIC void do_exit(int status) //status为子进程返回的状态
-/*
-PUBLIC void kern_exit(int status) //status为子进程返回的状态
-{
-
-    //disp_str("\nexit\n");
-
-    p_proc_current->task.we_flag = NORMAL;
-
-    //exit_status
-	p_proc_current->task.exit_status = status;
-
-	//暂时不考虑过继, mingxuan 2021-1-6
-
-	//暂时不考虑file exit, mingxuan 2021-1-6
-
-
-	//如果有线程, 先把线程释放 mingxuan 2021-8-17
-	u32 tid = -1;
-	if(p_proc_current->task.info.child_t_num > 0) //说明有线程
-	{
-		//释放每个线程的栈物理页
-		for(int i=0; i<p_proc_current->task.info.child_t_num; i++) //对每个子线程，都释放它的栈
-		{
-			tid = p_proc_current->task.info.child_thread[i]; //得到子线程的pid
-			proc_table[tid].task.stat = IDLE; //释放线程的PCB, 防止在释放的过程中该线程被调度
-			free_seg_phypage(tid, MEMMAP_STACK);
-		}
-		//释放每个线程的栈页表
-		for(int i=0; i<p_proc_current->task.info.child_t_num; i++) //对每个子线程，都释放它的栈页表
-		{
-			tid = p_proc_current->task.info.child_thread[i]; //得到子线程的pid
-			free_seg_pagetbl(tid, MEMMAP_STACK);
-		}
-	}
-	//释放线程资源完毕，将自己的子线程数量设为0
-	p_proc_current->task.info.child_p_num = 0;
-
-
-	//释放进程的所有页地址空间
-	free_all_phypage(p_proc_current->task.pid);
-    free_all_pagetbl(p_proc_current->task.pid);
-    //free_pagedir(p_proc_current->task.pid);	//不能释放cr3，不然会崩 //deleted by mingxuan 2021-1-7
-
-	p_proc_current->task.info.child_p_num = 0;	//自己的子进程设为0，数量
-
-	//判断是否有父进程
-	if (p_proc_current->task.info.ppid==-1) //无父进程
-	{
-		p_proc_current->task.stat = IDLE;			//自己释放自己的进程表项
-	}
-	else //有父进程
-	{
-		p_proc_current->task.we_flag = ZOMBY;	//modified by hejia 2019-12-25
-		p_proc_current->task.stat = SLEEPING;	//先置它为SLEEPING，因为当sched的时候产生进程调度，就不会调度它了（它的内存已经释放，如果再执行这个进程，肯定会发生错误）
-												//但是不能设置为IDLE，因为可能会有其他的进程占据这个进程表项
-	}
-
-	//while(1);	//added by mingxuan 2021-8-17
-
-	return;
-}
-*/
 
 //modified by mingxuan 2021-8-21
 PUBLIC void kern_exit(int status) //status为子进程返回的状态
@@ -190,6 +126,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
 		p_proc->task.stat = KILLED; //modified by dongzhangqi 2023.6.2 //统一PCB state 20240314
 		sys_wakeup(p_father);
+		out_rq(p_proc);
 		enable_int();
 	}
 

@@ -41,4 +41,8 @@ extern  CONSOLE     console_table[];
 extern SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 PUBLIC void disp_color_str(char* info, int color);
 PUBLIC void disp_str(char* info);
+typedef struct s_tty TTY;
+PUBLIC void init_screen(TTY* tty);
+PUBLIC void out_char(CONSOLE* con, char ch);
+PUBLIC void select_console(int nr_console);
 #endif /* _ORANGES_CONSOLE_H_ */
