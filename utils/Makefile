@@ -1,6 +1,6 @@
 CC	=	gcc
 FUSE_CFLAGS = -Wall  -I/usr/include/fuse3 -lfuse3
-# if you cant build normally, please ensure fuse3 installed and check flags by `pkg-config fuse3 --cflags --libs --static`
+# if you cant build normally, please ensure fuse3 installed and check flags by `pkg-config fuse3 --cflags --libs`
 ORANGEFS_BASE = orangefs.c orangefs_disk.c
 ORANGEFS_UTILS = orangefs_mount orangefs_mkfs
 
