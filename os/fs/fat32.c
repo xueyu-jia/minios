@@ -356,15 +356,16 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct vfs_inode* dir, int* start, b
 PRIVATE int fat_find_free(struct vfs_inode* dir, int num){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
-	int start, count = 0, res = -1;
+	int start, count = 0, res = -1, end_flag = 0;
 	for(start = 0; ; start++){
 		ds = fat_get_slot(dir, start, &bh, 1);
-		if((ds->order == DIR_DELETE) || (ds->order == 0)) {
+		if(end_flag || (ds->order == DIR_DELETE) || (ds->order == 0)) {
 			// 如果为0应该已经不用找了(后面均为空闲)，但是要进行可能的FAT空间分配，所以不立即跳出
+			if(ds->order == 0) end_flag = 1;
 			if(count == 0)res = start;
 			count++;
 			if(count >= num)break;
-		} else {
+		} else if(count > 0){
 			count = 0;
 		}
 	}
@@ -490,10 +491,6 @@ PRIVATE int fat_write_shortname(struct vfs_inode* dir, struct fat_dir_entry* ent
 	*de = *entry;
 	mark_buff_dirty(bh);
 	brelse(bh);
-	int limit = (order + 1)*FAT_ENTRY_SIZE;
-	if(limit > dir->i_size){
-		dir->i_size = limit;
-	}
 	return 0;
 }
 
@@ -526,9 +523,6 @@ PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name,
 		mark_buff_dirty(bh);
 	}
 	if(bh)brelse(bh);
-	if((free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
-		dir->i_size = (free_slot_order + 1)*FAT_ENTRY_SIZE;
-	}
 	dir->i_mtime = timestamp; 
 	struct vfs_inode *inode = vfs_new_inode(dir->i_sb);
 	inode->i_dev = dir->i_sb->sb_dev;
@@ -543,6 +537,11 @@ PRIVATE struct vfs_inode* fat_add_entry(struct vfs_inode* dir, const char* name,
 	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
 	// fat_update_datetime(timestamp, &de.adate, NULL); 
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
+	if((free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
+		dir->i_size = (free_slot_order + nslot + 1)*FAT_ENTRY_SIZE;
+		memset(&de, 0, sizeof(struct fat_dir_entry));
+		fat_write_shortname(dir, &de, free_slot_order + nslot + 1);
+	}
 	fat32_sync_inode(dir);
 	return inode;
 }

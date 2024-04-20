@@ -117,7 +117,7 @@ int child_function()
 	int ret, fd;
 	int test_order = 0;
 
-	fd = open(child_filename, O_CREAT|O_RDWR);
+	fd = open(child_filename, O_CREAT|O_RDWR, I_RW);
 	user_test(test_order++, fd, fd>=0, "child open file");
 	if(fd >= 0){
 		ret = write(fd, child_filename, strlen(child_filename));

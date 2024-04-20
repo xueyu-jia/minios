@@ -25,7 +25,7 @@ int main()
         }
     }
 
-    fd = open(filename, O_CREAT | O_RDWR);
+    fd = open(filename, O_CREAT | O_RDWR, I_RW);
     if(fd != -1)
 	{
 		write(fd, bufw, DATA_SIZE);
@@ -51,7 +51,7 @@ int main()
         return -1;
     }
 
-    fd = open("text1b.txt", O_CREAT | O_RDWR);
+    fd = open("text1b.txt", O_CREAT | O_RDWR, I_RW);
     if(fd != -1)
 	{
 		write(fd, bufr, strlen(bufr));

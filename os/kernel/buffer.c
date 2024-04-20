@@ -416,7 +416,7 @@ static buf_head *get_sync_buf() {
 		} else {
 			release(&buf_lock);
 			ksem_post(&buf_dirty_sem, 1);
-			sleep(BUF_SYNC_DELAY_TICK - delay + 1);
+			sleep(BUF_SYNC_DELAY_TICK - delay);
 			return NULL;
 		}
 	}
