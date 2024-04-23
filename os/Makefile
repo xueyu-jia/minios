@@ -71,6 +71,7 @@ OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
 
 GDBBIN = kernel.gdb.bin
 
+include os/boot/floppy/Makefile
 include os/boot/mbr/Makefile
 
 .PHONY : everything clean_os realclean_os disasm #modified by mingxuan 2019-5-19
@@ -85,14 +86,6 @@ realclean_os :
 
 disasm :
 	$(DASM) $(DASMFLAGS) $(ORANGESKERNEL) > $(DASMOUTPUT)
-
-# added by mingxuan 2019-5-17
-os/boot/floppy/boot.bin : os/boot/floppy/boot.asm os/boot/floppy/include/load.inc os/boot/floppy/include/fat12hdr.inc
-	$(ASM) $(ASMBFLAGS) -o $@ $<
-
-# added by mingxuan 2019-5-17
-os/boot/floppy/loader.bin : os/boot/floppy/loader.asm os/boot/floppy/include/load.inc os/boot/floppy/include/fat12hdr.inc os/boot/floppy/include/pm.inc
-	$(ASM) $(ASMBFLAGS) -o $@ $<
 
 # added by mingxuan 2019-5-17
 #os/boot/mbr/mbr.bin : os/boot/mbr/mbr.asm

@@ -605,7 +605,7 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
 			bytes = pos_end - pos;
 		}
-		phys_copy((void *)(buf + bytes_rw), (void*)(fsbuf + off), bytes);
+		memcpy((void *)(buf + bytes_rw), (void*)(fsbuf + off), bytes);
 		off = 0;
 		bytes_rw += bytes;
 		pos += bytes;
@@ -643,7 +643,7 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 		if (pos + bytes > pos_end){ // added by xiaofeng 2021-9-2
 			bytes = pos_end - pos;
 		}
-		phys_copy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
+		memcpy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
 		mark_buff_dirty(bh);
 		off = 0;
 		bytes_rw += bytes;

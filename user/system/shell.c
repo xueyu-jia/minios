@@ -136,8 +136,13 @@ void do_command(int argc, char** args) {
 	}
 	args[0] = cmd;
 	int pid = fork();
-	if(pid!=0)
+	printf("%d: fork return %d\n", get_pid(), pid);
+	if(pid != 0)
 	{	//father
+		if(pid < 0) {
+			fprintf(STD_ERR, "fork failed\n");
+			return;
+		}
        	int exit_status;
         wait(&exit_status);//modified by dongzhangqi 2023.4.20 因wait的调整而修改
 		printf("pid:%d exit_status:%d\n", pid, exit_status);
@@ -149,6 +154,7 @@ void do_command(int argc, char** args) {
 			printf("exec failed: file not found!");
           	exit(-1);
        	}
+		fprintf(STD_ERR, "unreachable area\n");
 	}	
 }
 
@@ -170,6 +176,7 @@ int main(int arg,char *argv[],char *envp[])
 	char * args[MAX_ARGC];
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
+	nice(1);
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32
 

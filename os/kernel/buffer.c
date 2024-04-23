@@ -31,7 +31,8 @@ int buffer_debug = 0;
 static list_head lru_list;
 static list_head dirty_list;
 static list_head buf_hash_table[NR_HASH];
-static SPIN_LOCK buf_lock;
+static SPIN_LOCK buf_lru_lock;
+static SPIN_LOCK buf_dirty_lock;
 PRIVATE struct Semaphore buf_dirty_sem;
 
 /*****************************************************************************
@@ -63,7 +64,8 @@ void init_buffer(int num_block)
     // lru_list.lru_head->pre_lru = pre;
     // lru_list.lru_tail = pre;
 	buf_head *bh = NULL;
-	initlock(&buf_lock,"buf_lock");
+	initlock(&buf_lru_lock,"buf_lru_lock");
+    initlock(&buf_dirty_lock,"buf_dirty_lock");
 	ksem_init(&buf_dirty_sem, 0);
 	list_init(&lru_list);
 	list_init(&dirty_list);
@@ -220,8 +222,8 @@ static void put_bh_hashtbl(buf_head *bh)
 
 }
 static inline void sync_buff(buf_head *bh){
-	// disp_int(bh->block);
-	// disp_str(".");
+	disp_int(bh->block);
+	disp_str(".");
 	int tick = ticks;
 	if(kernel_initial){
 		WR_BLOCK(bh->dev, bh->block, bh->buffer);
@@ -234,11 +236,11 @@ static inline void sync_buff(buf_head *bh){
 }
 
 static void put_sync_buf(buf_head *bh) {
-	acquire(&buf_lock);
+	acquire(&buf_dirty_lock);
 	list_remove(&bh->b_dirty);
 	bh->dirty_tick = ticks;
 	list_add_last(&bh->b_dirty, &dirty_list);
-	release(&buf_lock);
+	release(&buf_dirty_lock);
 	ksem_post(&buf_dirty_sem, 1);
 }
 
@@ -256,7 +258,7 @@ static void put_sync_buf(buf_head *bh) {
  *****************************************************************************/
 buf_head *getblk(int dev, int block)
 {
-    acquire(&buf_lock);
+    acquire(&buf_lru_lock);
     buf_head *bh = find_buffer_hash(dev, block);
     // 如果在hash table中能找到，则直接返回
     if (!bh)
@@ -270,6 +272,7 @@ buf_head *getblk(int dev, int block)
         // 如果是脏块就立即写回硬盘
         if (bh->dirty)
         {
+            acquire(&buf_dirty_lock);
 			// 必须将其从写回队列移除 20240402
 			list_remove(&bh->b_dirty);
 			// disp_int(bh->block);
@@ -277,6 +280,7 @@ buf_head *getblk(int dev, int block)
 			// disp_int(block);
 			// disp_str(" ");
             sync_buff(bh);
+            release(&buf_dirty_lock);
         }
         // 如果它被用过则，从hash表中删掉它
         if (bh->used)
@@ -298,7 +302,7 @@ buf_head *getblk(int dev, int block)
     rm_bh_lru(bh);
     //放到lru的头部
     put_bh_lru(bh);
-    release(&buf_lock);
+    release(&buf_lru_lock);
     return bh;
 }
 
@@ -389,16 +393,16 @@ void brelse(buf_head *bh)
     }
     
     if(bh->dirty&&bh->count == 0){
-		if(kernel_initial == 1) {
-			sync_buff(bh);
-		} else {
-			release(&bh->lock);
-			put_sync_buf(bh);
-			return;
-		}
+		// if(kernel_initial == 1) {
+		// 	sync_buff(bh);
+		// } else {
+		// 	release(&bh->lock);
+		// 	put_sync_buf(bh);
+		// 	return;
+		// }
 		// disp_int(bh->block);
 		// disp_str(" ");
-        // sync_buff(bh);
+        sync_buff(bh);
     }
     release(&bh->lock);
 
@@ -407,20 +411,20 @@ void brelse(buf_head *bh)
 #define BUF_SYNC_DELAY_TICK	10
 static buf_head *get_sync_buf() {
 	ksem_wait(&buf_dirty_sem, 1);
-	acquire(&buf_lock);
+	acquire(&buf_dirty_lock);
 	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
 	if(bh) {
         int delay = ticks - bh->dirty_tick;
-		if(delay > BUF_SYNC_DELAY_TICK) {
+		if(delay >= BUF_SYNC_DELAY_TICK) {
 			list_remove(&bh->b_dirty);
 		} else {
-			release(&buf_lock);
+			release(&buf_dirty_lock);
 			ksem_post(&buf_dirty_sem, 1);
 			sleep(BUF_SYNC_DELAY_TICK - delay);
 			return NULL;
 		}
 	}
-	release(&buf_lock);
+	release(&buf_dirty_lock);
 	return bh;
 }
 
@@ -460,7 +464,7 @@ PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf)
 		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;
 		}
-		phys_copy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
+		memcpy((void *)(fsbuf + off), (void*)(buf + bytes_rw), bytes);
 		mark_buff_dirty(bh);
 		off = 0;
 		bytes_rw += bytes;
@@ -498,7 +502,7 @@ PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
 		if (pos + bytes > pos_end){
 			bytes = pos_end - pos;
 		}
-		phys_copy((void*)(buf + bytes_rw), (void *)(fsbuf + off), bytes);
+		memcpy((void*)(buf + bytes_rw), (void *)(fsbuf + off), bytes);
 		off = 0;
 		bytes_rw += bytes;
 		pos += bytes;

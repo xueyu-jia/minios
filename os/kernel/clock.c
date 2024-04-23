@@ -33,7 +33,7 @@ PUBLIC void clock_handler(int irq)
 	}
 	
 	proc_update();
-	sys_wakeup(&ticks);
+	wakeup(&ticks);
 
 }
 

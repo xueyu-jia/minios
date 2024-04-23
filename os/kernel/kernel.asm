@@ -575,7 +575,7 @@ save_exception:
 
 ;added by xw, 18/12/18
 restart_exception:
-	call	sched
+	call    sched
 	pop		gs
 	pop		fs
 	pop		es

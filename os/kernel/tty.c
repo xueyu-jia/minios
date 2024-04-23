@@ -217,24 +217,27 @@ PRIVATE void tty_dev_write(TTY* tty){
     }
 }
 
-PUBLIC void task_tty()
-{
+PUBLIC void init_ttys() {
     TTY* p_tty;
     for(p_tty = TTY_FIRST ; p_tty<TTY_END;p_tty++){
         init_tty(p_tty);
     }
-    p_tty = tty_table;
+    p_tty = TTY_FIRST;
 
     select_console(0);
-    
     //设置第一个tty光标位置，第一个tty需要特殊处理
-    disable_int( );
-    out_byte(CRTC_ADDR_REG,CURSOR_H);
-    out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
-    out_byte(CRTC_ADDR_REG,CURSOR_L);
-    out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
-    enable_int( );
+    // disable_int( );
+    // out_byte(CRTC_ADDR_REG,CURSOR_H);
+    // out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
+    // out_byte(CRTC_ADDR_REG,CURSOR_L);
+    // out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
+    // enable_int( );
     ksem_init(&tty_full, 0);
+}
+
+PUBLIC void task_tty()
+{
+    TTY* p_tty;
     //轮询
     while(1){
         ksem_wait(&tty_full, 1);

@@ -90,7 +90,7 @@ PUBLIC u32 kern_execve(
         disp_str("not valid elf file");
         goto close_on_error;
     }
-    // 原有execve传参重构，自己写一个吧 2023.12.25
+
     //  处理参数 argc 放在 main ebp + 8 (ArgLinBase); argv 放在 ebp + 12
     // low<--     ---stack---       -->high(base)
     //   | 		user main stack		|   argc 					|  argv
@@ -127,26 +127,10 @@ PUBLIC u32 kern_execve(
     memcpy((void *)ArgLinBase, page_buf, space);
     kern_kfree_4k(page_buf);
     /*************根据elf的program复制文件信息**************/
-    // disp_free();	//for test, added by mingxuan 2021-1-7
     if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr)) {
-        disp_str("exec_load error!\n"); // added by mingxuan 2020-12-22
-
-        // 如果该进程是通过fork得到的，exec加载失败后，该进程的state还是READY，调度器还会选中它。
-        // 因此需要把state设置为IDLE，否则会发生缺页。mingxuan 2021-1-30
-        // p_proc_current->task.stat = IDLE; //added by mingxuan 2021-1-30
-
-        // 提醒父进程中的wait可以回收该进程，否则父进程会一直wait, mingxuan
-        // 2021-1-30 p_proc_current->task.we_flag = ZOMBY; //added by mingxuan
-        // 2021-1-30
-        //  p_proc_current->task.stat = ZOMBY;//modified by dongzhangqi 2023-6-2
-        // 因proc_stat和we_flag的改动而改动
-
-        // enable_int();	//使用关中断的方法解决对sys_exec的互斥 //added by
-        // mingxuan 2021-1-31
-
+        disp_str("exec_load error!\n");
         goto fatal_error;
     }
-    // disp_free();	//for test, added by mingxuan 2021-1-7
 
     /*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
     exec_pcb_init(_path);
@@ -199,7 +183,7 @@ PUBLIC u32 kern_execve(
     kern_kfree(Echo_Shdr);
     kern_vfs_close(fd);
     return 0;
-fatal_error:
+fatal_error:    // 对于已经执行load及之后的错误已经不能恢复，故将当前进程退出
     kern_kfree(_path);
     kern_kfree(Echo_Ehdr);
     kern_kfree(Echo_Phdr);
@@ -421,18 +405,12 @@ PRIVATE int exec_pcb_init(char *path) {
     p_regs                             = (char *)(p_proc_current + 1);
     p_regs                            -= P_STACKTOP;
     p_proc_current->task.esp_save_int  = (STACK_FRAME *)p_regs;
-    p_proc_current->task.esp_save_int->cs =
-        ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    p_proc_current->task.esp_save_int->ds =
-        ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    p_proc_current->task.esp_save_int->es =
-        ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    p_proc_current->task.esp_save_int->fs =
-        ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    p_proc_current->task.esp_save_int->ss =
-        ((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_USER;
-    p_proc_current->task.esp_save_int->gs =
-        (SELECTOR_KERNEL_GS & SA_RPL_MASK) | RPL_USER;
+    p_proc_current->task.esp_save_int->cs = common_cs | RPL_USER;
+    p_proc_current->task.esp_save_int->ds = common_ds | RPL_USER;
+    p_proc_current->task.esp_save_int->es = common_es | RPL_USER;
+    p_proc_current->task.esp_save_int->fs = common_fs | RPL_USER;
+    p_proc_current->task.esp_save_int->ss = common_ss | RPL_USER;
+    p_proc_current->task.esp_save_int->gs = common_gs | RPL_USER;
     p_proc_current->task.esp_save_int->eflags = 0x202; /* IF=1,bit2 永远是1 */
     // memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 
@@ -463,7 +441,8 @@ PRIVATE int exec_pcb_init(char *path) {
     // p_proc_current->task.info.child_thread[NR_CHILD_MAX];//子线程列表
     p_proc_current->task.info.text_hold = 1; // 是否拥有代码
     p_proc_current->task.info.data_hold = 1; // 是否拥有数据
-
+    p_proc_current->task.nice = 0;
+    p_proc_current->task.weight=nice_to_weight[p_proc_current->task.nice+20];
     return 0;
 }
 

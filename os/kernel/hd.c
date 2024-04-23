@@ -125,7 +125,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 		hd_identify(drive);
 	}
 	if (hd_infos[drive].open_cnt++ == 0) {
-		partition((drive + DEV_HD_BASE) << 20, P_PRIMARY);
+		partition(MAKE_DEV(drive + DEV_HD_BASE, 0), P_PRIMARY);
 		//print_hdinfo(&hd_info[drive]);	//deleted by mingxuan 2021-2-7
 	}
 }
@@ -180,6 +180,7 @@ int get_hd_part_dev(int drive, int part, u32 fs_type){
 u32 get_hd_fstype(int dev) {
 	return hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].fs_type;
 }
+
 // hd_rdwt_base
 // 		low level hd read write count bytes, must start from sector boundary
 // 		count <= BLOCK_SIZE 
@@ -347,7 +348,7 @@ PUBLIC void hd_ioctl(MESSAGE * p)
 
 		void *src = va2la(proc2pid(p_proc_current), &hdi->part[part_num]);
 
-		phys_copy(dst, src, sizeof(struct part_info));
+		memcpy(dst, src, sizeof(struct part_info));
 	}
 	else {
 		// assert(0);
@@ -453,7 +454,7 @@ PRIVATE void partition(int device, int style)
 
 
 			if (part_tbl[i].sys_id == EXT_PART) /* extended */
-				partition(device + dev_nr, P_EXTENDED);
+				partition(device | dev_nr, P_EXTENDED);
 		}
 	}
 	else if (style == P_EXTENDED) {
@@ -840,13 +841,13 @@ PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
 		if (type == DEV_READ) {
 			interrupt_wait();
 			port_read(REG_DATA, hdbuf, SECTOR_SIZE);
-			phys_copy(la, hdbuf, bytes);
+			memcpy(la, hdbuf, bytes);
 		}
 		else {
 			if (!waitfor(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT))
 				disp_str("hd writing error.");
 
-			phys_copy(hdbuf, la, bytes);
+			memcpy(hdbuf, la, bytes);
 			port_write(REG_DATA, hdbuf, SECTOR_SIZE);
 			interrupt_wait();
 		}
@@ -870,14 +871,14 @@ PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
 
 	if(type == DEV_WRITE)
 	{
-		phys_copy(satabuf, buf, count);
+		memcpy(satabuf, buf, count);
 	}
 
 	SATA_rdwt_sects(drive, type, sect_nr, sector_count);
 
 	if(type == DEV_READ)
 	{
-		phys_copy(buf, satabuf, count);
+		memcpy(buf, satabuf, count);
 	}
 
 	return 1;
@@ -1006,45 +1007,45 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
  * @return Zero if success.
  *****************************************************************************/
 /// zcr: change the "u64 pos" to "int pos"
-int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
-{
-	MESSAGE driver_msg;
+// int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+// {
+// 	MESSAGE driver_msg;
 
-	driver_msg.type = io_type;
-	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg.DEVICE = dev;
-	// attention
-	//  driver_msg.POSITION	= (unsigned long long)pos;
-	driver_msg.POSITION = pos;
-	driver_msg.CNT = bytes; /// hu is: 512
-	driver_msg.PROC_NR = proc_nr;
-	driver_msg.BUF = buf;
-	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
-	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
+// 	driver_msg.type = io_type;
+// 	// driver_msg.DEVICE	= MINOR(dev);
+// 	driver_msg.DEVICE = dev;
+// 	// attention
+// 	//  driver_msg.POSITION	= (unsigned long long)pos;
+// 	driver_msg.POSITION = pos;
+// 	driver_msg.CNT = bytes; /// hu is: 512
+// 	driver_msg.PROC_NR = proc_nr;
+// 	driver_msg.BUF = buf;
+// 	// assert(dd_map[MAJOR(dev)].driver_nr != INVALID_DRIVER);
+// 	// send_recv(BOTH, dd_map[MAJOR(dev)].driver_nr, &driver_msg);
 
-	/// replace the statement above.
-	// disp_int(proc_nr);
-	hd_rdwt(&driver_msg);
-	return 0;
-}
+// 	/// replace the statement above.
+// 	// disp_int(proc_nr);
+// 	hd_rdwt(&driver_msg);
+// 	return 0;
+// }
 
 // added by xw, 18/8/27
-int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
-{
-	MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
-	driver_msg->type = io_type;
-	// driver_msg.DEVICE	= MINOR(dev);
-	driver_msg->DEVICE = dev;
+// int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
+// {
+// 	MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
+// 	driver_msg->type = io_type;
+// 	// driver_msg.DEVICE	= MINOR(dev);
+// 	driver_msg->DEVICE = dev;
 
-	driver_msg->POSITION = pos;
-	driver_msg->CNT = bytes; 
-	driver_msg->PROC_NR = proc_nr;
-	driver_msg->BUF = buf;
+// 	driver_msg->POSITION = pos;
+// 	driver_msg->CNT = bytes; 
+// 	driver_msg->PROC_NR = proc_nr;
+// 	driver_msg->BUF = buf;
 
-	hd_rdwt_sched(driver_msg);
-	kern_kfree((u32)driver_msg);
-	return 0;
-}
+// 	hd_rdwt_sched(driver_msg);
+// 	kern_kfree((u32)driver_msg);
+// 	return 0;
+// }
 //~xw
 
 //add by sundong 2023.5.26

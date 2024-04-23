@@ -75,15 +75,6 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	}
 	else
 	{	
-		PROCESS *p_parent;
-		if( p_proc_current->task.info.type == TYPE_THREAD )
-		{//线程
-			p_parent = &(proc_table[p_proc_current->task.info.ppid]);//父进程
-		}
-		else
-		{//进程
-			p_parent = p_proc_current;//父进程就是父线程
-		}
 		/************复制父进程的PCB部分内容（保留了自己的标识信息,但cr3使用的是父进程的）**************/
 		pthread_pcb_cpy(p_child,p_parent);
 		
@@ -326,23 +317,14 @@ PUBLIC void kern_pthread_exit(void *retval)
 
 	
 	if(p_proc->task.who_wait_flag != -1){ //有进程正在等待自己	
-    PROCESS *p_father = &proc_table[p_proc->task.who_wait_flag];
-
-	p_proc->task.who_wait_flag = -1;
-	
-	sys_wakeup(p_father);
-
+		PROCESS *p_father = pid2proc(p_proc->task.who_wait_flag);
+		p_proc->task.who_wait_flag = -1;
+		wakeup(p_father);
 	}
 
 	//设置返回值
 	p_proc->task.retval = retval;
-
 	p_proc->task.stat = KILLED; //统一PCB state 20240314
-
-	//设置返回值
-    //p_proc->task.regs.eax = (u32)retval;
-
-
 	return;
 
 }

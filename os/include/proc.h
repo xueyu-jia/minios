@@ -51,12 +51,12 @@
 // #define NR_K_PCBS 10		//add by visual 2016.4.5
 #define NR_PCBS		64								//modified by zhenhao 2023.3.5
 //#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan 2019-5-19
-#define NR_TASKS	4	//task_tty + hd_service		//modified by mingxuan 2019-5-19
+#define NR_TASKS	3	//task_tty + hd_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 #define PID_INIT NR_K_PCBS
-#define READY_PROC_MAX 30	//xiaofeng
+#define PID_NO_PROC	1000
+#define PROC_READY_MAX	30	//xiaofeng
 #define PROC_NICE_MAX	19
-#define PROC_RT			-21
 
 //~xw
 
@@ -185,7 +185,6 @@ typedef struct s_proc {
 
 	u32 cr3;						//add by visual 2016.4.5
 
-	// char cwd[MAX_PATH];                //added by ran
 	struct vfs_dentry* cwd;
 
 	int suspended; 				//线程id Add By ZengHao & MaLinhan 21.12.22
@@ -210,7 +209,8 @@ typedef struct s_proc {
 	void * retval;
 	u32 who_wait_flag;   
 	
-	int is_rt;			//flag for Real-time(T) and not-Real-time(F) process,added by xiaofeng 
+	// cfs attr added by xiaofeng 
+	int is_rt;			//flag for Real-time(T) and not-Real-time(F) process
     int rt_priority;	//priority for Real-time process 
 
 	int nice;
@@ -257,7 +257,7 @@ extern	int		kernel_initial;
 extern 	int 	nice_to_weight[];
 //added by zcr
 #define proc2pid(x) (x - proc_table)
-
+#define pid2proc(pid) ((PROCESS*)&proc_table[(pid)])
 //added by zq
 typedef struct process_message
 {
@@ -282,7 +282,7 @@ PUBLIC void free_PCB(PROCESS *p);
 PUBLIC void sys_yield();
 //PUBLIC void sys_sleep(int n); //deleted by mingxuan 2021-8-13
 PUBLIC void sys_sleep(); //modified by mingxuan 2021-8-13
-PUBLIC void sys_wakeup(void *channel);
+PUBLIC void wakeup(void *channel);
 PUBLIC int ldt_seg_linear(PROCESS *p, int idx);
 PUBLIC void* va2la(int pid, void* va);
 PUBLIC void do_exit(int status);

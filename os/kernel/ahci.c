@@ -216,17 +216,19 @@ PRIVATE void sata_handler(int irq) {
         disp_int((int)intr_status);
         tf_err_rec(&(HBA->ports[prot_num])); // 错误处理
         sata_error_flag = 1;
-        if (kernel_initial == 1)
+        if (kernel_initial == 1){
             sata_wait_flag = 0; // 完成错误处理后唤醒进程
-        else
-            sys_wakeup((void*)&sata_wait_flag);
+        }else{
+            wakeup((void*)&sata_wait_flag);
+        }
     } else if (intr_status & HBA_Port_COMPLETED) {
         // 数据读写完成
         sata_error_flag = 0;
-        if (kernel_initial == 1)
+        if (kernel_initial == 1){
             sata_wait_flag = 0;
-        else
-            sys_wakeup((void*)&sata_wait_flag);
+        }else{
+            wakeup((void*)&sata_wait_flag);
+        }
     } else {
         // 其他错误, undo
         disp_str("\nPANIC:sata_handler:other error\n");

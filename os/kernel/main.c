@@ -21,12 +21,6 @@
 
 //added by lcy, 2023.10.22 
 //与权限信息 RPL 存在耦合，不利于简化，不如这样： 20240418
-#define common_cs (((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define common_ds (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define common_es (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define common_fs (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL) 
-#define common_ss (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
-#define common_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK)
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
 PRIVATE int initialize_cpus();		//added by xw, 18/6/2
@@ -75,7 +69,7 @@ PUBLIC int kernel_main()
 
 	k_reenter = 0; //record nest level of only interruption! it's different from Orange's.
 		//usage modified by xw
-	p_proc_current = cpu_table;
+	// p_proc_current = cpu_table;
 
 	/************************************************************************
 	*device initialization
@@ -168,6 +162,7 @@ PUBLIC int kernel_main()
 	disp_str("main:total_mem_size=");
 	disp_int(kern_total_mem_size());
 	disp_str("\n");
+	init_ttys();
 	initlock(&video_mem_lock, "vmem");
 	kernel_initial = 0; 
 	//kernel initialization is done. added by xw, 18/5/31
@@ -350,7 +345,7 @@ PRIVATE int initialize_processes()
 			init_process(p_proc, name, (ready ? READY: SLEEPING), pid, is_rt, rtpriority_or_nice);
 			init_proc_pages(p_proc);
 		}else{
-			init_process(p_proc, name, FREE, pid, -1, 0);
+			init_process(p_proc, name, FREE, pid, 0, 0);
 		}
 		if(ready) {
 			in_rq(p_proc);

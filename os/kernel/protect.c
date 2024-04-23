@@ -412,7 +412,9 @@ PUBLIC void exception_handler(int vec_no, int err_code, int eip, int cs, int efl
 		disp_color_str("Error code:", text_color);
 		disp_int(err_code);
 	}
-
+	if(vec_no == 6) {// undefined op
+		
+	}
 	//added by xw, 18/12/19
 	disp_str("\n");
 	proc_backtrace();

@@ -34,7 +34,7 @@ PUBLIC TASK    task_table[NR_TASKS] = {
     {idle,          0, RPL_KRNL, 0, PROC_NICE_MAX, STACK_SIZE_TASK, "task_idle" },
     {task_tty,      1, RPL_TASK, 1, 1,             STACK_SIZE_TASK, "task_tty"  },
     {hd_service,    1, RPL_TASK, 1, 2,             STACK_SIZE_TASK, "hd_service"},
-    {bsync_service, 1, RPL_TASK, 1, 3,             STACK_SIZE_TASK, "bsync"     }
+    // {bsync_service, 1, RPL_TASK, 1, 3,             STACK_SIZE_TASK, "bsync"     }
 };
 
 // added by zq
@@ -51,12 +51,12 @@ int nice_to_weight[40] = {
 sched_entity  head1      = {-1, NULL, NULL, NULL};
 sched_entity* rt_rq      = &head1;
 sched_entity* rt_rq_tail = &head1;
-sched_entity  rt_rq_array[READY_PROC_MAX];
+sched_entity  rt_rq_array[PROC_READY_MAX];
 
 sched_entity  head2   = {-1, NULL, NULL, NULL};
 sched_entity* rq      = &head2;
 sched_entity* rq_tail = &head2;
-sched_entity  rq_array[READY_PROC_MAX];
+sched_entity  rq_array[PROC_READY_MAX];
 
 int sysctl_sched_rt_period  = 10;
 int sysctl_sched_rt_runtime = 9;
@@ -168,9 +168,9 @@ void cfs_sched() {
 
 void sched_init() {
     // added by zq
-    for (int i = 0; i < READY_PROC_MAX; i++) {
-        rt_rq_array[i].pid = 1000;
-        rq_array[i].pid    = 1000;
+    for (int i = 0; i < PROC_READY_MAX; i++) {
+        rt_rq_array[i].pid = PID_NO_PROC;
+        rq_array[i].pid    = PID_NO_PROC;
     }
 }
 
@@ -184,7 +184,7 @@ void proc_update() {
     }
 
     if (p_proc_current->task.is_rt == false) { p_proc_current->task.cpu_use++; }
-    p_proc_current->task.ticks--;
+    // p_proc_current->task.ticks--;
 }
 
 void schedule() {
@@ -216,11 +216,11 @@ sched_entity* get_curr_entity(PROCESS* current_proc) {
     return NULL;
 }
 
-// 删除指定节点（但没释放该节点的空间，只是用pid=1000标空了）
+// 删除指定节点（但没释放该节点的空间，只是用pid=PID_NO_PROC标空了）
 // 并将该节点的PCB重新插入链表
 void rq_resort(sched_entity* changed_entity) // only for rq
 {
-    changed_entity->pid        = 1000; // mark empty
+    changed_entity->pid        = PID_NO_PROC; // mark empty
     changed_entity->prev->next = changed_entity->next;
     if (changed_entity->next != NULL) {
         changed_entity->next->prev = changed_entity->prev;
@@ -237,9 +237,9 @@ void in_rq(PROCESS* p_in) {
         int           i = 0;
         sched_entity* new_entity;
 
-        for (; i < READY_PROC_MAX && rt_rq_array[i].pid < NR_PCBS; i++)
+        for (; i < PROC_READY_MAX && rt_rq_array[i].pid < NR_PCBS; i++)
             ;
-        if (i < READY_PROC_MAX) {
+        if (i < PROC_READY_MAX) {
             new_entity = &rt_rq_array[i];
         } else {
             disp_str("in_rq error1: cannot find a rq_array\n");
@@ -283,9 +283,9 @@ void in_rq(PROCESS* p_in) {
         int           i = 0;
         sched_entity* new_entity;
 
-        for (; i < READY_PROC_MAX && rq_array[i].pid < NR_PCBS; i++)
+        for (; i < PROC_READY_MAX && rq_array[i].pid < NR_PCBS; i++)
             ;
-        if (i < READY_PROC_MAX) {
+        if (i < PROC_READY_MAX) {
             new_entity = &rq_array[i];
         } else {
             disp_str("in_rq error2: cannot find a rq_array\n");
@@ -351,7 +351,7 @@ void out_rq(PROCESS* p_out) {
         }
         pos->next = NULL;
         pos->prev = NULL;
-        pos->pid  = 1000; // mark empty
+        pos->pid  = PID_NO_PROC; // mark empty
     }
 }
 
@@ -363,7 +363,6 @@ PUBLIC PROCESS* alloc_PCB() { // 分配PCB表
     int      i;
     p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
     for (i = NR_K_PCBS; i < NR_PCBS; i++) {
-        // if(p->task.stat==IDLE)break;
         if (p->task.stat == FREE)
             break; // FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
         p++;
@@ -378,9 +377,8 @@ PUBLIC PROCESS* alloc_PCB() { // 分配PCB表
                            free_PCB  add by visual 2016.4.8
  *======================================================================*/
 PUBLIC void free_PCB(PROCESS* p) { // 释放PCB表
-    // p->task.stat=IDLE;
-    p->task.stat =
-        FREE; // FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
+    p->task.stat = FREE; 
+    // FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
 }
 
 /*======================================================================*
@@ -409,7 +407,9 @@ PUBLIC int do_get_pid_byname(char* name) {
 
 PUBLIC int kern_get_pid_byname(char* name) {
     for (PROCESS* proc = proc_table; proc < proc_table + NR_PCBS; proc++) {
-        if (strcmp(proc->task.p_name, name) == 0) { return proc->task.pid; }
+        if (strcmp(proc->task.p_name, name) == 0) {
+            return proc->task.pid; 
+        }
     }
     return -1;
 }
@@ -457,7 +457,7 @@ PUBLIC void sys_sleep() {
 /*invoked by clock-interrupt handler to wakeup
  *processes sleeping on ticks.
  */
-PUBLIC void sys_wakeup(void* channel) {
+PUBLIC void wakeup(void* channel) {
     PROCESS *p, *target_p;
     target_p = NULL;
 
@@ -472,6 +472,7 @@ PUBLIC void sys_wakeup(void* channel) {
         if (target_p->task.is_rt == false) {
             target_p->task.vruntime = get_min_vruntime(); // min_vruntime
         }
+        target_p->task.channel = 0;
         in_rq(target_p);
     }
 }
@@ -602,15 +603,13 @@ void wait_for_sem(void* chan, struct spinlock* lk) {
     }
 
     acquire(lk);
-    // Tidy up.
-    p_proc_current->task.channel = 0;
 }
 
 /*
     added by cjjx 2021-12-25
 */
 void wakeup_for_sem(void* chan) {
-    sys_wakeup(chan);
+    wakeup(chan);
 }
 
 // added by zcr
@@ -652,9 +651,9 @@ PUBLIC void idle() {
     while (1) {
         // disp_str("-idle-"); //mark debug
         out_rq(p_proc_current);
-		asm volatile ("hlt" :::"memory");
+		asm volatile ("sti\n hlt" :::"memory");
     }
-    p_proc_current->task.channel = 0;
+    // p_proc_current->task.channel = 0;
 }
 
 PRIVATE void stack_backtrace(u32 ebp) {
@@ -671,7 +670,7 @@ PUBLIC void proc_backtrace() {
     for (int i = 0; ebp && i < 8; i++) {
         stack_backtrace(ebp);
         ebp = *((u32*)ebp);
-        // if(ebp < KernelLinBase)break;
+        if(ebp >= KernelLinMapBase || ebp < StackLinLimitMAX)break;
     }
     while (1)
         ;

@@ -5,6 +5,7 @@
 
 #include "const.h"
 #include "proc.h"
+#include "proto.h"
 #include "string.h"
 #include "fs.h"
 #include "pagetable.h"
@@ -240,7 +241,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	int pid;
 	u32 eflags,selector_ldt,cr3_child;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
-	char /**esp_save_int,*/ *esp_save_context;	//use to save corresponding field in child's PCB.
+	char *esp_save_context;	//use to save corresponding field in child's PCB.
 	STACK_FRAME *esp_save_stackframe;				//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
@@ -262,18 +263,21 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//Added by xw, 18/4/21
 	esp_save_stackframe = p_child->task.esp_save_int;
 	esp_save_context = p_child->task.esp_save_context;
-
+	disable_int();
 	p_child->task = p_proc_current->task;
-
-	p_child->task.cpu_use = 0;
-	p_child->task.sum_cpu_use = 0;
 	//note that syscalls can be interrupted now! the state of child can only be setted
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
 	p_child->task.stat = SLEEPING;
+	enable_int();
+	p_child->task.cpu_use = 0;
+	p_child->task.sum_cpu_use = 0;
 	p_child->task.esp_save_int = esp_save_stackframe;	//esp_save_int of child must be restored!!
-	p_child->task.esp_save_context = esp_save_context;	//same above
-	//p_child->task.esp_save_context = (char*)(p_child + 1) - P_STACKTOP - 4 * 6;	
+	// esp_save_context may not at end of kernel stack - 4*10
+	// disp_int(esp_save_context-(char*)p_child);
+	// disp_int(p_child->task.esp_save_context-(char*)p_proc_current);
+	p_child->task.esp_save_context = (char*)(p_child + 1) - P_STACKTOP - 4 * 10;	
+	// p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_proc_current + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
 	//modified end
 	
@@ -283,7 +287,8 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//p_child->task.regs.eflags = eflags;
 	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	*((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	
+	*((u32*)(p_reg - 4 - P_STACKTOP)) = (u32) restart_restore;
+	*((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;
 	p_child->task.ldt_sel = selector_ldt;				
 	p_child->task.cr3 = cr3_child;
 	atomic_inc(&p_child->task.cwd->d_count);

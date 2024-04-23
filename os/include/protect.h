@@ -135,6 +135,13 @@ typedef struct s_tss {
 #define	RPL_TASK	SA_RPL1
 #define	RPL_USER	SA_RPL3
 
+#define common_cs (((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_ds (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_es (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_fs (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL) 
+#define common_ss (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
+#define common_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK)
+
 /* 中断向量 */
 #define	INT_VECTOR_DIVIDE		0x0
 #define	INT_VECTOR_DEBUG		0x1

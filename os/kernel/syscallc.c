@@ -146,12 +146,14 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_get_pid_byname]		=	sys_get_pid_byname,
 	[_NR_mount]					=	sys_mount,
 	[_NR_umount]				=	sys_umount,
-	// [_NR_init_block_dev]		=	sys_init_block_dev,
 	[_NR_pthread_exit]			=	sys_pthread_exit,
 	[_NR_pthread_join]			=	sys_pthread_join,
-	// [_NR_init_char_dev]			=	sys_init_char_dev,
 	[_NR_get_time]				=	sys_get_time,
-	[_NR_stat]					=	sys_stat
+	[_NR_stat]					=	sys_stat,
+	[_NR_nice]					=	sys_nice,
+	[_NR_set_rt]				=	sys_set_rt,
+	[_NR_rt_prio]				=	sys_rt_prio,
+	[_NR_get_proc_msg]			=	sys_get_proc_msg
 	};
 
 // #define TEST_FOR_SEMAPHORE

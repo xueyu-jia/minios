@@ -42,13 +42,13 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 			if(p_proc_current->task.info.child_process[i] !=0){//所有子进程都过继给init进程
 
 				//子进程的父进程pid设为init进程的pid
-				proc_table[p_proc_current->task.info.child_process[i]].task.info.ppid = NR_K_PCBS;
+				proc_table[p_proc_current->task.info.child_process[i]].task.info.ppid = PID_INIT;
 
 				//init进程的孩子数加一
-				proc_table[NR_K_PCBS].task.info.child_p_num++;
+				proc_table[PID_INIT].task.info.child_p_num++;
 
 				//更改init进程的子进程列表
-				proc_table[NR_K_PCBS].task.info.child_process[i] = i; 
+				proc_table[PID_INIT].task.info.child_process[i] = i; 
 
 			}
 
@@ -74,7 +74,8 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		for(int i=0; i<p_proc->task.info.child_t_num; i++)
 		{
 			tid = p_proc->task.info.child_thread[i];
-			proc_table[tid].task.stat = FREE; //释放线程的PCB, 防止在释放的过程中该线程被调度 //统一PCB state 20240314
+			out_rq(pid2proc(tid));
+			proc_table[tid].task.stat = KILLED; //释放线程的PCB, 防止在释放的过程中该线程被调度 //统一PCB state 20240314
 		}
 
 		//释放每个线程的栈物理页
@@ -125,10 +126,11 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		disable_int();
 		PROCESS *p_father = &proc_table[p_proc->task.info.ppid];
 		p_proc->task.stat = KILLED; //modified by dongzhangqi 2023.6.2 //统一PCB state 20240314
-		sys_wakeup(p_father);
+		wakeup(p_father);
 		out_rq(p_proc);
 		enable_int();
 	}
+	// kern_yield();
 
 	//while(1);	//added by mingxuan 2021-8-17
 

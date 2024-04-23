@@ -361,7 +361,7 @@ PRIVATE void flush(CONSOLE* con)
  *****************************************************************************/
 PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 {
-	phys_copy((void*)(K_PHY2LIN(V_MEM_BASE) + (dst << 1)),
+	memcpy((void*)(K_PHY2LIN(V_MEM_BASE) + (dst << 1)),
 		  (void*)(K_PHY2LIN(V_MEM_BASE) + (src << 1)),
 		  size << 1);
 }
@@ -370,11 +370,11 @@ PUBLIC void disp_color_str(char* info, int color){
 	if(kernel_initial == 1){
 		disp_pos = _disp_color_str(info, color, disp_pos);
 	}else{
-		acquire(&video_mem_lock);
+		// acquire(&video_mem_lock);
 		CONSOLE* con = &console_table[current_console];
 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
 		flush(con);
-		release(&video_mem_lock);
+		// release(&video_mem_lock);
 	}
 }
 
