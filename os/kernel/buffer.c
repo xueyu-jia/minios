@@ -230,8 +230,8 @@ static inline void sync_buff(buf_head *bh){
 	}else{
 		WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
 	}
-	// disp_int(ticks-tick);
-	// disp_str(" ");
+	disp_int(ticks-tick);
+	disp_str(" ");
     bh->dirty = 0;
 }
 

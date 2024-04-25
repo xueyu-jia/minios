@@ -11,20 +11,21 @@ void main(int arg,char *argv[])
         if(fork()!=0){	
             //father
             // int exit_status;
+            int exit_status;
             // wait_(&exit_status);
             // printf("exit_status:%d", exit_status);
             if(fork()!=0){
                 // father
-                int exit_status;
                 wait(&exit_status);
                 printf("exit_status:%d", exit_status);
-                exit(0);
             }else{
                 //child
                 if(execve("/bin/test_1", NULL, NULL)!=0){
                     printf("exec failed: file not found!");
                 }
             }
+            wait(&exit_status);
+            printf("fstest exit_status:%d", exit_status);
         }else{	
             //child
             if(execve("/bin/fstest", NULL, NULL)!=0){
