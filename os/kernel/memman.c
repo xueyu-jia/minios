@@ -371,26 +371,9 @@ PUBLIC u32 kern_malloc_4k() //modified by mingxuan 2021-8-19
 	u32 AddrLin;
 
 	AddrLin = get_heap_limit(p_proc_current->task.pid);
-	if(AddrLin == 0x4801100){
-		while(1);
-	}
 	update_heap_limit(p_proc_current->task.pid, 1);
-
-	//AddrLin = p_proc_current->task.memmap.heap_lin_limit;
-	//AddrLin = *(u32 *)p_proc_current->task.memmap.heap_lin_limit;	//modified by mingxuan 2021-8-19
-	//disp_int(p_proc_current->task.memmap.heap_lin_base);
-	//disp_str("limit=");
-	//disp_int(p_proc_current->task.memmap.heap_lin_limit);
-	//p_proc_current->task.memmap.heap_lin_limit += num_4K;
-
-	// lin_mapping_phy(AddrLin,				  //线性地址					//add by visual 2016.5.9
-	// 				MAX_UNSIGNED_INT,		  //物理地址
-	// 				p_proc_current->task.pid, //进程pid					//edit by visual 2016.5.19
-	// 				PG_P | PG_USU | PG_RWW,	  //页目录的属性位
-	// 				PG_P | PG_USU | PG_RWW);  //页表的属性位
-	kern_mapping_4k(AddrLin, p_proc_current->task.pid, MAX_UNSIGNED_INT, PG_P | PG_USU | PG_RWW);
-	//update_heap_ptr(vaddr, 1);
-	//        Scan_free_area(ubud);
+	kern_mapping_4k(AddrLin, p_proc_current->task.pid, 
+		MAX_UNSIGNED_INT, PG_P | PG_USU | PG_RWW);
 	return AddrLin;
 }
 

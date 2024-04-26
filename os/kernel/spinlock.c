@@ -36,6 +36,7 @@ acquire(struct spinlock *lock)
 {
   
   while(cmpxchg(0, 1, &lock->locked) == 1);
+  lock->pcs[0] = proc2pid(p_proc_current);
 }
 
 // Release the lock.

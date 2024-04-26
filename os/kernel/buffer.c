@@ -222,16 +222,16 @@ static void put_bh_hashtbl(buf_head *bh)
 
 }
 static inline void sync_buff(buf_head *bh){
-	disp_int(bh->block);
-	disp_str(".");
+	// disp_int(bh->block);
+	// disp_str(".");
 	int tick = ticks;
 	if(kernel_initial){
 		WR_BLOCK(bh->dev, bh->block, bh->buffer);
 	}else{
 		WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
 	}
-	disp_int(ticks-tick);
-	disp_str(" ");
+	// disp_int(ticks-tick);
+	// disp_str(" ");
     bh->dirty = 0;
 }
 

@@ -150,7 +150,7 @@ void cfs_sched() {
             }
             p_proc_next = rq->next->p_process;
 
-            if (rq_tail->p_process->task.vruntime
+            if (rq_tail != rq && rq_tail->p_process->task.vruntime // must check rq not empty
                 > 0xFFFFF) // vruntime-min_vruntime,avoid overflow and time
                            // waste
             {
@@ -666,9 +666,12 @@ PRIVATE void stack_backtrace(u32 ebp) {
 
 PUBLIC void proc_backtrace() {
     u32 ebp;
+    int skip = 2;
     asm volatile("mov %%ebp, %0 " : "=r"(ebp));
     for (int i = 0; ebp && i < 8; i++) {
-        stack_backtrace(ebp);
+        if(i >= skip) {
+            stack_backtrace(ebp);
+        }
         ebp = *((u32*)ebp);
         if(ebp >= KernelLinMapBase || ebp < StackLinLimitMAX)break;
     }
