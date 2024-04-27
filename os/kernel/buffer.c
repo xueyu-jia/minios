@@ -10,6 +10,7 @@
 
 int buffer_debug = 0;
 #define buff_log(bh, info_type) if(buffer_debug == 1){disp_int(info_type);disp_str(":");disp_int(bh->block);disp_str(" ");}
+// #define BUFFER_SYNC_TASK
 
 /*用于记录LRU链表的数据结构*/
 // struct buf_lru_list

@@ -84,7 +84,7 @@ struct super_block {
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
-	SPIN_LOCK lock;
+	struct spinlock lock;
 };
 
 struct file_desc {

@@ -274,9 +274,7 @@ PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry
 	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
 	memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
 	p_proc->task.ldts[1].attr1 = DA_DRW | privilege << 5;
-	char* p_regs;
-	p_regs = (char *)(p_proc + 1);
-	p_regs -= P_STACKTOP;
+	STACK_FRAME* p_regs = proc_kstacktop(p_proc);
 	////初始化内核栈
 	/***************some field about process switch****************************/
 	p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11    //changed by lcy, 2023.10.24
@@ -284,11 +282,12 @@ PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry
 		common_fs|rpl,	common_ss|rpl,	common_gs|rpl,	eflags,	(u32)StackLinBase, entry);
 
 	//p_proc->task.save_type = 1;
-	p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
+	// p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
 														 //sched() will fetch value from esp_save_context
-	*(u32 *)(p_regs - 4) = (u32)(restart_restore); //initialize EIP in the context, so the process can
+	// *(u32 *)(p_regs - 4) = (u32)(restart_restore); //initialize EIP in the context, so the process can
 												 //start run. added by xw, 18/4/18
-	*(u32 *)(p_regs - 8) = 0x1202;
+	// *(u32 *)(p_regs - 8) = 0x1202;
+	proc_init_context(p_proc);
 }
 
 /*************************************************************************

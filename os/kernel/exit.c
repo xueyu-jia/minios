@@ -130,7 +130,7 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 		out_rq(p_proc);
 		enable_int();
 	}
-	// kern_yield();
+	kern_yield();
 
 	//while(1);	//added by mingxuan 2021-8-17
 

@@ -192,7 +192,6 @@ typedef struct s_proc {
 	struct file_desc * filp[NR_FILES];
 	//~zcr
 
-	// enum wait_exit_flag we_flag;	//used for exit and wait //added by mingxuan 2021-1-6
 	int exit_status;				//added by mingxuan 2021-1-6
 	int child_exit_status;			//added by mingxuan 2021-1-6
 
@@ -255,9 +254,12 @@ extern	PROCESS		proc_table[];
 extern  TASK	task_table[NR_TASKS];
 extern	int		kernel_initial;
 extern 	int 	nice_to_weight[];
-//added by zcr
+
 #define proc2pid(x) (x - proc_table)
 #define pid2proc(pid) ((PROCESS*)&proc_table[(pid)])
+#define proc_kstacktop(proc) ((STACK_FRAME*)(((char*)((proc)+1) - P_STACKTOP)))
+
+#define PROC_CONTEXT	10 * 4
 //added by zq
 typedef struct process_message
 {
@@ -290,4 +292,12 @@ PUBLIC void do_exit(int status);
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
 PUBLIC void wait_event(void* event);
+
+void restart_restore();
+static inline void proc_init_context(PROCESS *p_proc) {	\
+	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
+	p_proc->task.esp_save_context = ((char*)context_base) - PROC_CONTEXT;
+	*(context_base-1) = (u32)(restart_restore);
+	*(context_base-2) = 0x1202;
+}
 #endif

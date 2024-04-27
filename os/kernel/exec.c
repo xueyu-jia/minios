@@ -61,7 +61,7 @@ PUBLIC u32 kern_execve(
     u32 err_temp;
     u32 pde_addr_phy, addr_phy_temp;
 
-    char *p_reg; // point to a register in the new kernel stack, added by xw,
+    STACK_FRAME *p_reg; // point to a register in the new kernel stack, added by xw,
                  // 17/12/11
     if (0 == path) {
         disp_color_str("exec: path ERROR!", 0x74);
@@ -140,11 +140,12 @@ PUBLIC u32 kern_execve(
     // p_proc_current->task.regs.eip = Echo_Ehdr->e_entry;
     // //进程入口线性地址 deleted by lcy 2023.10.25
 
-    p_reg = (char *)(p_proc_current + 1); // added by xw, 17/12/11
+    // p_reg = (char *)(p_proc_current + 1); // added by xw, 17/12/11
+    p_reg = proc_kstacktop(p_proc_current);
     //*((u32 *)(p_reg + EIPREG - P_STACKTOP)) = p_proc_current->task.regs.eip;
     ////added by xw, 17/12/11  deleted by lcy 2023.10.25
-    *((u32 *)(p_reg + EIPREG - P_STACKTOP)) = Echo_Ehdr->e_entry;
-
+    // *((u32 *)(p_reg + EIPREG - P_STACKTOP)) = Echo_Ehdr->e_entry;
+    p_reg->eip = Echo_Ehdr->e_entry;
     // test_kbud_mem_size();
 
     // 栈deleted by lcy 2023.10.25
@@ -152,9 +153,10 @@ PUBLIC u32 kern_execve(
     // (u32)p_proc_current->task.memmap.stack_lin_base; //栈地址最高处
     //*((u32 *)(p_reg + ESPREG - P_STACKTOP)) = p_proc_current->task.regs.esp;
     ////added by xw, 17/12/11
-    *((u32 *)(p_reg + ESPREG - P_STACKTOP)) =
-        (u32)p_proc_current->task.memmap
-            .stack_lin_base; // added by lcy 2023.10.25
+    p_reg->esp = (u32)p_proc_current->task.memmap.stack_lin_base;
+    // *((u32 *)(p_reg + ESPREG - P_STACKTOP)) =
+    //     (u32)p_proc_current->task.memmap
+    //         .stack_lin_base; // added by lcy 2023.10.25
 
     // u32 stack_lin_base = addr_lin=p_proc_current->task.memmap.stack_lin_base
     // - num_4K;	//added vy mingxuan 2021-8-24
@@ -388,7 +390,7 @@ PRIVATE u32 exec_load(
  * 重新初始化寄存器和特权级、线性地址布局
  *======================================================================*/
 PRIVATE int exec_pcb_init(char *path) {
-    char *p_regs; // point to registers in the new kernel stack, added by xw,
+    // char *p_regs; // point to registers in the new kernel stack, added by xw,
                   // 17/12/11
 
     // 名称 状态 特权级 寄存器
@@ -402,9 +404,9 @@ PRIVATE int exec_pcb_init(char *path) {
     /***************copy registers data****************************/
     // copy registers data to the bottom of the new kernel stack
     // added by xw, 17/12/11
-    p_regs                             = (char *)(p_proc_current + 1);
-    p_regs                            -= P_STACKTOP;
-    p_proc_current->task.esp_save_int  = (STACK_FRAME *)p_regs;
+    // p_regs                             = (char *)(p_proc_current + 1);
+    // p_regs                            -= P_STACKTOP;
+    p_proc_current->task.esp_save_int  = proc_kstacktop(p_proc_current);
     p_proc_current->task.esp_save_int->cs = common_cs | RPL_USER;
     p_proc_current->task.esp_save_int->ds = common_ds | RPL_USER;
     p_proc_current->task.esp_save_int->es = common_es | RPL_USER;

@@ -35,14 +35,15 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	}*/
 
 	PROCESS *p_parent;
-	if( p_proc_current->task.info.type == TYPE_THREAD )
-	{//线程
-		p_parent = &(proc_table[p_proc_current->task.info.ppid]);//父进程
-	}
-	else
-	{//进程
-		p_parent = p_proc_current;//父进程就是父线程
-	}
+	// if( p_proc_current->task.info.type == TYPE_THREAD )
+	// {//线程
+	// 	p_parent = &(proc_table[p_proc_current->task.info.ppid]);//父进程
+	// }
+	// else
+	// {//进程
+	// 	p_parent = p_proc_current;//父进程就是父线程
+	// }
+	p_parent = proc_real(p_proc_current);
 
 	/*****************如若attr为null，新建一默认attr**********************/
 
@@ -76,19 +77,21 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	else
 	{	
 		/************复制父进程的PCB部分内容（保留了自己的标识信息,但cr3使用的是父进程的）**************/
-		pthread_pcb_cpy(p_child,p_parent);
+		pthread_pcb_cpy(p_child, p_parent);
 		
 		/************在父进程的栈中分配子线程的栈（从进程栈的低地址分配8M,注意方向）**********************/
-		pthread_stack_init(p_child,p_parent, &true_attr);
+		pthread_stack_init(p_child, p_parent, &true_attr);
 		
 		/**************初始化子线程的堆（此时的这两个变量已经变成了指针）***********************/
-		pthread_heap_init(p_child,p_parent);
+		pthread_heap_init(p_child, p_parent);
 		
 		/********************设置线程的执行入口**********************************************/
 		//p_child->task.regs.eip = (u32)entry;
-		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+		STACK_FRAME* p_reg = proc_kstacktop(p_child);
+		// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 		//*((u32*)(p_reg + EIPREG - P_STACKTOP)) = p_child->task.regs.eip;	//added by xw, 17/12/11
-		*((u32*)(p_reg + EIPREG - P_STACKTOP)) = (u32)entry;
+		// *((u32*)(p_reg + EIPREG - P_STACKTOP)) = (u32)entry;
+		p_reg->eip = entry;
 		/**************更新进程树标识info信息************************/
 		pthread_update_info(p_child,p_parent);
 
@@ -101,9 +104,9 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		
 		/*************子进程返回值在其eax寄存器***************/
 		//p_child->task.regs.eax = 0;//return child with 0
-		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+		// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 		//*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11
-		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0;
+		// *((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0;
 
 		/*************子进程参数***************/ 
 		/*
@@ -111,10 +114,13 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		*((u32*)(p_child->task.regs.esp)) = (u32*)arg;
 		p_child->task.regs.esp -= num_4B;
 		*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;*/ //deleted by lcy 2023.10.25
-		u32 reg_esp= *((u32*)(p_reg + ESPREG - P_STACKTOP));
+		p_reg->eax = 0;
+		// u32 reg_esp= *((u32*)(p_reg + ESPREG - P_STACKTOP));
+		u32 reg_esp = p_reg->esp;
 		reg_esp -= num_4B;
 		*((u32 *)reg_esp) = (u32*)arg;
-		*((u32*)(p_reg + ESPREG - P_STACKTOP)) -= num_4B*2;
+		// *((u32*)(p_reg + ESPREG - P_STACKTOP)) -= num_4B*2;
+		p_reg->esp -= num_4B*2;
 		
 
 		/****************用户进程数+1****************************/
@@ -160,38 +166,37 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	pid = p_child->task.pid;
 	
 	//eflags = p_child->task.regs.eflags; //deleted by xw, 17/12/11
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	eflags = *((u32*)(p_reg + EFLAGSREG - P_STACKTOP));	//added by xw, 17/12/11
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// eflags = *((u32*)(p_reg + EFLAGSREG - P_STACKTOP));	//added by xw, 17/12/11
+	eflags = proc_kstacktop(p_child)->eflags;
 	
 	selector_ldt = p_child->task.ldt_sel;
 	
-	//复制PCB内容 
-	//modified by xw, 17/12/11
-	//modified begin
-	//*p_child = *p_parent;
-	
+	//复制PCB内容
 	//esp_save_int and esp_save_context must be saved, because the child and the parent 
 	//use different kernel stack! And these two are importent to the child's initial running.
 	//Added by xw, 18/4/21
 	esp_save_int = p_child->task.esp_save_int;
 	esp_save_context = p_child->task.esp_save_context;
+	disable_int();
 	p_child->task = p_parent->task;
 	//note that syscalls can be interrupted now! the state of child can only be setted
 	//READY when anything else is well prepared. if an interruption happens right here,
 	//an error will still occur.
 	p_child->task.stat = SLEEPING; //统一PCB state 20240314
+	enable_int();
 	p_child->task.esp_save_int = esp_save_int;	//esp_save_int of child must be restored!!
 	p_child->task.esp_save_context = esp_save_context;	//same above
-	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_parent + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
+	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	//modified end
 	
 	//恢复标识信息
 	p_child->task.pid = pid;
 	
 	//p_child->task.regs.eflags = eflags;
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	*((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
+	proc_kstacktop(p_child)->eflags = eflags;
 	p_child->task.ldt_sel = selector_ldt;	
 	return 0;
 }
@@ -256,14 +261,16 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_
 	}
 	
 	//p_child->task.regs.esp = p_child->task.memmap.stack_lin_base;		//调整esp
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	//*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added by xw, 17/12/11
-	*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
-	
+	// *((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
+	proc_kstacktop(p_child)->esp = p_child->task.memmap.stack_lin_base;
+
 	//p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;		//调整ebp
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	//*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added by xw, 17/12/11
-	*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
+	// *((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.memmap.stack_lin_base;
+	proc_kstacktop(p_child)->ebp = p_child->task.memmap.stack_lin_base;
 
 	return 0;
 }

@@ -61,10 +61,10 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 		
 		/*************子进程返回值在其eax寄存器***************/
 		//p_child->task.regs.eax = 0;		//return child with 0  deleted by lcy 2023.10.25
-		p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+		// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 		//*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11 deleted by lcy 2023.10.25
-		*((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0; //added by lcy 2023.10.25
-
+		// *((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0; //added by lcy 2023.10.25
+		proc_kstacktop(p_child)->eax = 0;
 		/****************用户进程数+1****************************/
 		u_proc_sum += 1;
 
@@ -240,16 +240,18 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 {
 	int pid;
 	u32 eflags,selector_ldt,cr3_child;
-	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
+	STACK_FRAME* p_reg = proc_kstacktop(p_child);
+	//point to a register in the new kernel stack, added by xw, 17/12/11
 	char *esp_save_context;	//use to save corresponding field in child's PCB.
 	STACK_FRAME *esp_save_stackframe;				//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
 	
 	//eflags = p_child->task.regs.eflags;
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	eflags = *((u32*)(p_reg + EFLAGSREG - P_STACKTOP));	//added by xw, 17/12/11
-	
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// eflags = *((u32*)(p_reg + EFLAGSREG - P_STACKTOP));	//added by xw, 17/12/11
+	eflags = p_reg->eflags;
+
 	selector_ldt = p_child->task.ldt_sel;
 	cr3_child = p_child->task.cr3; 
 	
@@ -276,21 +278,24 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	// esp_save_context may not at end of kernel stack - 4*10
 	// disp_int(esp_save_context-(char*)p_child);
 	// disp_int(p_child->task.esp_save_context-(char*)p_proc_current);
-	p_child->task.esp_save_context = (char*)(p_child + 1) - P_STACKTOP - 4 * 10;	
+	// p_child->task.esp_save_context = (char*)(p_reg) - PROC_CONTEXT;	
 	// p_child->task.esp_save_context = esp_save_context;	//same above
-	memcpy(((char*)(p_child + 1) - P_STACKTOP), ((char*)(p_proc_current + 1) - P_STACKTOP), 19 * 4);//changed by lcy 2023.10.26 19*4
+	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_proc_current), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	//modified end
 	
 	//恢复标识信息
 	p_child->task.pid = pid;
 	
 	//p_child->task.regs.eflags = eflags;
-	p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	*((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	*((u32*)(p_reg - 4 - P_STACKTOP)) = (u32) restart_restore;
-	*((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;
+	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
+	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
+	p_reg->eflags = eflags;
+	proc_init_context(p_child);
+	// *((u32*)(p_reg - 4 - P_STACKTOP)) = (u32) restart_restore;
+	// *((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;
 	p_child->task.ldt_sel = selector_ldt;				
 	p_child->task.cr3 = cr3_child;
+
 	atomic_inc(&p_child->task.cwd->d_count);
 	for(int i=0; i<NR_FILES; i++){
 		if(p_child->task.filp[i]){
