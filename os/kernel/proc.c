@@ -48,14 +48,14 @@ int nice_to_weight[40] = {
     /*  10 */ 110,   87,    70,    56,    45,
     /*  15 */ 36,    29,    23,    18,    15};
 
-sched_entity  head1      = {-1, NULL, NULL, NULL};
-sched_entity* rt_rq      = &head1;
-sched_entity* rt_rq_tail = &head1;
+sched_entity  rt_rq_head_empty      = {-1, NULL, NULL, NULL};
+sched_entity* rt_rq      = &rt_rq_head_empty;
+sched_entity* rt_rq_tail = &rt_rq_head_empty;
 sched_entity  rt_rq_array[PROC_READY_MAX];
 
-sched_entity  head2   = {-1, NULL, NULL, NULL};
-sched_entity* rq      = &head2;
-sched_entity* rq_tail = &head2;
+sched_entity  rq_head_empty      = {-1, NULL, NULL, NULL};
+sched_entity* rq      = &rq_head_empty;
+sched_entity* rq_tail = &rq_head_empty;
 sched_entity  rq_array[PROC_READY_MAX];
 
 int sysctl_sched_rt_period  = 10;
@@ -231,97 +231,69 @@ void rq_resort(sched_entity* changed_entity) // only for rq
     in_rq(changed_entity->p_process); // reinsert
 }
 
+PRIVATE sched_entity* find_new_sched_entity(sched_entity* array) {
+    int i = 0;
+    for (; i < PROC_READY_MAX && array[i].pid < NR_PCBS; i++)
+        ;
+    if (i < PROC_READY_MAX) {
+        return &array[i];
+    }
+    return NULL;
+}
+
 void in_rq(PROCESS* p_in) {
-    if (p_in->task.is_rt == true) // real time process
+    int is_rt = p_in->task.is_rt;
+    sched_entity* _rq_head = (is_rt)? rt_rq: rq;
+    sched_entity* _rq_tail = (is_rt)? rt_rq_tail: rq_tail;
+    sched_entity* _rq_arr = (is_rt)? rt_rq_array: rq_array;
+    sched_entity* new_entity = find_new_sched_entity(_rq_arr);
+    if(new_entity == NULL){
+        disp_str("in_rq error1: cannot find a rq_array\n");
+        return; // mark 这里没做错误处理和提示，之后要加上
+    }
+    new_entity->pid       = p_in->task.pid;
+    new_entity->p_process = p_in;
+    new_entity->next      = NULL;
+    new_entity->prev      = NULL;
+
+    // new_entity.pri=p_in->task.rt_priority;
+    if (_rq_head == _rq_tail) // rq is empty
     {
-        int           i = 0;
-        sched_entity* new_entity;
-
-        for (; i < PROC_READY_MAX && rt_rq_array[i].pid < NR_PCBS; i++)
-            ;
-        if (i < PROC_READY_MAX) {
-            new_entity = &rt_rq_array[i];
-        } else {
-            disp_str("in_rq error1: cannot find a rq_array\n");
-            return; // mark 这里没做错误处理和提示，之后要加上
-        }
-        new_entity->pid       = p_in->task.pid;
-        new_entity->p_process = p_in;
-        new_entity->next      = NULL;
-        new_entity->prev      = NULL;
-
-        // new_entity.pri=p_in->task.rt_priority;
-        if (rt_rq == rt_rq_tail) // rq is empty
-        {
-            rt_rq->next      = new_entity;
-            new_entity->prev = rt_rq;
-            rt_rq_tail       = new_entity;
-        } else // not empty,find propery position
-        {
-            sched_entity* pos = rt_rq->next;
-            // avoid re_in_rq
-            pos = rt_rq;
+        _rq_head->next      = new_entity;
+        new_entity->prev = _rq_head;
+        _rq_tail       = new_entity;
+    } else // not empty,find propery position
+    {
+        sched_entity* pos = _rq_head;
+        // avoid re_in_rq
+        if(is_rt){
             while (pos->next != NULL
-                   && pos->next->p_process->task.rt_priority
-                          > new_entity->p_process->task.rt_priority) {
+            && pos->next->p_process->task.rt_priority
+                > new_entity->p_process->task.rt_priority) {
                 pos = pos->next;
             }
-            if (pos->next == NULL) {
-                pos->next        = new_entity;
-                new_entity->prev = pos;
-                rt_rq_tail       = new_entity;
-            } else {
-                new_entity->prev = pos;
-                new_entity->next = pos->next;
-                pos->next->prev  = new_entity;
-                pos->next        = new_entity;
-            }
-        }
-
-    } else // not real time process
-    {
-        int           i = 0;
-        sched_entity* new_entity;
-
-        for (; i < PROC_READY_MAX && rq_array[i].pid < NR_PCBS; i++)
-            ;
-        if (i < PROC_READY_MAX) {
-            new_entity = &rq_array[i];
-        } else {
-            disp_str("in_rq error2: cannot find a rq_array\n");
-            return; // mark 这里没做错误处理和提示，之后要加上
-        }
-        new_entity->pid       = p_in->task.pid;
-        new_entity->p_process = p_in;
-        new_entity->next      = NULL;
-        new_entity->prev      = NULL;
-
-        // new_entity.pri=p_in->task.vruntime;
-        if (rq == rq_tail) // rq is empty
-        {
-            rq->next         = new_entity;
-            new_entity->prev = rq;
-            rq_tail          = new_entity;
-        } else // not empty,find propery position
-        {
-            sched_entity* pos = rq->next;
-            // avoid re_in_rq
-            pos = rq;
+        }else {
             while (pos->next != NULL
-                   && pos->next->p_process->task.vruntime
-                          <= new_entity->p_process->task.vruntime)
+                && pos->next->p_process->task.vruntime
+                    <= new_entity->p_process->task.vruntime) {
                 pos = pos->next;
-            if (pos->next == NULL) {
-                pos->next        = new_entity;
-                new_entity->prev = pos;
-                rq_tail          = new_entity;
-            } else {
-                new_entity->prev = pos;
-                new_entity->next = pos->next;
-                pos->next->prev  = new_entity;
-                pos->next        = new_entity;
             }
         }
+        if (pos->next == NULL) {
+            pos->next        = new_entity;
+            new_entity->prev = pos;
+            _rq_tail         = new_entity;
+        } else {
+            new_entity->prev = pos;
+            new_entity->next = pos->next;
+            pos->next->prev  = new_entity;
+            pos->next        = new_entity;
+        }
+    }
+    if(is_rt){
+        rt_rq_tail = _rq_tail;
+    }else{
+        rq_tail = _rq_tail;
     }
 }
 
