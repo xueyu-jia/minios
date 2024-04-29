@@ -10,7 +10,7 @@
 
 int buffer_debug = 0;
 #define buff_log(bh, info_type) if(buffer_debug == 1){disp_int(info_type);disp_str(":");disp_int(bh->block);disp_str(" ");}
-// #define BUFFER_SYNC_TASK
+
 
 /*用于记录LRU链表的数据结构*/
 // struct buf_lru_list
@@ -21,20 +21,137 @@ int buffer_debug = 0;
 #define NR_HASH 19
 // 计算hash值
 #define HASH_CODE(dev, block) ((block ^ dev) % NR_HASH)
+#define BUFFER_FREE     -1
+#define BUFFER_CLEAN    0
+#define BUFFER_LOCKED   1
+#define BUFFER_DIRTY    2
+#define NR_BUFFER_STATE 3
+
+#define BUF_SYNC_DELAY_TICK	5
+#define BUF_SYNC_RATELIMIT  20
 
 /* struct buf_hash_head
 {
     struct buf_head *lru_head; // buffer head组成的双向链表的头
     struct buf_head *lru_tail; // buffer head组成的双向链表的尾
 }; */
-// static struct buf_lru_list lru_list;
+// static struct buf_lru_list buf_lru_list;
 // static struct buf_head *buf_hash_table[NR_HASH];
-static list_head lru_list;
-static list_head dirty_list;
-static list_head buf_hash_table[NR_HASH];
+static list_head buf_lru_list[NR_BUFFER_STATE];
+static int buf_lru_cnt[NR_BUFFER_STATE] = {0};
 static SPIN_LOCK buf_lru_lock;
-static SPIN_LOCK buf_dirty_lock;
+static SPIN_LOCK buf_lock;
+
+static list_head buf_free_list;
+// static list_head dirty_list;
+static list_head buf_hash_table[NR_HASH];
+static int buf_dirty_nfrac = 20;
+static int buf_block_cnt;
+// static SPIN_LOCK buf_dirty_lock;
 PRIVATE struct Semaphore buf_dirty_sem;
+
+/*****************************************************************************
+ *                                rm_bh_lru
+ *****************************************************************************/
+/**
+ * 从lru list双向链表中删除
+ *
+ * @param[in] bh   Ptr to buf head
+ *
+ *****************************************************************************/
+static inline void rm_bh_lru(buf_head *bh)
+{
+	list_remove(&bh->b_lru);
+    if(bh->b_state != BUFFER_FREE){
+        buf_lru_cnt[bh->b_state]--;
+    }
+}
+
+static void sync_buffers(int flush_delay);
+static void update_bh_lru(buf_head *bh, int state);
+/*****************************************************************************
+ *                                get_bh_lru
+ *****************************************************************************/
+/**
+ * 从lru list表中获取一个最近少使用的buf_head   require: buf_lru_lock
+ *
+ * @return         Ptr to buf_head.
+ *
+ *****************************************************************************/
+static inline buf_head *get_bh_lru()
+{
+    // lru list的头部就是一个最近最少未使用的buf head
+    // 需要将buf head 从lru双向链表中“摘”出来
+    // buf_head *bh = lru_list.lru_head;
+    // lru_list.lru_head = bh->nxt_lru;
+retry:
+    // acquire(&buf_lru_lock);
+	buf_head *bh = list_front(&buf_free_list, struct buf_head, b_lru);
+    if(bh && bh->count){
+        bh = NULL;
+    }
+    if(bh == NULL) {
+        bh = list_front(&buf_lru_list[BUFFER_CLEAN], struct buf_head, b_lru);
+    }
+    if(bh && bh->count){
+        bh = NULL;
+    }
+    // release(&buf_lru_lock);
+    if(bh == NULL) {
+        sync_buffers(0);
+        goto retry;
+        // bh = list_front(&buf_lru_list[BUFFER_DIRTY], struct buf_head, b_lru);
+    }
+    return bh;
+}
+/*****************************************************************************
+ *                                put_bh_lru
+ *****************************************************************************/
+/**
+ * 将一个buf head 放进lru的双向链表的尾部
+ * @param[in] bh   Ptr to buf head
+ *
+ *****************************************************************************/
+static void put_bh_lru(buf_head *bh, int state)
+{
+    // lru list的尾部是一个最近刚刚使用的buf head，因此需要将bh添加进队尾
+	list_add_last(&bh->b_lru, &buf_lru_list[state]);
+    buf_lru_cnt[state]++;
+}
+
+static void update_bh_lru(buf_head *bh, int state) {
+    rm_bh_lru(bh);
+    if(bh->b_state != state)
+        bh->b_state = state;
+    put_bh_lru(bh, state);
+}
+
+/*****************************************************************************
+ *                                rm_bh_hashtbl
+ *****************************************************************************/
+/**
+ * 将一个buf head从hash table[]中移除
+ * @param[in] bh   Ptr to buf head
+ *
+ *****************************************************************************/
+static void rm_bh_hashtbl(buf_head *bh)
+{
+	list_remove(&bh->b_hash);
+}
+/*****************************************************************************
+ *                                put_bh_hashtbl
+ *****************************************************************************/
+/**
+ * 将一个buf head加入到hash table[]中
+ * @param[in] bh   Ptr to buf head
+ *
+ *****************************************************************************/
+static void put_bh_hashtbl(buf_head *bh)
+{
+    int ihash = HASH_CODE(bh->dev, bh->block);
+	list_add_first(&bh->b_hash, &buf_hash_table[ihash]);
+
+}
 
 /*****************************************************************************
  *                                init_buffer
@@ -47,42 +164,30 @@ PRIVATE struct Semaphore buf_dirty_sem;
 void init_buffer(int num_block)
 {
     // 申请buffe head和buffer block的内存，初始化lru 双向链表
-    // buf_head *pre = kern_kzalloc(sizeof(buf_head));
-    // pre->buffer = kern_kzalloc(BLOCK_SIZE);
-    // initlock(&(pre->lock),NULL);
-    // lru_list.lru_head = pre;
-    // initlock(&buf_lock,"buf_lock");
-    // for (int i = 0; i < num_block - 1; i++)
-    // {
-    //     pre->nxt_lru = kern_kzalloc(sizeof(buf_head));
-    //     pre->nxt_lru->buffer = kern_kzalloc(BLOCK_SIZE);
-    //     pre->nxt_lru->pre_lru = pre;
-    //     initlock(&(pre->nxt_lru->lock),NULL);
-    //     pre = pre->nxt_lru;
-
-    // }
-    // pre->nxt_lru = lru_list.lru_head;
-    // lru_list.lru_head->pre_lru = pre;
-    // lru_list.lru_tail = pre;
 	buf_head *bh = NULL;
 	initlock(&buf_lru_lock,"buf_lru_lock");
-    initlock(&buf_dirty_lock,"buf_dirty_lock");
+    // initlock(&buf_dirty_lock,"buf_dirty_lock");
 	ksem_init(&buf_dirty_sem, 0);
-	list_init(&lru_list);
-	list_init(&dirty_list);
+    buf_block_cnt = num_block;
+    list_init(&buf_free_list);
+    for(int i=0; i < NR_BUFFER_STATE; i++){
+	    list_init(&buf_lru_list[i]);
+    }
+	// list_init(&dirty_list);
 	for(int i = 0; i < NR_HASH; i++) {
 		list_init(&buf_hash_table[i]);
 	}
 	for(int i = 0; i < num_block; i++) {
 		bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 		bh->buffer = (void*)kern_kzalloc(BLOCK_SIZE);
+        bh->b_state = BUFFER_FREE;
 		initlock(&bh->lock, NULL);
 		list_init(&bh->b_lru);
 		list_init(&bh->b_hash);
-		list_init(&bh->b_dirty);
-		list_add_first(&bh->b_lru, &lru_list);
+		list_add_last(&bh->b_lru, &buf_free_list);
 	}
 }
+
 /*****************************************************************************
  *                                find_buffer_hash
  *****************************************************************************/
@@ -105,126 +210,17 @@ static struct buf_head *find_buffer_hash(int dev, int block)
     // }
 	buf_head *tmp = NULL;
 	list_for_each(&buf_hash_table[ihash], tmp, b_hash) {
-		if (tmp->dev == dev && tmp->block == block)
+		if (tmp->dev == dev && tmp->block == block){
             return tmp;
+        }
 	}
     return NULL;
 }
-/*****************************************************************************
- *                                rm_bh_lru
- *****************************************************************************/
-/**
- * 从lru list双向链表中删除
- *
- * @param[in] bh   Ptr to buf head
- *
- *****************************************************************************/
-static inline void rm_bh_lru(buf_head *bh)
-{
-    // bh->pre_lru->nxt_lru = bh->nxt_lru;
-    // bh->nxt_lru->pre_lru = bh->pre_lru;
-    // if (bh == lru_list.lru_tail)
-    // {
-    //     lru_list.lru_tail = bh->pre_lru;
-    // }
-    // else if(bh == lru_list.lru_head){
-    //     lru_list.lru_head = bh->nxt_lru;
-    // }
-	list_remove(&bh->b_lru);
-}
 
-/*****************************************************************************
- *                                get_bh_lru
- *****************************************************************************/
-/**
- * 从lru list表中获取一个最近少使用的buf_head
- *
- * @return         Ptr to buf_head.
- *
- *****************************************************************************/
-static inline buf_head *get_bh_lru()
-{
-    // lru list的头部就是一个最近最少未使用的buf head
-    // 需要将buf head 从lru双向链表中“摘”出来
-    // buf_head *bh = lru_list.lru_head;
-    // lru_list.lru_head = bh->nxt_lru;
-	buf_head *bh = list_front(&lru_list, struct buf_head, b_lru);
-    return bh;
-}
-/*****************************************************************************
- *                                put_bh_lru
- *****************************************************************************/
-/**
- * 将一个buf head 放进lru的双向链表的尾部
- * @param[in] bh   Ptr to buf head
- *
- *****************************************************************************/
-static void put_bh_lru(buf_head *bh)
-{
-    // lru list的尾部是一个最近刚刚使用的buf head，因此需要将bh添加进队尾
-    // bh->nxt_lru = lru_list.lru_head;
-    // bh->pre_lru = lru_list.lru_tail;
-
-    // lru_list.lru_head->pre_lru = bh;
-    // lru_list.lru_tail->nxt_lru = bh;
-    // lru_list.lru_tail = bh;
-	list_add_last(&bh->b_lru, &lru_list);
-}
-/*****************************************************************************
- *                                rm_bh_hashtbl
- *****************************************************************************/
-/**
- * 将一个buf head从hash table[]中移除
- * @param[in] bh   Ptr to buf head
- *
- *****************************************************************************/
-static void rm_bh_hashtbl(buf_head *bh)
-{
-    // if (bh->pre_hash == NULL)
-    // { // 说明它在hash tble的散列链表中是表头
-    //     buf_hash_table[HASH_CODE(bh->dev, bh->block)] = bh->nxt_hash;
-    //     bh->nxt_hash->pre_hash = NULL;
-    // }
-    // else
-    // {
-    //     bh->pre_hash->nxt_hash = bh->nxt_hash;
-    //     if (bh->nxt_hash != NULL)
-    //         bh->nxt_hash->pre_hash = bh->pre_hash;
-    // }
-    // bh->nxt_hash = NULL;
-    // bh->pre_hash = NULL;
-	list_remove(&bh->b_hash);
-}
-/*****************************************************************************
- *                                put_bh_hashtbl
- *****************************************************************************/
-/**
- * 将一个buf head加入到hash table[]中
- * @param[in] bh   Ptr to buf head
- *
- *****************************************************************************/
-static void put_bh_hashtbl(buf_head *bh)
-{
-    int ihash = HASH_CODE(bh->dev, bh->block);
-    // if (buf_hash_table[ihash] == NULL)
-    // {
-    //     buf_hash_table[ihash] = bh;
-    //     bh->pre_hash = NULL;
-    //     bh->nxt_hash = NULL;
-    //     return;
-    // }
-    // buf_head *tmp = buf_hash_table[ihash];
-    // for (; tmp->nxt_hash != NULL; tmp = tmp->nxt_hash)
-    //     ;
-    // bh->pre_hash = tmp;
-    // tmp->nxt_hash = bh;
-    // bh->nxt_hash = NULL;
-	list_add_first(&bh->b_hash, &buf_hash_table[ihash]);
-
-}
 static inline void sync_buff(buf_head *bh){
 	// disp_int(bh->block);
 	// disp_str(".");
+    update_bh_lru(bh, BUFFER_LOCKED);
 	int tick = ticks;
 	if(kernel_initial){
 		WR_BLOCK(bh->dev, bh->block, bh->buffer);
@@ -233,18 +229,44 @@ static inline void sync_buff(buf_head *bh){
 	}
 	// disp_int(ticks-tick);
 	// disp_str(" ");
-    bh->dirty = 0;
+    bh->b_flush = 0;
+    update_bh_lru(bh, BUFFER_CLEAN);
 }
 
-static void put_sync_buf(buf_head *bh) {
-	acquire(&buf_dirty_lock);
-	list_remove(&bh->b_dirty);
-	bh->dirty_tick = ticks;
-	list_add_last(&bh->b_dirty, &dirty_list);
-	release(&buf_dirty_lock);
-	ksem_post(&buf_dirty_sem, 1);
+static void sync_buffers(int flush_delay) {
+    int nr_dirty = 0;
+    buf_head *bh = NULL;
+    if(!(list_empty(&buf_lru_list[BUFFER_DIRTY]))){
+        while(nr_dirty <= BUF_SYNC_RATELIMIT){
+            bh = list_front(&buf_lru_list[BUFFER_DIRTY], buf_head, b_lru);
+            if(bh == NULL)
+                break;
+            if(flush_delay && ticks < bh->b_flush) {
+                update_bh_lru(bh, bh->b_state);
+                continue;
+            }
+            lock_or_yield(&bh->lock);
+            sync_buff(bh);
+            release(&bh->lock);
+            nr_dirty++;
+        }
+    }
 }
 
+static void try_sync_buffers(int background) {
+    lock_or_yield(&buf_lock);
+    if(buf_lru_cnt[BUFFER_DIRTY] > buf_dirty_nfrac*buf_block_cnt/100){
+        #ifdef BUFFER_SYNC_TASK
+        if(background) {
+            release(&buf_lock);
+            ksem_post(&buf_dirty_sem, 1); // wake up sync task
+            return;
+        }
+        #endif
+        sync_buffers(0);
+    }
+    release(&buf_lock);
+}
 /*****************************************************************************
  *                                getblk
  *****************************************************************************/
@@ -259,7 +281,7 @@ static void put_sync_buf(buf_head *bh) {
  *****************************************************************************/
 buf_head *getblk(int dev, int block)
 {
-    acquire(&buf_lru_lock);
+    lock_or_yield(&buf_lock);
     buf_head *bh = find_buffer_hash(dev, block);
     // 如果在hash table中能找到，则直接返回
     if (!bh)
@@ -269,19 +291,11 @@ buf_head *getblk(int dev, int block)
 		if(bh->count) {
 			disp_str("warning: still used blk\n");
 		}
-		acquire(&bh->lock); // race with bsync
         // 如果是脏块就立即写回硬盘
-        if (bh->dirty)
+		lock_or_yield(&bh->lock); // race with bsync
+        if (bh->b_state == BUFFER_DIRTY)
         {
-            acquire(&buf_dirty_lock);
-			// 必须将其从写回队列移除 20240402
-			list_remove(&bh->b_dirty);
-			// disp_int(bh->block);
-			// disp_str(":");
-			// disp_int(block);
-			// disp_str(" ");
             sync_buff(bh);
-            release(&buf_dirty_lock);
         }
         // 如果它被用过则，从hash表中删掉它
         if (bh->used)
@@ -293,17 +307,14 @@ buf_head *getblk(int dev, int block)
         }
         bh->dev = dev;
         bh->block = block;
-		release(&bh->lock);
         //放到hash 表中
+		release(&bh->lock);
         put_bh_hashtbl(bh);
+        update_bh_lru(bh, BUFFER_CLEAN);
     }
-
-    bh->count+=1;
-    //从lru原来位置移除
-    rm_bh_lru(bh);
-    //放到lru的头部
-    put_bh_lru(bh);
-    release(&buf_lru_lock);
+    //更新 lru
+    update_bh_lru(bh, bh->b_state);
+    release(&buf_lock);
     return bh;
 }
 
@@ -357,7 +368,7 @@ buf_head *bread(int dev, int block)
 {
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
-    acquire(&bh->lock);
+    lock_or_yield(&bh->lock);
 	// buff_log(bh, 0);
     if (!bh->used)
     {
@@ -371,76 +382,58 @@ buf_head *bread(int dev, int block)
         bh->used = 1;
         bh->count = 1;
     }else{
-        // bh->count++;
+        bh->count++;
     }
     release(&bh->lock);
     return bh;
 }
+
 void mark_buff_dirty(buf_head *bh)
 {
-    acquire(&bh->lock);
 	// buff_log(bh, 1);
-    bh->dirty = 1;
-    release(&bh->lock);
-
+    lock_or_yield(&buf_lock);
+    update_bh_lru(bh, BUFFER_DIRTY);
+    release(&buf_lock);
 }
+
 void brelse(buf_head *bh)
 {
-
-    acquire(&bh->lock);
+    lock_or_yield(&buf_lock);
+    update_bh_lru(bh, bh->b_state);
+    release(&buf_lock);
+    lock_or_yield(&bh->lock);
+    if(bh->b_state == BUFFER_DIRTY) {
+        int new_flush = ticks + BUF_SYNC_DELAY_TICK;
+        if(new_flush > bh->b_flush) {
+            bh->b_flush = new_flush;
+        }
+    }else {
+        bh->b_flush = 0;
+    }
 	// buff_log(bh, 2);
     if(bh->count > 0){
         bh->count--;
     }
-    
-    if(bh->dirty&&bh->count == 0){
-		// if(kernel_initial == 1) {
-		// 	sync_buff(bh);
-		// } else {
-		// 	release(&bh->lock);
-		// 	put_sync_buf(bh);
-		// 	return;
-		// }
-		// disp_int(bh->block);
-		// disp_str(" ");
-        sync_buff(bh);
+
+    if(bh->b_state == BUFFER_DIRTY && bh->count == 0){
+        release(&bh->lock);
+        #ifdef BUFFER_SYNC_TASK
+            try_sync_buffers(1);
+        #else
+            try_sync_buffers(0);
+        #endif
+        return;
     }
     release(&bh->lock);
-
 }
 
-#define BUF_SYNC_DELAY_TICK	10
-static buf_head *get_sync_buf() {
-	ksem_wait(&buf_dirty_sem, 1);
-	acquire(&buf_dirty_lock);
-	buf_head *bh = list_front(&dirty_list, buf_head, b_dirty);
-	if(bh) {
-        int delay = ticks - bh->dirty_tick;
-		if(delay >= BUF_SYNC_DELAY_TICK) {
-			list_remove(&bh->b_dirty);
-		} else {
-			release(&buf_dirty_lock);
-			ksem_post(&buf_dirty_sem, 1);
-			sleep(BUF_SYNC_DELAY_TICK - delay);
-			return NULL;
-		}
-	}
-	release(&buf_dirty_lock);
-	return bh;
-}
 
 PUBLIC void bsync_service() {
 	while(1) {
-		buf_head *bh = get_sync_buf();
-		if(bh) {
-			acquire(&bh->lock);
-			if(bh->dirty) { // 需要重新判断，有可能已经由getblk同步完了
-				// disp_int(bh->block);
-				// disp_str(" ");
-				sync_buff(bh);
-			}
-			release(&bh->lock);
-		}
+        ksem_wait(&buf_dirty_sem, 1);
+        lock_or_yield(&buf_lock);
+        sync_buffers(1);
+        release(&buf_lock);
 	}
 }
 

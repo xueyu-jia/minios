@@ -136,7 +136,7 @@ void do_command(int argc, char** args) {
 	}
 	args[0] = cmd;
 	int pid = fork();
-	printf("%d: fork return %d\n", get_pid(), pid);
+	// printf("%d: fork return %d\n", get_pid(), pid);
 	if(pid != 0)
 	{	//father
 		if(pid < 0) {

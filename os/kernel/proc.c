@@ -396,6 +396,15 @@ PUBLIC void kern_yield() {
     sched(); // Modified by xw, 18/4/19
 }
 
+PUBLIC void sched_yield() {
+    u32 ringlevel = get_ring_level();
+    if (ringlevel == 0) {
+        kern_yield();
+    } else {
+        yield();
+    }
+}
+
 PUBLIC void do_yield() {
     kern_yield();
 }
@@ -567,12 +576,7 @@ void wait_for_sem(void* chan, struct spinlock* lk) {
 
     release(lk);
 
-    u32 ringlevel = get_ring_level();
-    if (ringlevel == 0) {
-        sched();
-    } else {
-        yield();
-    }
+    sched_yield();
 
     acquire(lk);
 }
@@ -611,12 +615,7 @@ PUBLIC void wait_event(void* event) {
     p_proc_current->task.stat    = SLEEPING;
 
     out_rq(p_proc_current);
-    u32 ringlevel = get_ring_level();
-    if (ringlevel == 0) {
-        sched(); // 非系统调用（sched中有为cr3赋值的操作，只有ring0级别才能执行）
-    } else {
-        yield(); // 系统调用
-    }
+    sched_yield();
 }
 
 PUBLIC void idle() {

@@ -282,6 +282,7 @@ PUBLIC int kern_get_pid();
 PUBLIC PROCESS* alloc_PCB();
 PUBLIC void free_PCB(PROCESS *p);
 PUBLIC void sys_yield();
+PUBLIC void sched_yield();
 //PUBLIC void sys_sleep(int n); //deleted by mingxuan 2021-8-13
 PUBLIC void sys_sleep(); //modified by mingxuan 2021-8-13
 PUBLIC void wakeup(void *channel);

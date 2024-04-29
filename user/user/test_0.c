@@ -24,8 +24,8 @@ void main(int arg,char *argv[])
                     printf("exec failed: file not found!");
                 }
             }
-            // wait(&exit_status);
-            // printf("fstest exit_status:%d", exit_status);
+            wait(&exit_status);
+            printf("fstest exit_status:%d", exit_status);
         }else{	
             //child
             if(execve("/bin/fstest", NULL, NULL)!=0){

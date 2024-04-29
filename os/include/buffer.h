@@ -6,7 +6,7 @@
 #include "list.h"
 typedef struct buf_head
 {
-    u32 count;                 // 为以后优化预留
+    u32 count;                 // buffer使用计数
     u32 dev, block;            // 设备号，扇区号(只有busy=true时才有效)
     void *buffer;              // 该缓冲块的起始地址, 为cache的地址
     // struct buf_head *pre_lru;  // LRU链表指针，指向LRU链表的前一个元素
@@ -15,11 +15,12 @@ typedef struct buf_head
     // struct buf_head *nxt_hash; // hash表链表中的后一项
 	struct list_node b_lru;
 	struct list_node b_hash;
-	struct list_node b_dirty;
-	int dirty_tick;
+	// struct list_node b_dirty;
+	int b_flush;
+    int b_state;
     SPIN_LOCK lock;
     u8 used;                   // 该缓冲块是否被使用 0 未被使用；1 已经被使用；
-    u8 dirty;                  // 该缓冲块是否是脏的 0 clean; 1 dirty
+    // u8 dirty;                  // 该缓冲块是否是脏的 0 clean; 1 dirty 合并到state中
 } buf_head;
 /* int buf_write_block(int dev, int block, int pid, void *buf);
 int buf_read_block(int dev, int block, int pid, void *buf); */
@@ -32,8 +33,9 @@ extern int buffer_debug;
 buf_head *bread(int dev, int block);
 void mark_buff_dirty(buf_head *bh);
 void brelse(buf_head *bh);
-
-void bsync_service();
-
+// #define BUFFER_SYNC_TASK
+#ifdef BUFFER_SYNC_TASK
+    void bsync_service();
+#endif
 extern struct file_operations blk_file_ops;
 #endif

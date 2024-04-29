@@ -47,5 +47,17 @@ release(struct spinlock *lock)
   lock->locked = 0;
 }
 
+void 
+lock_or(struct spinlock *lock, void (*callback)()) {
+    while (cmpxchg(0, 1, &lock->locked) == 1) {
+        if (callback != NULL) { callback(); }
+    }
+    lock->pcs[0] = proc2pid(p_proc_current);
+}
+
+void lock_or_yield(struct spinlock *lock) {
+  return lock_or(lock, sched_yield); 
+}
+
 
 

@@ -341,8 +341,8 @@ struct hd_info
 typedef struct rdwt_info
 {
 	MESSAGE *msg;
-	void *kbuf;
 	PROCESS *proc;
+	int wait;
 	struct rdwt_info *next;
 } RWInfo;
 

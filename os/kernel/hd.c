@@ -227,7 +227,8 @@ PUBLIC void hd_rdwt(MESSAGE * p)
 PUBLIC void hd_service()
 {
 	RWInfo *rwinfo;
-	
+	PROCESS *proc;
+	int wait;
 	while(1)
 	{	
 		// disp_str("-hd-"); //mark debug
@@ -240,9 +241,15 @@ PUBLIC void hd_service()
 		out_hd_queue(&hdque, &rwinfo);
 		if(rwinfo){
 			hd_rdwt_real(rwinfo);
-			rwinfo->proc->task.stat = READY;
-			in_rq(rwinfo->proc);
-			yield();
+			proc = rwinfo->proc;
+			wait = rwinfo->wait;
+			kern_kfree((u32)rwinfo->msg);
+			kern_kfree((u32)rwinfo);
+			if(wait) {
+				proc->task.stat = READY;
+				in_rq(proc);
+				yield();
+			}
 		}
 		
 		//disp_str("H ");
@@ -260,27 +267,29 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 {
 	RWInfo* rwinfo = (RWInfo*) kern_kmalloc(sizeof(RWInfo));
 	int size = p->CNT;
-	void *buffer;
+	int wait = p->type == DEV_READ;
 	
 	//buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
 	//buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan 2021-3-25
 	// buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
 	rwinfo->msg = p;
-	rwinfo->kbuf = p->BUF; //buffer;
 	rwinfo->proc = p_proc_current;
+	rwinfo->wait = wait;
 	
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, rwinfo);
-		wait_event(&hdque);
+		// wait_event(&hdque);
 		// phys_copy(p->BUF, buffer, p->CNT);
 	} else {
 		// phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, rwinfo);
+		// wait_event(&hdque);
+	}
+	if(wait) {
 		wait_event(&hdque);
 	}
-	
 	// kern_kfree((u32)buffer);
-	kern_kfree((u32)rwinfo);
+	// kern_kfree((u32)rwinfo);
 }
 
 PUBLIC void init_hd_queue(HDQueue *hdq)
@@ -1067,7 +1076,7 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 	/// replace the statement above.
 	// disp_int(proc_nr);
 	hd_rdwt(driver_msg);
-	kern_kfree((u32)driver_msg);
+	// kern_kfree((u32)driver_msg);
 	return 0;
 }
 
@@ -1087,7 +1096,7 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 	driver_msg->BUF = buf;
 
 	hd_rdwt_sched(driver_msg);
-	kern_kfree((u32)driver_msg);
+	// kern_kfree((u32)driver_msg);
 	
 	return 0;
 }

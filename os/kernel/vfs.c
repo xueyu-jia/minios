@@ -69,7 +69,7 @@ PRIVATE void init_file_desc_table(){
 // 调用此函数分配新的inode
 PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 	struct vfs_inode* res = NULL;
-	acquire(&inode_alloc_lock);
+	lock_or_yield(&inode_alloc_lock);
 	res = vfs_alloc_inode_no_lock(sb);
 	list_add_first(&res->i_list, &sb->sb_inode_list);
 	release(&inode_alloc_lock);
@@ -77,7 +77,7 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 }
 
 PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
-	acquire(&inode_alloc_lock);
+	lock_or_yield(&inode_alloc_lock);
 	if(inode_free_cnt > MAX_FREE_INODE) {
 		list_remove(&inode->i_list);
 		kern_kfree(inode);
@@ -93,7 +93,7 @@ PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 // 调用此函数获取inode
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 	struct vfs_inode *res = 0, *inode;
-	acquire(&inode_alloc_lock);
+	lock_or_yield(&inode_alloc_lock);
 	list_for_each(&sb->sb_inode_list, inode, i_list)
 	{
 		if(inode->i_sb == sb && inode->i_no == ino){
@@ -220,7 +220,7 @@ PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 	if(atomic_dec_and_test(&dentry->d_count)){
 		// 如果其中的inode已经无效，说明是已经unlink/rmdir的dentry
 		if(dentry->d_inode && dentry->d_inode->i_nlink == 0) {
-			acquire(&dentry->d_inode);
+			lock_or_yield(&dentry->d_inode->lock);
 			vfs_put_inode(dentry->d_inode);
 			dentry->d_inode = NULL;
 		}
@@ -233,7 +233,7 @@ PUBLIC void vfs_put_dentry(struct vfs_dentry* dentry) {
 }
 
 PRIVATE void vfs_get_dentry(struct vfs_dentry* dentry) {
-	acquire(&dentry->lock);
+	lock_or_yield(&dentry->lock);
 	atomic_inc(&dentry->d_count);
 }
 // delete dentry in dir
@@ -323,7 +323,7 @@ PUBLIC int vfs_check_exec_permission(struct vfs_inode* inode){
 // dir lock must held, return dentry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
 PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int release_origin){
-	// acquire(&dir->lock);
+	// lock_or_yield(&dir->lock);
 	struct vfs_dentry* dentry = NULL;
 	// root 特判
 	if(dir == vfs_root && (!name[0])){
@@ -366,7 +366,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 			vfs_get_dentry(dentry);
 		}
 	} else {	// real lookup
-		acquire(&dir->d_inode->lock);
+		lock_or_yield(&dir->d_inode->lock);
 		struct inode_operations * i_ops = NULL;
 		int type = dir->d_inode->i_type;
 		if(type == I_DIRECTORY){
@@ -375,7 +375,7 @@ PRIVATE struct vfs_dentry * _do_lookup(struct vfs_dentry *dir, char *name, int r
 		if(i_ops){
 			dentry = i_ops->lookup(dir->d_inode, name);
 			if(dentry){
-				acquire(&dentry->lock);
+				lock_or_yield(&dentry->lock);
 				insert_sub_dentry(dir, dentry);
 			}
 		}
@@ -446,7 +446,7 @@ PUBLIC struct vfs_dentry *vfs_lookup(const char *path){
 }
 
 PRIVATE void init_special_inode(struct vfs_inode* inode, int type, int mode, int dev){
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	inode->i_mode = mode;
 	inode->i_type = type;
 	inode->i_b_cdev = dev;
@@ -471,7 +471,7 @@ PRIVATE struct vfs_dentry* vfs_create(struct vfs_inode* dir,
 	struct vfs_dentry* dentry = NULL;
 	struct vfs_inode* inode = NULL;
 	int state;
-	acquire(&dir->lock);
+	lock_or_yield(&dir->lock);
 	if(dir->i_type == I_DIRECTORY){
 		i_ops = dir->i_op;
 	}
@@ -514,7 +514,7 @@ PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
 		// todo: check hd busy
 	}
 	struct fs_type* file_sys = &fstype_table[fstype];
-	acquire(&superblock_lock);
+	lock_or_yield(&superblock_lock);
 	struct super_block* sb = &super_blocks[get_free_superblock()];
 	if(!(file_sys->fs_sop && file_sys->fs_sop->fill_superblock)){
 		release(&superblock_lock);
@@ -641,7 +641,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 	if(!block_dev){
 		return -1;
 	}
-	acquire(&block_dev->d_inode->lock);
+	lock_or_yield(&block_dev->d_inode->lock);
 	int dev = block_dev->d_inode->i_b_cdev;
 	if(block_dev->d_inode->i_type != I_BLOCK_SPECIAL){
 		// 不是块设备，挂载失败
@@ -709,14 +709,14 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 		dentry = vfs_create(dir->d_inode, file_name, I_REGULAR, mode&(~I_TYPE_MASK), 0);
 		if(!dentry)
 			goto no_dentry_out;
-		acquire(&dentry->lock);
+		lock_or_yield(&dentry->lock);
 		insert_sub_dentry(dir, dentry);
 	}
 	if(!dentry){
 		goto no_dentry_out;
 	}
 	inode = dentry->d_inode;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if((!(flags & O_DIRECTORY)) && inode->i_type == I_DIRECTORY){
 		disp_str("error: try to open a dir");
 		goto err;
@@ -726,7 +726,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 		disp_str("error: no permission");
 		goto err;
 	}
-	acquire(&file_desc_lock);
+	lock_or_yield(&file_desc_lock);
 	/* find a free slot in f_desc_table[] */
 	for (i = 0; i < NR_FILE_DESC; i++){
 		if (f_desc_table[i].flag == 0){
@@ -793,7 +793,7 @@ PUBLIC int kern_vfs_close(int fd) {
 		return -1;
 	}
 	if(atomic_dec_and_test(&file->fd_count)){
-		acquire(&file_desc_lock);
+		lock_or_yield(&file_desc_lock);
 		vfs_put_dentry(file->fd_dentry);
 		file->fd_dentry = 0;
 		file->flag = 0;
@@ -811,7 +811,7 @@ PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
 	}
 	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	u64 size;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if(!inode_allow_lseek(inode->i_type)){
 		return -1;
 	}
@@ -851,7 +851,7 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count){
 	}
 	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	int cnt = -1;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if(inode->i_fop && inode->i_fop->read){
 		cnt = inode->i_fop->read(file, count, buf);
 	}
@@ -871,7 +871,7 @@ PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
 	}
 	struct vfs_inode * inode = file->fd_dentry->d_inode;
 	int cnt = -1;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if(inode->i_fop && inode->i_fop->write){
 		cnt = inode->i_fop->write(file, count, buf);
 	}
@@ -899,12 +899,12 @@ PUBLIC int kern_vfs_unlink(const char *path){
 		return -1;
 	}
 	struct vfs_inode *inode = dentry->d_inode;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if(inode->i_type == I_DIRECTORY){
 		goto err;	
 	}
 	if(inode->i_op && inode->i_op->unlink){
-		acquire(&dir->d_inode->lock);
+		lock_or_yield(&dir->d_inode->lock);
 		int state = inode->i_op->unlink(dir->d_inode, dentry);
 		release(&dir->d_inode->lock);
 		if(state){
@@ -944,7 +944,7 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 			release(&dir->lock);
 			return -1;
 		}
-		acquire(&dentry->lock);
+		lock_or_yield(&dentry->lock);
 		insert_sub_dentry(dir, dentry);
 	}
 	vfs_put_dentry(dentry);
@@ -974,7 +974,7 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 		vfs_put_dentry(dir);
 		return -1;
 	}
-	acquire(&dentry->lock);
+	lock_or_yield(&dentry->lock);
 	insert_sub_dentry(dir, dentry);
 	vfs_put_dentry(dentry);
 	vfs_put_dentry(dir);
@@ -1005,7 +1005,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		return -1;	// cant find target dir
 	}
 	struct vfs_inode *inode = dentry->d_inode;
-	acquire(&inode->lock);
+	lock_or_yield(&inode->lock);
 	if(dentry == vfs_root || (dentry->d_vfsmount && dentry->d_vfsmount->mnt_root == dentry)){// 不允许删除挂载点
 		goto err;
 	}
@@ -1016,7 +1016,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		goto err;
 	}
 	if(inode->i_op && inode->i_op->rmdir){
-		acquire(&dir->d_inode->lock);
+		lock_or_yield(&dir->d_inode->lock);
 		int state = inode->i_op->rmdir(dir->d_inode, dentry);
 		release(&dir->d_inode->lock);
 		if(state){
@@ -1061,7 +1061,7 @@ PUBLIC int kern_vfs_closedir(DIR* dirp){
 		return -1;
 	}
 	if(atomic_dec_and_test(&file->fd_count)){
-		acquire(&file_desc_lock);
+		lock_or_yield(&file_desc_lock);
 		vfs_put_dentry(file->fd_dentry);
 		file->fd_dentry = 0; // modified by mingxuan 2019-5-17
 		file->flag = 0;
@@ -1075,7 +1075,7 @@ struct dirent* kern_vfs_readdir(DIR* dirp){
 	if(!dirp->init){
 		struct vfs_inode* inode = dirp->file->fd_dentry->d_inode;
 		struct dirent* data_start = DIR_DATA(dirp);
-		acquire(&inode->lock);
+		lock_or_yield(&inode->lock);
 		if(inode->i_fop && inode->i_fop->readdir){
 			dirp->total = inode->i_fop->readdir(dirp->file, num_4K - sizeof(DIR), data_start);
 		}

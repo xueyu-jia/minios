@@ -62,3 +62,5 @@ void initlock(struct spinlock *lock, char *name);
 void acquire(struct spinlock *lock);
 // Release the lock.
 void release(struct spinlock *lock);
+void lock_or(struct spinlock *lock, void (*callback)());
+void lock_or_yield(struct spinlock *lock);
