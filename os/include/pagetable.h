@@ -6,6 +6,7 @@ PUBLIC	u32 init_page_pte(u32 pid);
 PUBLIC	int init_kernel_page();
 PUBLIC	int init_proc_page(u32 pid);	//edit by visual 2016.4.28
 PUBLIC	int kern_kmapping_phy(u32 phy_addr, u32 nr_pages);
+PUBLIC 	int kern_kmapping_pop(u32 nr_pages);
 PUBLIC	int lin_mapping_phy(u32 AddrLin,		  //线性地址
 						   u32 phy_addr,	  //物理地址,若为MAX_UNSIGNED_INT(0xFFFFFFFF)，则表示需要由该函数判断是否分配物理地址，否则将phy_addr直接和AddrLin建立映射
 						   u32 pid,			  //进程pid						//edit by visual 2016.5.19

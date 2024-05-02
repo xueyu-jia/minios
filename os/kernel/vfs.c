@@ -10,6 +10,7 @@
 #include "tty.h"
 #include "buffer.h"
 #include "vfs.h"
+#include "memman.h"
 #include "hd.h"
 #include "mount.h"
 #include "stat.h"
@@ -46,7 +47,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 		inode_free_cnt --;
 		list_remove(&inode->i_list);
 	} else {// real malloc
-		inode = kern_kmalloc(sizeof(struct vfs_inode));
+		inode = (struct vfs_inode*)kern_kmalloc(sizeof(struct vfs_inode));
 	}
 	//init
 	memset(inode, 0, sizeof(struct vfs_inode));
@@ -54,6 +55,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
 	list_init(&inode->i_list);
+	list_init(&inode->i_mapping);
 	return inode;
 }
 
@@ -80,7 +82,7 @@ PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 	lock_or_yield(&inode_alloc_lock);
 	if(inode_free_cnt > MAX_FREE_INODE) {
 		list_remove(&inode->i_list);
-		kern_kfree(inode);
+		kern_kfree((u32)inode);
 	} else {// 添加到空闲链表暂存
 		inode_free_cnt++;
 		list_move(&inode->i_list, &inode_free_list);
@@ -178,14 +180,14 @@ PRIVATE int check_dir_entry_empty(struct vfs_dentry* dir){
 
 PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 	struct vfs_dentry* dentry;
-	dentry = kern_kmalloc(sizeof(struct vfs_dentry));
+	dentry = (struct vfs_dentry*)kern_kmalloc(sizeof(struct vfs_dentry));
 	memset(dentry, 0, sizeof(struct vfs_dentry));
 	initlock(&dentry->lock, NULL);
 	int len = strlen(name);
 	if(len < MAX_DNAME_LEN) {
 		strcpy(dentry->d_shortname, name);
 	} else {
-		char* pstr = kern_kmalloc(len + 1);
+		char* pstr = (char*)kern_kmalloc(len + 1);
 		strcpy(pstr, name);
 		dentry->d_longname = pstr;
 	}
@@ -200,9 +202,9 @@ PRIVATE struct vfs_dentry * alloc_dentry(const char* name){
 
 PRIVATE void free_dentry(struct vfs_dentry* dentry) {
 	if(dentry->d_longname) {
-		kern_kfree(dentry->d_longname);
+		kern_kfree((u32)dentry->d_longname);
 	}
-	kern_kfree(dentry);
+	kern_kfree((u32)dentry);
 }
 
 // VFS api
@@ -574,6 +576,9 @@ PRIVATE void mount_root(int root_drive){
 	vfs_root = kern_mount_dev(dev, root_fstype, "/", NULL);
 }
 
+int kern_init_block_dev();
+int kern_init_char_dev();
+PUBLIC int kern_vfs_mkdir(const char* path, int mode);
 PRIVATE void init_fsroot() {
 	kern_vfs_mkdir("/dev", I_RWX);
 	struct vfs_dentry *dev_dir = _do_lookup(vfs_root, "dev", 0);
@@ -745,6 +750,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	atomic_set(&file->fd_count, 1);
 	release(&file_desc_lock);
 	file->fd_dentry = dentry;
+	file->fd_mapping = &dentry->d_inode->i_mapping;
 	file->fd_mode = rmode;//fd_mode: bit 0:read 1:write
 	file->fd_pos = 0;	
 	release(&inode->lock);
@@ -786,12 +792,7 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
     return fd;
 }
 
-PUBLIC int kern_vfs_close(int fd) {
-	PROCESS* p_proc = proc_real(p_proc_current);
-	struct file_desc* file = p_proc->task.filp[fd];
-	if(!file){
-		return -1;
-	}
+void fput(struct file_desc* file) {
 	if(atomic_dec_and_test(&file->fd_count)){
 		lock_or_yield(&file_desc_lock);
 		vfs_put_dentry(file->fd_dentry);
@@ -799,6 +800,14 @@ PUBLIC int kern_vfs_close(int fd) {
 		file->flag = 0;
 		release(&file_desc_lock);
 	}
+}
+PUBLIC int kern_vfs_close(int fd) {
+	PROCESS* p_proc = proc_real(p_proc_current);
+	struct file_desc* file = p_proc->task.filp[fd];
+	if(!file){
+		return -1;
+	}
+	fput(file);
 	p_proc->task.filp[fd] = 0;
 	return 0;
 }
@@ -1047,7 +1056,7 @@ PUBLIC DIR* kern_vfs_opendir(const char* path){
 	if(!file){
 		return NULL;
 	}
-	DIR* dirp = kern_malloc_4k();
+	DIR* dirp = (DIR*)kern_malloc_4k();
 	dirp->file = file;
 	dirp->pos = 0;
 	dirp->total = 0;
@@ -1181,7 +1190,7 @@ PUBLIC int do_vcreat(const char *filepath)
 
 PUBLIC int do_vopendir(const char* path)
 {
-    return kern_vfs_opendir(path);
+    return (int)kern_vfs_opendir(path);
 }
 
 PUBLIC int do_vclosedir(DIR* dirp)
@@ -1221,7 +1230,7 @@ PUBLIC int do_vstat(const char *pathname, struct stat* statbuf) {
 
 PUBLIC int sys_open()
 {
-    return do_vopen(get_arg(1), get_arg(2), get_arg(3));
+    return do_vopen((const char*)get_arg(1), get_arg(2), get_arg(3));
 }
 
 PUBLIC int sys_close()
@@ -1231,12 +1240,12 @@ PUBLIC int sys_close()
 
 PUBLIC int sys_read()
 {
-    return do_vread(get_arg(1), get_arg(2), get_arg(3));
+    return do_vread(get_arg(1), (char*)get_arg(2), get_arg(3));
 }
 
 PUBLIC int sys_write()
 {
-    return do_vwrite(get_arg(1), get_arg(2), get_arg(3));
+    return do_vwrite(get_arg(1), (const char*)get_arg(2), get_arg(3));
 }
 
 PUBLIC int sys_lseek()
@@ -1245,11 +1254,11 @@ PUBLIC int sys_lseek()
 }
 
 PUBLIC int sys_unlink() {
-    return do_vunlink(get_arg(1));
+    return do_vunlink((const char*)get_arg(1));
 }
 
 PUBLIC int sys_creat() {
-    return do_vcreat(get_arg(1));
+    return do_vcreat((const char*)get_arg(1));
 }
 
 PUBLIC int sys_closedir() {
@@ -1261,15 +1270,15 @@ PUBLIC int sys_opendir() {
 }
 
 PUBLIC int sys_mkdir() {
-    return do_vmkdir(get_arg(1), get_arg(2));
+    return do_vmkdir((const char*)get_arg(1), get_arg(2));
 }
 
 PUBLIC int sys_rmdir() {
-    return do_vrmdir(get_arg(1));
+    return do_vrmdir((const char*)get_arg(1));
 }
 
 PUBLIC int sys_readdir() {
-    return do_vreaddir((DIR*)get_arg(1));
+    return (int)do_vreaddir((DIR*)get_arg(1));
 }
 
 //added by ran

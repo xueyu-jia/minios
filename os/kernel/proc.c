@@ -12,6 +12,7 @@
 #include "proc.h"
 #include "proto.h"
 #include "hd.h"
+#include "string.h"
 #include "buffer.h"
 
 // process entity
@@ -356,25 +357,17 @@ PUBLIC void free_PCB(PROCESS* p) { // 释放PCB表
 /*======================================================================*
                            get_pid		add by visual 2016.4.6
  *======================================================================*/
-PUBLIC int sys_get_pid() {
-    return do_get_pid();
+// added by mingxuan 2021-8-14
+PUBLIC int kern_get_pid() {
+    return p_proc_current->task.pid;
 }
 
 PUBLIC int do_get_pid() {
     return kern_get_pid();
 }
 
-// added by mingxuan 2021-8-14
-PUBLIC int kern_get_pid() {
-    return p_proc_current->task.pid;
-}
-
-PUBLIC int sys_get_pid_byname() {
-    return do_get_pid_byname(get_arg(1));
-}
-
-PUBLIC int do_get_pid_byname(char* name) {
-    return kern_get_pid_byname(name);
+PUBLIC int sys_get_pid() {
+    return do_get_pid();
 }
 
 PUBLIC int kern_get_pid_byname(char* name) {
@@ -384,6 +377,14 @@ PUBLIC int kern_get_pid_byname(char* name) {
         }
     }
     return -1;
+}
+
+PUBLIC int do_get_pid_byname(char* name) {
+    return kern_get_pid_byname(name);
+}
+
+PUBLIC int sys_get_pid_byname() {
+    return do_get_pid_byname((char*)get_arg(1));
 }
 
 /*======================================================================*
@@ -458,13 +459,7 @@ PUBLIC void wakeup(void* channel) {
     }
 }
 
-PUBLIC void sys_nice() {
-    do_nice(get_arg(1));
-}
 
-PUBLIC void do_nice(int inc) {
-    return kern_nice(inc);
-}
 
 // added by zq
 PUBLIC void kern_nice(int inc) {
@@ -486,6 +481,13 @@ PUBLIC void kern_nice(int inc) {
         nice_to_weight[p_proc_current->task.nice + 20];
 }
 
+PUBLIC void do_nice(int inc) {
+    return kern_nice(inc);
+}
+
+PUBLIC void sys_nice() {
+    do_nice(get_arg(1));
+}
 // void sys_exit()
 // {
 // 	p_proc_current->task.stat = IDLE;
@@ -493,13 +495,6 @@ PUBLIC void kern_nice(int inc) {
 // 	sched();
 // }
 
-PUBLIC void sys_set_rt() {
-    do_set_rt(get_arg(1));
-}
-
-PUBLIC void do_set_rt(int turn_rt) {
-    kern_set_rt(turn_rt);
-}
 
 PUBLIC void kern_set_rt(int turn_rt) {
     if (turn_rt == true
@@ -520,12 +515,12 @@ PUBLIC void kern_set_rt(int turn_rt) {
     sched();
 }
 
-PUBLIC void sys_rt_prio() {
-    do_rt_prio(get_arg(1));
+PUBLIC void do_set_rt(int turn_rt) {
+    kern_set_rt(turn_rt);
 }
 
-PUBLIC void do_rt_prio(int prio) {
-    kern_rt_prio(prio);
+PUBLIC void sys_set_rt() {
+    do_set_rt(get_arg(1));
 }
 
 PUBLIC void kern_rt_prio(int prio) {
@@ -535,12 +530,11 @@ PUBLIC void kern_rt_prio(int prio) {
     sched();
 }
 
-PUBLIC void sys_get_proc_msg() {
-    do_get_proc_msg(get_arg(1));
+PUBLIC void do_rt_prio(int prio) {
+    kern_rt_prio(prio);
 }
-
-PUBLIC void do_get_proc_msg(proc_msg* msg) {
-    kern_get_proc_msg(msg);
+PUBLIC void sys_rt_prio() {
+    do_rt_prio(get_arg(1));
 }
 
 PUBLIC void kern_get_proc_msg(proc_msg* msg) {
@@ -550,6 +544,12 @@ PUBLIC void kern_get_proc_msg(proc_msg* msg) {
     msg->vruntime    = p_proc_current->task.vruntime;
 }
 
+PUBLIC void do_get_proc_msg(proc_msg* msg) {
+    kern_get_proc_msg(msg);
+}
+PUBLIC void sys_get_proc_msg() {
+    do_get_proc_msg((proc_msg*)get_arg(1));
+}
 /*
     added by cjjx 2021-12-25
 */

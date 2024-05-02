@@ -36,6 +36,7 @@ struct vfs_inode{
 	u32 i_mtime; // modify time
 	// list_head i_dentry; // connected dentry list，待定
 	struct list_node i_list; // recently used inodes list
+	struct list_node i_mapping;	// inode cached pages, ordered by page offset
 	struct inode_operations *i_op;
 	struct file_operations *i_fop;
 	struct spinlock lock;
@@ -93,10 +94,12 @@ struct file_desc {
 	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
 	u64		fd_pos;		/**< Current position for R/W. */
 	struct vfs_dentry *fd_dentry;
+	struct list_node *fd_mapping;
 	struct file_operations* fd_ops;
 };
 
 #define fget(file) atomic_inc(&((file)->fd_count))
+void fput(struct file_desc* file);
 
 struct dirent{
 	int d_len;// total len, including full d_name

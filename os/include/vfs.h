@@ -53,5 +53,8 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count);
 PUBLIC int kern_vfs_lseek(int fd, int offset, int whence);
 
 PUBLIC void register_fs_types();
+PUBLIC int kern_vfs_mount(const char *source, const char *target,
+                      const char *filesystemtype, unsigned long mountflags, const void *data);
+PUBLIC int kern_vfs_umount(const char *target);
 PUBLIC void init_fs();
 #endif

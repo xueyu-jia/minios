@@ -122,11 +122,13 @@
     (((u32)x)        \
      + 0xC0000000) // 内核中物理地址转线性地址		//add by visual 2016.5.10
 #define K_LIN2PHY(x)      (((u32)x) - 0xC0000000) // added by xw, 18/8/27
-#define UPPER_BOUND_4K(x) (((x)&0xFFF) ? (((x)&0xFFFFF000) + num_4K) : (x))
+#define UPPER_BOUND_4K(x) ((((u32)(x)) + num_4K - 1)& 0xFFFFF000)
 #define num_4B            0x4      // 4B大小
 #define num_1K            0x400    // 1k大小
 #define num_4K            0x1000   // 4k大小
 #define num_4M            0x400000 // 4M大小
+#define PAGE_SHIFT	12
+#define PAGE_SIZE	(1 << PAGE_SHIFT)
 #define TextLinBase \
     ((u32)0x0) // 进程代码的起始地址，这是参考值，具体以elf描述为准
 #define TextLinLimitMAX \
@@ -181,7 +183,6 @@
 
 // #define ShareTblLinAddr			(KernelLinLimitMAX-0x1000)
 // //公共临时共享页，放在内核最后一个页表的最后一项上
-
 /*分页机制常量的定义,必须与load.inc中一致*/ // add by visual 2016.4.5
 #define PG_P   1                            // 页存在属性位
 #define PG_RWR 0                            // R/W 属性位值, 读/执行

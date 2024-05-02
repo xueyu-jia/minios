@@ -13,7 +13,7 @@
 #include "ksignal.h"
 #include "semaphore.h"
 #include "syscall.h"
-
+PUBLIC u32 get_arg(int order);
 //modified by mingxuan 2021-8-14
 //PUBLIC u32 do_malloc_4k()
 

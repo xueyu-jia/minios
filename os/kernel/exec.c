@@ -7,7 +7,6 @@
 #include "string.h"
 #include "elf.h"
 #include "vfs.h"   //added by xyx && wjh 2021-12-31
-#include "buddy.h" // added by wang 2021.8.27
 #include "memman.h"
 #include "pagetable.h"
 

@@ -1,4 +1,4 @@
-void* memcpy(void* p_dst, void* p_src, int size){
+void* memcpy(void* p_dst, const void* p_src, int size){
 	char* d = p_dst, *s = p_src;
 	while(size > 0) {
 		*(d++) = *(s++);
@@ -26,7 +26,7 @@ char* strcat(char *dst, const char *src)
     return dst;
 }
 
-char* strcpy(char* p_dst, char* p_src){
+char* strcpy(char* p_dst, const char* p_src){
 	char c = 0, *p = p_dst;
 	do{
 		c = *(p_src++);

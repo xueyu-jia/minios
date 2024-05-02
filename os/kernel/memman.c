@@ -2,8 +2,71 @@
 #include "buddy.h" //added by mingxuan 2021-3-8
 #include "pagetable.h"
 #include "shm.h"
+#include "fs.h"
 #include "proto.h"
+#include "kmalloc.h"
 #include "string.h"
+
+int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
+u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27
+u32 kernel_code_size = 0;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
+u32 test_phy_mem_size = 0; //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
+u32 MemInfo[256] = {0}; //存放FMIBuff后1k内容
+page mem_map[ALL_PAGES];
+
+void memory_init()
+{
+    memcpy(MemInfo, (u32 *)FMIBuff, 1024); //复制内存
+
+    test_phy_mem_size = MemInfo[MemInfo[0]];
+    // int t, i, j;
+	u32 i;
+    // disp_str("memtest got memory available:\n");
+    // disp_str("base_addr     end_addr\n");
+    // for (t = 1; t <= MemInfo[0]; t++)
+    // {
+    //     disp_int(MemInfo[t]);
+    //     disp_str("       ");
+    //     if (t % 2 == 0)
+    //         disp_str("\n");
+    // }
+    disp_str("test_phy_mem_size: ");
+    disp_int(test_phy_mem_size);
+    disp_str("\n");
+
+    u32 bsize = num_4K;
+    for (i = 0; i < MAX_ORDER; i++) {
+        block_size[i] = bsize;
+        bsize = 2 * bsize;
+    }
+
+    // TODO: ALL_PAGES 怎么确定
+    u32 last_pfn = phy_to_pfn(test_phy_mem_size);
+    for (i = 0; i < last_pfn; i++) {
+        mem_map[i].inbuddy = TRUE;
+    }
+    for (; i < ALL_PAGES; i++) {
+        mem_map[i].inbuddy = FALSE;
+    }
+
+    if (test_phy_mem_size < WALL) {
+        big_kernel = 0;
+        kernel_code_size = KKWALL1;
+        kernel_size = SmallKernelSize;
+        buddy_init(kbud, KKWALL1, KUWALL1);
+        buddy_init(ubud, KUWALL1, test_phy_mem_size);
+    }
+    else {
+        big_kernel = 1;
+        kernel_code_size = KKWALL2;
+        kernel_size = BigKernelSize;
+        buddy_init(kbud, KKWALL2, KUWALL2);
+        buddy_init(ubud, KUWALL2, test_phy_mem_size);
+    }
+
+    kmem_init(); //added by mingxuan 2021-3-8
+    init_cache();
+}
 
 //modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址空间申请一段大小为size的内存
@@ -391,17 +454,6 @@ PUBLIC u32 sys_malloc_4k()
 
 // syscall free
 //
-PUBLIC int sys_free_4k()
-{
-	return do_free_4k((void*)get_arg(1));
-}
-
-PUBLIC int do_free_4k(void *AddrLin)
-{
-	return kern_free_4k(AddrLin);
-}
-
-//PUBLIC int do_free_4k(void* AddrLin)
 PUBLIC int kern_free_4k(void *AddrLin) //modified by mingxuan 2021-8-19
 {
 
@@ -415,4 +467,217 @@ PUBLIC int kern_free_4k(void *AddrLin) //modified by mingxuan 2021-8-19
 	update_heap_limit(p_proc_current->task.pid, -1); //update heap limit edited by wang 2021.8.26
 
 	return phy_free_4k(phy_addr);
+}
+
+PUBLIC int do_free_4k(void *AddrLin)
+{
+	return kern_free_4k(AddrLin);
+}
+
+PUBLIC int sys_free_4k()
+{
+	return do_free_4k((void*)get_arg(1));
+}
+
+// mmu for user vmem addr
+
+
+PRIVATE inline void get_user_page(page *_page) {
+	atomic_inc(&_page->count);
+}
+
+PRIVATE int put_user_page(page *_page) {
+	if (atomic_dec_and_test(&_page->count)) {
+		list_remove(&_page->pg_list);
+		return free_pages(ubud, _page, 0);
+	}
+	return 0;
+}
+
+// find first vma->end > addr
+struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr) 
+{
+    struct vmem_area *vma = NULL;
+    list_for_each(&mmap->vma_map, vma, vma_list)
+    {
+        if(vma->end > addr){
+            return vma;
+        }
+    }
+    return NULL;
+}
+
+PRIVATE page* alloc_user_page(struct list_node *page_list_head, u32 pgoff) {
+	page *_page = alloc_pages(ubud, 0);
+	atomic_set(&_page->count, 1);
+    _page->pg_off = pgoff;
+	list_init(&_page->pg_list);
+	page* next = NULL;
+	list_for_each(page_list_head, next, pg_list)
+	{
+		if(next->pg_off > pgoff)break;
+	}
+	list_add_before(&_page->pg_list, (next)?(&next->pg_list):page_list_head);
+}
+
+// req. ring 0
+PRIVATE void copy_page(page *dst, page *src) {
+	u32 dst_vaddr, src_vaddr;
+	dst_vaddr = kmap(dst);
+	src_vaddr = kmap(src);
+	memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
+	kunmap(dst);
+	kunmap(src);
+}
+
+// req. ring 0
+PRIVATE void zero_page(page *_page) {
+	u32 dst_vaddr;
+	dst_vaddr = kmap(_page);
+	memset(dst_vaddr, 0, PAGE_SIZE);
+	kunmap(_page);
+}
+
+void copy_from_page(page *_page, void* buf, u32 len, u32 offset) {
+	u32 vaddr = kmap(_page);
+	memcpy(buf, vaddr + offset, len);
+	kunmap(_page);
+}
+
+void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
+	u32 vaddr = kmap(_page);
+	memcpy(vaddr + offset, buf, len);
+	kunmap(_page);
+}
+
+// find cached page
+PRIVATE page* find_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
+	page *_page;
+    if(file) {
+		_page = list_find_key(file->fd_mapping, page, pg_list, pg_off, pgoff);
+    }else {
+		_page = list_find_key(&mmap->anon_pages, page, pg_list, pg_off, pgoff);
+	}
+	if(_page->pg_off != pgoff){
+		disp_str("error: mismatch page");
+	}
+	return _page;
+}
+
+PRIVATE page* find_or_get_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
+    page *_page = find_page(mmap, file, pgoff);
+	if(_page == NULL) {
+		if(file) {
+			_page = alloc_user_page(file->fd_mapping, pgoff);
+			// read page
+
+		}else {
+			_page = alloc_user_page(&mmap->anon_pages, pgoff);
+			zero_user_page(_page);
+		}
+	}
+	return _page;
+}
+
+PRIVATE void free_vma_pages(LIN_MEMMAP* mmap, struct vmem_area *vma) {
+    u32 nr_pages = (vma->end - vma->start) >> PAGE_SHIFT;
+	u32 addr = vma->start;
+	for(u32 i = 0; i < nr_pages; i++) {
+		page * _page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), addr)));
+		put_user_page(_page);
+		clear_pte(proc2pid(p_proc_current), addr);
+		addr += PAGE_SIZE;
+	}
+}
+
+void free_vma(LIN_MEMMAP* mmap, struct vmem_area *vma) {
+    list_remove(&vma->vma_list);
+    // clear arch pgtable and free
+    free_vma_pages(mmap, vma);
+    if(vma->file){
+        fput(vma->file);
+    }
+    kern_kfree((u32) vma);
+}
+
+// free vma [start, last)
+void free_vmas(LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last) {
+    struct vmem_area *vma, *next;
+    while(vma && vma != last) {
+        next = list_next(&mmap->vma_map, vma, vma_list);
+        free_vma(mmap, vma);
+        vma = next;
+    }
+}
+
+void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
+	LIN_MEMMAP* old_mmap = &p_parent->task.memmap;
+	LIN_MEMMAP* new_mmap = &p_child->task.memmap;
+	*new_mmap = *old_mmap;
+	list_init(&new_mmap->anon_pages); 
+	// as for fork, child mmap clear and all page tbl set read only, and inc page reference count
+	// after fork, child share the same phy page with the parent,
+	// when write then page fault occurs, COW will copy the origin page to a new anon page
+	list_init(&new_mmap->vma_map);
+	struct vmem_area *vma, *vm;
+	list_for_each(&old_mmap->vma_map, vma, vma_list) {
+		vm = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+		*vm = *vma;
+		list_init(&vm->vma_list);
+		list_add_last(&vm->vma_list, &new_mmap->vma_map);
+		for(u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE) {
+			page *_page = pfn_to_page(phy_to_pfn(
+				get_page_phy_addr(proc2pid(p_parent), addr)));
+			get_user_page(_page); // add reference
+			lin_mapping_phy(addr, MAX_UNSIGNED_INT, 
+				proc2pid(p_parent), 
+				PG_P | PG_USU | PG_RWW,
+				PG_P | PG_USU | PG_RWR); // set read only
+		}
+	}
+	// copy pde(cr3)? no, child page fault will set new page for child,
+	// if read, the two proc share same phy page
+	// if write, COW will do the copy 
+}
+
+void memmap_clear(PROCESS* p_proc) {
+	LIN_MEMMAP* mmap = &p_proc->task.memmap;
+	struct vmem_area *vma;
+	free_vmas(mmap, list_front(&mmap->vma_map, struct vmem_area, vma_list), NULL);
+	// copy pde(cr3)? no, child page fault will set new page for child,
+	// if read, the two proc share same phy page
+	// if write, COW will do the copy 
+}
+
+// handle generic mm fault, return 0 if handle normal ok, -1 for error
+void handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
+	struct vmem_area *vma = find_vma(mmap, vaddr);
+	if(vma && vaddr >= vma->start) {
+		u32 pgoff = vma->pgoff + ((vaddr - vma->start) >> PAGE_SHIFT);
+		page * _page = NULL;
+		u32 attr = PG_P|PG_USU;// 这里目前没有做架构分离
+		if(flag & FAULT_NOPAGE) { // handler should check page and set pte
+			_page = find_or_get_page(mmap, vma->file, pgoff);
+			if(vma->file && vma->flags & MAP_PRIVATE) {
+				attr |= PG_RWR;
+			}else {
+				attr |= ((vma->flags & PROT_WRITE)? PG_RWW: PG_RWR);
+			}
+		}else if((flag & FAULT_WRITE) && (vma->flags & PROT_WRITE)) {
+			page *old_page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), vaddr)));
+			// if(old_page == NULL){ disp_str("error: no page for page present fault");} // error
+			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
+				_page = alloc_user_page(&mmap->anon_pages, );
+				copy_user_page(_page, old_page);
+				attr |= PG_RWW;
+				put_user_page(old_page);
+			}
+		}
+		
+		if(_page) {// now new page is ready
+			lin_mapping_phy(vaddr, pfn_to_phy(page_to_pfn(_page)), 
+				proc2pid(p_proc_current), PG_P | PG_USU | PG_RWW, attr);
+		}
+	}
+	return -1; // invalid addr;
 }

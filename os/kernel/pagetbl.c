@@ -11,13 +11,14 @@
 #include "buddy.h"
 #include "memman.h"
 #include "pagetable.h"
-
+#include "spinlock.h"
 
 //to determine if a page fault is reparable. added by xw, 18/6/11
 u32 cr2_save;
 u32 cr2_count = 0;
 
 u32 kern_mapping_free = KernelLinMapBase;
+struct spin_lock kmap_lock;
 /*======================================================================*
                            switch_pde			added by xw, 17/12/11
  *switch the page directory table after schedule() is called
@@ -239,8 +240,8 @@ PUBLIC int init_proc_page(u32 pid)
 	// 	}
 	// }
 	u32 kernel_pde_offset = KernelLinBase/num_4M * 4;
-	memcpy(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset, 
-		K_PHY2LIN(read_cr3()) + kernel_pde_offset, num_4K - kernel_pde_offset);
+	memcpy((void*)(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset), 
+		(void*)(K_PHY2LIN(read_cr3()) + kernel_pde_offset), num_4K - kernel_pde_offset);
 
 	return 0;
 }
@@ -363,9 +364,11 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	// 	// disp_color_str("[Solved]",0x74);
 	// }
 
-	// 目前MiniOS还没有交换页面的选项，最常见的正常缺页可能就是用户栈空间超出初始的16k，给分配一个好了
+	// 目前MiniOS还没有交换页面的选项
+	// 2024.5 mm 重构， page fault handler 最后交由架构无关的相关处理函数
+	int fault_flag;
 	if (0 == pte_exist(pde_addr_phy_temp, cr2) || 0 == phy_exist(pte_addr_phy_temp, cr2)) {
-		goto try_alloc_new;
+		fault_flag |= FAULT_NOPAGE;
 	} else { //此处有物理页，那是为什么缺页中断？
 		phy_addr = (*((u32 *)K_PHY2LIN(pte_addr_phy_temp) + get_pte_index(cr2)));
 		u32 attr = phy_addr&0xFFF;
@@ -376,26 +379,14 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 		} else {
 			// 检查权限
 			if((err_code & 2) && (attr & PG_RWW == 0)) {// 缺页原因为写入，页面无写权限
-				disp_str("error: page read only");
-				goto fatal;
+				fault_flag |= FAULT_WRITE;
 			}
 		}
 	}
-	return;
-try_alloc_new:
-	switch (cr2)
-	{
-		case StackLinLimitMAX ... StackLinBase:
-			ker_umalloc_4k(cr2, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
-			p_proc_current->task.memmap.stack_lin_limit = 
-				min(p_proc_current->task.memmap.stack_lin_limit, cr2&0xFFFFF000);
-			break;
-		
-		default:
-			goto fatal; //不应访问的线性地址，用户程序在非法访存？	
-	}
-	refresh_page_cache();
-	return;
+	if(handle_mm_fault(&p_proc_current->task.memmap, cr2, fault_flag) == 0) {
+		refresh_page_cache();
+		return;
+	}	
 fatal:
 	disp_str("\n");
 	disp_color_str("Page Fault\n", 0x74);
@@ -511,9 +502,10 @@ PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
 // used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
 PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
 	if(kern_mapping_free + nr_pages*num_4K >= KernelLinMapLimit) {
-		disp_str("not free mapping space");
-		return 0;
+		disp_str("no free mapping space");
+		return -1;
 	}
+	lock_or_yield(&kmap_lock);
 	int lin_addr = kern_mapping_free;
 	kern_mapping_free += nr_pages*num_4K;
 	for(u32 offset = 0; offset < nr_pages; offset++) {
@@ -523,7 +515,26 @@ PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
 							PG_P | PG_USS | PG_RWW,
 							PG_P | PG_USS | PG_RWW);
 	} 
+	release(&kmap_lock);
 	return lin_addr;
+}
+
+PUBLIC int kern_kmapping_pop(u32 nr_pages) {
+	if(kern_mapping_free - nr_pages*num_4K < KernelLinMapBase) {
+		disp_str("no kmapping now");
+		return -1;
+	}
+	lock_or_yield(&kmap_lock);
+	kern_mapping_free -= nr_pages*num_4K;
+	int lin_addr = kern_mapping_free;
+	for(u32 offset = 0; offset < nr_pages; offset++) {
+		u32 pte_phy_addr = get_pte_phy_addr(read_cr3(), lin_addr);
+		write_page_pte(pte_phy_addr, lin_addr, 0, 0);
+		lin_addr += PAGE_SIZE;
+	}
+	refresh_page_cache();
+	release(&kmap_lock);
+	return 0;
 }
 
 /*======================================================================*
@@ -588,7 +599,7 @@ PUBLIC void free_pagedir(u32 pid)
 
 //added by mingxuan 2021-1-7
 //PUBLIC u32 set_seg_base(pid, type)
-PUBLIC u32 get_seg_base(pid, type) //modified by mingxuan 2021-8-17
+PUBLIC u32 get_seg_base(u32 pid, u32 type) //modified by mingxuan 2021-8-17
 {
 	if (type == MEMMAP_TEXT)
 		return proc_table[pid].task.memmap.text_lin_base;
@@ -609,7 +620,7 @@ PUBLIC u32 get_seg_base(pid, type) //modified by mingxuan 2021-8-17
 
 //added by mingxuan 2021-1-7
 //PUBLIC u32 set_seg_limit(pid, type)
-PUBLIC u32 get_seg_limit(pid, type) //modified by mingxuan 2021-8-17
+PUBLIC u32 get_seg_limit(u32 pid, u32 type) //modified by mingxuan 2021-8-17
 {
 	if (type == MEMMAP_TEXT)
 		return proc_table[pid].task.memmap.text_lin_limit;

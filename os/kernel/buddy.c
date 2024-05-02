@@ -6,22 +6,14 @@
 #include "console.h"
 #include "buddy.h"
 #include "kmalloc.h"
-#include "memman.h"
 #include "proto.h"
 
-struct page mem_map[ALL_PAGES];
+
 buddy kbuddy, ubuddy;
 buddy *kbud = &kbuddy;
 buddy *ubud = &ubuddy;
 
-u32 MemInfo[256] = {0}; //存放FMIBuff后1k内容
 u32 block_size[MAX_ORDER];     //the block size of each order
-struct page mem_map[ALL_PAGES];
-
-int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
-u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27
-u32 kernel_code_size = 0;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
-u32 test_phy_mem_size = 0; //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
 
 PRIVATE void fragmentUse(u32 addr, u32 size);
 PRIVATE u32 __find_buddy_pfn(u32 page_pfn, u32 order);
@@ -33,59 +25,6 @@ PRIVATE void set_buddy_order(page *page, u32 order);
 PRIVATE page* get_page_from_free_area(struct free_area *area);
 PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
 
-void memory_init()
-{
-    memcpy(MemInfo, (u32 *)FMIBuff, 1024); //复制内存
-
-    test_phy_mem_size = MemInfo[MemInfo[0]];
-    // int t, i, j;
-	u32 i;
-    // disp_str("memtest got memory available:\n");
-    // disp_str("base_addr     end_addr\n");
-    // for (t = 1; t <= MemInfo[0]; t++)
-    // {
-    //     disp_int(MemInfo[t]);
-    //     disp_str("       ");
-    //     if (t % 2 == 0)
-    //         disp_str("\n");
-    // }
-    disp_str("test_phy_mem_size: ");
-    disp_int(test_phy_mem_size);
-    disp_str("\n");
-
-    u32 bsize = num_4K;
-    for (i = 0; i < MAX_ORDER; i++) {
-        block_size[i] = bsize;
-        bsize = 2 * bsize;
-    }
-
-    // TODO: ALL_PAGES 怎么确定
-    u32 last_pfn = phy_to_pfn(test_phy_mem_size);
-    for (i = 0; i < last_pfn; i++) {
-        mem_map[i].inbuddy = TRUE;
-    }
-    for (; i < ALL_PAGES; i++) {
-        mem_map[i].inbuddy = FALSE;
-    }
-
-    if (test_phy_mem_size < WALL) {
-        big_kernel = 0;
-        kernel_code_size = KKWALL1;
-        kernel_size = SmallKernelSize;
-        buddy_init(kbud, KKWALL1, KUWALL1);
-        buddy_init(ubud, KUWALL1, test_phy_mem_size);
-    }
-    else {
-        big_kernel = 1;
-        kernel_code_size = KKWALL2;
-        kernel_size = BigKernelSize;
-        buddy_init(kbud, KKWALL2, KUWALL2);
-        buddy_init(ubud, KUWALL2, test_phy_mem_size);
-    }
-
-    kmem_init(); //added by mingxuan 2021-3-8
-    init_cache();
-}
 
 void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {
     

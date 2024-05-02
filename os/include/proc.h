@@ -125,6 +125,15 @@ typedef struct s_tree_info{//进程树记录，包括父进程，子进程，子
 	int data_hold;			//是否拥有数据
 }TREE_INFO;
 
+struct vmem_area {
+	u32 start;
+	u32 end;
+	u32 flags;	// both prot and flags
+	struct file_desc* file; // NULL for anon region
+	u32 pgoff;
+	struct list_node vma_list;
+};
+
 typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5.25
 	u32 text_lin_base;						//代码段基址
 	u32 text_lin_limit;						//代码段界限
@@ -148,6 +157,8 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 kernel_lin_limit;					//内核界限
 
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
+	list_head vma_map;	// list of vmem_area
+	list_head anon_pages;
 }LIN_MEMMAP;
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
@@ -207,7 +218,8 @@ typedef struct s_proc {
 	pthread_attr_t attr;           
 	void * retval;
 	u32 who_wait_flag;   
-	
+	struct spinlock lock;
+
 	// cfs attr added by xiaofeng 
 	int is_rt;			//flag for Real-time(T) and not-Real-time(F) process
     int rt_priority;	//priority for Real-time process 
@@ -237,11 +249,6 @@ typedef struct s_task {
 	int	stacksize;
 	char	name[32];
 }TASK;
-
-/* stacks of tasks */
-//#define STACK_SIZE_TESTA	0x8000	//delete by visual 2016.4.5
-//#define STACK_SIZE_TESTB	0x8000
-//#define STACK_SIZE_TESTC	0x8000
 
 #define STACK_SIZE_TASK		0x1000	//add by visual 2016.4.5
 //#define STACK_SIZE_TOTAL	(STACK_SIZE_TASK*NR_PCBS)	//edit by visual 2016.4.5
@@ -275,7 +282,7 @@ void out_rq(PROCESS* p_out);
 PUBLIC void idle();
 void proc_update();
 
-//added by jiangfeng
+//generic def proc, added by jiangfeng
 #define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
 
 PUBLIC int kern_get_pid();
@@ -293,7 +300,9 @@ PUBLIC void do_exit(int status);
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
 PUBLIC void wait_event(void* event);
+PUBLIC int kern_get_pid_byname(char* name);
 
+PUBLIC void proc_backtrace();
 void restart_restore();
 static inline void proc_init_context(PROCESS *p_proc) {	\
 	u32 *context_base = (u32*)(proc_kstacktop(p_proc));

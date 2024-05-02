@@ -13,3 +13,4 @@ struct vfs_mount{
 PUBLIC struct vfs_mount* lookup_vfsmnt(struct vfs_dentry* mountpoint);
 PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path, 
 	struct vfs_dentry * mnt_mountpoint, struct vfs_dentry* mnt_root, struct super_block* sb);
+PUBLIC struct vfs_dentry* remove_vfsmnt(struct vfs_dentry* entry);
