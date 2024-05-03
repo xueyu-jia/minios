@@ -2,6 +2,7 @@
 #include "const.h"
 #include "proc.h"
 #include "pagetable.h"
+#include "memman.h"
 
 /*======================================================================*
 					  kern_exit			  added by mingxuan 2021-1-6
@@ -106,7 +107,8 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 
 
 	//释放进程的所有页地址空间
-	free_all_phypage(p_proc->task.pid);
+	// free_all_phypage(p_proc->task.pid);
+	memmap_clear(p_proc);
     free_all_pagetbl(p_proc->task.pid);
     free_pagedir(p_proc->task.pid);
 

@@ -22,6 +22,22 @@ PUBLIC void kunmap(page *_page) {
 }
 
 // addr 查找的起始线性地址, succ 返回时保存后继的vma
+PRIVATE u32 count_mapped_pages(LIN_MEMMAP* mmap, u32 start, u32 end) {
+    struct vmem_area *vma;
+    u32 nr_pages = 0;
+    start &= 0xFFFFF000;
+    end = UPPER_BOUND_4K(end);
+    vma = find_vma(mmap, start);
+    if(vma) { // 后面存在已映射地址，找到第一个可用的空闲区域
+        while(vma && end > vma->start) {
+            nr_pages += (min(vma->end, end) - max(vma->start, start)) >> PAGE_SHIFT;
+            vma = list_next(&mmap->vma_map, vma, vma_list);
+        }
+    }
+    return nr_pages;
+}
+
+// addr 查找的起始线性地址, succ 返回时保存后继的vma
 PRIVATE u32 get_unmapped_addr(LIN_MEMMAP* mmap, u32 addr, u32 len, struct vmem_area **succ) {
     struct vmem_area *vma;
     vma = find_vma(mmap, addr);
@@ -39,7 +55,7 @@ PRIVATE u32 get_unmapped_addr(LIN_MEMMAP* mmap, u32 addr, u32 len, struct vmem_a
     return addr;
 }
 
-int kern_mmap(struct file_desc *file, u32 addr, u32 len, 
+int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len, 
     u32 prot, u32 flag, u32 pgoff) {
     len = UPPER_BOUND_4K(len);
     if(len == 0){
@@ -51,23 +67,20 @@ int kern_mmap(struct file_desc *file, u32 addr, u32 len,
     if(addr + len > KernelLinBase) {
         return -1;
     }
-    LIN_MEMMAP* mmap = &p_proc_current->task.memmap;
+    LIN_MEMMAP* mmap = &p_proc->task.memmap;
     struct vmem_area *succ = NULL, *vm = NULL;
-    u32 start_addr = get_unmapped_addr(mmap, addr, len, &succ);
-    if(start_addr == NULL) {
-        return -1; // no available lin mem addr
-    }
-    if(start_addr != addr && (flag & MAP_FIXED)) {
+    u32 covered = count_mapped_pages(mmap, addr, addr + len);
+    if(covered && (flag & MAP_FIXED)) {
         return -1;
     }
     // check prot flag
     if(!((!(flag & MAP_SHARED))^(!(flag & MAP_PRIVATE)))){
         return -1;
     }
-    if(prot == PROT_NONE) {
+    if(!(prot & PROT_READ)) {
         return -1;
     }
-    if(file){
+    if((flag & MAP_SHARED) && file){
         if((prot&PROT_WRITE) && (!(file->fd_mode & I_W))) {
             return -1; // request write but file cannot write
         }
@@ -75,7 +88,11 @@ int kern_mmap(struct file_desc *file, u32 addr, u32 len,
             return -1; // request exec but file cannot execute
         }
     }
-    lock_or_yield(&p_proc_current->task.lock);
+    if(covered) {
+        kern_munmap(p_proc, addr, len);
+    }
+    lock_or_yield(&p_proc->task.lock);
+    u32 start_addr = get_unmapped_addr(mmap, addr, len, &succ);
     // link vma
     if(file){
         fget(file);
@@ -92,16 +109,21 @@ int kern_mmap(struct file_desc *file, u32 addr, u32 len,
     vm->flags = prot | flag;
     list_init(&vm->vma_list);
     list_add_before(&vm->vma_list, (succ)?(&succ->vma_list):&mmap->vma_map);
-    release(&p_proc_current->task.lock);
+    release(&p_proc->task.lock);
     return start_addr;
 }
 
-int do_mmap(struct file_desc *file, u32 addr, u32 len, 
-    u32 prot, u32 flag, u32 offset) {
+int do_mmap(u32 addr, u32 len, 
+    u32 prot, u32 flag, int fd, u32 offset) {
     if(offset + UPPER_BOUND_4K(len) < offset || (addr & 0xFFF)) {
         return -1;
     }
-    return kern_mmap(file, addr, len, prot, flag, offset >> PAGE_SHIFT);
+    struct file_desc *file = NULL;
+    if(fd != -1){
+        file = p_proc_current->task.filp[fd];
+        if(!file) return -1;
+    }
+    return kern_mmap(p_proc_current, file, addr, len, prot, flag, offset >> PAGE_SHIFT);
 }
 
 PRIVATE int split_vma(LIN_MEMMAP* mmap, struct vmem_area * vma, u32 addr, int new_below) {
@@ -124,7 +146,7 @@ PRIVATE int split_vma(LIN_MEMMAP* mmap, struct vmem_area * vma, u32 addr, int ne
     }
 }
 
-int kern_munmap(u32 start, u32 len) {
+int kern_munmap(PROCESS* p_proc, u32 start, u32 len) {
     len = UPPER_BOUND_4K(len);
     if(len == 0){
         return -1;
@@ -137,7 +159,7 @@ int kern_munmap(u32 start, u32 len) {
 		return 0;
     if(vma->start > end)
         return 0;
-    lock_or_yield(&p_proc_current->task.lock);
+    lock_or_yield(&p_proc->task.lock);
     if(start > vma->start) {
         split_vma(mmap, vma, start, 1);
     }
@@ -145,7 +167,11 @@ int kern_munmap(u32 start, u32 len) {
     if(last && end > last->start) {
         split_vma(mmap, last, end, 1);
     }
-    free_vmas(mmap, vma, last);
-    release(&p_proc_current->task.lock);
+    free_vmas(p_proc, mmap, vma, last);
+    release(&p_proc->task.lock);
     return 0;
+}
+
+int do_munmap(u32 start, u32 len) {
+    return kern_munmap(p_proc_current, start, len);
 }

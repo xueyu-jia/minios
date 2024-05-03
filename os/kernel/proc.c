@@ -570,10 +570,11 @@ void wait_for_sem(void* chan, struct spinlock* lk) {
     // so it's okay to release lk.
 
     // Go to sleep.
+    lock_or_yield(&p_proc_current->task.lock);
     p_proc_current->task.channel = chan;
     p_proc_current->task.stat    = SLEEPING;
     out_rq(p_proc_current);
-
+    release(&p_proc_current->task.lock);
     release(lk);
 
     sched_yield();
@@ -611,10 +612,12 @@ PUBLIC void* va2la(int pid, void* va) {
  * @return void
  */
 PUBLIC void wait_event(void* event) {
+    lock_or_yield(&p_proc_current->task.lock);
     p_proc_current->task.channel = event;
     p_proc_current->task.stat    = SLEEPING;
 
     out_rq(p_proc_current);
+    release(&p_proc_current->task.lock);
     sched_yield();
 }
 

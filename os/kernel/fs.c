@@ -98,6 +98,15 @@ int kern_init_char_dev()
 		// kern_vfs_mknod(ttypath, I_CHAR_SPECIAL|I_R|I_W, MAKE_DEV(DEV_CHAR_TTY, i));
 		register_device(MAKE_DEV(DEV_CHAR_TTY, i), DEV_CHAR_TYPE, &tty_file_ops);
 	}
+	return 0;
+}
+
+int generic_readpage(struct vfs_inode* inode, unsigned int count, char* buf) {
+	return 0;
+}
+
+int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
+	return 0;
 }
 // add by sundong 2023.5.19
 // int do_init_char_dev(int drive)

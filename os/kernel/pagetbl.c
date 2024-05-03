@@ -18,7 +18,7 @@ u32 cr2_save;
 u32 cr2_count = 0;
 
 u32 kern_mapping_free = KernelLinMapBase;
-struct spin_lock kmap_lock;
+struct spinlock kmap_lock;
 /*======================================================================*
                            switch_pde			added by xw, 17/12/11
  *switch the page directory table after schedule() is called
@@ -104,7 +104,7 @@ PRIVATE u32 get_pde_phy_addr(u32 pid)
 { //获取页目录物理地址
 	if (proc_table[pid].task.cr3 == 0)
 	{ //还没有初始化页目录
-		return -1;
+		return NULL;
 	}
 	else
 	{
@@ -137,14 +137,6 @@ PRIVATE inline u32 get_page_phy_addr_nopid(u32 PageTblPhyAddr,			 //页表物理
 	return (*((u32 *)K_PHY2LIN(PageTblPhyAddr) + get_pte_index(AddrLin))) & 0xFFFFF000;
 }
 
-PUBLIC u32 get_page_phy_addr(u32 pid, u32 AddrLin) {
-	return get_page_phy_addr_nopid(
-		get_pte_phy_addr(
-			get_pde_phy_addr(pid), 
-			AddrLin), 
-		AddrLin
-		);
-}
 /*======================================================================*
                           pte_exist		add by visual 2016.4.28
  *======================================================================*/
@@ -175,6 +167,14 @@ PUBLIC u32 phy_exist(u32 PageTblPhyAddr, //页表物理地址
 	{
 		return 1;
 	}
+}
+
+PUBLIC u32 get_page_phy_addr(u32 pid, u32 AddrLin) {
+	u32 pde_phy = get_pde_phy_addr(pid);
+	if(!pde_phy || (pte_exist(pde_phy, AddrLin) == 0)) return NULL;
+	u32 pte_phy = get_pte_phy_addr(pde_phy, AddrLin);
+	if(!pte_phy || (phy_exist(pte_phy, AddrLin) == 0)) return NULL;
+	return get_page_phy_addr_nopid(pte_phy, AddrLin);
 }
 
 /*======================================================================*
@@ -366,7 +366,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 
 	// 目前MiniOS还没有交换页面的选项
 	// 2024.5 mm 重构， page fault handler 最后交由架构无关的相关处理函数
-	int fault_flag;
+	int fault_flag = 0;
 	if (0 == pte_exist(pde_addr_phy_temp, cr2) || 0 == phy_exist(pte_addr_phy_temp, cr2)) {
 		fault_flag |= FAULT_NOPAGE;
 	} else { //此处有物理页，那是为什么缺页中断？
@@ -378,7 +378,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 			goto fatal;
 		} else {
 			// 检查权限
-			if((err_code & 2) && (attr & PG_RWW == 0)) {// 缺页原因为写入，页面无写权限
+			if((err_code & 2) && (!(attr & PG_RWW))) {// 缺页原因为写入，页面无写权限
 				fault_flag |= FAULT_WRITE;
 			}
 		}
@@ -402,7 +402,7 @@ fatal:
 	disp_int(cr2);
 	proc_backtrace();
 	// halt();
-	do_exit(-1);
+	// do_exit(-1);
 }
 
 
@@ -510,7 +510,7 @@ PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
 	kern_mapping_free += nr_pages*num_4K;
 	for(u32 offset = 0; offset < nr_pages; offset++) {
 		lin_mapping_phy_nopid(lin_addr + offset*num_4K, 
-							phy_addr + offset*num_4K, 
+							(phy_addr == MAX_UNSIGNED_INT)? MAX_UNSIGNED_INT: phy_addr + offset*num_4K, 
 							read_cr3(), 
 							PG_P | PG_USS | PG_RWW,
 							PG_P | PG_USS | PG_RWW);

@@ -50,7 +50,8 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 
 		//disp_free();	//for test, added by mingxuan 2021-1-7
 		/**************复制线性内存，包括堆、栈、代码数据等等***********************/
-		fork_mem_cpy(p_proc_current->task.pid,p_child->task.pid);
+		// fork_mem_cpy(p_proc_current->task.pid,p_child->task.pid);
+		memmap_copy(p_proc_current, p_child);		
 		//disp_free();	//for test, added by mingxuan 2021-1-7
 
 		/**************更新进程树标识info信息************************/

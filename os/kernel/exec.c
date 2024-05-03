@@ -120,19 +120,21 @@ PUBLIC u32 kern_execve(
     /*************释放进程内存****************/
     // 除了page dir全部可以释放
     int pid = p_proc_current->task.pid;
-    free_all_phypage(pid);
+    // free_all_phypage(pid);
+    memmap_clear(p_proc_current);
     free_all_pagetbl(pid);
-    err_temp = ker_umalloc_4k(ArgLinBase, pid, PG_P | PG_USU | PG_RWW);
-    memcpy((void *)ArgLinBase, page_buf, space);
-    kern_kfree_4k(page_buf);
+    /*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
+    exec_pcb_init(_path);
+    do_mmap(ArgLinBase, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
+    // err_temp = ker_umalloc_4k(ArgLinBase, pid, PG_P | PG_USU | PG_RWW);
     /*************根据elf的program复制文件信息**************/
     if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr)) {
         disp_str("exec_load error!\n");
         goto fatal_error;
     }
+    memcpy((void *)ArgLinBase, page_buf, space);
+    kern_kfree_4k(page_buf);
 
-    /*****************重新初始化该进程的进程表信息（包括LDT）、线性地址布局、进程树属性********************/
-    exec_pcb_init(_path);
 
     /***********************代码、数据、堆、栈***************************/
     // 代码、数据已经处理，将eip重置即可
@@ -159,20 +161,23 @@ PUBLIC u32 kern_execve(
 
     // u32 stack_lin_base = addr_lin=p_proc_current->task.memmap.stack_lin_base
     // - num_4K;	//added vy mingxuan 2021-8-24
-    for (addr_lin = p_proc_current->task.memmap.stack_lin_limit;
-         addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.stack_lin_base);
-         addr_lin += num_4K) {
-        // 进程栈上分配物理页，所以调用ker_umalloc_4k,  wang 2021.8.27
-        err_temp = ker_umalloc_4k(
-            addr_lin,
-            p_proc_current->task.pid,
-            PG_P | PG_USU | PG_RWW); // edited by wang 2021.8.27
-        if (err_temp != 0) {
-            disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
+    // for (addr_lin = p_proc_current->task.memmap.stack_lin_limit;
+    //      addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.stack_lin_base);
+    //      addr_lin += num_4K) {
+    //     // 进程栈上分配物理页，所以调用ker_umalloc_4k,  wang 2021.8.27
+    //     err_temp = ker_umalloc_4k(
+    //         addr_lin,
+    //         p_proc_current->task.pid,
+    //         PG_P | PG_USU | PG_RWW); // edited by wang 2021.8.27
+    //     if (err_temp != 0) {
+    //         disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
 
-            goto close_on_error;
-        }
-    }
+    //         goto close_on_error;
+    //     }
+    // }
+    do_mmap(p_proc_current->task.memmap.stack_lin_limit, 
+        p_proc_current->task.memmap.stack_lin_base-p_proc_current->task.memmap.stack_lin_limit,
+        PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
 
     // disp_color_str("\n[exec success:",0x72);//灰底绿字
     // disp_color_str(path,0x72);//灰底绿字
@@ -359,23 +364,39 @@ PRIVATE u32 exec_load(
         }
     }
     u32 lin_addr;
-    for (lin_addr  = data_lin_base; lin_addr < UPPER_BOUND_4K(data_lin_limit);
-         lin_addr += num_4K) {
-        ker_umalloc_4k(
-            lin_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
-        // disp_int(lin_addr);
-        // disp_str("=>");
-        // disp_int(get_page_phy_addr(p_proc_current->task.pid, lin_addr));
-        // disp_str("\n");
-    }
-    for (lin_addr  = text_lin_base; lin_addr < UPPER_BOUND_4K(text_lin_limit);
-         lin_addr += num_4K) {
-        ker_umalloc_4k(
-            lin_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWR);
-    }
+    // for (lin_addr  = data_lin_base; lin_addr < UPPER_BOUND_4K(data_lin_limit);
+    //      lin_addr += num_4K) {
+    //     ker_umalloc_4k(
+    //         lin_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW);
+    //     // disp_int(lin_addr);
+    //     // disp_str("=>");
+    //     // disp_int(get_page_phy_addr(p_proc_current->task.pid, lin_addr));
+    //     // disp_str("\n");
+    // }
+    // for (lin_addr  = text_lin_base; lin_addr < UPPER_BOUND_4K(text_lin_limit);
+    //      lin_addr += num_4K) {
+    //     ker_umalloc_4k(
+    //         lin_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWR);
+    // }
     for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum;
          ph_num++, phdr++) {
-        if (phdr->p_type == ELF_LOAD) { exec_elfcpy(fd, phdr); }
+        if (phdr->p_type == ELF_LOAD) { 
+            // exec_elfcpy(fd, phdr);
+            u32 prot = 0;
+            if(phdr->p_flags & 4) prot |= PROT_READ;
+            if(phdr->p_flags & 2) prot |= PROT_WRITE;
+            if(phdr->p_flags & 1) prot |= PROT_EXEC;
+            u32 in_page_offset = phdr->p_vaddr & 0xFFF;
+            u32 start = phdr->p_vaddr - in_page_offset;
+            u32 size = UPPER_BOUND_4K(phdr->p_filesz + in_page_offset);
+            if(size)
+                do_mmap(start, size, prot, MAP_PRIVATE, fd, phdr->p_offset - in_page_offset);
+            if(phdr->p_memsz > phdr->p_filesz) { // bss
+                if(phdr->p_memsz + in_page_offset - size > 0)
+                    do_mmap(start + size, phdr->p_memsz + in_page_offset - size, PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
+                memset(phdr->p_vaddr + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
+            }
+        }
     }
     p_proc_current->task.memmap.data_lin_base  = data_lin_base;
     p_proc_current->task.memmap.data_lin_limit = data_lin_limit;
@@ -420,18 +441,15 @@ PRIVATE int exec_pcb_init(char *path) {
     p_proc_current->task.memmap.vpage_lin_limit = VpageLinBase; // 保留内存界限
     p_proc_current->task.memmap.heap_lin_base  = HeapLinBase; // 堆基址
     p_proc_current->task.memmap.heap_lin_limit = HeapLinBase; // 堆界限
-    p_proc_current->task.memmap.stack_child_limit =
-        StackLinLimitMAX; // add by visual 2016.5.27
+    p_proc_current->task.memmap.stack_child_limit = StackLinLimitMAX; // add by visual 2016.5.27
     p_proc_current->task.memmap.stack_lin_base = StackLinBase; // 栈基址
-    p_proc_current->task.memmap.stack_lin_limit =
-        StackLinBase - 0x4000; // 栈界限（使用时注意栈的生长方向）
+    p_proc_current->task.memmap.stack_lin_limit = StackLinBase - 0x4000; // 栈界限（使用时注意栈的生长方向）
     p_proc_current->task.memmap.arg_lin_base = ArgLinBase; // 参数内存基址
-    p_proc_current->task.memmap.arg_lin_limit =
-        ArgLinLimitMAX; // added byxyx&&wjh  2021-12-31
+    p_proc_current->task.memmap.arg_lin_limit = ArgLinLimitMAX; // added byxyx&&wjh  2021-12-31
     p_proc_current->task.memmap.kernel_lin_base = KernelLinBase; // 内核基址
-    p_proc_current->task.memmap.kernel_lin_limit =
-        KernelLinBase + kernel_size; // 内核大小初始化为8M
-
+    p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size; // 内核大小初始化为8M
+    list_init(&p_proc_current->task.memmap.vma_map);
+	list_init(&p_proc_current->task.memmap.anon_pages);
     // 进程树属性,只要改两项，其余不用改
     // p_proc_current->task.info.type = TYPE_PROCESS;
     // //当前是进程还是线程 p_proc_current->task.info.real_ppid = -1;

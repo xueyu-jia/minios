@@ -229,20 +229,25 @@ PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u3
 }
 
 // [start,end) 地址段分配页表，如果不存在分配物理页并填写页表，否则忽略 固定地址start<end
-PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
+PRIVATE void init_proc_page_addr(u32 low, u32 high, PROCESS* proc){
 	u32 addr;
-	int err_temp;
-	for (addr = low; addr < UPPER_BOUND_4K(high); addr += num_4K)
-	{ 
-		err_temp=ker_umalloc_4k(addr,pid,attr);          //edited by wang 2021.8.27
-
-		if (err_temp != 0)
-		{
-			disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
-			return ;
-		}
-	}
+	kern_mmap(proc, NULL, low, high - low, PROT_READ|PROT_WRITE, MAP_PRIVATE, 0);
 }
+
+// PRIVATE void init_proc_page_addr(u32 low, u32 high, int pid, u32 attr){
+// 	u32 addr;
+// 	int err_temp;
+// 	for (addr = low; addr < UPPER_BOUND_4K(high); addr += num_4K)
+// 	{ 
+// 		err_temp=ker_umalloc_4k(addr,pid,attr);          //edited by wang 2021.8.27
+
+// 		if (err_temp != 0)
+// 		{
+// 			disp_color_str("kernel_main Error:lin_mapping_phy", 0x74);
+// 			return ;
+// 		}
+// 	}
+// }
 
 // 调用此函数分配页表
 PRIVATE void init_proc_pages(PROCESS* p_proc){
@@ -262,8 +267,10 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	p_proc->task.memmap.arg_lin_limit = ArgLinLimitMAX;
 	p_proc->task.memmap.kernel_lin_base = KernelLinBase;
 	p_proc->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size;
-	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, pid ,PG_P | PG_USU | PG_RWW);
-	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, pid ,PG_P | PG_USU | PG_RWW);
+	list_init(&p_proc->task.memmap.vma_map);
+	list_init(&p_proc->task.memmap.anon_pages);
+	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, p_proc);
+	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, p_proc);
 }
 
 PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry){

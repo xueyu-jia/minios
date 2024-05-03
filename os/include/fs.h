@@ -19,6 +19,17 @@
  * 
  * 
 */
+// forward declarations
+struct vfs_inode;
+struct address_space;
+struct vfs_dentry;
+struct file_desc;
+struct super_block;
+
+struct address_space {
+	struct vfs_inode *host;
+	struct list_node pages;
+};
 #include "orangefs.h"
 #include "fat32.h"
 struct vfs_inode{
@@ -36,7 +47,9 @@ struct vfs_inode{
 	u32 i_mtime; // modify time
 	// list_head i_dentry; // connected dentry list，待定
 	struct list_node i_list; // recently used inodes list
-	struct list_node i_mapping;	// inode cached pages, ordered by page offset
+	// contains inode cached pages, ordered by page offset
+	struct address_space *i_mapping;	
+	struct address_space i_data;
 	struct inode_operations *i_op;
 	struct file_operations *i_fop;
 	struct spinlock lock;
@@ -45,6 +58,7 @@ struct vfs_inode{
 		struct fat32_inode_info fat32_inode;
 	};
 };
+
 
 // **** dentry 的本质是cache !!! ****
 struct vfs_dentry{
@@ -94,7 +108,7 @@ struct file_desc {
 	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
 	u64		fd_pos;		/**< Current position for R/W. */
 	struct vfs_dentry *fd_dentry;
-	struct list_node *fd_mapping;
+	struct address_space *fd_mapping;
 	struct file_operations* fd_ops;
 };
 
@@ -149,6 +163,7 @@ struct superblock_operations{
 	void (*read_inode)(struct vfs_inode *inode);
 	void (*put_inode)(struct vfs_inode* inode);
 	void (*delete_inode)(struct vfs_inode* inode);
+	// int (*get_blk)(struct vfs_inode* inode, u32 pg_off, buf_head** bh);
 };
 
 struct fs_type{

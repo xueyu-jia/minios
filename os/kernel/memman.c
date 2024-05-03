@@ -518,6 +518,7 @@ PRIVATE page* alloc_user_page(struct list_node *page_list_head, u32 pgoff) {
 		if(next->pg_off > pgoff)break;
 	}
 	list_add_before(&_page->pg_list, (next)?(&next->pg_list):page_list_head);
+	return _page;
 }
 
 // req. ring 0
@@ -554,11 +555,11 @@ void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 PRIVATE page* find_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
 	page *_page;
     if(file) {
-		_page = list_find_key(file->fd_mapping, page, pg_list, pg_off, pgoff);
+		_page = list_find_key(&file->fd_mapping->pages, page, pg_list, pg_off, pgoff);
     }else {
 		_page = list_find_key(&mmap->anon_pages, page, pg_list, pg_off, pgoff);
 	}
-	if(_page->pg_off != pgoff){
+	if(_page && _page->pg_off != pgoff){
 		disp_str("error: mismatch page");
 	}
 	return _page;
@@ -568,32 +569,42 @@ PRIVATE page* find_or_get_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgo
     page *_page = find_page(mmap, file, pgoff);
 	if(_page == NULL) {
 		if(file) {
-			_page = alloc_user_page(file->fd_mapping, pgoff);
+			_page = alloc_user_page(&file->fd_mapping->pages, pgoff);
 			// read page
-
+			char * buf = kern_kmalloc_4k();
+			u64 origin_pos = file->fd_pos;
+			file->fd_pos = pgoff << PAGE_SHIFT;
+			int cnt = file->fd_ops->read(file, PAGE_SIZE, buf);
+			memset(buf + cnt, 0, PAGE_SIZE - cnt);
+			file->fd_pos = origin_pos;
+			copy_to_page(_page, buf, PAGE_SIZE, 0);
+			kern_kfree_4k(buf);
 		}else {
 			_page = alloc_user_page(&mmap->anon_pages, pgoff);
-			zero_user_page(_page);
+			zero_page(_page);
 		}
 	}
 	return _page;
 }
 
-PRIVATE void free_vma_pages(LIN_MEMMAP* mmap, struct vmem_area *vma) {
+PRIVATE void free_vma_pages(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
     u32 nr_pages = (vma->end - vma->start) >> PAGE_SHIFT;
 	u32 addr = vma->start;
 	for(u32 i = 0; i < nr_pages; i++) {
-		page * _page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), addr)));
-		put_user_page(_page);
-		clear_pte(proc2pid(p_proc_current), addr);
+		u32 phy = get_page_phy_addr(proc2pid(p_proc), addr);
+		if(phy) {
+			page * _page = pfn_to_page(phy_to_pfn(phy));
+			put_user_page(_page);
+			clear_pte(proc2pid(p_proc), addr);
+		}
 		addr += PAGE_SIZE;
 	}
 }
 
-void free_vma(LIN_MEMMAP* mmap, struct vmem_area *vma) {
+void free_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
     list_remove(&vma->vma_list);
     // clear arch pgtable and free
-    free_vma_pages(mmap, vma);
+    free_vma_pages(p_proc, mmap, vma);
     if(vma->file){
         fput(vma->file);
     }
@@ -601,11 +612,11 @@ void free_vma(LIN_MEMMAP* mmap, struct vmem_area *vma) {
 }
 
 // free vma [start, last)
-void free_vmas(LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last) {
-    struct vmem_area *vma, *next;
+void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last) {
+    struct vmem_area *vma = start, *next;
     while(vma && vma != last) {
         next = list_next(&mmap->vma_map, vma, vma_list);
-        free_vma(mmap, vma);
+        free_vma(p_proc, mmap, vma);
         vma = next;
     }
 }
@@ -626,31 +637,32 @@ void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 		list_init(&vm->vma_list);
 		list_add_last(&vm->vma_list, &new_mmap->vma_map);
 		for(u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE) {
-			page *_page = pfn_to_page(phy_to_pfn(
-				get_page_phy_addr(proc2pid(p_parent), addr)));
+			u32 phy = get_page_phy_addr(proc2pid(p_parent), addr);
+			page *_page = pfn_to_page(phy_to_pfn(phy));
 			get_user_page(_page); // add reference
-			lin_mapping_phy(addr, MAX_UNSIGNED_INT, 
+			lin_mapping_phy(addr, phy, 
 				proc2pid(p_parent), 
 				PG_P | PG_USU | PG_RWW,
 				PG_P | PG_USU | PG_RWR); // set read only
+			lin_mapping_phy(addr, phy, 
+				proc2pid(p_child), 
+				PG_P | PG_USU | PG_RWW,
+				PG_P | PG_USU | PG_RWR); 
 		}
 	}
-	// copy pde(cr3)? no, child page fault will set new page for child,
+	// copy pde(cr3)? no, page fault will set new page for both process,
 	// if read, the two proc share same phy page
-	// if write, COW will do the copy 
+	// if write, COW will do the copy, and finally origin page freed
 }
 
 void memmap_clear(PROCESS* p_proc) {
 	LIN_MEMMAP* mmap = &p_proc->task.memmap;
 	struct vmem_area *vma;
-	free_vmas(mmap, list_front(&mmap->vma_map, struct vmem_area, vma_list), NULL);
-	// copy pde(cr3)? no, child page fault will set new page for child,
-	// if read, the two proc share same phy page
-	// if write, COW will do the copy 
+	free_vmas(p_proc, mmap, list_front(&mmap->vma_map, struct vmem_area, vma_list), NULL);
 }
 
 // handle generic mm fault, return 0 if handle normal ok, -1 for error
-void handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
+int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 	struct vmem_area *vma = find_vma(mmap, vaddr);
 	if(vma && vaddr >= vma->start) {
 		u32 pgoff = vma->pgoff + ((vaddr - vma->start) >> PAGE_SHIFT);
@@ -667,8 +679,8 @@ void handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 			page *old_page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), vaddr)));
 			// if(old_page == NULL){ disp_str("error: no page for page present fault");} // error
 			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
-				_page = alloc_user_page(&mmap->anon_pages, );
-				copy_user_page(_page, old_page);
+				_page = alloc_user_page(&mmap->anon_pages, vaddr>>PAGE_SHIFT);
+				copy_page(_page, old_page);
 				attr |= PG_RWW;
 				put_user_page(old_page);
 			}
@@ -677,6 +689,7 @@ void handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 		if(_page) {// now new page is ready
 			lin_mapping_phy(vaddr, pfn_to_phy(page_to_pfn(_page)), 
 				proc2pid(p_proc_current), PG_P | PG_USU | PG_RWW, attr);
+			return 0;
 		}
 	}
 	return -1; // invalid addr;

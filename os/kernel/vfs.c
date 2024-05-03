@@ -55,7 +55,8 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
 	list_init(&inode->i_list);
-	list_init(&inode->i_mapping);
+	list_init(&inode->i_data.pages);
+	inode->i_mapping = &inode->i_data;
 	return inode;
 }
 
@@ -750,7 +751,8 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	atomic_set(&file->fd_count, 1);
 	release(&file_desc_lock);
 	file->fd_dentry = dentry;
-	file->fd_mapping = &dentry->d_inode->i_mapping;
+	file->fd_ops = dentry->d_inode->i_fop;
+	file->fd_mapping = dentry->d_inode->i_mapping;
 	file->fd_mode = rmode;//fd_mode: bit 0:read 1:write
 	file->fd_pos = 0;	
 	release(&inode->lock);
