@@ -611,8 +611,10 @@ PUBLIC void* va2la(int pid, void* va) {
  * @param event:等待的事件
  * @return void
  */
-PUBLIC void wait_event(void* event) {
-    lock_or_yield(&p_proc_current->task.lock);
+PUBLIC void wait_event(void* event, int with_pcblock) {
+    if(!with_pcblock){
+        lock_or_yield(&p_proc_current->task.lock);
+    }
     p_proc_current->task.channel = event;
     p_proc_current->task.stat    = SLEEPING;
 
@@ -641,13 +643,16 @@ PRIVATE void stack_backtrace(u32 ebp) {
 PUBLIC void proc_backtrace() {
     u32 ebp;
     int skip = 2;
+    disp_str("pid:");
+    disp_int(proc2pid(p_proc_current));
+    disp_str("\n");
     asm volatile("mov %%ebp, %0 " : "=r"(ebp));
     for (int i = 0; ebp && i < 8; i++) {
         if(i >= skip) {
             stack_backtrace(ebp);
         }
         ebp = *((u32*)ebp);
-        if(ebp >= KernelLinMapBase || ebp < StackLinLimitMAX)break;
+        if(ebp >= KernelLinMapBase || ebp < ShareLinLimitMAX)break;
     }
     while (1)
         ;

@@ -577,8 +577,8 @@ PRIVATE void mount_root(int root_drive){
 	vfs_root = kern_mount_dev(dev, root_fstype, "/", NULL);
 }
 
-int kern_init_block_dev();
-int kern_init_char_dev();
+int init_block_dev();
+int init_char_dev();
 PUBLIC int kern_vfs_mkdir(const char* path, int mode);
 PRIVATE void init_fsroot() {
 	kern_vfs_mkdir("/dev", I_RWX);
@@ -586,8 +586,8 @@ PRIVATE void init_fsroot() {
 	kern_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
 	vfs_put_dentry(dev_dir);
 // 	struct super_block *dev_sb = vfs_get_super(NO_DEV, DEV_FS_TYPE);
-	kern_init_block_dev();
-	kern_init_char_dev();
+	init_block_dev();
+	init_char_dev();
 }
 
 PUBLIC void register_fs_types() {
@@ -1071,13 +1071,7 @@ PUBLIC int kern_vfs_closedir(DIR* dirp){
 	if(!file){
 		return -1;
 	}
-	if(atomic_dec_and_test(&file->fd_count)){
-		lock_or_yield(&file_desc_lock);
-		vfs_put_dentry(file->fd_dentry);
-		file->fd_dentry = 0; // modified by mingxuan 2019-5-17
-		file->flag = 0;
-		release(&file_desc_lock);
-	}
+	fput(file);
 	kern_free_4k(dirp);
 	return 0;
 }

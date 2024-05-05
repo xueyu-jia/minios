@@ -159,6 +159,7 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
 	list_head vma_map;	// list of vmem_area
 	list_head anon_pages;
+	struct spinlock;
 }LIN_MEMMAP;
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
@@ -284,7 +285,9 @@ void proc_update();
 
 //generic def proc, added by jiangfeng
 #define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
-
+PRIVATE inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {
+	return &(proc_real(p_proc)->task.memmap);
+}
 PUBLIC int kern_get_pid();
 PUBLIC PROCESS* alloc_PCB();
 PUBLIC void free_PCB(PROCESS *p);
@@ -299,7 +302,7 @@ PUBLIC void do_exit(int status);
 
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
-PUBLIC void wait_event(void* event);
+PUBLIC void wait_event(void* event, int with_pcblock);
 PUBLIC int kern_get_pid_byname(char* name);
 
 PUBLIC void proc_backtrace();

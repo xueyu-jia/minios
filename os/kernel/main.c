@@ -271,6 +271,8 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	list_init(&p_proc->task.memmap.anon_pages);
 	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, p_proc);
 	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, p_proc);
+	// init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, pid ,PG_P | PG_USU | PG_RWW);
+	// init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, pid ,PG_P | PG_USU | PG_RWW);
 }
 
 PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry){

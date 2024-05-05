@@ -12,6 +12,7 @@
 #include "pagetable.h"
 #include "proc.h"
 #include "buddy.h"
+#include "uart.h"
 
 PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute); //added by mingxuan 2021-8-25
 
@@ -67,6 +68,9 @@ PUBLIC void init_gdt()
 PUBLIC void cstart()
 {
 	kernel_initial = 1;
+	#ifdef DISP_LOG_SERIAL
+	init_simple_serial();
+	#endif
 	disp_str("\n\n\n\n\n\n-----\"cstart\" begins-----\n");
 
 	memory_init(); //moved from kernel_main, mingxuan 2021-8-25

@@ -4,6 +4,7 @@
 #include "buffer.h"
 #include "tty.h"
 #include "hd.h"
+#include "memman.h"
 
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
@@ -26,7 +27,7 @@ PUBLIC int get_free_superblock()
 	return sb_index;
 }
 #define MAX_DEV_PATH	16
-int kern_init_block_dev()
+int init_block_dev()
 {
 	for (int i = 0; i < 12; i++)
 	{
@@ -38,37 +39,6 @@ int kern_init_block_dev()
 				{
 					int major = i,minor=j;
 					register_device(MAKE_DEV(DEV_HD_BASE+i, minor), DEV_BLOCK_TYPE, &blk_file_ops);
-					// char dev_pathname[MAX_DEV_PATH];
-					// memset(dev_pathname, 0, sizeof(dev_pathname));
-
-					// if (major < SATA_BASE)
-					// {
-					// 	strcpy(dev_pathname, "/dev/hd");
-					// 	dev_pathname[strlen(dev_pathname)] = 'a' + major - IDE_BASE;
-					// }
-					// else if (major < SCSI_BASE)
-					// {
-					// 	strcpy(dev_pathname, "/dev/sd");
-					// 	dev_pathname[strlen(dev_pathname)] = 'a' + major - SATA_BASE;
-					// }
-					// else if (major < 12)
-					// {
-					// 	disp_str("SCSI devices are temporarily not supported\n");
-					// 	return -1;
-					// }
-					// else
-					// {
-					// 	disp_str("major num out of limit\n");
-					// 	return -1;
-					// }
-
-					// if (minor != 0)
-					// {
-					// 	itoa(minor, dev_pathname + strlen(dev_pathname), 10);
-					// }
-					// kern_vfs_mknod(dev_pathname, I_BLOCK_SPECIAL|I_R|I_W, MAKE_DEV(major,minor));
-					// // 根据一般的语义,重复创建应该报错,此处不判断
-					// // todo: judge by err code, allow EEXIST
 				}
 			}
 		}
@@ -76,18 +46,9 @@ int kern_init_block_dev()
 	return 0;
 }
 
-// int do_init_block_dev(int drive)
-// {
-// 	return kern_init_block_dev(drive);
-// }
-
-// int sys_init_block_dev()
-// {
-// 	return do_init_block_dev(get_arg(1));
-// }
 // add by sundong 2023.5.19 
 //在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
-int kern_init_char_dev()
+int init_char_dev()
 {
 	// struct super_block *sb = get_super_block(drive);
 	//real_createdir(sb, "dev");
@@ -101,20 +62,11 @@ int kern_init_char_dev()
 	return 0;
 }
 
-int generic_readpage(struct vfs_inode* inode, unsigned int count, char* buf) {
+int generic_file_readpage(struct address_space* file_address, page* target) {
+
 	return 0;
 }
 
 int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 	return 0;
 }
-// add by sundong 2023.5.19
-// int do_init_char_dev(int drive)
-// {
-// 	return kern_init_char_dev(drive);
-// }
-// // add by sundong 2023.5.19
-// int sys_init_char_dev()
-// {
-// 	return do_init_char_dev(get_arg(1));
-// }

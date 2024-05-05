@@ -290,7 +290,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//p_child->task.regs.eflags = eflags;
 	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	p_reg->eflags = eflags;
+	p_reg->eflags = 0x202;
 	proc_init_context(p_child);
 	// *((u32*)(p_reg - 4 - P_STACKTOP)) = (u32) restart_restore;
 	// *((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;

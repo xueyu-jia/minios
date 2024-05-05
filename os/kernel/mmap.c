@@ -67,7 +67,7 @@ int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len,
     if(addr + len > KernelLinBase) {
         return -1;
     }
-    LIN_MEMMAP* mmap = &p_proc->task.memmap;
+    LIN_MEMMAP* mmap = proc_memmap(p_proc);
     struct vmem_area *succ = NULL, *vm = NULL;
     u32 covered = count_mapped_pages(mmap, addr, addr + len);
     if(covered && (flag & MAP_FIXED)) {
@@ -151,7 +151,7 @@ int kern_munmap(PROCESS* p_proc, u32 start, u32 len) {
     if(len == 0){
         return -1;
     }
-    LIN_MEMMAP* mmap = &p_proc_current->task.memmap;
+    LIN_MEMMAP* mmap = proc_memmap(p_proc);
     struct vmem_area *vma, *next, *last;
     u32 end = start + len;
     vma = find_vma(mmap, start);

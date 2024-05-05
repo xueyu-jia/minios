@@ -422,6 +422,7 @@ PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin)
 	else //释放物理页
 	{
 		phy_addr = get_page_phy_addr(pid, AddrLin);
+		if(phy_addr)
 		phy_free_4k(phy_addr);
 		clear_pte(pid, AddrLin);
 		return 0;
@@ -484,10 +485,16 @@ PUBLIC int sys_free_4k()
 
 PRIVATE inline void get_user_page(page *_page) {
 	atomic_inc(&_page->count);
+	// disp_str("get:");
+	// disp_int(page_to_pfn(_page));
+	// disp_str(" ");
 }
 
-PRIVATE int put_user_page(page *_page) {
-	if (atomic_dec_and_test(&_page->count)) {
+PRIVATE int put_user_page(page *_page, int cached) {
+	// disp_str("put:");
+	// disp_int(page_to_pfn(_page));
+	// disp_str(" ");
+	if (atomic_dec_and_test(&_page->count) && cached == 0) {
 		list_remove(&_page->pg_list);
 		return free_pages(ubud, _page, 0);
 	}
@@ -507,18 +514,21 @@ struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr)
     return NULL;
 }
 
-PRIVATE page* alloc_user_page(struct list_node *page_list_head, u32 pgoff) {
+PRIVATE page* alloc_user_page(u32 pgoff) {
 	page *_page = alloc_pages(ubud, 0);
 	atomic_set(&_page->count, 1);
-    _page->pg_off = pgoff;
+	_page->pg_off = pgoff;
 	list_init(&_page->pg_list);
+	return _page;
+}
+
+PRIVATE void add_user_page(struct list_node *page_list_head, page *_page) {
 	page* next = NULL;
 	list_for_each(page_list_head, next, pg_list)
 	{
-		if(next->pg_off > pgoff)break;
+		if(next->pg_off > _page->pg_off)break;
 	}
 	list_add_before(&_page->pg_list, (next)?(&next->pg_list):page_list_head);
-	return _page;
 }
 
 // req. ring 0
@@ -529,6 +539,11 @@ PRIVATE void copy_page(page *dst, page *src) {
 	memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
 	kunmap(dst);
 	kunmap(src);
+	// disp_str("copy:");
+	// disp_int(page_to_pfn(src));
+	// disp_str("->");
+	// disp_int(page_to_pfn(dst));
+	// disp_str("\n");
 }
 
 // req. ring 0
@@ -568,21 +583,38 @@ PRIVATE page* find_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
 PRIVATE page* find_or_get_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
     page *_page = find_page(mmap, file, pgoff);
 	if(_page == NULL) {
+		_page = alloc_pages(ubud, 0);
+		atomic_set(&_page->count, 1);
+		_page->pg_off = pgoff;
+		list_init(&_page->pg_list);
 		if(file) {
-			_page = alloc_user_page(&file->fd_mapping->pages, pgoff);
 			// read page
 			char * buf = kern_kmalloc_4k();
+			if(file->fd_dentry == NULL) {
+				disp_str("error!");
+			}
+			lock_or_yield(&file->fd_dentry->d_inode->lock);
 			u64 origin_pos = file->fd_pos;
 			file->fd_pos = pgoff << PAGE_SHIFT;
 			int cnt = file->fd_ops->read(file, PAGE_SIZE, buf);
 			memset(buf + cnt, 0, PAGE_SIZE - cnt);
 			file->fd_pos = origin_pos;
 			copy_to_page(_page, buf, PAGE_SIZE, 0);
+			add_user_page(&file->fd_mapping->pages, _page);
+			release(&file->fd_dentry->d_inode->lock);
+			// disp_str("read:");
+			// disp_int(page_to_pfn(_page));
+			// disp_str(" ");
 			kern_kfree_4k(buf);
 		}else {
-			_page = alloc_user_page(&mmap->anon_pages, pgoff);
 			zero_page(_page);
+			add_user_page(&mmap->anon_pages, _page);
+			// disp_str("new:");
+			// disp_int(page_to_pfn(_page));
+			// disp_str(" ");
 		}
+	} else {
+		get_user_page(_page);
 	}
 	return _page;
 }
@@ -594,7 +626,7 @@ PRIVATE void free_vma_pages(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area 
 		u32 phy = get_page_phy_addr(proc2pid(p_proc), addr);
 		if(phy) {
 			page * _page = pfn_to_page(phy_to_pfn(phy));
-			put_user_page(_page);
+			put_user_page(_page, vma->file != NULL);
 			clear_pte(proc2pid(p_proc), addr);
 		}
 		addr += PAGE_SIZE;
@@ -622,8 +654,8 @@ void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struc
 }
 
 void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
-	LIN_MEMMAP* old_mmap = &p_parent->task.memmap;
-	LIN_MEMMAP* new_mmap = &p_child->task.memmap;
+	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
+	LIN_MEMMAP* new_mmap = proc_memmap(p_child);
 	*new_mmap = *old_mmap;
 	list_init(&new_mmap->anon_pages); 
 	// as for fork, child mmap clear and all page tbl set read only, and inc page reference count
@@ -635,19 +667,24 @@ void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 		vm = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
 		*vm = *vma;
 		list_init(&vm->vma_list);
+		if(vm->file) {
+			fget(vm->file);
+		}
 		list_add_last(&vm->vma_list, &new_mmap->vma_map);
 		for(u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE) {
 			u32 phy = get_page_phy_addr(proc2pid(p_parent), addr);
-			page *_page = pfn_to_page(phy_to_pfn(phy));
-			get_user_page(_page); // add reference
-			lin_mapping_phy(addr, phy, 
-				proc2pid(p_parent), 
-				PG_P | PG_USU | PG_RWW,
-				PG_P | PG_USU | PG_RWR); // set read only
-			lin_mapping_phy(addr, phy, 
-				proc2pid(p_child), 
-				PG_P | PG_USU | PG_RWW,
-				PG_P | PG_USU | PG_RWR); 
+			if(phy) {
+				page *_page = pfn_to_page(phy_to_pfn(phy));
+				get_user_page(_page); // add reference
+				lin_mapping_phy(addr, phy, 
+					proc2pid(p_parent), 
+					PG_P | PG_USU | PG_RWW,
+					PG_P | PG_USU | PG_RWR); // set read only
+				lin_mapping_phy(addr, phy, 
+					proc2pid(p_child), 
+					PG_P | PG_USU | PG_RWW,
+					PG_P | PG_USU | PG_RWR); 
+			}
 		}
 	}
 	// copy pde(cr3)? no, page fault will set new page for both process,
@@ -656,7 +693,7 @@ void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 }
 
 void memmap_clear(PROCESS* p_proc) {
-	LIN_MEMMAP* mmap = &p_proc->task.memmap;
+	LIN_MEMMAP* mmap = proc_memmap(p_proc);
 	struct vmem_area *vma;
 	free_vmas(p_proc, mmap, list_front(&mmap->vma_map, struct vmem_area, vma_list), NULL);
 }
@@ -679,14 +716,21 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 			page *old_page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), vaddr)));
 			// if(old_page == NULL){ disp_str("error: no page for page present fault");} // error
 			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
-				_page = alloc_user_page(&mmap->anon_pages, vaddr>>PAGE_SHIFT);
+				_page = alloc_user_page(vaddr>>PAGE_SHIFT);
 				copy_page(_page, old_page);
+				add_user_page(&mmap->anon_pages, _page);
 				attr |= PG_RWW;
-				put_user_page(old_page);
+				put_user_page(old_page, vma->file != NULL);
 			}
 		}
 		
 		if(_page) {// now new page is ready
+			// disp_int(proc2pid(p_proc_current));
+			// disp_str(":");
+			// disp_int(vaddr&0xFFFFF000);
+			// disp_str("->");
+			// disp_int(page_to_pfn(_page));
+			// disp_str("\n");
 			lin_mapping_phy(vaddr, pfn_to_phy(page_to_pfn(_page)), 
 				proc2pid(p_proc_current), PG_P | PG_USU | PG_RWW, attr);
 			return 0;

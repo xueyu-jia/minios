@@ -366,7 +366,14 @@ PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 		  size << 1);
 }
 
+
 PUBLIC void disp_color_str(char* info, int color){
+	#ifdef DISP_LOG_SERIAL
+	#include "uart.h"
+	for(char *p = info; p && *p; p++) {
+		write_serial(*p);
+	}
+	#else
 	if(kernel_initial == 1){
 		disp_pos = _disp_color_str(info, color, disp_pos);
 	}else{
@@ -376,6 +383,7 @@ PUBLIC void disp_color_str(char* info, int color){
 		flush(con);
 		release(&video_mem_lock);
 	}
+	#endif
 }
 
 PUBLIC void disp_str(char* info){

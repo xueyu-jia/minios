@@ -8,6 +8,7 @@
 #include "proc.h"
 #include "fs.h"
 #include "pthread.h"
+#include "memman.h"
 
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);
@@ -44,7 +45,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	// 	p_parent = p_proc_current;//父进程就是父线程
 	// }
 	p_parent = proc_real(p_proc_current);
-
+	lock_or_yield(p_parent);
 	/*****************如若attr为null，新建一默认attr**********************/
 
 	pthread_attr_t true_attr;
@@ -57,7 +58,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		true_attr.scope			= PTHREAD_SCOPE_PROCESS;
 		true_attr.guardsize		= 0;
 		true_attr.stackaddr_set		= 0;
-		true_attr.stackaddr		= p_parent->task.memmap.stack_child_limit + 0x4000 - num_4B;
+		true_attr.stackaddr		= p_parent->task.memmap.stack_child_limit + 0x4000;
 		true_attr.stacksize		= 0x4000;
 	}
 	else 
@@ -72,6 +73,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 	if( 0==p_child )
 	{
 		disp_color_str("PCB NULL,pthread faild!",0x74);
+		release(&p_parent->task.lock);
 		return -1;
 	}
 	else
@@ -133,9 +135,10 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
 		p_child->task.stat = READY;	
 		p_child->task.pthread_id=p_parent->task.info.child_t_num+1;//Add By ZengHao & MaLinhan 21.12.22
+		in_rq(p_child);
 	}
 	*thread = p_child->task.pid;
-	
+	release(&p_parent->task.lock);
 	return 0;
 }
 
@@ -186,17 +189,17 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	p_child->task.stat = SLEEPING; //统一PCB state 20240314
 	enable_int();
 	p_child->task.esp_save_int = esp_save_int;	//esp_save_int of child must be restored!!
-	p_child->task.esp_save_context = esp_save_context;	//same above
+	// p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	//modified end
-	
+	proc_init_context(p_child);
 	//恢复标识信息
 	p_child->task.pid = pid;
 	
 	//p_child->task.regs.eflags = eflags;
 	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	proc_kstacktop(p_child)->eflags = eflags;
+	proc_kstacktop(p_child)->eflags = 0x202;
 	p_child->task.ldt_sel = selector_ldt;	
 	return 0;
 }
@@ -249,16 +252,18 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_
 	int addr_lin;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
 	
-	p_child->task.memmap.stack_lin_limit = attr->stackaddr - attr->stacksize + num_4B;//子线程的栈界
+	p_child->task.memmap.stack_lin_limit = attr->stackaddr - attr->stacksize;//子线程的栈界
 	p_parent->task.memmap.stack_child_limit += attr->stacksize; //分配16K
 	p_child->task.memmap.stack_lin_base = attr->stackaddr;	//子线程的基址
 	
-	for( addr_lin=p_child->task.memmap.stack_lin_base ; addr_lin>p_child->task.memmap.stack_lin_limit ; addr_lin-=num_4K)//申请物理地址
-	{
-		//disp_str("#");
-		//lin_mapping_phy(addr_lin, MAX_UNSIGNED_INT, p_child->task.pid, PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);
-		ker_umalloc_4k(addr_lin,p_child->task.pid,PG_P  | PG_USU | PG_RWW);  //edited by wang 2021.8.29
-	}
+	// for( addr_lin=p_child->task.memmap.stack_lin_base ; addr_lin>p_child->task.memmap.stack_lin_limit ; addr_lin-=num_4K)//申请物理地址
+	// {
+	// 	//disp_str("#");
+	// 	//lin_mapping_phy(addr_lin, MAX_UNSIGNED_INT, p_child->task.pid, PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);
+	// 	ker_umalloc_4k(addr_lin,p_child->task.pid,PG_P  | PG_USU | PG_RWW);  //edited by wang 2021.8.29
+	// }
+	kern_mmap(p_child, NULL, p_child->task.memmap.stack_lin_limit, 
+		attr->stacksize, PROT_READ|PROT_WRITE, MAP_PRIVATE, 0);
 	
 	//p_child->task.regs.esp = p_child->task.memmap.stack_lin_base;		//调整esp
 	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
@@ -361,12 +366,16 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 		return -1;
 	}
 	while(1){
+		lock_or_yield(&p_proc_father->task.lock);
 		if(p_proc_child->task.stat != KILLED){ //统一PCB state 20240314
 			//挂起，并告知被等待的线程，线程退出时再唤醒
+			lock_or_yield(&p_proc_child->task.lock);
 			p_proc_child->task.who_wait_flag = p_proc_father->task.pid;
-			wait_event(p_proc_father);
+			release(&p_proc_child->task.lock);
+			wait_event(p_proc_father, 1);
 		}
 		else{
+			lock_or_yield(&p_proc_child->task.lock);
 			//获取返回值
 			if(retval != NULL){
 				*retval = p_proc_child->task.retval;
@@ -378,15 +387,15 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 			p_proc_father->task.info.child_thread[thread] = 0;
 
 			//释放栈物理页
-			free_seg_phypage(p_proc_child->task.pid, MEMMAP_STACK);
+			// free_seg_phypage(p_proc_child->task.pid, MEMMAP_STACK);
 
 			//释放栈页表
-			free_seg_pagetbl(p_proc_child->task.pid, MEMMAP_STACK);
-
+			// free_seg_pagetbl(p_proc_child->task.pid, MEMMAP_STACK);
+			release(&p_proc_child->task.lock);
 			//释放PCB
 			free_PCB(p_proc_child);
 
-
+			release(&p_proc_father->task.lock);
 		}
 
 		return 0;

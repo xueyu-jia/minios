@@ -431,7 +431,7 @@ PUBLIC u32 identity_SATA(HBA_PORT *port, u8 *buf) {
     } else {
         disable_int();
         port->ci = 1 << slot; // Issue command
-        wait_event((void*)&sata_wait_flag);
+        wait_event((void*)&sata_wait_flag, 0);
         enable_int();
     }
 

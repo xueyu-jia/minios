@@ -57,4 +57,5 @@ qemu-system-i386 \
 -drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
 -rtc base=utc \
 -boot menu=on \
+-serial file:minios.log \
 -gdb tcp::1234 -S -monitor stdio

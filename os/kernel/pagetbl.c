@@ -383,7 +383,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 			}
 		}
 	}
-	if(handle_mm_fault(&p_proc_current->task.memmap, cr2, fault_flag) == 0) {
+	if(handle_mm_fault(proc_memmap(p_proc_current), cr2, fault_flag) == 0) {
 		refresh_page_cache();
 		return;
 	}	

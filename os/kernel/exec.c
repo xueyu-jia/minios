@@ -378,6 +378,13 @@ PRIVATE u32 exec_load(
     //     ker_umalloc_4k(
     //         lin_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWR);
     // }
+    // for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum;
+    //      ph_num++, phdr++) {
+    //     if (phdr->p_type == ELF_LOAD) { 
+    //         exec_elfcpy(fd, phdr);
+    //     }
+    // }
+    // new mmu
     for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum;
          ph_num++, phdr++) {
         if (phdr->p_type == ELF_LOAD) { 
