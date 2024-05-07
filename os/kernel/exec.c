@@ -393,15 +393,28 @@ PRIVATE u32 exec_load(
             if(phdr->p_flags & 4) prot |= PROT_READ;
             if(phdr->p_flags & 2) prot |= PROT_WRITE;
             if(phdr->p_flags & 1) prot |= PROT_EXEC;
-            u32 in_page_offset = phdr->p_vaddr & 0xFFF;
-            u32 start = phdr->p_vaddr - in_page_offset;
-            u32 size = UPPER_BOUND_4K(phdr->p_filesz + in_page_offset);
-            if(size)
-                do_mmap(start, size, prot, MAP_PRIVATE, fd, phdr->p_offset - in_page_offset);
-            if(phdr->p_memsz > phdr->p_filesz) { // bss
-                if(phdr->p_memsz + in_page_offset - size > 0)
-                    do_mmap(start + size, phdr->p_memsz + in_page_offset - size, PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
-                memset(phdr->p_vaddr + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
+            u32 in_page_offset = phdr->p_vaddr & 0xFFF; // 进行4K对齐
+            u32 mem_start = phdr->p_vaddr - in_page_offset;
+            u32 mem_size = phdr->p_memsz + in_page_offset;
+            u32 file_size = phdr->p_filesz + in_page_offset;
+            u32 addr;
+            u32 file_page_size = UPPER_BOUND_4K(file_size);
+            if(file_page_size){
+                addr = do_mmap(mem_start, file_page_size, prot, 
+                    MAP_PRIVATE|MAP_FIXED, fd, phdr->p_offset - in_page_offset);
+                if(addr != mem_start) {
+                    disp_str("error: execve mmap file failed!");
+                }
+            }
+            if(mem_size > file_size) { // bss
+                if(mem_size > file_page_size){// bss 超过elf映射的页，额外分配匿名页
+                    addr = do_mmap(mem_start + file_page_size, mem_size - file_page_size, 
+                        PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED, -1, 0);
+                    if(addr != mem_start + file_page_size) {
+                        disp_str("error: execve mmap bss failed!");
+                    }
+                }
+                memset(mem_start + file_size, 0, file_page_size - file_size);
             }
         }
     }
@@ -422,25 +435,26 @@ PRIVATE int exec_pcb_init(char *path) {
 
     // 名称 状态 特权级 寄存器
     strcpy(p_proc_current->task.p_name, path); // 名称
-    p_proc_current->task.stat = READY;         // 状态
-    p_proc_current->task.ldts[0].attr1 =
-        DA_C | PRIVILEGE_USER << 5; // 特权级修改为用户级
-    p_proc_current->task.ldts[1].attr1 =
-        DA_DRW | PRIVILEGE_USER << 5; // 特权级修改为用户级
+    // p_proc_current->task.stat = READY;         // 状态
+    // p_proc_current->task.ldts[0].attr1 =
+    //     DA_C | PRIVILEGE_USER << 5; // 特权级修改为用户级
+    // p_proc_current->task.ldts[1].attr1 =
+    //     DA_DRW | PRIVILEGE_USER << 5; // 特权级修改为用户级
 
-    /***************copy registers data****************************/
-    // copy registers data to the bottom of the new kernel stack
-    // added by xw, 17/12/11
-    // p_regs                             = (char *)(p_proc_current + 1);
-    // p_regs                            -= P_STACKTOP;
-    p_proc_current->task.esp_save_int  = proc_kstacktop(p_proc_current);
-    p_proc_current->task.esp_save_int->cs = common_cs | RPL_USER;
-    p_proc_current->task.esp_save_int->ds = common_ds | RPL_USER;
-    p_proc_current->task.esp_save_int->es = common_es | RPL_USER;
-    p_proc_current->task.esp_save_int->fs = common_fs | RPL_USER;
-    p_proc_current->task.esp_save_int->ss = common_ss | RPL_USER;
-    p_proc_current->task.esp_save_int->gs = common_gs | RPL_USER;
-    p_proc_current->task.esp_save_int->eflags = 0x202; /* IF=1,bit2 永远是1 */
+    // /***************copy registers data****************************/
+    // // copy registers data to the bottom of the new kernel stack
+    // // added by xw, 17/12/11
+    // // p_regs                             = (char *)(p_proc_current + 1);
+    // // p_regs                            -= P_STACKTOP;
+    // p_proc_current->task.esp_save_int  = proc_kstacktop(p_proc_current);
+    // p_proc_current->task.esp_save_int->cs = common_cs | RPL_USER;
+    // p_proc_current->task.esp_save_int->ds = common_ds | RPL_USER;
+    // p_proc_current->task.esp_save_int->es = common_es | RPL_USER;
+    // p_proc_current->task.esp_save_int->fs = common_fs | RPL_USER;
+    // p_proc_current->task.esp_save_int->ss = common_ss | RPL_USER;
+    // p_proc_current->task.esp_save_int->gs = common_gs | RPL_USER;
+    // p_proc_current->task.esp_save_int->eflags = 0x202; /* IF=1,bit2 永远是1 */
+    proc_init_ldt_kstack(p_proc_current, RPL_USER); //多个功能 都用到的就抽象出来吧，别造轮子了 modified 2024.05.06
     // memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 
     // 进程表线性地址布局部分，text、data已经在前面初始化了

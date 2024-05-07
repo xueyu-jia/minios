@@ -216,18 +216,6 @@ PRIVATE void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int
 
 }
 
-PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u32 eflags,u32 esp,u32 eip){
-		proc->task.esp_save_int->cs = cs;
-		proc->task.esp_save_int->ds = ds;
-		proc->task.esp_save_int->es = es;
-		proc->task.esp_save_int->fs = fs;
-		proc->task.esp_save_int->ss = ss;
-		proc->task.esp_save_int->gs = gs;
-		proc->task.esp_save_int->eflags =eflags;    /* IF=1, IOPL=1 */
-		proc->task.esp_save_int->esp = esp;
-		proc->task.esp_save_int->eip = eip;
-}
-
 // [start,end) 地址段分配页表，如果不存在分配物理页并填写页表，否则忽略 固定地址start<end
 PRIVATE void init_proc_page_addr(u32 low, u32 high, PROCESS* proc){
 	u32 addr;
@@ -269,33 +257,20 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	p_proc->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size;
 	list_init(&p_proc->task.memmap.vma_map);
 	list_init(&p_proc->task.memmap.anon_pages);
-	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, p_proc);
+	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, p_proc->task.memmap.stack_lin_base, p_proc);
 	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, p_proc);
 	// init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, pid ,PG_P | PG_USU | PG_RWW);
 	// init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, pid ,PG_P | PG_USU | PG_RWW);
 }
 
-PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u16 ldt_sel, u32 rpl, u32 entry){
-	u8 privilege = rpl;
-	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
-	p_proc->task.ldt_sel = ldt_sel;
-	memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
-	memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.ldts[1].attr1 = DA_DRW | privilege << 5;
+PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u32 rpl, u32 entry){
 	STACK_FRAME* p_regs = proc_kstacktop(p_proc);
 	////初始化内核栈
 	/***************some field about process switch****************************/
-	p_proc->task.esp_save_int = (STACK_FRAME*)p_regs; //initialize esp_save_int, added by xw, 17/12/11    //changed by lcy, 2023.10.24
-	init_reg(p_proc,	common_cs|rpl,	common_ds|rpl,	common_es|rpl,
-		common_fs|rpl,	common_ss|rpl,	common_gs|rpl,	eflags,	(u32)StackLinBase, entry);
-
+	proc_init_ldt_kstack(p_proc, rpl);
+	proc_kstacktop(p_proc)->eip = entry;
+	proc_kstacktop(p_proc)->esp = p_proc->task.memmap.stack_lin_base;
 	//p_proc->task.save_type = 1;
-	// p_proc->task.esp_save_context = p_regs - 10 * 4; //when the process is chosen to run for the first time,
-														 //sched() will fetch value from esp_save_context
-	// *(u32 *)(p_regs - 4) = (u32)(restart_restore); //initialize EIP in the context, so the process can
-												 //start run. added by xw, 18/4/18
-	// *(u32 *)(p_regs - 8) = 0x1202;
 	proc_init_context(p_proc);
 }
 
@@ -308,7 +283,6 @@ PRIVATE int initialize_processes()
 {
 	TASK *p_task = task_table;
 	PROCESS *p_proc = proc_table;
-	u16 selector_ldt = SELECTOR_LDT_FIRST;
 	// char *p_regs;		//point to registers in the new kernel stack, added by xw, 17/12/11
 	// task_f eip_context; //a funtion pointer, added by xw, 18/4/18
 	/*************************************************************************
@@ -348,10 +322,10 @@ PRIVATE int initialize_processes()
 		}
 		//init operations
 		memset(p_proc,0,sizeof(PROCESS));//by qianglong
-		init_proc_ldt_regs(p_proc, selector_ldt, rpl, entry);
 		if(entry){
 			init_process(p_proc, name, (ready ? READY: SLEEPING), pid, is_rt, rtpriority_or_nice);
 			init_proc_pages(p_proc);
+			init_proc_ldt_regs(p_proc, rpl, entry);
 		}else{
 			init_process(p_proc, name, FREE, pid, 0, 0);
 		}
@@ -363,7 +337,6 @@ PRIVATE int initialize_processes()
 			p_proc->task.filp[j] = 0;
 		}
 		p_proc++;
-		selector_ldt += 1 << 3;
 	}
 	p_proc = &proc_table[PID_INIT];
 	/*************************进程树信息初始化***************************************/

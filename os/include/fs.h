@@ -26,12 +26,14 @@ struct vfs_dentry;
 struct file_desc;
 struct super_block;
 
+
+#include "orangefs.h"
+#include "fat32.h"
+
 struct address_space {
 	struct vfs_inode *host;
 	struct list_node pages;
 };
-#include "orangefs.h"
-#include "fat32.h"
 struct vfs_inode{
 	u32 i_no;
 	struct super_block* i_sb;
@@ -163,7 +165,7 @@ struct superblock_operations{
 	void (*read_inode)(struct vfs_inode *inode);
 	void (*put_inode)(struct vfs_inode* inode);
 	void (*delete_inode)(struct vfs_inode* inode);
-	// int (*get_blk)(struct vfs_inode* inode, u32 pg_off, buf_head** bh);
+	int (*get_block)(struct vfs_inode* inode, u32 pgoff);
 };
 
 struct fs_type{

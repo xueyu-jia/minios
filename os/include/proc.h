@@ -55,7 +55,7 @@
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 #define PID_INIT NR_K_PCBS
 #define PID_NO_PROC	1000
-#define PROC_READY_MAX	30	//xiaofeng
+#define PROC_READY_MAX	NR_PCBS	//xiaofeng // 30 -> NR_PCBS jiangfeng 24-5-5 
 #define PROC_NICE_MAX	19
 
 //~xw
@@ -159,7 +159,7 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
 	list_head vma_map;	// list of vmem_area
 	list_head anon_pages;
-	struct spinlock;
+	struct spinlock lock;
 }LIN_MEMMAP;
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
@@ -283,8 +283,10 @@ void out_rq(PROCESS* p_out);
 PUBLIC void idle();
 void proc_update();
 
-//generic def proc, added by jiangfeng
+// 通过pcb找到真正的进程, added by jiangfeng
 #define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
+
+// 获得pcb对应的memmap
 PRIVATE inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {
 	return &(proc_real(p_proc)->task.memmap);
 }
@@ -307,10 +309,31 @@ PUBLIC int kern_get_pid_byname(char* name);
 
 PUBLIC void proc_backtrace();
 void restart_restore();
-static inline void proc_init_context(PROCESS *p_proc) {	\
+
+static inline void proc_init_context(PROCESS *p_proc) {
 	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
 	p_proc->task.esp_save_context = ((char*)context_base) - PROC_CONTEXT;
 	*(context_base-1) = (u32)(restart_restore);
 	*(context_base-2) = 0x1202;
+}
+
+#include "string.h"
+static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
+	u16 ldt_sel = SELECTOR_LDT_FIRST + ((proc2pid(p_proc))*(1 << 3));
+	u8 privilege = rpl;
+	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
+	p_proc->task.ldt_sel = ldt_sel;
+	memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
+	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
+	memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
+	p_proc->task.ldts[1].attr1 = DA_DRW | privilege << 5;
+	p_proc->task.esp_save_int = proc_kstacktop(p_proc);
+	p_proc->task.esp_save_int->cs = common_cs|rpl;
+	p_proc->task.esp_save_int->ds = common_ds|rpl;
+	p_proc->task.esp_save_int->es = common_es|rpl;
+	p_proc->task.esp_save_int->fs = common_fs|rpl;
+	p_proc->task.esp_save_int->ss = common_ss|rpl;
+	p_proc->task.esp_save_int->gs = common_gs|rpl;
+	p_proc->task.esp_save_int->eflags = eflags;
 }
 #endif

@@ -16,9 +16,10 @@
 //to determine if a page fault is reparable. added by xw, 18/6/11
 u32 cr2_save;
 u32 cr2_count = 0;
-
-u32 kern_mapping_free = KernelLinMapBase;
-struct spinlock kmap_lock;
+u32 kernel_pde_phy;
+u32 nr_kmapping_pages = 0;
+PRIVATE u32 kmapping_pages[KernelLinMapMaxPage];
+PRIVATE struct spinlock kmap_lock;
 /*======================================================================*
                            switch_pde			added by xw, 17/12/11
  *switch the page directory table after schedule() is called
@@ -26,48 +27,6 @@ struct spinlock kmap_lock;
 PUBLIC void switch_pde()
 {
 	cr3_ready = p_proc_current->task.cr3;
-}
-
-/*======================================================================*
-                           init_page_pte		add by visual 2016.4.19
-*该函数只初始化了进程的高端（内核端）地址页表
- *======================================================================*/
-PUBLIC u32 init_page_pte(u32 pid)
-{ //页表初始化函数
-
-	u32 AddrLin, pde_addr_phy_temp, pte_addr_phy_temp, err_temp;
-
-	//pde_addr_phy_temp = do_kmalloc_4k();//为页目录申请一页
-	pde_addr_phy_temp = phy_kmalloc_4k(); //为页目录申请一页	//modified by mingxuan 2021-8-16
-
-	memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0, num_4K); //add by visual 2016.5.26
-
-	if (pde_addr_phy_temp < 0 || (pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
-	{
-		disp_color_str("init_page_pte Error:pde_addr_phy_temp", 0x74);
-		return -1;
-	}
-
-	proc_table[pid].task.cr3 = pde_addr_phy_temp; //初始化了进程表中cr3寄存器变量，属性位暂时不管
-
-	/*********************页表初始化部分*********************************/
-	u32 phy_addr = 0;
-    //kernel_size edited by wang 2021.8.27
-	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{														//只初始化内核部分，3G后的线性地址映射到物理地址开始处
-		err_temp = lin_mapping_phy(AddrLin,					//线性地址					//add by visual 2016.5.9
-								   phy_addr,				//物理地址
-								   pid,						//进程pid						//edit by visual 2016.5.19
-								   PG_P | PG_USU | PG_RWW,	//页目录的属性位（用户权限）			//edit by visual 2016.5.26
-								   PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-		if (err_temp != 0)
-		{
-			disp_color_str("init_page_pte Error:lin_mapping_phy", 0x74);
-			return -1;
-		}
-	}
-
-	return 0;
 }
 
 /***************************地址转换过程***************************
@@ -173,7 +132,7 @@ PUBLIC u32 get_page_phy_addr(u32 pid, u32 AddrLin) {
 	u32 pde_phy = get_pde_phy_addr(pid);
 	if(!pde_phy || (pte_exist(pde_phy, AddrLin) == 0)) return NULL;
 	u32 pte_phy = get_pte_phy_addr(pde_phy, AddrLin);
-	if(!pte_phy || (phy_exist(pte_phy, AddrLin) == 0)) return NULL;
+	if(!pte_phy) return NULL;
 	return get_page_phy_addr_nopid(pte_phy, AddrLin);
 }
 
@@ -202,7 +161,7 @@ PUBLIC void write_page_pte(u32 TblPhyAddr, //页表物理地址
 }
 
 /*======================================================================*
-                           init_page_pte		add by visual 2016.4.19
+                           init_proc_page		add by visual 2016.4.19  modifyed: jiangfeng 2024.4
 *该函数只初始化了进程的高端（内核端）地址页表
  *======================================================================*/
 PUBLIC int init_proc_page(u32 pid)
@@ -224,24 +183,9 @@ PUBLIC int init_proc_page(u32 pid)
 	proc_table[pid].task.cr3 = pde_addr_phy_temp; //初始化了进程表中cr3寄存器变量，属性位暂时不管
 
 	/*********************页表初始化部分*********************************/
-	// u32 phy_addr = 0;
-    // // kernel_size edited by wang 2021.8.27
-	// for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	// {														//只初始化内核部分，3G后的线性地址映射到物理地址开始处
-	// 	err_temp = lin_mapping_phy(AddrLin,					//线性地址					//add by visual 2016.5.9
-	// 							   phy_addr,				//物理地址
-	// 							   pid,						//进程pid						//edit by visual 2016.5.19
-	// 							   PG_P | PG_USU | PG_RWW,	//页目录的属性位（用户权限）			//edit by visual 2016.5.26
-	// 							   PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-	// 	if (err_temp != 0)
-	// 	{
-	// 		disp_color_str("init_proc_page Error:lin_mapping_phy", 0x74);
-	// 		return -1;
-	// 	}
-	// }
 	u32 kernel_pde_offset = KernelLinBase/num_4M * 4;
 	memcpy((void*)(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset), 
-		(void*)(K_PHY2LIN(read_cr3()) + kernel_pde_offset), num_4K - kernel_pde_offset);
+		(void*)(K_PHY2LIN(kernel_pde_phy) + kernel_pde_offset), num_4K - kernel_pde_offset);
 
 	return 0;
 }
@@ -251,6 +195,7 @@ PUBLIC int init_kernel_page()
 {
 	//第一步: 生成一张内核用的页目录表
 	u32 kernel_pde_addr_phy = (u32)phy_kmalloc_4k();
+	kernel_pde_phy = kernel_pde_addr_phy;
 	memset((void *)K_PHY2LIN(kernel_pde_addr_phy), 0, num_4K); //by qianglong
 	//第二步: 初始化3G~3G+kernel_size的内核映射
 	u32 AddrLin = 0, phy_addr = 0;
@@ -383,10 +328,12 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 			}
 		}
 	}
+	#ifdef MMU_COW
 	if(handle_mm_fault(proc_memmap(p_proc_current), cr2, fault_flag) == 0) {
 		refresh_page_cache();
 		return;
-	}	
+	}
+	#endif	
 fatal:
 	disp_str("\n");
 	disp_color_str("Page Fault\n", 0x74);
@@ -500,40 +447,60 @@ PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
 }
 
 // used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
-PUBLIC int kern_kmapping_phy(u32 phy_addr, u32 nr_pages) {
-	if(kern_mapping_free + nr_pages*num_4K >= KernelLinMapLimit) {
-		disp_str("no free mapping space");
-		return -1;
+// 在公共内核页表映射一个页面到物理地址phy_addr
+PUBLIC int kmapping_phy(u32 phy_addr) {
+	u32 lin_addr;
+	if(phy_addr >=  K_LIN2PHY(KernelLinMapBase)){// 高端地址，3G+phy_addr无法直接访问
+		if(nr_kmapping_pages == KernelLinMapMaxPage) {
+			disp_str("no free kmapping space");
+			return -1;
+		}
+		lock_or_yield(&kmap_lock);
+		int index = 0;
+		while(index < KernelLinMapMaxPage && kmapping_pages[index] != 0)index++;
+		kmapping_pages[index] = phy_addr;
+		lin_addr = KernelLinMapBase + (index << PAGE_SHIFT);
+		nr_kmapping_pages++;
+		release(&kmap_lock);
+	}else if(phy_addr >= kernel_size) {
+		lin_addr = K_PHY2LIN(phy_addr); // 用户页物理地址，默认没有内核页表，需要写页表
+	}else {
+		return K_PHY2LIN(phy_addr); // 无需映射，可直接访问
 	}
-	lock_or_yield(&kmap_lock);
-	int lin_addr = kern_mapping_free;
-	kern_mapping_free += nr_pages*num_4K;
-	for(u32 offset = 0; offset < nr_pages; offset++) {
-		lin_mapping_phy_nopid(lin_addr + offset*num_4K, 
-							(phy_addr == MAX_UNSIGNED_INT)? MAX_UNSIGNED_INT: phy_addr + offset*num_4K, 
-							read_cr3(), 
-							PG_P | PG_USS | PG_RWW,
-							PG_P | PG_USS | PG_RWW);
-	} 
-	release(&kmap_lock);
+	lin_mapping_phy_nopid(lin_addr, 
+						phy_addr, 
+						kernel_pde_phy, 
+						PG_P | PG_USS | PG_RWW,
+						PG_P | PG_USS | PG_RWW);
+
 	return lin_addr;
 }
 
-PUBLIC int kern_kmapping_pop(u32 nr_pages) {
-	if(kern_mapping_free - nr_pages*num_4K < KernelLinMapBase) {
-		disp_str("no kmapping now");
-		return -1;
+PUBLIC int kunmapping_phy(u32 phy_addr) {
+	u32 lin_addr = K_PHY2LIN(phy_addr);
+	if(phy_addr >=  K_LIN2PHY(KernelLinMapBase)){
+		if(nr_kmapping_pages == 0) {
+			disp_str("no kmapping now");
+			return -1;
+		}
+		lock_or_yield(&kmap_lock);
+		int index = 0;
+		while(index < KernelLinMapMaxPage && kmapping_pages[index] != phy_addr)index++;
+		if(index == KernelLinMapMaxPage) {
+			disp_str("no phy in kmapping");
+			release(&kmap_lock);
+			return -1;
+		}
+		kmapping_pages[index] = 0;
+		lin_addr = KernelLinMapBase + (index << PAGE_SHIFT);
+		nr_kmapping_pages--;
+		release(&kmap_lock);
+	}else if(phy_addr < kernel_size) {
+		return 0;
 	}
-	lock_or_yield(&kmap_lock);
-	kern_mapping_free -= nr_pages*num_4K;
-	int lin_addr = kern_mapping_free;
-	for(u32 offset = 0; offset < nr_pages; offset++) {
-		u32 pte_phy_addr = get_pte_phy_addr(read_cr3(), lin_addr);
-		write_page_pte(pte_phy_addr, lin_addr, 0, 0);
-		lin_addr += PAGE_SIZE;
-	}
+	u32 pte_phy_addr = get_pte_phy_addr(kernel_pde_phy, lin_addr);
+	write_page_pte(pte_phy_addr, lin_addr, 0, 0);
 	refresh_page_cache();
-	release(&kmap_lock);
 	return 0;
 }
 

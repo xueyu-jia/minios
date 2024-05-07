@@ -4,6 +4,7 @@
 #include "shm.h"
 #include "fs.h"
 #include "proto.h"
+#include "mmap.h"
 #include "kmalloc.h"
 #include "string.h"
 
@@ -580,7 +581,7 @@ PRIVATE page* find_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
 	return _page;
 }
 
-PRIVATE page* find_or_get_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
+PRIVATE page* find_get_page(LIN_MEMMAP* mmap, struct file_desc *file, u32 pgoff) {
     page *_page = find_page(mmap, file, pgoff);
 	if(_page == NULL) {
 		_page = alloc_pages(ubud, 0);
@@ -633,7 +634,32 @@ PRIVATE void free_vma_pages(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area 
 	}
 }
 
-void free_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
+// 直接为vma申请内存并设置页表, 没有写时复制
+PUBLIC void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
+	page * _page = NULL;
+	u32 pgoff = vma->pgoff;
+    // 页面权限
+    u32 pte_attr = PG_P | PG_USU | ((vma->flags & PROT_WRITE)? PG_RWW : PG_RWR);
+    for(u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE, pgoff++) {
+		page * content_page = find_get_page(mmap, vma->file, pgoff);
+        // 对于可写的私有映射，不能修改文件，所以做一份复制
+		if((vma->flags & MAP_PRIVATE) && (vma->flags & PROT_WRITE)) {
+			_page = alloc_user_page(addr>>PAGE_SHIFT);
+			copy_page(_page, content_page);
+			add_user_page(&mmap->anon_pages, _page);
+        } else { 
+            // 其他情况直接使用page cache的物理页就行,要增加物理页的引用计数
+			get_user_page(content_page);
+            _page = content_page;
+        }
+        lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)), 
+                proc2pid(p_proc),
+                PG_P | PG_USU | PG_RWW,
+                pte_attr);
+	}
+}
+
+PRIVATE void free_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
     list_remove(&vma->vma_list);
     // clear arch pgtable and free
     free_vma_pages(p_proc, mmap, vma);
@@ -644,7 +670,7 @@ void free_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma) {
 }
 
 // free vma [start, last)
-void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last) {
+PUBLIC void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last) {
     struct vmem_area *vma = start, *next;
     while(vma && vma != last) {
         next = list_next(&mmap->vma_map, vma, vma_list);
@@ -653,7 +679,7 @@ void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struc
     }
 }
 
-void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
+PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
 	LIN_MEMMAP* new_mmap = proc_memmap(p_child);
 	*new_mmap = *old_mmap;
@@ -671,25 +697,42 @@ void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 			fget(vm->file);
 		}
 		list_add_last(&vm->vma_list, &new_mmap->vma_map);
+		u32 pte_attr = PG_P | PG_USU | ((vma->flags & PROT_WRITE)? PG_RWW : PG_RWR);
 		for(u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE) {
 			u32 phy = get_page_phy_addr(proc2pid(p_parent), addr);
 			if(phy) {
-				page *_page = pfn_to_page(phy_to_pfn(phy));
-				get_user_page(_page); // add reference
-				lin_mapping_phy(addr, phy, 
-					proc2pid(p_parent), 
-					PG_P | PG_USU | PG_RWW,
-					PG_P | PG_USU | PG_RWR); // set read only
-				lin_mapping_phy(addr, phy, 
-					proc2pid(p_child), 
-					PG_P | PG_USU | PG_RWW,
-					PG_P | PG_USU | PG_RWR); 
+				page *pte_page = pfn_to_page(phy_to_pfn(phy));
+				#ifdef MMU_COW
+				// 写时复制，将父子进程页表同时置为只读
+					get_user_page(pte_page); // add reference
+					lin_mapping_phy(addr, phy, 
+						proc2pid(p_parent), 
+						PG_P | PG_USU | PG_RWW,
+						PG_P | PG_USU | PG_RWR); // set read only
+					lin_mapping_phy(addr, phy, 
+						proc2pid(p_child), 
+						PG_P | PG_USU | PG_RWW,
+						PG_P | PG_USU | PG_RWR); 
+				#else 
+				// 无写时复制， 根据权限决定，只读的页面共享，可写的私有页面申请新页面并复制
+					page *_page = NULL;
+					if((vma->flags & MAP_PRIVATE) && (vma->flags & PROT_WRITE)) {
+						_page = alloc_user_page(addr>>PAGE_SHIFT);
+						copy_page(_page, pte_page);
+						add_user_page(&new_mmap->anon_pages, _page);
+					} else { 
+						// 其他情况直接使用父进程的物理页就行,要增加父进程物理页的引用计数
+						get_user_page(pte_page);
+						_page = pte_page;
+					}
+					lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)), 
+							proc2pid(p_child),
+							PG_P | PG_USU | PG_RWW,
+							pte_attr);
+				#endif
 			}
 		}
 	}
-	// copy pde(cr3)? no, page fault will set new page for both process,
-	// if read, the two proc share same phy page
-	// if write, COW will do the copy, and finally origin page freed
 }
 
 void memmap_clear(PROCESS* p_proc) {
@@ -700,27 +743,42 @@ void memmap_clear(PROCESS* p_proc) {
 
 // handle generic mm fault, return 0 if handle normal ok, -1 for error
 int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
+	#ifndef MMU_COW
+		disp_color_str("error: no cow, this handler is unreachable!", 0x74);
+	#endif
 	struct vmem_area *vma = find_vma(mmap, vaddr);
 	if(vma && vaddr >= vma->start) {
 		u32 pgoff = vma->pgoff + ((vaddr - vma->start) >> PAGE_SHIFT);
 		page * _page = NULL;
 		u32 attr = PG_P|PG_USU;// 这里目前没有做架构分离
+		u32 phy = get_page_phy_addr(proc2pid(p_proc_current), vaddr);
+		page *pte_page = NULL;
+		if(phy != NULL){
+			pte_page = pfn_to_page(phy_to_pfn(phy));
+		}
 		if(flag & FAULT_NOPAGE) { // handler should check page and set pte
-			_page = find_or_get_page(mmap, vma->file, pgoff);
-			if(vma->file && vma->flags & MAP_PRIVATE) {
-				attr |= PG_RWR;
-			}else {
-				attr |= ((vma->flags & PROT_WRITE)? PG_RWW: PG_RWR);
+			if(pte_page == NULL) {
+				// 页表完全没有设置物理页，需要找到正确的物理页
+				_page = find_get_page(mmap, vma->file, pgoff);
+				if(vma->file && vma->flags & MAP_PRIVATE) {
+					attr |= PG_RWR;
+				} else {
+					attr |= ((vma->flags & PROT_WRITE)? PG_RWW: PG_RWR);
+				}
+			} else { // pte 存在物理地址，但是页面不存在，所以页面被换出了
+				// 由于暂时不存在相应机制，暂不处理
+				// 如果运行到此处, 说明页表存在问题
+				disp_str("error: page swapped? or just wrong pte?");
+
 			}
 		}else if((flag & FAULT_WRITE) && (vma->flags & PROT_WRITE)) {
-			page *old_page = pfn_to_page(phy_to_pfn(get_page_phy_addr(proc2pid(p_proc_current), vaddr)));
-			// if(old_page == NULL){ disp_str("error: no page for page present fault");} // error
+			if(pte_page == NULL){ disp_str("error: no page for page present fault");} // error
 			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
 				_page = alloc_user_page(vaddr>>PAGE_SHIFT);
-				copy_page(_page, old_page);
+				copy_page(_page, pte_page);
 				add_user_page(&mmap->anon_pages, _page);
 				attr |= PG_RWW;
-				put_user_page(old_page, vma->file != NULL);
+				put_user_page(pte_page, vma->file != NULL);
 			}
 		}
 		

@@ -62,8 +62,9 @@ int init_char_dev()
 	return 0;
 }
 
-int generic_file_readpage(struct address_space* file_address, page* target) {
-
+int generic_file_readpage(struct address_space* file_mapping, page* target) {
+	struct vfs_inode* inode = file_mapping->host;
+	
 	return 0;
 }
 

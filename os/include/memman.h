@@ -73,17 +73,10 @@ PUBLIC int kern_free_4k(void *AddrLin);
 PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute);
 PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
 PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
-PUBLIC void * kmap(page *_page);
-PUBLIC void kunmap(page *_page);
-struct file_desc; //forward declare
-int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len, 
-    u32 prot, u32 flag, u32 pgoff);
-int kern_munmap(PROCESS* p_proc, u32 start, u32 len);
-int do_mmap(u32 addr, u32 len, u32 prot, u32 flag, int fd, u32 offset);
-int do_munmap(u32 start, u32 len);
 struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr);
 void memmap_copy(PROCESS* p_parent, PROCESS* p_child);
 void memmap_clear(PROCESS* p_proc);
+void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma);
 void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last);
 int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag);
 #endif

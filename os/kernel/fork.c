@@ -38,6 +38,7 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 	}
 	else
 	{
+		lock_or_yield(&p_proc_current->task.lock);
 		/****************初始化子进程高端地址页表（内核部分）***********************///这个页表可以复制父进程的！
 		if(p_child->task.cr3 == 0){	//如果没有页目录，就申请 //added by mingxuan 2021-1-11
 			init_proc_page(p_child->task.pid);	//这里面已经填写了该进程的cr3寄存器变量
@@ -47,10 +48,11 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 
 		/************复制父进程的PCB部分内容（保留了自己的标识信息）**************/
 		fork_pcb_cpy(p_child);
-
+		release(&p_child->task.lock);
 		//disp_free();	//for test, added by mingxuan 2021-1-7
 		/**************复制线性内存，包括堆、栈、代码数据等等***********************/
 		// fork_mem_cpy(p_proc_current->task.pid,p_child->task.pid);
+		// mmu change: jiangfeng 2024.05
 		memmap_copy(p_proc_current, p_child);		
 		//disp_free();	//for test, added by mingxuan 2021-1-7
 
@@ -61,11 +63,7 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 		strcpy(p_child->task.p_name,"fork");	// 所有的子进程都叫fork
 		
 		/*************子进程返回值在其eax寄存器***************/
-		//p_child->task.regs.eax = 0;		//return child with 0  deleted by lcy 2023.10.25
-		// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-		//*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;	//added by xw, 17/12/11 deleted by lcy 2023.10.25
-		// *((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0; //added by lcy 2023.10.25
-		proc_kstacktop(p_child)->eax = 0;
+		proc_kstacktop(p_child)->eax = 0; // 设置返回值，改为使用内核栈宏 2024.05.05 jiangfeng
 		/****************用户进程数+1****************************/
 		u_proc_sum += 1;
 
@@ -75,6 +73,8 @@ PUBLIC int kern_fork()	//modified by mingxuan 2021-8-14
 		
 		//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
 		p_child->task.stat = READY;
+		
+		release(&p_proc_current->task.lock);
 		in_rq(p_child);
 	}
 
@@ -97,6 +97,7 @@ PUBLIC int sys_fork()
 *		fork_mem_cpy			//add by visual 2016.5.24
 *复制父进程的一系列内存数据
 *************************************************************/
+// 此函数已弃用
 PRIVATE int fork_mem_cpy(u32 ppid,u32 pid)
 {
 	u32 addr_lin;
@@ -248,12 +249,6 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//暂存标识信息
 	pid = p_child->task.pid;
 	
-	//eflags = p_child->task.regs.eflags;
-	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	// eflags = *((u32*)(p_reg + EFLAGSREG - P_STACKTOP));	//added by xw, 17/12/11
-	eflags = p_reg->eflags;
-
-	selector_ldt = p_child->task.ldt_sel;
 	cr3_child = p_child->task.cr3; 
 	
 	//复制PCB内容 
@@ -290,14 +285,13 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//p_child->task.regs.eflags = eflags;
 	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
-	p_reg->eflags = 0x202;
+	proc_init_ldt_kstack(p_child, RPL_USER); // 改为统一的宏函数初始化 jiangfeng 2024.05
 	proc_init_context(p_child);
 	// *((u32*)(p_reg - 4 - P_STACKTOP)) = (u32) restart_restore;
-	// *((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;
-	p_child->task.ldt_sel = selector_ldt;				
+	// *((u32*)(p_reg - 8 - P_STACKTOP)) = 0x1202;				
 	p_child->task.cr3 = cr3_child;
 
-	atomic_inc(&p_child->task.cwd->d_count);
+	atomic_inc(&p_child->task.cwd->d_count); // 子进程增加父进程打开文件的引用计数 jiangfeng 2024.02
 	for(int i=0; i<NR_FILES; i++){
 		if(p_child->task.filp[i]){
 			fget(p_child->task.filp[i]);

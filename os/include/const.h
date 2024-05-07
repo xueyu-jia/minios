@@ -157,10 +157,18 @@
     (KernelLinBase - 0x1000) // 参数存放位置起始地址，放在3G前，暂时还没没用到
 #define ArgLinLimitMAX    KernelLinBase //=(ArgLinBase+0x1000)大小：4K。
 #define KernelLinBase     0xC0000000 // 内核线性起始地址(有0x30400的偏移)
-#define KernelLinMapBase  (KernelLinBase + BigKernelSize)
-#define KernelLinMapLimit (KernelLinMapBase + num_4M)
+#define KernelLinMapBase  (KernelLinBase + (num_4M*224) )
+#define KernelLinMapMaxPage 1024
+#define KernelLinMapLimit (KernelLinMapBase + (KernelLinMapMaxPage*PAGE_SIZE))
 #define KernelLinLimitMAX (KernelLinBase + 0x40000000) // 大小：1G
-#define Kernel_space_max		(0x100000000-1)					// 4GB-1
+// #define Kernel_space_max		(0x100000000-1)					// 4GB-1
+// jiangfeng 2024.05
+// 线性地址KernelLinBase---KernelLinLimitMAX 3G---4G 分配所有页目录
+// KernelLinBase--KernelLinBase+kernel_size 3G--3G+8M(或3G+32M,由物理内存大小决定) 内核初始化页表
+// KernelLinBase---KernLinMapBase 3G---(4G-4M)默认不分配页表，可通过kmapping_phy建立临时页表映射访问如用户物理页等
+// 上述两种内核映射都是固定为虚拟地址=3G+物理地址
+// KernLinMapBase---KernelLinMapLimit (4G-4M)---4G 默认不分配页表，也通过kmapping_phy建立映射并返回具体的映射线性地址
+
 
 // added by mingxuan 2021-1-7
 #define MEMMAP_TEXT   0x0
@@ -235,7 +243,8 @@
 #define V_MEM_BASE    0xB8000 /* base of color video memory */
 #define V_MEM_SIZE    0x8000  /* 32K: B8000H -> BFFFFH */
 
-// #define DISP_LOG_SERIAL
+// #define DISP_LOG_SERIAL // 是否将disp_xx的输出打印到串口
+// #define MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
 
 #define STD_IN  0
 #define STD_OUT 1

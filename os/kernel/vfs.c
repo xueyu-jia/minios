@@ -57,6 +57,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	list_init(&inode->i_list);
 	list_init(&inode->i_data.pages);
 	inode->i_mapping = &inode->i_data;
+	inode->i_mapping->host = inode;
 	return inode;
 }
 
@@ -122,6 +123,10 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 // put inode之后自动解锁
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(atomic_dec_and_test(&inode->i_count)){
+		page * _page = NULL;
+		list_for_each(&inode->i_mapping->pages, _page, pg_list) {
+			if(atomic_get(&_page->count) > 0)return; // 仍有在使用中的page, 不能释放此页
+		}
 		struct superblock_operations* ops = inode->i_sb->sb_op;
 		if(inode->i_nlink == 0){
 			if(ops && ops->delete_inode){
@@ -137,7 +142,8 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	release(&inode->lock);
 }
 
-// require mutex: dir, ent
+// 在dir 文件夹下加入dentry
+// require mutex: dir->lock, dentry->lock
 PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry){
 	// dentry->d_nxt = dir->d_subdirs;
 	// if(dir->d_subdirs){
@@ -151,7 +157,7 @@ PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry
 }
 
 // require mutex: dir, ent
-PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
+PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry){
 	// if(dir->d_subdirs == ent){
 	// 	dir->d_subdirs = ent->d_nxt;
 	// }
@@ -161,7 +167,7 @@ PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* ent){
 	// if(ent->d_nxt){
 	// 	ent->d_nxt->d_pre = ent->d_pre;
 	// }
-	list_remove(&ent->d_list);
+	list_remove(&dentry->d_list);
 	// ent->d_parent = NULL; // parent saved,因为存在此dentry已被删除但仍有引用的情况，比如rmdir ../cwd, cd ..
 }
 

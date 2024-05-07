@@ -429,6 +429,7 @@ exitwait(void)
         return;
       }
     } else {
+      sleep(1);
       exit(-1);
     }
   }

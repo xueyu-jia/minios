@@ -40,21 +40,20 @@ acquire(struct spinlock *lock)
 }
 
 // Release the lock.
-void
-release(struct spinlock *lock)
+void release(struct spinlock *lock)
 {
-  
   lock->locked = 0;
 }
 
-void 
-lock_or(struct spinlock *lock, void (*callback)()) {
+// 尝试对lock上锁，如果是锁着的状态则调用callback
+void lock_or(struct spinlock *lock, void (*callback)()) {
     while (cmpxchg(0, 1, &lock->locked) == 1) {
         if (callback != NULL) { callback(); }
     }
     lock->pcs[0] = proc2pid(p_proc_current);
 }
 
+// 尝试对lock上锁，如果是锁着的状态则放弃cpu进行调度
 void lock_or_yield(struct spinlock *lock) {
   return lock_or(lock, sched_yield); 
 }
