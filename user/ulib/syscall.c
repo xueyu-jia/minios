@@ -248,12 +248,14 @@ int umount(const char *target) {
 	return _syscall1(_NR_umount, target);
 }
 
-void pthread_exit(void *retval){
-	return _syscall1(_NR_pthread_exit, retval);
+// pthread_exit pthread_join 参数名retval改为status,此名称与_syscall宏中的retval重名了
+// 故将此处改为更有意义的名字，syscall内部变量也改为_retval
+void pthread_exit(void *status){ 
+	return _syscall1(_NR_pthread_exit, status);
 }
 
-int pthread_join(pthread_t thread, void **retval){
-	return _syscall2(_NR_pthread_join, thread, retval);
+int pthread_join(pthread_t thread, void **status){
+	return _syscall2(_NR_pthread_join, thread, status);
 }
 
 int get_time(struct tm* time){

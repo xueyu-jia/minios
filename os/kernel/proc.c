@@ -417,15 +417,11 @@ PUBLIC void sys_yield() {
 PUBLIC void kern_sleep(int n) {
     int ticks0;
 
-    ticks0                       = ticks;
-    p_proc_current->task.channel = &ticks;
-
+    ticks0 = ticks;
+    // 
     while (ticks - ticks0 < n) {
-        p_proc_current->task.stat = SLEEPING;
-        out_rq(p_proc_current);
-        sched(); // Modified by xw, 18/4/19
+        wait_event(&ticks, 0);
     }
-    p_proc_current->task.channel = 0;
 }
 
 PUBLIC void do_sleep(int n) {

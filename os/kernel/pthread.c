@@ -374,8 +374,7 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 			lock_or_yield(&p_proc_child->task.lock);
 			//获取返回值
 			if(retval != NULL){
-				*retval = p_proc_child->task.retval;
-				
+				*retval = p_proc_child->task.retval;	
 			}
 
 			p_proc_father->task.info.child_t_num--;
@@ -392,12 +391,11 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 			free_PCB(p_proc_child);
 
 			release(&p_proc_father->task.lock);
+			break;
 		}
-
-		return 0;
-
 	}	
 
+	return 0;
 		
 } 
 

@@ -72,74 +72,74 @@
 
 /* 无参数的系统调用 */
 #define _syscall0(NR_syscall) ({		\
-	int retval;					        \
+	int _retval;					        \
 	asm volatile (						\
 		"int $0x90"						\
-		: "=a" (retval)					\
+		: "=a" (_retval)					\
 		: "a" (NR_syscall)				\
 		: "cc", "memory"				\
 	);							    	\
-	retval;						       	\
+	_retval;						       	\
 })
 
 /* 一个参数的系统调用 */
 #define _syscall1(NR_syscall, ARG1) ({		\
-	int retval;					            \
+	int _retval;					            \
 	asm volatile (					       	\
 		"int $0x90"						    \
-		: "=a" (retval)					    \
+		: "=a" (_retval)					    \
 		: "a" (NR_syscall), "b" (ARG1)		\
 		: "cc", "memory"					\
 	);							       		\
-	retval;						       		\
+	_retval;						       		\
 })
 
 /* 两个参数的系统调用 */
 #define _syscall2(NR_syscall, ARG1, ARG2) ({	\
-	int retval;						       		\
+	int _retval;						       		\
 	asm volatile (					       		\
 	"int $0x90"						       		\
-		: "=a" (retval)					       	\
+		: "=a" (_retval)					       	\
 		: "a" (NR_syscall), "b" (ARG1), "c" (ARG2)	\
 		: "cc", "memory"						\
 	);							       			\
-	retval;						       			\
+	_retval;						       			\
 })
 
 /* 三个参数的系统调用 */
 #define _syscall3(NR_syscall, ARG1, ARG2, ARG3) ({	\
-	int retval;						       			\
+	int _retval;						       			\
 	asm volatile (					       			\
 	"int $0x90"					       				\
-		: "=a" (retval)					       		\
+		: "=a" (_retval)					       		\
 		: "a" (NR_syscall), "b" (ARG1), "c" (ARG2), "d" (ARG3)  \
 		: "cc", "memory"					       	\
 	);							       				\
-	retval;						       				\
+	_retval;						       				\
 })
 
 /* 四个参数的系统调用 */
 #define _syscall4(NR_syscall, ARG1, ARG2, ARG3, ARG4) ({	\
-	int retval;						       					\
+	int _retval;						       					\
 	asm volatile (					       					\
 		"int $0x90"					       					\
-		: "=a" (retval)					       				\
+		: "=a" (_retval)					       				\
 		: "a" (NR_syscall), "b" (ARG1), "c" (ARG2), "d" (ARG3), "S" (ARG4)	\
 		: "cc", "memory"					       			\
 	);							       						\
-	retval;						       						\
+	_retval;						       						\
 })
 
 /* 五个参数的系统调用 */
 #define _syscall5(NR_syscall, ARG1, ARG2, ARG3, ARG4, ARG5) ({	\
-	int retval;						       						\
+	int _retval;						       						\
 	asm volatile (					       						\
 		"int $0x90"					       						\
-		: "=a" (retval)					       					\
+		: "=a" (_retval)					       					\
 		: "a" (NR_syscall), "b" (ARG1), "c" (ARG2), "d" (ARG3), "S" (ARG4), "D" (ARG5)	\
 		: "cc", "memory"					       				\
 	);							       							\
-	retval;						       							\
+	_retval;						       							\
 })
 
 #endif
