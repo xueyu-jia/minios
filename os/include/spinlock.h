@@ -62,5 +62,7 @@ void initlock(struct spinlock *lock, char *name);
 void acquire(struct spinlock *lock);
 // Release the lock.
 void release(struct spinlock *lock);
+// 尝试对lock上锁，如果是锁着的状态则调用callback
 void lock_or(struct spinlock *lock, void (*callback)());
+// 尝试对lock上锁，如果是锁着的状态则放弃cpu进行调度
 void lock_or_yield(struct spinlock *lock);

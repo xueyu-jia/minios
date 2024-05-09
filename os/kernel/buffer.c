@@ -29,7 +29,7 @@ int buffer_debug = 0;
 
 #define BUF_SYNC_DELAY_TICK	5
 #define BUF_SYNC_RATELIMIT  20
-
+#define BUF_SYNC_CYCLE_TICK 20
 /* struct buf_hash_head
 {
     struct buf_head *lru_head; // buffer head组成的双向链表的头
@@ -233,6 +233,7 @@ static inline void sync_buff(buf_head *bh){
     update_bh_lru(bh, BUFFER_CLEAN);
 }
 
+PRIVATE int flush_tick;
 static void sync_buffers(int flush_delay) {
     int nr_dirty = 0;
     buf_head *bh = NULL;
@@ -251,11 +252,15 @@ static void sync_buffers(int flush_delay) {
             nr_dirty++;
         }
     }
+    flush_tick = ticks;
 }
 
 static void try_sync_buffers(int background) {
     lock_or_yield(&buf_lock);
-    if(buf_lru_cnt[BUFFER_DIRTY] > buf_dirty_nfrac*buf_block_cnt/100){
+    // buffer写回条件: dirty buffer数超过buffer总量的buf_dirty_nfrac% (20%)
+    // 或者存在dirty buffer且距离上一次将dirty buffer同步操作的时间超过20ticks
+    if((buf_lru_cnt[BUFFER_DIRTY] > buf_dirty_nfrac*buf_block_cnt/100)
+        ||((ticks > flush_tick + BUF_SYNC_CYCLE_TICK) && buf_lru_cnt[BUFFER_DIRTY])){
         #ifdef BUFFER_SYNC_TASK
         if(background) {
             release(&buf_lock);

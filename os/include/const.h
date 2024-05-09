@@ -99,8 +99,9 @@
 //#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
 //#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
 // #define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
-
-#define NR_SYS_CALL		  67
+// modified by jiangfeng 2024.5 增加重构后vfs文件系统调用
+// devfs支持以后，移除初始化设备的系统调用
+#define NR_SYS_CALL		  67 
 /* TTY */
 // added by mingxuan 2019-5-19
 #define NR_CONSOLES 3 /* consoles */
@@ -122,7 +123,8 @@
     (((u32)x)        \
      + 0xC0000000) // 内核中物理地址转线性地址		//add by visual 2016.5.10
 #define K_LIN2PHY(x)      (((u32)x) - 0xC0000000) // added by xw, 18/8/27
-#define UPPER_BOUND_4K(x) ((((u32)(x)) + num_4K - 1)& 0xFFFFF000)
+#define UPPER_BOUND(x, size) ((((u32)(x)) + ((size) - 1)) & (~((size)-1)))
+#define UPPER_BOUND_4K(x) UPPER_BOUND(x, num_4K)
 #define num_4B            0x4      // 4B大小
 #define num_1K            0x400    // 1k大小
 #define num_4K            0x1000   // 4k大小
@@ -163,11 +165,12 @@
 #define KernelLinLimitMAX (KernelLinBase + 0x40000000) // 大小：1G
 // #define Kernel_space_max		(0x100000000-1)					// 4GB-1
 // jiangfeng 2024.05
-// 线性地址KernelLinBase---KernelLinLimitMAX 3G---4G 分配所有页目录
+// 线性地址KernelLinBase---KernelLinLimitMAX 3G---3G+900M 分配所有页目录
 // KernelLinBase--KernelLinBase+kernel_size 3G--3G+8M(或3G+32M,由物理内存大小决定) 内核初始化页表
-// KernelLinBase---KernLinMapBase 3G---(4G-4M)默认不分配页表，可通过kmapping_phy建立临时页表映射访问如用户物理页等
+// KernelLinBase---KernLinMapBase 3G---(3G+896M)默认不分配页表，可通过kmapping_phy建立临时页表映射访问如用户物理页等
 // 上述两种内核映射都是固定为虚拟地址=3G+物理地址
-// KernLinMapBase---KernelLinMapLimit (4G-4M)---4G 默认不分配页表，也通过kmapping_phy建立映射并返回具体的映射线性地址
+// KernLinMapBase---KernelLinMapLimit (3G+896M)---(3G+900M) 默认不分配页表，
+// 也通过kmapping_phy建立映射并返回具体的映射线性地址, 但是可以映射任意高物理地址
 
 
 // added by mingxuan 2021-1-7

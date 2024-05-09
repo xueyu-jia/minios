@@ -242,14 +242,9 @@ PUBLIC void hd_service()
 		if(rwinfo){
 			hd_rdwt_real(rwinfo);
 			proc = rwinfo->proc;
-			wait = rwinfo->wait;
 			kern_kfree((u32)rwinfo->msg);
 			kern_kfree((u32)rwinfo);
-			if(wait) {
-				proc->task.stat = READY;
-				in_rq(proc);
-				yield();
-			}
+			wakeup(&hdque);
 		}
 		
 		//disp_str("H ");
@@ -267,14 +262,12 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 {
 	RWInfo* rwinfo = (RWInfo*) kern_kmalloc(sizeof(RWInfo));
 	int size = p->CNT;
-	int wait = p->type == DEV_READ;
 	
 	//buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
 	//buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan 2021-3-25
 	// buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
 	rwinfo->msg = p;
 	rwinfo->proc = p_proc_current;
-	rwinfo->wait = wait;
 	
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, rwinfo);
@@ -283,9 +276,7 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 		// phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, rwinfo);
 	}
-	if(wait) {
-		wait_event(&hdque, 0);
-	}
+	wait_event(&hdque, 0);
 	// kern_kfree((u32)buffer);
 	// kern_kfree((u32)rwinfo);
 }

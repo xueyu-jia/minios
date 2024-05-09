@@ -342,7 +342,6 @@ typedef struct rdwt_info
 {
 	MESSAGE *msg;
 	PROCESS *proc;
-	int wait;
 	struct rdwt_info *next;
 } RWInfo;
 
@@ -370,8 +369,8 @@ PUBLIC int orangefs_identify(int drive, u32 _sect_nr);
 PUBLIC int fat32_identify(int drive, u32 _sect_nr);
 
 // add by sundong 2023.6.3 将读写扇区函数的封装由文件系统层放在了驱动层
-int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
+// int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
+// int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 
 //add by sundong 2023.5.26 读取数据块
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);

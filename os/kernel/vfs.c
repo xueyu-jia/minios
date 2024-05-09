@@ -55,9 +55,10 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
 	list_init(&inode->i_list);
-	list_init(&inode->i_data.pages);
+	init_cache_page(&inode->i_data.pages);
 	inode->i_mapping = &inode->i_data;
 	inode->i_mapping->host = inode;
+	inode->i_mapping->pages.page_mapping = inode->i_mapping;
 	return inode;
 }
 
@@ -124,7 +125,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(atomic_dec_and_test(&inode->i_count)){
 		page * _page = NULL;
-		list_for_each(&inode->i_mapping->pages, _page, pg_list) {
+		list_for_each(&inode->i_mapping->pages.page_cache_list, _page, pg_list) {
 			if(atomic_get(&_page->count) > 0)return; // 仍有在使用中的page, 不能释放此页
 		}
 		struct superblock_operations* ops = inode->i_sb->sb_op;

@@ -97,141 +97,141 @@ PUBLIC int sys_fork()
 *		fork_mem_cpy			//add by visual 2016.5.24
 *复制父进程的一系列内存数据
 *************************************************************/
-// 此函数已弃用
-PRIVATE int fork_mem_cpy(u32 ppid,u32 pid)
-{
-	u32 addr_lin;
+// 此函数已弃用 jiangfeng 2024.5
+// PRIVATE int fork_mem_cpy(u32 ppid,u32 pid)
+// {
+// 	u32 addr_lin;
 
-	//disp_free();	//for test, added by mingxuan 2021-1-7
-	//复制代码，代码是共享的，直接将物理地址挂载在子进程的页表上
-	for(addr_lin = p_proc_current->task.memmap.text_lin_base ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.text_lin_limit) ; addr_lin+=num_4K )
-	{
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,addr_lin), PG_P  | PG_USU | PG_RWR);
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,addr_lin),//物理地址，为MAX_UNSIGNED_INT时，由该函数自动分配物理内存
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWR);//页表属性，代码是只读的
-		// disp_int(addr_lin);
-		// disp_str("=>");
-		// disp_int(get_page_phy_addr(ppid,addr_lin));
-		// disp_str("\n");
-	}
-	//disp_free();	//for test, added by mingxuan 2021-1-7
+// 	//disp_free();	//for test, added by mingxuan 2021-1-7
+// 	//复制代码，代码是共享的，直接将物理地址挂载在子进程的页表上
+// 	for(addr_lin = p_proc_current->task.memmap.text_lin_base ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.text_lin_limit) ; addr_lin+=num_4K )
+// 	{
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,addr_lin), PG_P  | PG_USU | PG_RWR);
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,addr_lin),//物理地址，为MAX_UNSIGNED_INT时，由该函数自动分配物理内存
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWR);//页表属性，代码是只读的
+// 		// disp_int(addr_lin);
+// 		// disp_str("=>");
+// 		// disp_int(get_page_phy_addr(ppid,addr_lin));
+// 		// disp_str("\n");
+// 	}
+// 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
-	//复制数据，数据不共享，子进程需要申请物理地址，并复制过来
-	for(addr_lin = p_proc_current->task.memmap.data_lin_base ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.data_lin_limit); addr_lin+=num_4K )
-	{	
-		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
-		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
-		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);     //edited by wang 2021.8.27
+// 	//复制数据，数据不共享，子进程需要申请物理地址，并复制过来
+// 	for(addr_lin = p_proc_current->task.memmap.data_lin_base ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.data_lin_limit); addr_lin+=num_4K )
+// 	{	
+// 		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
+// 		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
+// 		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);     //edited by wang 2021.8.27
 
-		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWW);//页表属性，数据是可读写的	
-		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
-		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
-		ker_ufree_4k(ppid, SharePageBase);
-		// disp_int(addr_lin);
-		// disp_str("=>");
-		// disp_int(get_page_phy_addr(pid,addr_lin));
-		// disp_str("\n");
-	}
+// 		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWW);//页表属性，数据是可读写的	
+// 		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
+// 		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
+// 		ker_ufree_4k(ppid, SharePageBase);
+// 		// disp_int(addr_lin);
+// 		// disp_str("=>");
+// 		// disp_int(get_page_phy_addr(pid,addr_lin));
+// 		// disp_str("\n");
+// 	}
 
-	//复制保留内存，保留内存不共享，子进程需要申请物理地址，并复制过来
-	for(addr_lin = p_proc_current->task.memmap.vpage_lin_base ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.vpage_lin_limit); addr_lin+=num_4K )
-	{
-		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
-		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
-		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);    //edited by wang 2021.8.27
+// 	//复制保留内存，保留内存不共享，子进程需要申请物理地址，并复制过来
+// 	for(addr_lin = p_proc_current->task.memmap.vpage_lin_base ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.vpage_lin_limit); addr_lin+=num_4K )
+// 	{
+// 		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
+// 		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
+// 		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);    //edited by wang 2021.8.27
 		
-		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWW);//页表属性，保留内存是可读写的	
-		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
-		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
-		ker_ufree_4k(ppid, SharePageBase);	
-	}
-	//disp_free();	//for test, added by mingxuan 2021-1-7
+// 		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWW);//页表属性，保留内存是可读写的	
+// 		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
+// 		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
+// 		ker_ufree_4k(ppid, SharePageBase);	
+// 	}
+// 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
-	//复制堆，堆不共享，子进程需要申请物理地址，并复制过来
-	for(addr_lin = p_proc_current->task.memmap.heap_lin_base ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.heap_lin_limit); addr_lin+=num_4K )
-	{
-		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
-		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
-		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
+// 	//复制堆，堆不共享，子进程需要申请物理地址，并复制过来
+// 	for(addr_lin = p_proc_current->task.memmap.heap_lin_base ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.heap_lin_limit); addr_lin+=num_4K )
+// 	{
+// 		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
+// 		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
+// 		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
 		
-		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWW);//页表属性，堆是可读写的	
-		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
-		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
-		ker_ufree_4k(ppid, SharePageBase);	
-	}	
+// 		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWW);//页表属性，堆是可读写的	
+// 		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
+// 		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
+// 		ker_ufree_4k(ppid, SharePageBase);	
+// 	}	
 
-	//disp_free();	//for test, added by mingxuan 2021-1-7
+// 	//disp_free();	//for test, added by mingxuan 2021-1-7
 	
-	//复制栈，栈不共享，子进程需要申请物理地址，并复制过来(注意栈的复制方向)
-	for(addr_lin = p_proc_current->task.memmap.stack_lin_limit ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.stack_lin_base) ; addr_lin+=num_4K )
-	{
-		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
-		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
-		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
+// 	//复制栈，栈不共享，子进程需要申请物理地址，并复制过来(注意栈的复制方向)
+// 	for(addr_lin = p_proc_current->task.memmap.stack_lin_limit ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.stack_lin_base) ; addr_lin+=num_4K )
+// 	{
+// 		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
+// 		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
+// 		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
 		
-		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWW);//页表属性，栈是可读写的		
-		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
-		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
-		ker_ufree_4k(ppid, SharePageBase);
-	}
+// 		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWW);//页表属性，栈是可读写的		
+// 		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
+// 		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
+// 		ker_ufree_4k(ppid, SharePageBase);
+// 	}
 	
-	//disp_free();	//for test, added by mingxuan 2021-1-7
+// 	//disp_free();	//for test, added by mingxuan 2021-1-7
 
-	//复制参数区，参数区不共享，子进程需要申请物理地址，并复制过来
-	for(addr_lin = p_proc_current->task.memmap.arg_lin_base ; 
-		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.arg_lin_limit) ; addr_lin+=num_4K )
-	{
-		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
-		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
-		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
+// 	//复制参数区，参数区不共享，子进程需要申请物理地址，并复制过来
+// 	for(addr_lin = p_proc_current->task.memmap.arg_lin_base ; 
+// 		addr_lin < UPPER_BOUND_4K(p_proc_current->task.memmap.arg_lin_limit) ; addr_lin+=num_4K )
+// 	{
+// 		// lin_mapping_phy(SharePageBase,0,ppid,PG_P  | PG_USU | PG_RWW,0);//使用前必须清除这个物理页映射
+// 		// //lin_mapping_phy(SharePageBase,MAX_UNSIGNED_INT,ppid,PG_P  | PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);//利用父进程的共享页申请物理页
+// 		// ker_umalloc_4k(SharePageBase,ppid,PG_P  | PG_USU | PG_RWW);        //edited by wang 2021.8.27
 		
-		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
-		// lin_mapping_phy(addr_lin,//线性地址
-		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
-		// 				pid,//要挂载的进程的pid，子进程的pid
-		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
-		// 				PG_P  | PG_USU | PG_RWW);//页表属性，参数区是可读写的	
-		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
-		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
-		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
-		ker_ufree_4k(ppid, SharePageBase);	
-	}
-	free_pagetbl(ppid, SharePageBase);
+// 		// memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);//将数据复制到物理页上,注意这个地方是强制一页一页复制的
+// 		// lin_mapping_phy(addr_lin,//线性地址
+// 		// 				get_page_phy_addr(ppid,SharePageBase),//物理地址，获取共享页的物理地址，填进子进程页表
+// 		// 				pid,//要挂载的进程的pid，子进程的pid
+// 		// 				PG_P  | PG_USU | PG_RWW,//页目录属性，一般都为可读写
+// 		// 				PG_P  | PG_USU | PG_RWW);//页表属性，参数区是可读写的	
+// 		ker_umalloc_4k(SharePageBase, ppid, PG_P | PG_USU | PG_RWW);	
+// 		memcpy((void*)SharePageBase,(void*)(addr_lin&0xFFFFF000),num_4K);
+// 		kern_mapping_4k(addr_lin, pid, get_page_phy_addr(ppid,SharePageBase), PG_P  | PG_USU | PG_RWW);
+// 		ker_ufree_4k(ppid, SharePageBase);	
+// 	}
+// 	free_pagetbl(ppid, SharePageBase);
 
-	return 0;		
-}
+// 	return 0;		
+// }
 
 
 /**********************************************************
@@ -244,7 +244,11 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	u32 eflags,selector_ldt,cr3_child;
 	STACK_FRAME* p_reg = proc_kstacktop(p_child);
 	//point to a register in the new kernel stack, added by xw, 17/12/11
-	char *esp_save_context;	//use to save corresponding field in child's PCB.
+	// char *esp_save_context;	//use to save corresponding field in child's PCB. 
+	// 
+	// fork之后的子进程此处的指针不能使用父进程pcb中的上下文指针，
+	// 也不应该使用旧的无效pcb中的上下文，简单起见这里直接调用初始化重置上下文字段
+	// jiangfeng  2024.5
 	STACK_FRAME *esp_save_stackframe;				//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
@@ -260,7 +264,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 	//use different kernel stack! And these two are importent to the child's initial running.
 	//Added by xw, 18/4/21
 	esp_save_stackframe = p_child->task.esp_save_int;
-	esp_save_context = p_child->task.esp_save_context;
+	// esp_save_context = p_child->task.esp_save_context;
 	disable_int();
 	p_child->task = p_proc_current->task;
 	//note that syscalls can be interrupted now! the state of child can only be setted

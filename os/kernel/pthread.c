@@ -182,7 +182,7 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	// fixed jiangfeng , disable int to protect 2024.4
 	p_child->task.stat = SLEEPING; //统一PCB state jiangfeng 20240314
 	enable_int();
-	list_init(&p_child->task.memmap.anon_pages); //线程使用父进程的mmap 链表，此两项直接重置为空 jiangfeng 202405
+	init_cache_page(&p_child->task.memmap.anon_pages); //线程使用父进程的mmap 链表，此两项直接重置为空 jiangfeng 202405
 	list_init(&p_child->task.memmap.vma_map);
 	// p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);//changed by lcy 2023.10.26 19*4

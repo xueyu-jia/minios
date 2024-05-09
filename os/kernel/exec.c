@@ -240,89 +240,90 @@ close_on_error:
  *                          exec_elfcpy		add by visual 2016.5.23
  *复制elf中program到内存中
  *======================================================================*/
-PRIVATE u32 exec_elfcpy(
-    u32 fd,
-    Elf32_Phdr *
-        Echo_Phdr) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
-{
-    u32 lin_addr  = Echo_Phdr->p_vaddr;
-    u32 lin_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_memsz;
+// 此函数弃用 jiangfeng 2024.5, exec改为mmap
+// PRIVATE u32 exec_elfcpy(
+//     u32 fd,
+//     Elf32_Phdr *
+//         Echo_Phdr) // 这部分代码将来要移动到exec.c文件中，包括下面execve()中的一部分
+// {
+//     u32 lin_addr  = Echo_Phdr->p_vaddr;
+//     u32 lin_limit = Echo_Phdr->p_vaddr + Echo_Phdr->p_memsz;
 
-    u32 file_offset = Echo_Phdr->p_offset;
-    u32 file_limit  = Echo_Phdr->p_offset + Echo_Phdr->p_filesz;
+//     u32 file_offset = Echo_Phdr->p_offset;
+//     u32 file_limit  = Echo_Phdr->p_offset + Echo_Phdr->p_filesz;
 
-    u32 lin_file_limit =
-        Echo_Phdr->p_vaddr + Echo_Phdr->p_filesz; // added by mingxuan 2021-3-16
+//     u32 lin_file_limit =
+//         Echo_Phdr->p_vaddr + Echo_Phdr->p_filesz; // added by mingxuan 2021-3-16
 
-    // modified by mingxuan 2021-1-29, start
-    char *buf = kern_kmalloc_4k();
-    ; // added by mingxuan 2020-12-14
+//     // modified by mingxuan 2021-1-29, start
+//     char *buf = kern_kmalloc_4k();
+//     ; // added by mingxuan 2020-12-14
 
-    // added by mingxuan 2020-12-14
-    // 给lin_addr建立页映射, mingxuan
-    //	for (; lin_addr < lin_limit; lin_addr++, file_offset++)
-    // 20240402: 此处如果不能保证elf中的地址4K对齐，会导致最高一部分没有分配空间
-    // 如lin_addr=0x8051FF4, lin_limit=0x805C220 末尾0x805C000~0x805C220未分配
-    // 下面的复制数据同样是这样的写法,
-    // 但是复制数据是应当按照elf中的位置完全对应的，最后一次复制也做了处理，所以没有问题
-    // for (; lin_addr < lin_limit; lin_addr+=num_4K, file_offset+=num_4K)
-    // 页表操作移到exec_load
+//     // added by mingxuan 2020-12-14
+//     // 给lin_addr建立页映射, mingxuan
+//     //	for (; lin_addr < lin_limit; lin_addr++, file_offset++)
+//     // 20240402: 此处如果不能保证elf中的地址4K对齐，会导致最高一部分没有分配空间
+//     // 如lin_addr=0x8051FF4, lin_limit=0x805C220 末尾0x805C000~0x805C220未分配
+//     // 下面的复制数据同样是这样的写法,
+//     // 但是复制数据是应当按照elf中的位置完全对应的，最后一次复制也做了处理，所以没有问题
+//     // for (; lin_addr < lin_limit; lin_addr+=num_4K, file_offset+=num_4K)
+//     // 页表操作移到exec_load
 
-    lin_addr    = Echo_Phdr->p_vaddr;  // added by mingxuan 2020-12-14
-    file_offset = Echo_Phdr->p_offset; // added by mingxuan 2020-12-14
+//     lin_addr    = Echo_Phdr->p_vaddr;  // added by mingxuan 2020-12-14
+//     file_offset = Echo_Phdr->p_offset; // added by mingxuan 2020-12-14
 
-    u32 for_flag; // added by mingxuan 2021-3-16
-    for_flag = 0; // added by mingxuan 2021-8-8
+//     u32 for_flag; // added by mingxuan 2021-3-16
+//     for_flag = 0; // added by mingxuan 2021-8-8
 
-    // for(  ; lin_addr<lin_limit ; lin_addr+=num_4K,file_offset+=num_4K )	//
-    // modified by mingxuan 2020-12-14
-    for (; lin_addr < lin_limit
-           && file_offset < file_limit;) // modified by mingxuan 2021-3-16
-    {
-        for_flag = 1; // 表示进入了for循环，离开for循环时需要做变量调整 //added
-                      // by mingxuan 2021-3-16
+//     // for(  ; lin_addr<lin_limit ; lin_addr+=num_4K,file_offset+=num_4K )	//
+//     // modified by mingxuan 2020-12-14
+//     for (; lin_addr < lin_limit
+//            && file_offset < file_limit;) // modified by mingxuan 2021-3-16
+//     {
+//         for_flag = 1; // 表示进入了for循环，离开for循环时需要做变量调整 //added
+//                       // by mingxuan 2021-3-16
 
-        // 以4K个字节为一个单位进行拷贝.
-        // 剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan if(
-        // lin_limit-lin_addr >= num_4K )	// modified by mingxuan 2020-12-14
-        if (lin_file_limit - lin_addr
-            >= num_4K) // modified by mingxuan 2021-3-16
-        {
-            kern_vfs_lseek(
-                fd, file_offset, SEEK_SET); // modified by mingxuan 2021-8-19
-            kern_vfs_read(fd, buf, num_4K);
-            memcpy(lin_addr, buf, num_4K); // modified by mingxuan 2020-12-14
-            file_offset += num_4K;
-            lin_addr    += num_4K;
-        } else { // 剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
+//         // 以4K个字节为一个单位进行拷贝.
+//         // 剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan if(
+//         // lin_limit-lin_addr >= num_4K )	// modified by mingxuan 2020-12-14
+//         if (lin_file_limit - lin_addr
+//             >= num_4K) // modified by mingxuan 2021-3-16
+//         {
+//             kern_vfs_lseek(
+//                 fd, file_offset, SEEK_SET); // modified by mingxuan 2021-8-19
+//             kern_vfs_read(fd, buf, num_4K);
+//             memcpy(lin_addr, buf, num_4K); // modified by mingxuan 2020-12-14
+//             file_offset += num_4K;
+//             lin_addr    += num_4K;
+//         } else { // 剩余的字节数小于4K字节，则一次全拷完剩余的字节, mingxuan
 
-            u32 left_size = file_limit - file_offset;
-            kern_vfs_lseek(
-                fd, file_offset, SEEK_SET); // modified by mingxuan 2021-8-19
-            kern_vfs_read(fd, buf, left_size);
-            memcpy(lin_addr, buf, left_size); // modified by mingxuan 2021-3-16
-            file_offset += left_size;         // added by mingxuan 2021-3-16
-            lin_addr    += left_size;
-        }
-    }
-    // modified by mingxuan 2021-1-29, end
+//             u32 left_size = file_limit - file_offset;
+//             kern_vfs_lseek(
+//                 fd, file_offset, SEEK_SET); // modified by mingxuan 2021-8-19
+//             kern_vfs_read(fd, buf, left_size);
+//             memcpy(lin_addr, buf, left_size); // modified by mingxuan 2021-3-16
+//             file_offset += left_size;         // added by mingxuan 2021-3-16
+//             lin_addr    += left_size;
+//         }
+//     }
+//     // modified by mingxuan 2021-1-29, end
 
-    // added by mingxuan 2021-3-16
-    //  if (for_flag == 1) //表示进入了for循环，离开for循环时需要做变量调整
-    //  {
-    //  	//减4K的原因是，最后一次for循环在判断时会自动加上4K
-    //  	lin_addr -= num_4K;	   //added by mingxuan 2021-3-16
-    //  	file_offset -= num_4K; //added by mingxuan 2021-3-16
-    //  }
-    //  后面 lin_addr 和 file_offset都不再使用 20240402
-    // added by mingxuan 2021-3-16
-    if (lin_limit - lin_file_limit > 0) {
-        memset(lin_file_limit, 0, lin_limit - lin_file_limit);
-    }
-    kern_kfree_4k(buf);
+//     // added by mingxuan 2021-3-16
+//     //  if (for_flag == 1) //表示进入了for循环，离开for循环时需要做变量调整
+//     //  {
+//     //  	//减4K的原因是，最后一次for循环在判断时会自动加上4K
+//     //  	lin_addr -= num_4K;	   //added by mingxuan 2021-3-16
+//     //  	file_offset -= num_4K; //added by mingxuan 2021-3-16
+//     //  }
+//     //  后面 lin_addr 和 file_offset都不再使用 20240402
+//     // added by mingxuan 2021-3-16
+//     if (lin_limit - lin_file_limit > 0) {
+//         memset(lin_file_limit, 0, lin_limit - lin_file_limit);
+//     }
+//     kern_kfree_4k(buf);
 
-    return 0;
-}
+//     return 0;
+// }
 
 /*======================================================================*
  *                          exec_load		add by visual 2016.5.23
@@ -470,7 +471,7 @@ PRIVATE int exec_pcb_init(char *path) {
     p_proc_current->task.memmap.kernel_lin_base = KernelLinBase; // 内核基址
     p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size; // 内核大小初始化为8M
     list_init(&p_proc_current->task.memmap.vma_map);
-	list_init(&p_proc_current->task.memmap.anon_pages);
+	init_cache_page(&p_proc_current->task.memmap.anon_pages);
     // 进程树属性,只要改两项，其余不用改
     // p_proc_current->task.info.type = TYPE_PROCESS;
     // //当前是进程还是线程 p_proc_current->task.info.real_ppid = -1;

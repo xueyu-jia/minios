@@ -4,6 +4,7 @@
 #define SHM_H
 #include "spinlock.h"
 #include "type.h"
+#include "pagecache.h"
 #define SHM_SIZE 10
 #define SHM_IPC_CREAT 0x200
 #define SHM_IPC_FIND 0x12
@@ -41,5 +42,6 @@ struct key2id_form
     struct key2id_form *next;
 } Key_TO_Id_Form;*/
 extern struct spinlock lock_shmmemcpy;
+extern cache_pages shm_pages;
 u32 phy_free_4k(u32 phy_addr);
 #endif

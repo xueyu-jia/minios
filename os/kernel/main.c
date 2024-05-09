@@ -15,6 +15,7 @@
 #include "ahci.h"
 #include "dev.h"
 #include "blame.h"
+#include "mmap.h"
 // #define GDBSTUB
 
 #include "../gdbstub/gdbstub.h"
@@ -256,7 +257,7 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	p_proc->task.memmap.kernel_lin_base = KernelLinBase;
 	p_proc->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size;
 	list_init(&p_proc->task.memmap.vma_map);
-	list_init(&p_proc->task.memmap.anon_pages);
+	init_cache_page(&p_proc->task.memmap.anon_pages);
 	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, p_proc->task.memmap.stack_lin_base, p_proc);
 	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, p_proc);
 	// init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, pid ,PG_P | PG_USU | PG_RWW);

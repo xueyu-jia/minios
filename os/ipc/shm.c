@@ -13,6 +13,8 @@
 #include "string.h"
 #include "syscall.h"
 #include "proc.h"
+#include "mmap.h"
+#include "pagecache.h"
 
 struct spinlock lock_shmmemcpy;
 PUBLIC void do_shmdt(char *shmaddr);
@@ -32,7 +34,9 @@ PUBLIC struct spinlock lock_msg = {
     .name = "ipc_lock",
     .cpu = 0xffffffff};
 struct spinlock lock_shmmemcpy;
-
+cache_pages shm_pages = {
+    .page_cache_list = {&shm_pages,&shm_pages}
+};
 // static char key_available(int key)
 // {
 
@@ -204,21 +208,30 @@ PUBLIC int sys_shmget()
 PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
 {
 
-    u32 vir_addr;
+    // u32 vir_addr;
     u32 phy_addr = (u32)ids.perms[shmid].phy_address;
-    // int size = ids.perms[shmid].size;
-
-    if(phy_addr == NULL)
-    {
-        ids.perms[shmid].phy_address = (void*)phy_malloc_4k();
-        phy_addr = (u32)ids.perms[shmid].phy_address;
-    }
+    // // int size = ids.perms[shmid].size;
     
-    vir_addr = (u32)shmaddr;
+    // if(phy_addr == NULL)
+    // {
+    //     ids.perms[shmid].phy_address = (void*)phy_malloc_4k();
+    //     phy_addr = (u32)ids.perms[shmid].phy_address;
+    // }
+    
+    // vir_addr = (u32)shmaddr;
     
     // alignment(vir_addr);
-    lin_mapping_phy(vir_addr, phy_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, PG_P | PG_USU | PG_RWW);
-
+    // lin_mapping_phy(vir_addr, phy_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, PG_P | PG_USU | PG_RWW);
+    int vir_addr = kern_mmap(p_proc_current, NULL, shmaddr, PAGE_SIZE, 
+        PROT_READ|PROT_WRITE, MAP_SHARED, shmid);
+    
+    if(phy_addr == NULL)
+    {
+        lock_or_yield(&shm_pages.lock);
+        page *shm_page = find_cache_page(&shm_pages, shmid);
+        ids.perms[shmid].phy_address = pfn_to_phy(page_to_pfn(shm_page));
+        release(&shm_pages.lock);
+    }
     return (void *)((vir_addr)&0xFFFFF000);
 }
 
@@ -237,8 +250,8 @@ PUBLIC void *sys_shmat()
  *======================================================================*/
 PUBLIC void kern_shmdt(char *shmaddr)
 {
-    clear_pte(p_proc_current->task.pid, (u32)shmaddr); //并不释放物理页
-
+    // clear_pte(p_proc_current->task.pid, (u32)shmaddr); //并不释放物理页
+    kern_munmap(p_proc_current, shmaddr, PAGE_SIZE);
     return;
 }
 

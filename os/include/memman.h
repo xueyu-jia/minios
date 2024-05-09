@@ -4,6 +4,8 @@
 #include "const.h"
 #include "slab.h"
 #include "atomic.h"
+#include "spinlock.h"
+#include "pagecache.h"
 #include "proc.h"
 
 #define FMIBuff		0x007ff000	//loader中getFreeMemInfo返回值存放起始地址(7M1020K)
@@ -32,7 +34,6 @@
 #define FAULT_NOPAGE	1
 #define FAULT_WRITE		2
 
-
 typedef struct page
 {
 	atomic_t count;
@@ -43,10 +44,16 @@ typedef struct page
 	// slab
     kmem_cache_t *cache;    // slab对应的cache
 	// page cache
+	cache_pages* pg_cache;  // page 所属的page cache结构
+	// 对于正在使用的页面，使用pg_list将page加入到对应的page链表
+	// 如file address_space中的链表，pcb匿名页面链表等
 	struct list_node pg_list;
+	// 对于使用过但为了再次使用的需要在缓存的页面，将pg_lru成员连入page_cache_inactive_lru;
+	struct list_node pg_lru;
 	u32 pg_off;
 }page;
 
+extern list_head page_inactive_lru;
 extern u32 kernel_size;
 extern int big_kernel;
 extern u32 kernel_code_size;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
@@ -64,15 +71,15 @@ PUBLIC u32 kern_kmalloc(u32 size);
 PUBLIC u32 kern_kfree(u32 addr);
 PUBLIC u32 phy_kmalloc_4k();
 PUBLIC u32 phy_kfree_4k(u32 phy_addr);
-PUBLIC void phy_mapping_4k(u32 phy_addr);
+// PUBLIC void phy_mapping_4k(u32 phy_addr);
 PUBLIC u32 kern_kmalloc_4k();
 PUBLIC u32 kern_kfree_4k(u32 addr);
 PUBLIC u32 phy_malloc_4k();
 PUBLIC u32 phy_free_4k(u32 phy_addr);
 PUBLIC int kern_free_4k(void *AddrLin);
-PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute);
-PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
-PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
+// PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute);
+// PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
+// PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
 struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr);
 void memmap_copy(PROCESS* p_parent, PROCESS* p_child);
 void memmap_clear(PROCESS* p_proc);

@@ -10,6 +10,7 @@
 #include "fs.h" //added by ran
 #include "pthread.h"
 #include "protect.h"
+#include "pagecache.h"
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -134,6 +135,7 @@ struct vmem_area {
 	struct list_node vma_list;
 };
 
+
 typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5.25
 	u32 text_lin_base;						//代码段基址
 	u32 text_lin_limit;						//代码段界限
@@ -157,9 +159,9 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 kernel_lin_limit;					//内核界限
 
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
+	cache_pages anon_pages;
 	list_head vma_map;	// list of vmem_area
-	list_head anon_pages;
-	struct spinlock lock;
+	struct spinlock vma_lock;
 }LIN_MEMMAP;
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/

@@ -10,8 +10,15 @@
 #include "type.h"
 #include "atomic.h"
 #include "list.h"
+// forward declarations
+struct vfs_inode;
+struct address_space;
+struct vfs_dentry;
+struct file_desc;
+struct super_block;
 #include "spinlock.h"
 #include "fs_const.h"
+#include "pagecache.h"
 #include "proc.h"
 
 /**
@@ -19,12 +26,6 @@
  * 
  * 
 */
-// forward declarations
-struct vfs_inode;
-struct address_space;
-struct vfs_dentry;
-struct file_desc;
-struct super_block;
 
 
 #include "orangefs.h"
@@ -32,7 +33,7 @@ struct super_block;
 
 struct address_space {
 	struct vfs_inode *host;
-	struct list_node pages;
+	cache_pages pages;
 };
 struct vfs_inode{
 	u32 i_no;

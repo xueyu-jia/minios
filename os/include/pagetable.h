@@ -17,8 +17,8 @@ PUBLIC	int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 								 u32 kernel_pde_addr_phy,
 								 u32 pde_Attribute, //页目录中的属性位
 								 u32 pte_Attribute);
-PUBLIC	void free_all_phypage(u32 pid);
-PUBLIC void free_seg_phypage(u32 pid, u8 type);
+// PUBLIC	void free_all_phypage(u32 pid);
+// PUBLIC void free_seg_phypage(u32 pid, u8 type);
 PUBLIC	void free_all_pagetbl(u32 pid);
 PUBLIC void free_pagetbl(u32 pid, u32 AddrLin);
 PUBLIC void free_pagedir(u32 pid);

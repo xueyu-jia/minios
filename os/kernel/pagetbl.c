@@ -128,6 +128,11 @@ PUBLIC u32 phy_exist(u32 PageTblPhyAddr, //页表物理地址
 	}
 }
 
+
+/// @brief 获取进程页表的物理页地址
+/// @param pid 查询的进程号
+/// @param AddrLin 查询的虚拟地址
+/// @return pte中保存的物理地址(此物理页可能不存在)，如果对应的页表不存在，返回NULL
 PUBLIC u32 get_page_phy_addr(u32 pid, u32 AddrLin) {
 	u32 pde_phy = get_pde_phy_addr(pid);
 	if(!pde_phy || (pte_exist(pde_phy, AddrLin) == 0)) return NULL;
@@ -539,10 +544,10 @@ PUBLIC void clear_pde(u32 pid, u32 AddrLin)
 
 //释放物理页，并清除该物理页对应的页表项
 //added by mingxuan 2021-1-4
-PUBLIC void free_phypage(u32 pid, u32 AddrLin)
-{
-	ker_ufree_4k(pid,AddrLin);
-}
+// PUBLIC void free_phypage(u32 pid, u32 AddrLin)
+// {
+// 	ker_ufree_4k(pid,AddrLin);
+// }
 
 //释放页表，并清除该页表对应的页目录表项
 //added by mingxuan 2021-1-4
@@ -608,69 +613,69 @@ PUBLIC u32 get_seg_limit(u32 pid, u32 type) //modified by mingxuan 2021-8-17
 
 //释放进程的某个段对应的所有物理页
 //added by mingxuan 2021-1-7
-PUBLIC void free_seg_phypage(u32 pid, u8 type)
-{
-	u32 addr_lin;
-	u32 base, limit;
+// PUBLIC void free_seg_phypage(u32 pid, u8 type)
+// {
+// 	u32 addr_lin;
+// 	u32 base, limit;
 
-	//base = set_seg_base(pid, type);
-	//limit = set_seg_limit(pid, type);
-	//modified by mingxuan 2021-8-17
-	base = get_seg_base(pid, type);
-	limit = get_seg_limit(pid, type);
+// 	//base = set_seg_base(pid, type);
+// 	//limit = set_seg_limit(pid, type);
+// 	//modified by mingxuan 2021-8-17
+// 	base = get_seg_base(pid, type);
+// 	limit = get_seg_limit(pid, type);
 
-	//释放栈
-	/*
-	if(type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
-	{
-		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射,如何处理还需要再思考, mingxuan 2021-1-7
-		u32 limit_phy_addr = get_page_phy_addr(pid, base - num_4K) - num_4K;//栈空间必须是连续的，不然会出错
-		for (addr_lin = base - num_4K; addr_lin > limit; addr_lin -= num_4K)
-		{
-			free_phypage(pid, addr_lin);
-		}
-		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射
-		//do_free_4k(limit_phy_addr); //栈空间必须是连续的，不然会出错
-		phy_free_4k(limit_phy_addr); //modified by mingxuan 2021-8-14
-	}
-	*/
-	//modified by mingxuan 2021-8-25
-	if (type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
-	{
-		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射,如何处理还需要再思考, mingxuan 2021-1-7
-		for (addr_lin = limit; addr_lin < UPPER_BOUND_4K(base); addr_lin += num_4K)
-		{
-			free_phypage(pid, addr_lin);
-		}
-	}
+// 	//释放栈
+// 	/*
+// 	if(type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
+// 	{
+// 		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射,如何处理还需要再思考, mingxuan 2021-1-7
+// 		u32 limit_phy_addr = get_page_phy_addr(pid, base - num_4K) - num_4K;//栈空间必须是连续的，不然会出错
+// 		for (addr_lin = base - num_4K; addr_lin > limit; addr_lin -= num_4K)
+// 		{
+// 			free_phypage(pid, addr_lin);
+// 		}
+// 		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射
+// 		//do_free_4k(limit_phy_addr); //栈空间必须是连续的，不然会出错
+// 		phy_free_4k(limit_phy_addr); //modified by mingxuan 2021-8-14
+// 	}
+// 	*/
+// 	//modified by mingxuan 2021-8-25
+// 	if (type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
+// 	{
+// 		//特别注意，limit的物理地址是取不到的，因为之前没有对limit所在的线性地址做映射,如何处理还需要再思考, mingxuan 2021-1-7
+// 		for (addr_lin = limit; addr_lin < UPPER_BOUND_4K(base); addr_lin += num_4K)
+// 		{
+// 			free_phypage(pid, addr_lin);
+// 		}
+// 	}
 
-	else //释放其他段
-	{
-		for (addr_lin = base; addr_lin < UPPER_BOUND_4K(limit); addr_lin += num_4K)
-		{
-			free_phypage(pid, addr_lin);
-		}
-	}
-}
+// 	else //释放其他段
+// 	{
+// 		for (addr_lin = base; addr_lin < UPPER_BOUND_4K(limit); addr_lin += num_4K)
+// 		{
+// 			free_phypage(pid, addr_lin);
+// 		}
+// 	}
+// }
 
 //释放进程的全部物理页
 //added by mingxuan 2021-1-6
-PUBLIC void free_all_phypage(u32 pid)
-{
-	//释放代码段，text_hold为1就释放掉.为0不处理
-	// if (proc_table[pid].task.info.text_hold == 1)
-	// {
-	// 全局页管理引入计数，不用再管代码持有问题
-	free_seg_phypage(pid, MEMMAP_TEXT);
-	// }
-	free_seg_phypage(pid, MEMMAP_DATA);
-	free_seg_phypage(pid, MEMMAP_VPAGE);
-	free_seg_phypage(pid, MEMMAP_HEAP);
-	free_seg_phypage(pid, MEMMAP_STACK);
-	free_seg_phypage(pid, MEMMAP_ARG);
+// PUBLIC void free_all_phypage(u32 pid)
+// {
+// 	//释放代码段，text_hold为1就释放掉.为0不处理
+// 	// if (proc_table[pid].task.info.text_hold == 1)
+// 	// {
+// 	// 全局页管理引入计数，不用再管代码持有问题
+// 	free_seg_phypage(pid, MEMMAP_TEXT);
+// 	// }
+// 	free_seg_phypage(pid, MEMMAP_DATA);
+// 	free_seg_phypage(pid, MEMMAP_VPAGE);
+// 	free_seg_phypage(pid, MEMMAP_HEAP);
+// 	free_seg_phypage(pid, MEMMAP_STACK);
+// 	free_seg_phypage(pid, MEMMAP_ARG);
 
-	return;
-}
+// 	return;
+// }
 
 //释放进程的某个段对应的所有页表
 //added by mingxuan 2021-1-7
