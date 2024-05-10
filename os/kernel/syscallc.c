@@ -318,23 +318,7 @@ int test_consume(int x)
 	
     return 0;
 }
-/*======================================================================*
-*                          sys_test					added by cjj 2021.12.25	modified by Juan 2021.12.26
-用于测试内核信号量的功能
-*======================================================================*/
-
-PUBLIC void sys_test()
-{
-	return do_test(get_arg(1));
-}
-PUBLIC void do_test(int function)
-{
-	return kern_test(function);
-}
-
-PUBLIC void kern_test(int function)
-{
-	
+void kern_sem_test(int function) {
 	if (!tmp)
 	{
 		tmp=1;
@@ -370,3 +354,23 @@ PUBLIC void kern_test(int function)
 
 }
 #endif /*TEST_FOR_SEMAPHORE*/
+/*======================================================================*
+*                          sys_test					added by cjj 2021.12.25	modified by Juan 2021.12.26
+用于测试内核信号量的功能
+// modified jiangfeng 使用此接口便于进行内核调试 2024.5
+*======================================================================*/
+
+PUBLIC void kern_test(int function)
+{
+	
+}
+
+PUBLIC void do_test(int function)
+{
+	return kern_test(function);
+}
+
+PUBLIC void sys_test()
+{
+	return do_test(get_arg(1));
+}

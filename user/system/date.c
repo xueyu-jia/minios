@@ -8,5 +8,6 @@ int main(int argc, char** argv){
 	get_time(&time);
 	strftime(buf, 32, "%Y-%m-%d %H:%M:%S", &time);
 	printf("%s\n", buf);
+	printf("tick:%d\n", get_ticks());
 	return 0;
 }

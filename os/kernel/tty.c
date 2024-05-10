@@ -12,7 +12,7 @@ TTY         tty_table[NR_CONSOLES];
 PUBLIC  int current_console;  //当前显示在屏幕上的console
 PRIVATE struct Semaphore tty_empty;
 PRIVATE struct Semaphore tty_full;
-
+PRIVATE struct Semaphore tty_buf_read;
 PUBLIC void    wake_the_tty();
 
 
@@ -57,6 +57,7 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 		    case ENTER:
 			    put_key(p_tty, '\n');
                 p_tty->status = p_tty->status & 3; //&3'b011
+                ksem_post(&tty_buf_read, 1);
 			    break;
 		    case BACKSPACE:
 			    put_key(p_tty, '\b');
@@ -281,6 +282,7 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len){
     int i = 0;
     if(!tty->ibuf_read_cnt){
         tty->status |= TTY_STATE_WAIT_ENTER ;
+        ksem_wait(&tty_buf_read, 1);
     }
 
     while( (tty->status&TTY_STATE_WAIT_ENTER) );//等待回车按下
