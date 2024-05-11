@@ -810,12 +810,28 @@ void fput(struct file_desc* file) {
 		release(&file_desc_lock);
 	}
 }
+
+PUBLIC int kern_vfs_fsync(struct file_desc* file) {
+	if(!file){
+		return -1;
+	}
+	struct vfs_inode * inode = file->fd_dentry->d_inode;
+	int ret;
+	lock_or_yield(&inode->lock);
+	if(inode->i_fop && inode->i_fop->fsync){
+		ret = inode->i_fop->fsync(file, 0);
+	}
+	release(&inode->lock);
+	return ret;
+}
+
 PUBLIC int kern_vfs_close(int fd) {
 	PROCESS* p_proc = proc_real(p_proc_current);
 	struct file_desc* file = p_proc->task.filp[fd];
 	if(!file){
 		return -1;
 	}
+	kern_vfs_fsync(file);
 	fput(file);
 	p_proc->task.filp[fd] = 0;
 	return 0;

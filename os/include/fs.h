@@ -99,6 +99,7 @@ struct super_block {
 	struct vfs_mount* sb_vfsmount;
 	list_head sb_inode_list;
 	struct superblock_operations * sb_op;
+	int sb_blocksize;
 	int	sb_dev; 	/**< the super block's home device */
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
@@ -148,6 +149,8 @@ struct inode_operations{
 	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
+	int (*get_block)(struct vfs_inode *inode, u32 iblock,
+				  struct buffer_head *bh_result, int create);
 };
 
 struct dentry_operations{
@@ -158,6 +161,7 @@ struct file_operations{
 	int (*read)(struct file_desc *file, unsigned int count, char * buf);
 	int (*write)(struct file_desc *file, unsigned int count, const char * buf);
 	int (*readdir)(struct file_desc *file, unsigned int count, struct dirent* start);
+	int (*fsync)(struct file_desc *file, int datasync);
 };
 
 struct superblock_operations{
@@ -181,6 +185,9 @@ struct fs_type{
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
 extern struct fs_type fstype_table[NR_FS_TYPE];
 int get_free_superblock();
-
-
+int generic_file_readpage(struct address_space* file_mapping, page* target);
+int generic_file_writepage(struct address_space* file_mapping, page* target);
+int generic_file_read(struct file_desc* file, unsigned int count, char* buf);
+int generic_file_write(struct file_desc* file, unsigned int count, const char* buf);
+int generic_file_fsync(struct file_desc* file, int datasync);
 #endif /* FS_MISC_H */

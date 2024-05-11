@@ -181,11 +181,30 @@ void init_buffer(int num_block)
 		bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 		bh->buffer = (void*)kern_kzalloc(BLOCK_SIZE);
         bh->b_state = BUFFER_FREE;
+        bh->b_size = BLOCK_SIZE;
 		initlock(&bh->lock, NULL);
 		list_init(&bh->b_lru);
 		list_init(&bh->b_hash);
 		list_add_last(&bh->b_lru, &buf_free_list);
 	}
+}
+
+PUBLIC void rw_buffer(int iotype, buf_head* bh) {
+    u64 pos = bh->block * bh->b_size;
+    if(kernel_initial == 1) { // init stage no sched
+        rw_blocks(iotype, bh->dev, pos, bh->b_size, 
+            proc2pid(p_proc_current), bh->buffer);
+    }else {
+        rw_blocks_sched(iotype, bh->dev, pos, bh->b_size, 
+            proc2pid(p_proc_current), bh->buffer);
+    }
+}
+
+PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block)
+{
+	bh->dev = sb->sb_dev;
+	bh->block = block;
+	bh->b_size = sb->sb_blocksize;
 }
 
 /*****************************************************************************
@@ -222,11 +241,12 @@ static inline void sync_buff(buf_head *bh){
 	// disp_str(".");
     update_bh_lru(bh, BUFFER_LOCKED);
 	int tick = ticks;
-	if(kernel_initial){
-		WR_BLOCK(bh->dev, bh->block, bh->buffer);
-	}else{
-		WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
-	}
+	// if(kernel_initial){
+	// 	WR_BLOCK(bh->dev, bh->block, bh->buffer);
+	// }else{
+	// 	WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
+	// }
+    rw_buffer(DEV_WRITE, bh);
 	// disp_int(ticks-tick);
 	// disp_str(" ");
     bh->b_flush = 0;
@@ -378,11 +398,12 @@ buf_head *bread(int dev, int block)
     if (!bh->used)
     {
         // 该buf head是一个新分配的，此时应该从硬盘读数据进来
-		if(kernel_initial){
-			RD_BLOCK(dev, block, bh->buffer);
-		}else{
-			RD_BLOCK_SCHED(dev, block, bh->buffer);
-		}
+		// if(kernel_initial){
+		// 	RD_BLOCK(dev, block, bh->buffer);
+		// }else{
+		// 	RD_BLOCK_SCHED(dev, block, bh->buffer);
+		// }
+        rw_buffer(DEV_READ, bh);
         // 标记为已被使用
         bh->used = 1;
         bh->count = 1;

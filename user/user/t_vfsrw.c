@@ -33,10 +33,14 @@ int check_content(int order) {
     char c = ('0'+order)%256;
     if(((int*)buf)[0] == order){
         for(int i = 4; i < 4096; i++){
-            if(buf[i] != c)return -1;
+            if(buf[i] != c){
+                printf("file wrong at %d\n", order*4096 + i);
+                return -1;
+            }
         }
         return 0;
     }
+    printf("file wrong at %d\n", order*4096);
     return -1;
 }
 

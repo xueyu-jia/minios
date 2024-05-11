@@ -6,6 +6,7 @@
 #include "atomic.h"
 #include "spinlock.h"
 #include "pagecache.h"
+#include "buffer.h"
 #include "proc.h"
 
 #define FMIBuff		0x007ff000	//loader中getFreeMemInfo返回值存放起始地址(7M1020K)
@@ -22,6 +23,7 @@
 
 #define PHY_MEM_SIZE    0x04000000            //64M
 #define ALL_PAGES       ((PHY_MEM_SIZE)/PAGE_SIZE)
+#define MAX_BUF_PAGE	(PAGE_SIZE/SECTOR_SIZE)
 
 #define PROT_NONE   0
 #define PROT_READ   1
@@ -48,8 +50,10 @@ typedef struct page
 	// 对于正在使用的页面，使用pg_list将page加入到对应的page链表
 	// 如file address_space中的链表，pcb匿名页面链表等
 	struct list_node pg_list;
+	int dirty;
 	// 对于使用过但为了再次使用的需要在缓存的页面，将pg_lru成员连入page_cache_inactive_lru;
 	struct list_node pg_lru;
+	buf_head* pg_buffer[MAX_BUF_PAGE];
 	u32 pg_off;
 }page;
 
@@ -80,6 +84,12 @@ PUBLIC int kern_free_4k(void *AddrLin);
 // PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute);
 // PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
 // PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
+PUBLIC page* alloc_user_page(u32 pgoff);
+PUBLIC void get_page(page *_page);
+PUBLIC int put_page(page *_page, int cache);
+PUBLIC void zero_page(page *_page);
+PUBLIC void copy_from_page(page *_page, void* buf, u32 len, u32 offset);
+PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset);
 struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr);
 void memmap_copy(PROCESS* p_parent, PROCESS* p_child);
 void memmap_clear(PROCESS* p_proc);

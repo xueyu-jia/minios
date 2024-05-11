@@ -217,7 +217,7 @@ PUBLIC u32 do_kfree_4k(u32 addr) //有unsigned int型参数addr，释放掉起�
 }
 */
 
-PRIVATE inline void get_page(page *_page) {
+PUBLIC void get_page(page *_page) {
 	if(atomic_get(&_page->count) == 0) {
 		acquire(&page_inactive_lock);
 		list_remove(&_page->pg_lru);
@@ -229,7 +229,7 @@ PRIVATE inline void get_page(page *_page) {
 	// disp_str(" ");
 }
 
-PRIVATE int put_user_page(page *_page, int cache) {
+PUBLIC int put_page(page *_page, int cache) {
 	// disp_str("put:");
 	// disp_int(page_to_pfn(_page));
 	// disp_str(" ");
@@ -542,13 +542,14 @@ PUBLIC struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr)
     return NULL;
 }
 
-PRIVATE page* alloc_user_page(u32 pgoff) {
+PUBLIC page* alloc_user_page(u32 pgoff) {
 	page *_page = alloc_pages(ubud, 0);
 	atomic_set(&_page->count, 1);
 	_page->pg_off = pgoff;
 	_page->pg_cache = NULL;
 	list_init(&_page->pg_list);
 	list_init(&_page->pg_lru);
+	memset(_page->pg_buffer, 0, sizeof(_page->pg_buffer));
 	return _page;
 }
 
@@ -570,7 +571,7 @@ PRIVATE void copy_page(page *dst, page *src) {
 }
 
 // req. ring 0
-PRIVATE void zero_page(page *_page) {
+PUBLIC void zero_page(page *_page) {
 	u32 dst_vaddr;
 	dst_vaddr = kmap(_page);
 	memset(dst_vaddr, 0, PAGE_SIZE);
@@ -608,24 +609,10 @@ PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 p
 	if(_page == NULL) {
 		_page = alloc_user_page(pgoff);
 		if(vma->file) {
-			struct file_desc *file = vma->file;
-			// read page
-			char * buf = kern_kmalloc_4k();
-			if(file->fd_dentry == NULL) {
-				disp_str("error!");
-			}
-			lock_or_yield(&file->fd_dentry->d_inode->lock);
-			u64 origin_pos = file->fd_pos;
-			file->fd_pos = pgoff << PAGE_SHIFT;
-			int cnt = file->fd_ops->read(file, PAGE_SIZE, buf);
-			memset(buf + cnt, 0, PAGE_SIZE - cnt);
-			file->fd_pos = origin_pos;
-			copy_to_page(_page, buf, PAGE_SIZE, 0);
-			release(&file->fd_dentry->d_inode->lock);
-			// disp_str("read:");
-			// disp_int(page_to_pfn(_page));
-			// disp_str(" ");
-			kern_kfree_4k(buf);
+			struct address_space * f_mapping = vma->file->fd_mapping;
+			lock_or_yield(&f_mapping->host->lock);
+			generic_file_readpage(f_mapping, _page);
+			release(&f_mapping->host->lock);
 		}else {
 			zero_page(_page);
 		}
@@ -644,7 +631,7 @@ PRIVATE void free_vma_pages(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area 
 		u32 phy = get_page_phy_addr(proc2pid(p_proc), addr);
 		if(phy) {
 			page * _page = pfn_to_page(phy_to_pfn(phy));
-			put_user_page(_page, ((vma->file != NULL)||(vma->flags & MAP_SHARED)));
+			put_page(_page, ((vma->file != NULL)||(vma->flags & MAP_SHARED)));
 			clear_pte(proc2pid(p_proc), addr);
 		}
 		addr += PAGE_SIZE;
@@ -665,7 +652,7 @@ PUBLIC void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma
 		if((vma->file) && (vma->flags & PROT_WRITE) && (vma->flags & MAP_PRIVATE)) {
 			_page = alloc_user_page(addr>>PAGE_SHIFT);
 			copy_page(_page, content_page);
-			put_user_page(content_page, 1);
+			put_page(content_page, 1);
 			add_cache_page(&mmap->anon_pages, _page);
         } else { 
             // 其他情况直接使用page cache的物理页就行
@@ -799,7 +786,7 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 				copy_page(_page, pte_page);
 				add_cache_page(&mmap->anon_pages, _page);
 				attr |= PG_RWW;
-				put_user_page(pte_page, vma->file != NULL);
+				put_page(pte_page, vma->file != NULL);
 			}
 		}
 		

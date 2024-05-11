@@ -16,6 +16,7 @@ typedef struct buf_head
 	struct list_node b_lru;
 	struct list_node b_hash;
 	// struct list_node b_dirty;
+    int b_size; // buffer size in byte
 	int b_flush;
     int b_state;
     SPIN_LOCK lock;
@@ -30,9 +31,13 @@ void init_buffer(int num_block);
 #define BUF_WR_BLOCK(dev,block_nr,fsbuf) buf_write_block(dev,block_nr,proc2pid(p_proc_current),fsbuf); */
 extern int buffer_debug; 
 /********buffer向文件系统提供的API********/
-buf_head *bread(int dev, int block);
-void mark_buff_dirty(buf_head *bh);
-void brelse(buf_head *bh);
+PUBLIC buf_head *bread(int dev, int block);
+PUBLIC void mark_buff_dirty(buf_head *bh);
+PUBLIC void brelse(buf_head *bh);
+struct super_block;
+PUBLIC void rw_buffer(int iotype, buf_head* bh);
+PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block);
+
 // #define BUFFER_SYNC_TASK
 #ifdef BUFFER_SYNC_TASK
     void bsync_service();

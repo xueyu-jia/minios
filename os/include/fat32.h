@@ -92,16 +92,16 @@ struct fat_dir_slot {
 #define DIR_DELETE   0xE5
 
 struct fat32_sb_info {
-    int tot_sector; // note: sector here all means 512 bytes sector, not logical
+    int tot_block; // note: sector here all means 512 bytes sector, not logical
                     // sector in bpb
     int               fat_size; // fat sector num
     u8                fat_num;
     u8                fat_bit;
-    u16               fsinfo_sector;
-    int               fat_start_sector;
-    int               dir_start_sector;
-    int               data_start_sector;
-    int               cluster_sector;
+    u16               fsinfo_block;
+    int               fat_start_block;
+    int               dir_start_block;
+    int               data_start_block;
+    int               cluster_block;
     int               max_cluster; // max valid cluster
     int               root_cluster;
     struct fat_fsinfo fsinfo;

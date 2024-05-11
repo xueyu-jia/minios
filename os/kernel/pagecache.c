@@ -1,6 +1,7 @@
 #include "const.h"
 #include "pagecache.h"
 #include "memman.h"
+#include "fs.h"
 #include "list.h"
 
 // 向cache_pages结构添加新的物理页
@@ -28,4 +29,18 @@ PUBLIC page *find_cache_page(cache_pages *page_cache, u32 pgoff) {
 
 PUBLIC void init_cache_page(cache_pages *page_cache) {
     list_init(&page_cache->page_cache_list);
+}
+
+PUBLIC void writeback_cache_page(cache_pages *page_cache) {
+	if(page_cache->page_mapping == NULL) {
+		return;
+	}
+	page *_page = NULL;
+	list_for_each(&page_cache->page_cache_list, _page, pg_list)
+	{
+		if(_page->dirty){
+			generic_file_writepage(page_cache->page_mapping, _page);
+			_page->dirty = 0;
+		}
+	}
 }

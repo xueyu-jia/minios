@@ -79,21 +79,23 @@ PRIVATE inline void free_fat_info(struct fat_info *info) {
 }
 
 // if *bh not NULL, brelse origin blk
-// getblk by sector(512 bytes), return buf pointer and update bh
-PRIVATE char* bread_sector(int dev, int sector, buf_head** bh){
+// getblk by fat logic block(may 512 bytes...), return buf pointer and update bh
+PRIVATE char* fat_bread(struct super_block *sb, int block, buf_head** bh){
 	buf_head* b = NULL;
-	int block = sector/SECTOR_PER_BLOCK;
-	if((*bh) && (*bh)->block == block && (*bh)->dev == dev) {
+	int dev = sb->sb_dev;
+	int block_per_4k = (BLOCK_SIZE/sb->sb_blocksize);
+	int block_4k = block/block_per_4k;
+	if((*bh) && (*bh)->block == block_4k && (*bh)->dev == dev) {
 		b = *bh; //避免没必要的bread
 	} else {
-		b = bread(dev, block);
+		b = bread(dev, block_4k);
 		if(!b) return NULL;
 		if(*bh){
 			brelse(*bh);
 		}
 		*bh = b;
 	}
-	return ((char*)b->buffer) + ((sector&(SECTOR_PER_BLOCK-1)) << SECTOR_SIZE_SHIFT);
+	return ((char*)b->buffer) + ((block&(block_per_4k-1)) * sb->sb_blocksize);
 }
 
 // value == -1 for read
@@ -104,19 +106,19 @@ PRIVATE int read_write_fat(struct super_block* sb, int cluster, int value){
 	}
 	int fat_offset = cluster * 4; 
 	// only support FAT32, other implements should judge FAT_SB(sb)->fat_bit
-	int fat_sector = FAT_SB(sb)->fat_start_sector + (fat_offset >> SECTOR_SIZE_SHIFT);
+	int fat_block = FAT_SB(sb)->fat_start_block + (fat_offset / sb->sb_blocksize);
 	struct buf_head *bh = NULL, *bh2 = NULL;
-	char* buf = bread_sector(dev, fat_sector, &bh);
-	next = ((u32*)(buf))[(fat_offset&(SECTOR_SIZE-1)) >> 2];
+	char* buf = fat_bread(sb, fat_block, &bh);
+	next = ((u32*)(buf))[(fat_offset&(sb->sb_blocksize-1)) >> 2];
 	if (next >= 0xffffff7) next = FAT_END;
 	if (value != -1){ // write
-		((u32*)(buf))[(fat_offset&(SECTOR_SIZE-1)) >> 2] = value;
+		((u32*)(buf))[(fat_offset&(sb->sb_blocksize-1)) >> 2] = value;
 		mark_buff_dirty(bh);
 		// fat copy
 		for(int fat = 1; fat < FAT_SB(sb)->fat_num; fat++){
-			fat_sector = FAT_SB(sb)->fat_start_sector 
-				+ (fat * FAT_SB(sb)->fat_size) + (fat_offset >> SECTOR_SIZE_SHIFT);
-			bread_sector(dev, fat_sector, &bh2);
+			fat_block = FAT_SB(sb)->fat_start_block 
+				+ (fat * FAT_SB(sb)->fat_size) + (fat_offset / sb->sb_blocksize);
+			fat_bread(sb, fat_block, &bh2);
 			memcpy(bh2->buffer, bh->buffer, num_4K);
 			mark_buff_dirty(bh2);
 			brelse(bh2);
@@ -154,7 +156,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	}
 	FAT_SB(sb)->fsinfo.cluster_next_free = i;
 	struct fat_fsinfo* info_buf = (struct fat_fsinfo*)(
-		bread_sector(sb->sb_dev, FAT_SB(sb)->fsinfo_sector, &bh) + FS_INFO_SECTOR_OFFSET);
+		fat_bread(sb, FAT_SB(sb)->fsinfo_block, &bh) + FS_INFO_SECTOR_OFFSET);
 	memcpy(info_buf, &FAT_SB(sb)->fsinfo, sizeof(struct fat_fsinfo));
 	mark_buff_dirty(bh);
 	brelse(bh);
@@ -191,11 +193,10 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_
 	return count;
 }
 
-// calculate sector num, if new_space set and off over size, alloc new cluster and update fat 
-PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
+PRIVATE int fat_get_cluster(struct vfs_inode* inode, int cluster, int new_space){
 	struct super_block* sb = inode->i_sb;
-	int clus_sector = off >> SECTOR_SIZE_SHIFT;
-	int clus_skip = clus_sector / FAT_SB(sb)->cluster_sector;
+	struct fat_sb_info *sbi = FAT_SB(sb);
+	int clus_skip = cluster;
 	int clus, last = 0;
 	struct fat_info* info = inode->fat32_inode.fat_info;
 	int new = 0;
@@ -235,27 +236,51 @@ PRIVATE int fat_get_sector(struct vfs_inode* inode, int off, int new_space){
 	if(new){
 		fat32_sync_inode(inode);
 	}
-	clus_sector = FAT_SB(sb)->data_start_sector 
-		+(info->cluster_start+clus_skip -2)* FAT_SB(sb)->cluster_sector + (clus_sector%FAT_SB(sb)->cluster_sector);
-	return clus_sector;
+	return info->cluster_start + clus_skip;
+}
+
+PRIVATE int _fat_get_block(struct vfs_inode *inode, u32 iblock, int create) 
+{
+	struct fat32_sb_info* sbi = FAT_SB(inode->i_sb);
+	int clus = fat_get_cluster(inode, iblock / sbi->cluster_block, create);
+	if(clus == -1){
+		return -1;
+	}
+	return sbi->data_start_block + (clus - 2)*sbi->cluster_block + (iblock % sbi->cluster_block);
+}
+
+
+PUBLIC int fat32_get_block(struct vfs_inode *inode, u32 iblock,
+				  struct buffer_head *bh_result, int create)
+{
+	struct super_block *sb = inode->i_sb;
+	int phys;
+	phys = _fat_get_block(inode, iblock, create);
+	if (phys != -1) {
+		map_bh(bh_result, sb, phys);
+		return 0;
+	}
+	return -1;
 }
 
 // return entry offset by 32 bytes
 PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, u32 ino) {
 	struct super_block* sb = dir->i_sb;
-	int entry = ino & (FAT_DPS - 1);
-	int sector_offset = (ino >> FAT_DPS_SHIFT) - FAT_SB(sb)->data_start_sector;
-	int cluster = sector_offset / FAT_SB(sb)->cluster_sector + 2;
-	entry += (sector_offset % FAT_SB(sb)->cluster_sector) << FAT_DPS_SHIFT;// 计算最后一簇的偏移量
+	struct fat32_sb_info* sbi = FAT_SB(sb);
+	int entry_block = sb->sb_blocksize/FAT_ENTRY_SIZE;
+	int entry = ino % entry_block;
+	int block_offset = (ino / entry_block) - sbi->data_start_block;
+	int cluster = block_offset / sbi->cluster_block + 2;
+	entry += (block_offset % sbi->cluster_block) * entry_block;// 计算最后一簇的偏移量
 	int start = 0, found = 0;
 	struct fat_info* info = dir->fat32_inode.fat_info;
 	for(struct fat_info* info = dir->fat32_inode.fat_info; info; info = info->next) {
 		if(cluster >= info->cluster_start && cluster < info->cluster_start + info->length) {
 			found = 1;
-			start += (FAT_SB(sb)->cluster_sector * (cluster - info->cluster_start)) << FAT_DPS_SHIFT;
+			start += (sbi->cluster_block * (cluster - info->cluster_start)) * entry_block;
 			break;
 		}
-		start += (FAT_SB(sb)->cluster_sector * info->length) << FAT_DPS_SHIFT;
+		start += (sbi->cluster_block * info->length) * entry_block;
 	}
 	if(!found) {
 		return -1;
@@ -264,15 +289,19 @@ PRIVATE int fat_entry_offset_by_ino(struct vfs_inode* dir, u32 ino) {
 }
 
 PRIVATE inline u32 fat_ino(struct vfs_inode* dir, int entry){
-	return (fat_get_sector(dir, entry* FAT_ENTRY_SIZE, 0) << FAT_DPS_SHIFT) | (entry&(FAT_DPS-1));
+	struct super_block* sb = dir->i_sb;
+	int entry_block = sb->sb_blocksize/FAT_ENTRY_SIZE;
+	int block = _fat_get_block(dir, (entry / entry_block), 0);
+	return block*entry_block + entry%entry_block;
 }
 
 PRIVATE char* fat_get_data(struct vfs_inode* inode, int off, buf_head** bh, int alloc_new){
-	int clus_sector = fat_get_sector(inode, off, alloc_new);
-	if(clus_sector == -1){
+	struct super_block* sb = inode->i_sb;
+	int clus_block = _fat_get_block(inode, off / sb->sb_blocksize, alloc_new);
+	if(clus_block == -1){
 		return NULL;
 	}
-	return bread_sector(inode->i_dev, clus_sector, bh) + (off & (SECTOR_SIZE-1));
+	return fat_bread(sb, clus_block, bh) + (off & (sb->sb_blocksize-1));
 }
 
 PRIVATE inline struct fat_dir_slot* fat_get_slot(struct vfs_inode* dir, int order, buf_head** bh, int alloc_new){
@@ -560,7 +589,8 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 		inode->i_mtime = 0;
 		inode->i_atime = 0;
 	}else{
-		entry = &((struct fat_dir_entry*)bread_sector(sb->sb_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
+		int entry_block = sb->sb_blocksize/FAT_ENTRY_SIZE;
+		entry = &((struct fat_dir_entry*)fat_bread(sb, ino/entry_block, &bh))[ino%entry_block];
 		cluster_start = entry->start_l | (entry->start_h << 16);
 		inode->i_mode = (entry->attr & ATTR_RO)? I_R|I_X : I_RWX;
 		inode->i_type = (entry->attr & ATTR_DIR)? I_DIRECTORY: I_REGULAR;
@@ -574,7 +604,7 @@ PUBLIC void fat32_read_inode(struct vfs_inode* inode){
 	inode->i_no = ino;
 	int cnt = fill_fat_info(sb, cluster_start, &inode->fat32_inode.fat_info);
 	if(!inode->i_size){
-		inode->i_size = cnt * FAT_SB(sb)->cluster_sector * SECTOR_SIZE;
+		inode->i_size = cnt * FAT_SB(sb)->cluster_block * sb->sb_blocksize;
 	}
 	inode->i_nlink = 1;
 	inode->i_op = &fat32_inode_ops;
@@ -587,12 +617,14 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 	if(inode->i_no == FAT_ROOT_INO){
 		return 0;
 	}
+	struct super_block* sb = inode->i_sb;
+	int entry_block = sb->sb_blocksize/FAT_ENTRY_SIZE;
 	buf_head* bh = NULL;
 	struct tm time;
 	u32 ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
-		&((struct fat_dir_entry*)bread_sector(inode->i_dev, ino >> FAT_DPS_SHIFT, &bh))[ino&(FAT_DPS-1)];
+		&((struct fat_dir_entry*)fat_bread(inode->i_sb, ino/entry_block, &bh))[ino%entry_block];
 	if(!de){
 		return -1;
 	}
@@ -713,6 +745,7 @@ PUBLIC int fat32_rmdir(struct vfs_inode *dir, struct vfs_dentry *dentry) {
 
 PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mode){
 	// struct tm time;
+	struct super_block* sb = dir->i_sb;
 	u32 timestamp = current_timestamp;
 	struct vfs_inode* inode = fat_add_entry(dir, dentry_name(dentry), 1, timestamp);
 	inode->i_type = I_DIRECTORY;
@@ -724,7 +757,7 @@ PUBLIC int fat32_mkdir(struct vfs_inode* dir, struct vfs_dentry* dentry, int mod
 	memset(&de, 0, sizeof(struct fat_dir_entry));
 	memcpy(de.name, FAT_DOT, 11);
 	de.attr = ATTR_DIR;
-	de.size = FAT_SB(dir->i_sb)->cluster_sector * SECTOR_SIZE;
+	de.size = FAT_SB(sb)->cluster_block * sb->sb_blocksize;
 	fat_update_datetime(timestamp, &de.cdate, &de.ctime, &de.ctime_10ms);
 	fat_update_datetime(timestamp, &de.mdate, &de.mtime, NULL);
 	fat_update_datetime(timestamp, &de.adate, NULL, NULL);
@@ -833,52 +866,53 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
-	int dir_sectors, fsinfo_blk, ext_flag;
+	int dir_blocks, fsinfo_blk, ext_flag;
 	buf_head * fs_info_buf;
 	buf_head * bh = bread(dev, 0);
 	struct fat32_bpb* bpb  = (struct fat32_bpb*)bh->buffer;
+	struct fat32_sb_info *sbi = FAT_SB(sb);
+	sb->sb_blocksize = bpb->BytsPerSec;
 	int sector_size_mult = bpb->BytsPerSec >> SECTOR_SIZE_SHIFT;
 	if(bpb->FATSz16 != 0){
 		// not FAT32 volume, current not supported
 		brelse(bh);
 		return -1;
 	}else{
-		FAT_SB(sb)->fat_bit = 32;
-		FAT_SB(sb)->fat_size = bpb->FATSz32 * sector_size_mult;
+		sbi->fat_bit = 32;
+		sbi->fat_size = bpb->FATSz32;
 	}
 	if(bpb->TotSec16 != 0){
-		FAT_SB(sb)->tot_sector = bpb->TotSec16 * sector_size_mult;
+		sbi->tot_block = bpb->TotSec16;
 	}else{
-		FAT_SB(sb)->tot_sector = bpb->TotSec32 * sector_size_mult;
+		sbi->tot_block = bpb->TotSec32;
 	}
-	FAT_SB(sb)->fat_num = bpb->NumFATs;
-	FAT_SB(sb)->cluster_sector = bpb->SecPerClus * sector_size_mult;
-	FAT_SB(sb)->fat_start_sector = bpb->RsvdSecCnt * sector_size_mult;
-	FAT_SB(sb)->dir_start_sector = FAT_SB(sb)->fat_start_sector + bpb->NumFATs * FAT_SB(sb)->fat_size;
-	dir_sectors = (((bpb->RootEntCnt*32) + bpb->BytsPerSec -1 )/ bpb->BytsPerSec) * sector_size_mult;
-	// for FAT32, dir_sectors should be 0
-	FAT_SB(sb)->data_start_sector = FAT_SB(sb)->dir_start_sector + dir_sectors;
-	FAT_SB(sb)->max_cluster = 
-		(FAT_SB(sb)->tot_sector - FAT_SB(sb)->data_start_sector)/FAT_SB(sb)->cluster_sector + 1;
-	FAT_SB(sb)->root_cluster = bpb->RootClus;
-	FAT_SB(sb)->fsinfo_sector = bpb->FSInfo * sector_size_mult;
-	fsinfo_blk = FAT_SB(sb)->fsinfo_sector/SECTOR_PER_BLOCK;
+	sbi->fat_num = bpb->NumFATs;
+	sbi->cluster_block = bpb->SecPerClus;
+	sbi->fat_start_block = bpb->RsvdSecCnt;
+	sbi->dir_start_block = sbi->fat_start_block + bpb->NumFATs * sbi->fat_size;
+	dir_blocks = (((bpb->RootEntCnt*32) + bpb->BytsPerSec -1 )/ bpb->BytsPerSec);
+	// for FAT32, dir_blocks should be 0
+	sbi->data_start_block = sbi->dir_start_block + dir_blocks;
+	sbi->max_cluster = 
+		(sbi->tot_block - sbi->data_start_block)/sbi->cluster_block + 1;
+	sbi->root_cluster = bpb->RootClus;
+	sbi->fsinfo_block = bpb->FSInfo;
+	fsinfo_blk = sbi->fsinfo_block/(BLOCK_SIZE/sb->sb_blocksize);
 	if(fsinfo_blk){
 		fs_info_buf = bread(dev, fsinfo_blk);
 	}else{
 		fs_info_buf = bh;
 	}
-	FAT_SB(sb)->fsinfo = *((struct fat_fsinfo*)(
-		(char*)fs_info_buf->buffer + (FAT_SB(sb)->fsinfo_sector%SECTOR_PER_BLOCK)*SECTOR_SIZE
-		 + FS_INFO_SECTOR_OFFSET));
-	if(FAT_SB(sb)->fsinfo.cluster_next_free == -1){// may invalid(-1)
-		FAT_SB(sb)->fsinfo.cluster_next_free = 2;
+	sbi->fsinfo = *((struct fat_fsinfo*)(
+		(char*)fs_info_buf->buffer + (sb->sb_blocksize * sbi->fsinfo_block) + FS_INFO_SECTOR_OFFSET));
+	if(sbi->fsinfo.cluster_next_free == -1){// may invalid(-1)
+		sbi->fsinfo.cluster_next_free = 2;
 	}
 	if(fsinfo_blk){
 		brelse(fs_info_buf);
 	}
 	brelse(bh);
-	initlock(&FAT_SB(sb)->lock, "FAT");
+	initlock(&sbi->lock, "FAT");
 	sb->sb_dev = dev;
 	sb->fs_type = FAT32_TYPE;
 	sb->sb_op = &fat32_sb_ops;
@@ -902,6 +936,7 @@ struct inode_operations fat32_inode_ops = {
 .unlink = fat32_unlink,
 .mkdir = fat32_mkdir,
 .rmdir = fat32_rmdir,
+.get_block = fat32_get_block,
 };
 
 struct dentry_operations fat32_dentry_ops = {
@@ -909,8 +944,9 @@ struct dentry_operations fat32_dentry_ops = {
 };
 
 struct file_operations fat32_file_ops = {
-.read = fat32_read,
-.write = fat32_write,
+.read = generic_file_read,
+.write = generic_file_write,
+.fsync = generic_file_fsync,
 .readdir = fat32_readdir,
 };
 // unit test

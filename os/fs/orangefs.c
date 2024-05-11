@@ -665,6 +665,19 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 	return bytes_rw;
 }
 
+PUBLIC int orange_get_block(struct vfs_inode *inode, u32 iblock,
+				  struct buffer_head *bh_result, int create)
+{
+	struct super_block *sb = inode->i_sb;
+	int phys;
+	phys = inode->orange_inode.i_start_block + iblock;
+	if (phys != -1) {
+		map_bh(bh_result, sb, phys);
+		return 0;
+	}
+	return -1;
+}
+
 int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
@@ -741,6 +754,7 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	sb->sb_dev = dev;
 	sb->fs_type = ORANGE_TYPE;
 	sb->sb_op = &orange_sb_ops;
+	sb->sb_blocksize = num_4K;
 	struct vfs_inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
 	sb->sb_root = vfs_new_dentry("/", orange_root);
 	brelse(bh);
@@ -764,8 +778,9 @@ struct inode_operations orange_inode_ops = {
 };
 
 struct file_operations orange_file_ops = {
-.write = orange_write,
-.read = orange_read,
+.write = generic_file_write,
+.read = generic_file_read,
+.fsync = generic_file_fsync,
 .readdir = orange_readdir,
 };
 // #endif

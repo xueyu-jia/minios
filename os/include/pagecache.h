@@ -11,7 +11,10 @@ typedef struct _cached_page{
 	struct spinlock lock;
 }cache_pages;
 typedef struct page page;
+// page cache PUBLIC function
+PUBLIC void init_cache_page(cache_pages *page_cache);
+// **cache_pages lock required**
 PUBLIC void add_cache_page(cache_pages *page_cache, page *_page);
 PUBLIC page *find_cache_page(cache_pages *page_cache, u32 pgoff);
-PUBLIC void init_cache_page(cache_pages *page_cache);
+PUBLIC void writeback_cache_page(cache_pages *page_cache);
 #endif

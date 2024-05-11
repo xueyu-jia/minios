@@ -104,7 +104,9 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	//如果有线程, 先把线程释放 mingxuan 2021-8-17
 	exit_thread(p_proc);
 	// 释放所有文件资源 xv6也测了这个 jiangfeng 2024-03-11
+	release(&p_proc->task.lock); // 可能触发硬盘写回临时解除锁
 	exit_file(p_proc);
+	lock_or_yield(&p_proc->task.lock);
 
 	//释放进程的所有页地址空间
 	// free_all_phypage(p_proc->task.pid);
