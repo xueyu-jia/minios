@@ -34,6 +34,7 @@ extern int buffer_debug;
 PUBLIC buf_head *bread(int dev, int block);
 PUBLIC void mark_buff_dirty(buf_head *bh);
 PUBLIC void brelse(buf_head *bh);
+PUBLIC void sync_buffers(int flush_delay);
 struct super_block;
 PUBLIC void rw_buffer(int iotype, buf_head* bh);
 PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block);

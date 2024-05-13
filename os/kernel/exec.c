@@ -471,7 +471,7 @@ PRIVATE int exec_pcb_init(char *path) {
     p_proc_current->task.memmap.kernel_lin_base = KernelLinBase; // 内核基址
     p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size; // 内核大小初始化为8M
     list_init(&p_proc_current->task.memmap.vma_map);
-	init_cache_page(&p_proc_current->task.memmap.anon_pages);
+	init_mem_page(&p_proc_current->task.memmap.anon_pages, MEMPAGE_AUTO);
     // 进程树属性,只要改两项，其余不用改
     // p_proc_current->task.info.type = TYPE_PROCESS;
     // //当前是进程还是线程 p_proc_current->task.info.real_ppid = -1;

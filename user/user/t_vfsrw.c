@@ -83,7 +83,9 @@ int main(int argc, char **argv) {
             write_usage += get_ticks() - tmp_tick;
             EXPECT_NONZERO(cnt == 4096, write buf count);
         }
+        tmp_tick = get_ticks();
         close(fd);
+        write_usage += get_ticks() - tmp_tick;
         printf("write ok, usage: %d\n", write_usage);
     }
     EXPECT_NONZERO((check_filesize() == (test_block*4096)), check filesize);

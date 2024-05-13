@@ -639,6 +639,7 @@ PUBLIC int fat32_sync_inode(struct vfs_inode* inode){
 		mark_buff_dirty(bh);
 		brelse(bh);
 	}
+	sync_buffers(0);
 	return 0;
 }
 
@@ -926,6 +927,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 struct superblock_operations fat32_sb_ops = {
 .fill_superblock = fat32_fill_superblock,
 .read_inode = fat32_read_inode,
+.write_inode = fat32_sync_inode,
 .put_inode = fat32_put_inode,
 .delete_inode = fat32_delete_inode,
 };

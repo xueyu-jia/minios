@@ -67,8 +67,8 @@ static inline void rm_bh_lru(buf_head *bh)
     }
 }
 
-static void sync_buffers(int flush_delay);
-static void update_bh_lru(buf_head *bh, int state);
+void sync_buffers(int flush_delay);
+PRIVATE void update_bh_lru(buf_head *bh, int state);
 /*****************************************************************************
  *                                get_bh_lru
  *****************************************************************************/
@@ -254,7 +254,7 @@ static inline void sync_buff(buf_head *bh){
 }
 
 PRIVATE int flush_tick;
-static void sync_buffers(int flush_delay) {
+PUBLIC void sync_buffers(int flush_delay) {
     int nr_dirty = 0;
     buf_head *bh = NULL;
     if(!(list_empty(&buf_lru_list[BUFFER_DIRTY]))){
@@ -275,7 +275,7 @@ static void sync_buffers(int flush_delay) {
     flush_tick = ticks;
 }
 
-static void try_sync_buffers(int background) {
+PRIVATE void try_sync_buffers(int background) {
     lock_or_yield(&buf_lock);
     // buffer写回条件: dirty buffer数超过buffer总量的buf_dirty_nfrac% (20%)
     // 或者存在dirty buffer且距离上一次将dirty buffer同步操作的时间超过20ticks

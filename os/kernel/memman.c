@@ -6,7 +6,7 @@
 #include "fs.h"
 #include "proto.h"
 #include "mmap.h"
-#include "pagecache.h"
+#include "mempage.h"
 #include "kmalloc.h"
 #include "string.h"
 
@@ -216,37 +216,6 @@ PUBLIC u32 do_kfree_4k(u32 addr) //有unsigned int型参数addr，释放掉起�
 	return free_pages(kbud, addr, 0);
 }
 */
-
-PUBLIC void get_page(page *_page) {
-	if(atomic_get(&_page->count) == 0) {
-		acquire(&page_inactive_lock);
-		list_remove(&_page->pg_lru);
-		release(&page_inactive_lock);
-	}
-	atomic_inc(&_page->count);
-	// disp_str("get:");
-	// disp_int(page_to_pfn(_page));
-	// disp_str(" ");
-}
-
-PUBLIC int put_page(page *_page, int cache) {
-	// disp_str("put:");
-	// disp_int(page_to_pfn(_page));
-	// disp_str(" ");
-	if (atomic_dec_and_test(&_page->count)) {
-		if(cache) { // move to inactive
-			acquire(&page_inactive_lock);
-			list_add_last(&_page->pg_lru, &page_inactive_lru);
-			release(&page_inactive_lock);
-			return 0;
-		}
-		acquire(&_page->pg_cache->lock);
-		list_remove(&_page->pg_list);
-		release(&_page->pg_cache->lock);
-		return free_pages(ubud, _page, 0);
-	}
-	return 0;
-}
 
 //modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kfree_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
@@ -528,6 +497,58 @@ PUBLIC int sys_free_4k()
 
 // mmu for user vmem addr
 
+PUBLIC void get_page(page *_page) {
+	if(atomic_get(&_page->count) == 0) {
+		acquire(&page_inactive_lock);
+		list_remove(&_page->pg_lru);
+		release(&page_inactive_lock);
+	}
+	atomic_inc(&_page->count);
+	// disp_str("get:");
+	// disp_int(page_to_pfn(_page));
+	// disp_str(" ");
+}
+
+PRIVATE int drop_page(page *_page) {
+	int ret = 0;
+	mem_pages * page_cache = _page->pg_cache;
+	if(page_cache) {
+		acquire(&page_cache->lock);
+		ret = free_mem_page(_page);
+		release(&page_cache->lock);
+	}else {
+		ret = free_pages(ubud, _page, 0);
+	}
+	return ret;
+}
+
+PUBLIC int put_page(page *_page) {
+	// disp_str("put:");
+	// disp_int(page_to_pfn(_page));
+	// disp_str(" ");
+	if (atomic_dec_and_test(&_page->count)) {
+		int type = MEMPAGE_AUTO, ret = 0;
+		if(_page->pg_cache) {
+			type = _page->pg_cache->type;
+		}
+		switch (type)
+		{
+		case MEMPAGE_AUTO: // 此页面是进程私有数据，不再使用直接释放
+			ret = drop_page(_page);
+			break;
+		case MEMPAGE_CACHED: // 通常是文件映射的页面，将_page插入RLU, 此页面暂时不再使用，可能在未来内存不足时释放
+			acquire(&page_inactive_lock);
+			list_add_last(&_page->pg_lru, &page_inactive_lru);
+			release(&page_inactive_lock);
+		case MEMPAGE_SAVE: // 此页面暂时不再使用，由其他组件手动释放
+		default:
+			break;
+		}
+		return ret;
+	}
+	return 0;
+}
+
 // find first vma->end > addr
 // require: pcb.memmap.vma_lock
 PUBLIC struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr) 
@@ -590,22 +611,22 @@ PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 	kunmap(_page);
 }
 
-PRIVATE cache_pages* get_page_cache(LIN_MEMMAP* mmap, struct vmem_area* vma) {
-	cache_pages *page_cache = NULL;
-    if(vma->file) { // file mapped memory
+PRIVATE mem_pages* get_page_cache(LIN_MEMMAP* mmap, struct vmem_area* vma) {
+	mem_pages *page_cache = NULL;
+    if(vma->file) { // file mapped memory MEMPAGE_CACHED
 		page_cache = &vma->file->fd_mapping->pages;
-    }else if(vma->flags & MAP_PRIVATE){ // process private allocated memory
+    }else if(vma->flags & MAP_PRIVATE){ // process private allocated memory MEMPAGE_AUTO
 		page_cache = &mmap->anon_pages;
 	}else {
-		page_cache = &shm_pages;
+		page_cache = &shm_pages; // shared mem managed by hand MEMPAGE_SAVE
 	}
 	return page_cache;
 }
 
 PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 pgoff) {
-	cache_pages* page_cache = get_page_cache(mmap, vma);
+	mem_pages* page_cache = get_page_cache(mmap, vma);
 	lock_or_yield(&page_cache->lock);
-    page *_page = find_cache_page(page_cache, pgoff);
+    page *_page = find_mem_page(page_cache, pgoff);
 	if(_page == NULL) {
 		_page = alloc_user_page(pgoff);
 		if(vma->file) {
@@ -616,7 +637,7 @@ PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 p
 		}else {
 			zero_page(_page);
 		}
-		add_cache_page(page_cache, _page);
+		add_mem_page(page_cache, _page);
 	} else {
 		get_page(_page);
 	}
@@ -631,7 +652,7 @@ PRIVATE void free_vma_pages(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area 
 		u32 phy = get_page_phy_addr(proc2pid(p_proc), addr);
 		if(phy) {
 			page * _page = pfn_to_page(phy_to_pfn(phy));
-			put_page(_page, ((vma->file != NULL)||(vma->flags & MAP_SHARED)));
+			put_page(_page);
 			clear_pte(proc2pid(p_proc), addr);
 		}
 		addr += PAGE_SIZE;
@@ -652,8 +673,8 @@ PUBLIC void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma
 		if((vma->file) && (vma->flags & PROT_WRITE) && (vma->flags & MAP_PRIVATE)) {
 			_page = alloc_user_page(addr>>PAGE_SHIFT);
 			copy_page(_page, content_page);
-			put_page(content_page, 1);
-			add_cache_page(&mmap->anon_pages, _page);
+			put_page(content_page);
+			add_mem_page(&mmap->anon_pages, _page);
         } else { 
             // 其他情况直接使用page cache的物理页就行
             _page = content_page;
@@ -689,7 +710,7 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
 	LIN_MEMMAP* new_mmap = proc_memmap(p_child);
 	*new_mmap = *old_mmap;
-	init_cache_page(&new_mmap->anon_pages); 
+	init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO); 
 	// if COW enabled:
 	// as for fork, child mmap clear and all page tbl set read only, and inc page reference count
 	// after fork, child share the same phy page with the parent,
@@ -727,7 +748,7 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 					if((vma->flags & MAP_PRIVATE) && (vma->flags & PROT_WRITE)) {
 						_page = alloc_user_page(addr>>PAGE_SHIFT);
 						copy_page(_page, pte_page);
-						add_cache_page(&new_mmap->anon_pages, _page);
+						add_mem_page(&new_mmap->anon_pages, _page);
 					} else { 
 						// 其他情况直接使用父进程的物理页就行,要增加父进程物理页的引用计数
 						get_page(pte_page);
@@ -784,9 +805,9 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
 				_page = alloc_user_page(vaddr>>PAGE_SHIFT);
 				copy_page(_page, pte_page);
-				add_cache_page(&mmap->anon_pages, _page);
+				add_mem_page(&mmap->anon_pages, _page);
 				attr |= PG_RWW;
-				put_page(pte_page, vma->file != NULL);
+				put_page(pte_page);
 			}
 		}
 		

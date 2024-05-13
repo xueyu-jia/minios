@@ -18,7 +18,7 @@ struct file_desc;
 struct super_block;
 #include "spinlock.h"
 #include "fs_const.h"
-#include "pagecache.h"
+#include "mempage.h"
 #include "proc.h"
 
 /**
@@ -33,7 +33,7 @@ struct super_block;
 
 struct address_space {
 	struct vfs_inode *host;
-	cache_pages pages;
+	mem_pages pages;
 };
 struct vfs_inode{
 	u32 i_no;

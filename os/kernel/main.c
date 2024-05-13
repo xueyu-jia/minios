@@ -16,6 +16,7 @@
 #include "dev.h"
 #include "blame.h"
 #include "mmap.h"
+#include "shm.h"
 // #define GDBSTUB
 
 #include "../gdbstub/gdbstub.h"
@@ -86,6 +87,8 @@ PUBLIC int kernel_main()
 	/* initialize message queue */
 	init_msgq(); //added by yingchi 2021.12.24
 
+	/* init shm*/
+	init_shm();
 	init_devices();
 	register_fs_types();
 	/* initialize 8253 PIT */
@@ -257,7 +260,7 @@ PRIVATE void init_proc_pages(PROCESS* p_proc){
 	p_proc->task.memmap.kernel_lin_base = KernelLinBase;
 	p_proc->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size;
 	list_init(&p_proc->task.memmap.vma_map);
-	init_cache_page(&p_proc->task.memmap.anon_pages);
+	init_mem_page(&p_proc->task.memmap.anon_pages, MEMPAGE_AUTO);
 	init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, p_proc->task.memmap.stack_lin_base, p_proc);
 	init_proc_page_addr(p_proc->task.memmap.arg_lin_base, p_proc->task.memmap.arg_lin_limit, p_proc);
 	// init_proc_page_addr(p_proc->task.memmap.stack_lin_limit, StackLinBase, pid ,PG_P | PG_USU | PG_RWW);

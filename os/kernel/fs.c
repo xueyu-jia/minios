@@ -93,6 +93,9 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	for(int i = 0; i < nr; i++) {
 		rw_buffer(DEV_READ, target->pg_buffer[i]);
 	}
+	// disp_str(" rd");
+	// disp_int(target->pg_off);
+	// disp_int(target->pg_buffer[0]->block);
 	kunmap(target);
 	return 0;
 }
@@ -127,6 +130,9 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	for(int i = 0; i < nr; i++) {
 		rw_buffer(DEV_WRITE, target->pg_buffer[i]);
 	}
+	// disp_str(" wb");
+	// disp_int(target->pg_off);
+	// disp_int(target->pg_buffer[0]->block);
 	kunmap(target);
 	return 0;
 }
@@ -134,7 +140,7 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 // page cache read
 // req. inode lock
 int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
-	cache_pages *page_cache = &file->fd_mapping->pages;
+	mem_pages *page_cache = &file->fd_mapping->pages;
 	u64 pos = file->fd_pos;
 	u32 pgoff_start = pos >> PAGE_SHIFT;
 	u64 end = min(pos + count, file->fd_dentry->d_inode->i_size);
@@ -145,11 +151,11 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 	lock_or_yield(&page_cache->lock);
 	for(u32 pgoff = pgoff_start; pgoff < pgoff_end; pgoff++)
 	{
-		_page = find_cache_page(page_cache, pgoff);
+		_page = find_mem_page(page_cache, pgoff);
 		if(_page == NULL) {
 			_page = alloc_user_page(pgoff);
 			generic_file_readpage(file->fd_mapping, _page);
-			add_cache_page(page_cache, _page);
+			add_mem_page(page_cache, _page);
 		}else {
 			get_page(_page);
 		}
@@ -158,7 +164,7 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 		total -= (len + page_offset);
 		cnt += len;
 		page_offset = 0;
-		put_page(_page, 1);
+		put_page(_page);
 	}
 	release(&page_cache->lock);
 	file->fd_pos += cnt;
@@ -168,10 +174,11 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 // page cache write
 // req. inode lock
 int generic_file_write(struct file_desc* file, unsigned int count, const char* buf) {
-	cache_pages *page_cache = &file->fd_mapping->pages;
+	mem_pages *page_cache = &file->fd_mapping->pages;
 	u64 pos = file->fd_pos;
 	u32 pgoff_start = pos >> PAGE_SHIFT;
-	u64 end = max(pos + count, file->fd_dentry->d_inode->i_size);
+	u64 end = pos + count;
+	u32 pgoff_file_end = UPPER_BOUND_4K(file->fd_dentry->d_inode->i_size) >> PAGE_SHIFT;
 	u32 pgoff_end = UPPER_BOUND_4K(end) >> PAGE_SHIFT;
 	u32 page_offset = pos % PAGE_SIZE;
 	int cnt = 0, len, total = end - LOWER_BOUND_4K(pos);
@@ -179,11 +186,15 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 	lock_or_yield(&page_cache->lock);
 	for(u32 pgoff = pgoff_start; pgoff < pgoff_end; pgoff++)
 	{
-		_page = find_cache_page(page_cache, pgoff);
+		_page = find_mem_page(page_cache, pgoff);
 		if(_page == NULL) {
 			_page = alloc_user_page(pgoff);
-			zero_page(_page);
-			add_cache_page(page_cache, _page);
+			if(pgoff < pgoff_file_end){
+				generic_file_readpage(file->fd_mapping, _page);
+			}else {
+				zero_page(_page);
+			}
+			add_mem_page(page_cache, _page);
 		}else {
 			get_page(_page);
 		}
@@ -193,7 +204,7 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 		total -= (len + page_offset);
 		cnt += len;
 		page_offset = 0;
-		put_page(_page, 1);
+		put_page(_page);
 	}
 	release(&page_cache->lock);
 	file->fd_pos += cnt;
@@ -209,9 +220,9 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 // req. inode lock
 int generic_file_fsync(struct file_desc* file, int datasync)
 {
-	cache_pages *page_cache = &file->fd_mapping->pages;
+	mem_pages *page_cache = &file->fd_mapping->pages;
 	lock_or_yield(&page_cache->lock);
-	writeback_cache_page(page_cache);
+	writeback_mem_page(page_cache);
 	release(&page_cache->lock);
 	if(datasync){ // datasync表示只同步文件数据，不用同步inode等元数据
 		return 0;

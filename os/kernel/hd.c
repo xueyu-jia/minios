@@ -276,7 +276,7 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 		// phys_copy(buffer, p->BUF, p->CNT);
 		in_hd_queue(&hdque, rwinfo);
 	}
-	wait_event(&hdque, 0);
+	wait_event(&hdque);
 	// kern_kfree((u32)buffer);
 	// kern_kfree((u32)rwinfo);
 }
@@ -979,7 +979,7 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		/*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
 		disable_int();
 		port->ci = 1<<slot;			// Issue command
-		wait_event((void *)&sata_wait_flag, 0);
+		wait_event((void *)&sata_wait_flag);
 		enable_int();
 	}
 	

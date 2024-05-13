@@ -55,7 +55,7 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	atomic_set(&inode->i_count, 1);
 	inode->i_sb = sb;
 	list_init(&inode->i_list);
-	init_cache_page(&inode->i_data.pages);
+	init_mem_page(&inode->i_data.pages, MEMPAGE_CACHED);
 	inode->i_mapping = &inode->i_data;
 	inode->i_mapping->host = inode;
 	inode->i_mapping->pages.page_mapping = inode->i_mapping;
@@ -125,7 +125,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(atomic_dec_and_test(&inode->i_count)){
 		page * _page = NULL;
-		list_for_each(&inode->i_mapping->pages.page_cache_list, _page, pg_list) {
+		list_for_each(&inode->i_mapping->pages.page_list, _page, pg_list) {
 			if(atomic_get(&_page->count) > 0)return; // 仍有在使用中的page, 不能释放此页
 		}
 		struct superblock_operations* ops = inode->i_sb->sb_op;
@@ -137,6 +137,7 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 		if(ops && ops->put_inode){
 			ops->put_inode(inode);
 		}
+		free_mem_pages(&inode->i_mapping->pages);
 		vfs_free_inode(inode);
 		return;
 	}
@@ -801,16 +802,6 @@ PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
     return fd;
 }
 
-void fput(struct file_desc* file) {
-	if(atomic_dec_and_test(&file->fd_count)){
-		lock_or_yield(&file_desc_lock);
-		vfs_put_dentry(file->fd_dentry);
-		file->fd_dentry = 0;
-		file->flag = 0;
-		release(&file_desc_lock);
-	}
-}
-
 PUBLIC int kern_vfs_fsync(struct file_desc* file) {
 	if(!file){
 		return -1;
@@ -825,13 +816,23 @@ PUBLIC int kern_vfs_fsync(struct file_desc* file) {
 	return ret;
 }
 
+void fput(struct file_desc* file) {
+	if(atomic_dec_and_test(&file->fd_count)){
+		kern_vfs_fsync(file);
+		lock_or_yield(&file_desc_lock);
+		vfs_put_dentry(file->fd_dentry);
+		file->fd_dentry = 0;
+		file->flag = 0;
+		release(&file_desc_lock);
+	}
+}
+
 PUBLIC int kern_vfs_close(int fd) {
 	PROCESS* p_proc = proc_real(p_proc_current);
 	struct file_desc* file = p_proc->task.filp[fd];
 	if(!file){
 		return -1;
 	}
-	kern_vfs_fsync(file);
 	fput(file);
 	p_proc->task.filp[fd] = 0;
 	return 0;

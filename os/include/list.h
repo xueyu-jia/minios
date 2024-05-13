@@ -91,7 +91,8 @@ PRIVATE inline void _list_remove(struct list_node* self, struct list_node* prev,
 /// @param head struct list_node* 链表头指针
 /// @param type 数据项类型
 /// @param member 链表节点在数据项Type中的成员名
-/// @details example:
+/// @details 注意：使用此宏必须保证不改变链表结构 
+/// example:
 /// struct Type {
 /// 	...
 ///		struct list_node t_list;
@@ -111,6 +112,7 @@ for(entry = list_front(head, typeof(*entry), member);	\
 /// @param head struct list_node* 链表头指针
 /// @param type 数据项类型
 /// @param member 链表节点在数据项Type中的成员名
+/// @details 注意：使用此宏必须保证不改变链表结构 
 #define list_for_each_reverse(head, entry, member) \
 for(entry = list_back(head, typeof(*entry), member);	\
 	entry; entry = list_prev(head, entry, member)\

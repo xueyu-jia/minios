@@ -182,7 +182,7 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	// fixed jiangfeng , disable int to protect 2024.4
 	p_child->task.stat = SLEEPING; //统一PCB state jiangfeng 20240314
 	enable_int();
-	init_cache_page(&p_child->task.memmap.anon_pages); //线程使用父进程的mmap 链表，此两项直接重置为空 jiangfeng 202405
+	init_mem_page(&p_child->task.memmap.anon_pages, MEMPAGE_AUTO); //线程使用父进程的mmap 链表，此两项直接重置为空 jiangfeng 202405
 	list_init(&p_child->task.memmap.vma_map);
 	// p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);//changed by lcy 2023.10.26 19*4
@@ -368,7 +368,8 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 			lock_or_yield(&p_proc_child->task.lock);
 			p_proc_child->task.who_wait_flag = p_proc_father->task.pid;
 			release(&p_proc_child->task.lock);
-			wait_event(p_proc_father, 1);
+			release(&p_proc_father->task.lock);
+			wait_event(p_proc_father);
 		}
 		else{
 			lock_or_yield(&p_proc_child->task.lock);

@@ -14,7 +14,7 @@
 #include "syscall.h"
 #include "proc.h"
 #include "mmap.h"
-#include "pagecache.h"
+#include "mempage.h"
 
 struct spinlock lock_shmmemcpy;
 PUBLIC void do_shmdt(char *shmaddr);
@@ -34,9 +34,13 @@ PUBLIC struct spinlock lock_msg = {
     .name = "ipc_lock",
     .cpu = 0xffffffff};
 struct spinlock lock_shmmemcpy;
-cache_pages shm_pages = {
-    .page_cache_list = {&shm_pages,&shm_pages}
-};
+mem_pages shm_pages;
+
+
+PUBLIC void init_shm() {
+    init_mem_page(&shm_pages, MEMPAGE_SAVE);
+}
+
 // static char key_available(int key)
 // {
 
@@ -228,7 +232,7 @@ PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
     if(phy_addr == NULL)
     {
         lock_or_yield(&shm_pages.lock);
-        page *shm_page = find_cache_page(&shm_pages, shmid);
+        page *shm_page = find_mem_page(&shm_pages, shmid);
         ids.perms[shmid].phy_address = pfn_to_phy(page_to_pfn(shm_page));
         release(&shm_pages.lock);
     }

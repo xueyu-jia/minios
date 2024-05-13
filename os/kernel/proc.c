@@ -420,7 +420,7 @@ PUBLIC void kern_sleep(int n) {
     ticks0 = ticks;
     // 
     while (ticks - ticks0 < n) {
-        wait_event(&ticks, 0);
+        wait_event(&ticks);
     }
 }
 
@@ -607,15 +607,13 @@ PUBLIC void* va2la(int pid, void* va) {
  * @param event:等待的事件
  * @return void
  */
-PUBLIC void wait_event(void* event, int with_pcblock) {
-    if(!with_pcblock){
-        lock_or_yield(&p_proc_current->task.lock);
-    }
+PUBLIC void wait_event(void* event) {
+    disable_int();
     p_proc_current->task.channel = event;
     p_proc_current->task.stat    = SLEEPING;
 
     out_rq(p_proc_current);
-    release(&p_proc_current->task.lock);
+    enable_int();
     sched_yield();
 }
 

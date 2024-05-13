@@ -493,6 +493,7 @@ PRIVATE int orange_sync_inode(struct vfs_inode* inode){
 	pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
 	mark_buff_dirty(bh);
 	brelse(bh);	
+	sync_buffers(0);
 	return 0;	
 }
 
@@ -670,6 +671,12 @@ PUBLIC int orange_get_block(struct vfs_inode *inode, u32 iblock,
 {
 	struct super_block *sb = inode->i_sb;
 	int phys;
+	if(inode->orange_inode.i_start_block == 0) {
+		if(create == 0){
+			return -1;
+		}
+		orange_alloc_smap_bit(inode->i_sb, &(inode->orange_inode));
+	}
 	phys = inode->orange_inode.i_start_block + iblock;
 	if (phys != -1) {
 		map_bh(bh_result, sb, phys);
@@ -775,6 +782,7 @@ struct inode_operations orange_inode_ops = {
 .unlink = orange_unlink,
 .mkdir = orange_mkdir,
 .rmdir = orange_rmdir,
+.get_block = orange_get_block,
 };
 
 struct file_operations orange_file_ops = {
