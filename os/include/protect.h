@@ -179,7 +179,7 @@ typedef struct s_tss {
 			     * Counter0 - LSB then MSB - rate generator - binary
 			     */
 #define TIMER_FREQ     1193182L/* clock frequency for timer in PC and AT */
-#define HZ             20  /* clock freq (software settable on IBM-PC) */
+#define HZ             100  /* clock freq (software settable on IBM-PC) */
 
 /* Hardware interrupts */
 #define	NR_IRQ		16	/* Number of IRQs */

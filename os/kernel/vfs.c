@@ -1022,12 +1022,12 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		return -1;
 	}
 	if((strcmp(path, "/") == 0)) {
-		disp_str("rm root dir will damage system");
+		disp_str("rm root dir will damage system\n");
 		return -1;
 	}
 	char* file_name = strip_dir_path(path, dir_path);
 	if((strcmp(file_name, ".") == 0)||(strcmp(file_name, "..") == 0)) {
-		disp_str("path ended with . or .. is invalid ");
+		disp_str("path ended with . or .. is invalid\n");
 		return -1;
 	}
 	struct vfs_dentry *dir = vfs_lookup(dir_path), *dentry = NULL;

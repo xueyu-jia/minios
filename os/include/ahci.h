@@ -1,12 +1,8 @@
 #ifndef	_AHCI_H
 #define	_AHCI_H
 
+#include "type.h" 
 #include "const.h"  
-// #include "type.h" 
-#define mk_pci_add(bus,dev,fun,reg) 0x80000000|bus<<16|dev<<11|fun<<8|reg<<2
-#define MAXBUS 255
-#define MAXDEV 31
-#define MAXFUN 7
 
 #define	PCI_CONFIG_ADD 0xcf8
 #define PCI_CONFIG_DATA 0xcfc

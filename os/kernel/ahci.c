@@ -6,6 +6,7 @@
 #include "proto.h"
 #include "memman.h"
 #include "pagetable.h"
+#include "pci.h"
 #include "ahci.h"
 
 // 0: free;  1: waiting

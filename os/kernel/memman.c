@@ -511,11 +511,11 @@ PUBLIC void get_page(page *_page) {
 
 PRIVATE int drop_page(page *_page) {
 	int ret = 0;
-	mem_pages * page_cache = _page->pg_cache;
-	if(page_cache) {
-		acquire(&page_cache->lock);
+	mem_pages * mem_page = _page->pg_cache;
+	if(mem_page) {
+		acquire(&mem_page->lock);
 		ret = free_mem_page(_page);
-		release(&page_cache->lock);
+		release(&mem_page->lock);
 	}else {
 		ret = free_pages(ubud, _page, 0);
 	}
@@ -611,22 +611,22 @@ PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 	kunmap(_page);
 }
 
-PRIVATE mem_pages* get_page_cache(LIN_MEMMAP* mmap, struct vmem_area* vma) {
-	mem_pages *page_cache = NULL;
+PRIVATE mem_pages* get_mem_pages(LIN_MEMMAP* mmap, struct vmem_area* vma) {
+	mem_pages *mem_page = NULL;
     if(vma->file) { // file mapped memory MEMPAGE_CACHED
-		page_cache = &vma->file->fd_mapping->pages;
+		mem_page = &vma->file->fd_mapping->pages;
     }else if(vma->flags & MAP_PRIVATE){ // process private allocated memory MEMPAGE_AUTO
-		page_cache = &mmap->anon_pages;
+		mem_page = &mmap->anon_pages;
 	}else {
-		page_cache = &shm_pages; // shared mem managed by hand MEMPAGE_SAVE
+		mem_page = &shm_pages; // shared mem managed by hand MEMPAGE_SAVE
 	}
-	return page_cache;
+	return mem_page;
 }
 
 PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 pgoff) {
-	mem_pages* page_cache = get_page_cache(mmap, vma);
-	lock_or_yield(&page_cache->lock);
-    page *_page = find_mem_page(page_cache, pgoff);
+	mem_pages* mem_page = get_mem_pages(mmap, vma);
+	lock_or_yield(&mem_page->lock);
+    page *_page = find_mem_page(mem_page, pgoff);
 	if(_page == NULL) {
 		_page = alloc_user_page(pgoff);
 		if(vma->file) {
@@ -637,11 +637,11 @@ PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 p
 		}else {
 			zero_page(_page);
 		}
-		add_mem_page(page_cache, _page);
+		add_mem_page(mem_page, _page);
 	} else {
 		get_page(_page);
 	}
-	release(&page_cache->lock);
+	release(&mem_page->lock);
 	return _page;
 }
 
@@ -712,8 +712,8 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	*new_mmap = *old_mmap;
 	init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO); 
 	// if COW enabled:
-	// as for fork, child mmap clear and all page tbl set read only, and inc page reference count
-	// after fork, child share the same phy page with the parent,
+	// as for fork, both parent and child mmap clear and all page tbl set read only, and inc page reference count
+	// old anon_pages detached after fork, the child share the same phy page with the parent,
 	// when write then page fault occurs, COW will copy the origin page to a new anon page
 	list_init(&new_mmap->vma_map);
 	struct vmem_area *vma, *vm;
@@ -805,9 +805,9 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 			if(vma->flags & MAP_PRIVATE) {// file private RW: COW now
 				_page = alloc_user_page(vaddr>>PAGE_SHIFT);
 				copy_page(_page, pte_page);
+				put_page(pte_page);
 				add_mem_page(&mmap->anon_pages, _page);
 				attr |= PG_RWW;
-				put_page(pte_page);
 			}
 		}
 		

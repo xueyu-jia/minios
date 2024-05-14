@@ -1,51 +1,17 @@
 #include "stdio.h"
 #include "syscall.h"
 #include "string.h"
-// test vfs path 20240416 jiangfeng
-// must run in root(/) dir
 
-#define EXPECT_ZERO(exp, testinfo)  if((exp) != 0){printf("%s failed\n", #testinfo);exit(-1);}
-#define EXPECT_NONZERO(exp, testinfo)  if((exp) == 0){printf("%s failed\n", #testinfo);exit(-1);}
-#define EXPECT_NONNEG(exp, testinfo)  if((exp) < 0){printf("%s failed\n", #testinfo);exit(-1);}
-#define EXPECT_NEG(exp, testinfo)  if((exp) >= 0){printf("%s failed\n", #testinfo);exit(-1);}
-void
-rmdot(void)
-{
-  printf("rmdot test\n");
-  if(mkdir("dots", I_RW) != 0){
-    printf("mkdir dots failed\n");
-    exit(-1);
-  }
-  if(chdir("dots") != 0){
-    printf("chdir dots failed\n");
-    exit(-1);
-  }
-  if(rmdir(".") == 0){
-    printf("rm . worked!\n");
-    exit(-1);
-  }
-  if(rmdir("..") == 0){
-    printf("rm .. worked!\n");
-    exit(-1);
-  }
-  if(chdir("/") != 0){
-    printf("chdir / failed\n");
-    exit(-1);
-  }
-  if(rmdir("dots/.") == 0){
-    printf("unlink dots/. worked!\n");
-    exit(-1);
-  }
-  if(rmdir("dots/..") == 0){
-    printf("unlink dots/.. worked!\n");
-    exit(-1);
-  }
-  if(rmdir("dots") != 0){
-    printf("unlink dots failed!\n");
-    exit(-1);
-  }
-  printf("rmdot ok\n");
-}
+#define TEST_INFO(cond, testinfo) if(!(cond)){ \
+    printf("%s failed\n", #testinfo);exit(-1);}else{  \
+    printf("%s ok\n", #testinfo);}
+
+
+#define EXPECT_ZERO(exp, testinfo)  TEST_INFO((exp) == 0, testinfo)
+#define EXPECT_NONZERO(exp, testinfo) TEST_INFO((exp) != 0, testinfo)
+#define EXPECT_NONNEG(exp, testinfo)  TEST_INFO((exp) >= 0, testinfo)
+#define EXPECT_NEG(exp, testinfo)  TEST_INFO((exp) < 0, testinfo)
+
 char path[MAX_PATH];
 char cwd[MAX_PATH];
 char tmp[MAX_PATH];
@@ -73,7 +39,7 @@ int main(int argc, char **argv) {
     getcwd(tmp, MAX_PATH);
     EXPECT_ZERO(strcmp(cwd, tmp), cd into dir/.. not change cwd)
     int fd;
-    EXPECT_NONNEG(fd = open("test_path/f", O_CREAT, 0), creat and open file)
+    EXPECT_NONNEG(fd = open("test_path/f", O_CREAT, I_RW), creat and open file)
     close(fd);
     EXPECT_NEG(rmdir("test_path"), rm non-empty dir)
     EXPECT_ZERO(unlink("./test_path/f"), unlink file)
