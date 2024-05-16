@@ -66,12 +66,10 @@ struct vfs_inode{
 // **** dentry 的本质是cache !!! ****
 struct vfs_dentry{
 	atomic_t d_count;
+	// 对于一般的文件，直接使用d_shortname即可，过长的文件名另单独分配内存
 	char d_shortname[MAX_DNAME_LEN];
 	char *d_longname;
 	struct vfs_inode* d_inode;
-	// struct vfs_dentry* d_nxt;
-	// struct vfs_dentry* d_pre;
-	// struct vfs_dentry* d_subdirs;
 	struct list_node d_list;
 	list_head d_subdirs;
 	struct vfs_dentry* d_parent;
@@ -91,12 +89,13 @@ struct super_block {
 		struct orange_sb_info orange_sb;
 		struct fat32_sb_info fat32_sb;
 	};
+	// 实际文件系统的元数据
 
   /*
    * the following item(s) are only present in memory
    */
-  	struct vfs_dentry* sb_root;
-	struct vfs_mount* sb_vfsmount;
+  	struct vfs_dentry* sb_root; // 根dentry
+	struct vfs_mount* sb_vfsmount; // 
 	list_head sb_inode_list;
 	struct superblock_operations * sb_op;
 	int sb_blocksize;

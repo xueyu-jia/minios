@@ -4,6 +4,7 @@
 #include "proto.h"
 #include "tty.h"
 #include "console.h"
+#include "clock.h"
 #include "spinlock.h"
 
 int		disp_pos;
@@ -372,8 +373,17 @@ PUBLIC void disp_color_str(char* info, int color){
 	#include "uart.h"
 	for(char *p = info; p && *p; p++) {
 		write_serial(*p);
+		if(*p == '\n'){
+			char tick_str[8];
+			itoa(ticks, tick_str, 10);
+			write_serial('[');
+			for(char *s=tick_str; *s; s++){
+				write_serial(*s);
+			}
+			write_serial(']');
+		}
 	}
-	#else
+	#endif
 	if(kernel_initial == 1){
 		disp_pos = _disp_color_str(info, color, disp_pos);
 	}else{
@@ -383,7 +393,6 @@ PUBLIC void disp_color_str(char* info, int color){
 		flush(con);
 		release(&video_mem_lock);
 	}
-	#endif
 }
 
 PUBLIC void disp_str(char* info){

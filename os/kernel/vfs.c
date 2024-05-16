@@ -2,6 +2,7 @@
 *	vfs.c       //added by mingxuan 2019-5-17
 ***********************************************************/
 // VFS   modified by jiangfeng 2024-03
+// finally edit 2024-05
 #include "const.h"
 #include "string.h"
 #include "proto.h"
@@ -15,7 +16,6 @@
 #include "mount.h"
 #include "stat.h"
 
-// PUBLIC struct vfs  vfs_table[NR_FS]; //modified by ran
 PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct vfs_dentry *vfs_root;
 
@@ -24,32 +24,18 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb);// inode create
 PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino); //inode lookup
 PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode); //inode lookup
 
-PRIVATE u32 inode_free_cnt;
-PRIVATE list_head inode_free_list;
-#define MAX_FREE_INODE	32
+// 此锁维护inode内存申请释放以及超级块(super_block)中使用中inode链表的一致性
 PRIVATE SPIN_LOCK inode_alloc_lock;
+
+// 
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
-//尝试从之前分配的空闲链表取一个inode，没有则返回NULL
-PRIVATE struct vfs_inode* get_rcu_free_inode() {
-	if(list_empty(&inode_free_list)) {
-		return NULL;
-	}
-	return list_entry(inode_free_list.next, struct vfs_inode, i_list);
-}
-
-// must held inode alloc lock
+// 申请内存分配新的inode
+// lock require: inode alloc lock
 PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	struct vfs_inode* inode = NULL;
-	inode = get_rcu_free_inode();
-	if(inode) {
-		inode_free_cnt --;
-		list_remove(&inode->i_list);
-	} else {// real malloc
-		inode = (struct vfs_inode*)kern_kmalloc(sizeof(struct vfs_inode));
-	}
-	//init
+	inode = (struct vfs_inode*)kern_kmalloc(sizeof(struct vfs_inode));
 	memset(inode, 0, sizeof(struct vfs_inode));
 	inode->i_nlink = 1;
 	atomic_set(&inode->i_count, 1);
@@ -83,13 +69,8 @@ PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb){
 
 PRIVATE void vfs_free_inode(struct vfs_inode* inode) {
 	lock_or_yield(&inode_alloc_lock);
-	if(inode_free_cnt > MAX_FREE_INODE) {
-		list_remove(&inode->i_list);
-		kern_kfree((u32)inode);
-	} else {// 添加到空闲链表暂存
-		inode_free_cnt++;
-		list_move(&inode->i_list, &inode_free_list);
-	}
+	list_remove(&inode->i_list);
+	kern_kfree((u32)inode);
 	release(&inode_alloc_lock);
 }
 
@@ -101,7 +82,7 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 	lock_or_yield(&inode_alloc_lock);
 	list_for_each(&sb->sb_inode_list, inode, i_list)
 	{
-		if(inode->i_sb == sb && inode->i_no == ino){
+		if(inode->i_no == ino){
 			list_remove(&inode->i_list);
 			res = inode;
 			break;
@@ -125,9 +106,6 @@ PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino){
 PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 	if(atomic_dec_and_test(&inode->i_count)){
 		page * _page = NULL;
-		list_for_each(&inode->i_mapping->pages.page_list, _page, pg_list) {
-			if(atomic_get(&_page->count) > 0)return; // 仍有在使用中的page, 不能释放此页
-		}
 		struct superblock_operations* ops = inode->i_sb->sb_op;
 		if(inode->i_nlink == 0){
 			if(ops && ops->delete_inode){
@@ -147,11 +125,6 @@ PUBLIC void vfs_put_inode(struct vfs_inode * inode){
 // 在dir 文件夹下加入dentry
 // require mutex: dir->lock, dentry->lock
 PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry){
-	// dentry->d_nxt = dir->d_subdirs;
-	// if(dir->d_subdirs){
-	// 	dir->d_subdirs->d_pre = dentry;
-	// }
-	// dir->d_subdirs = dentry;
 	list_add_first(&dentry->d_list, &dir->d_subdirs);
 	dentry->d_parent = dir;
 	if(!dentry->d_vfsmount)
@@ -160,17 +133,9 @@ PRIVATE void insert_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry
 
 // require mutex: dir, ent
 PRIVATE void remove_sub_dentry(struct vfs_dentry* dir, struct vfs_dentry* dentry){
-	// if(dir->d_subdirs == ent){
-	// 	dir->d_subdirs = ent->d_nxt;
-	// }
-	// if(ent->d_pre){
-	// 	ent->d_pre->d_nxt = ent->d_nxt;
-	// }
-	// if(ent->d_nxt){
-	// 	ent->d_nxt->d_pre = ent->d_pre;
-	// }
 	list_remove(&dentry->d_list);
-	// ent->d_parent = NULL; // parent saved,因为存在此dentry已被删除但仍有引用的情况，比如rmdir ../cwd, cd ..
+	// ent->d_parent = NULL; 
+	// parent saved,因为存在此dentry已被删除但仍有引用的情况，比如rmdir ../cwd, cd ..
 }
 
 // 0 for empty, else -1
@@ -247,13 +212,13 @@ PRIVATE void vfs_get_dentry(struct vfs_dentry* dentry) {
 	lock_or_yield(&dentry->lock);
 	atomic_inc(&dentry->d_count);
 }
+
 // delete dentry in dir
 // require mutex: dir, dentry
 PRIVATE int delete_dentry(struct vfs_dentry* dentry, struct vfs_dentry* dir){
-	// if(dentry->d_subdirs || dentry->d_mounted){
 	if((!list_empty(&dentry->d_subdirs)) || dentry->d_mounted){
-		// check empty
-		// disp_str("try to delete non empty dentry");
+		// check empty / mountpoint
+		disp_str("error: try to delete non empty or mountpoint dentry");
 		return -1;
 	}
 	remove_sub_dentry(dir, dentry);
@@ -593,7 +558,6 @@ PRIVATE void init_fsroot() {
 	struct vfs_dentry *dev_dir = _do_lookup(vfs_root, "dev", 0);
 	kern_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
 	vfs_put_dentry(dev_dir);
-// 	struct super_block *dev_sb = vfs_get_super(NO_DEV, DEV_FS_TYPE);
 	init_block_dev();
 	init_char_dev();
 }
@@ -621,13 +585,11 @@ PUBLIC void register_fs_types() {
 		fat32_identify);
 }
 
-PUBLIC void init_fs(){
+PUBLIC void init_fs(int drive){
 	initlock(&inode_alloc_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
-	list_init(&inode_free_list);
-	inode_free_cnt = 0;
-	mount_root(SATA_BASE);
+	mount_root(drive);
 	init_fsroot();
 }
 
@@ -1063,7 +1025,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 	struct vfs_dentry* sub;
 	// clear sub dentry
 	while(!list_empty(&dentry->d_subdirs)){
-		sub = list_entry(&dentry->d_subdirs.next, struct vfs_dentry, d_list);
+		sub = list_front(&dentry->d_subdirs, struct vfs_dentry, d_list);
 		delete_dentry(sub, dentry);
 	}
 	delete_dentry(dentry, dir);
