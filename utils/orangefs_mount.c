@@ -457,8 +457,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
     #ifdef FUSE_OLD // 2.9.4 
-    if (fuse_parse_cmdline(&args, &opts.mountpoint, &opts.singlethread, &opts.foreground) != 0)
+    int multithread = 0;
+    if (fuse_parse_cmdline(&args, &opts.mountpoint, &multithread, &opts.foreground) != 0)
         return 1;
+    opts.singlethread = !multithread; // 2.9fuse 上面的参数含义是是否为多线程
     #else
     if (fuse_parse_cmdline(&args, &opts) != 0)
         return 1;
@@ -487,11 +489,19 @@ int main(int argc, char *argv[])
     }
     #ifdef FUSE_OLD
     se = fuse_lowlevel_new(&args, &orangefs_oper, sizeof(orangefs_oper), NULL);
+    if(se == NULL)
+        goto err_out1;
     struct fuse_chan *ch = fuse_mount(opts.mountpoint, &args);
-    fuse_session_add_chan(se, ch);
+    if(ch == NULL) {
+        fuse_session_add_chan(se, ch);
+    }else{
+        ret = -1;
+    }
     #else
     se = fuse_session_new(&args, &orangefs_oper,
                           sizeof(orangefs_oper), NULL);
+    if(se == NULL)
+        goto err_out1;
     fuse_session_mount(se, opts.mountpoint);
     #endif
 
@@ -515,9 +525,11 @@ int main(int argc, char *argv[])
 err_out:
     fuse_remove_signal_handlers(se);
     #ifdef FUSE_OLD
-    fuse_session_remove_chan(ch);
+    if(ch){
+        fuse_session_remove_chan(ch);
+        fuse_unmount(opts.mountpoint, ch);
+    }
     fuse_session_destroy(se);
-    fuse_unmount(opts.mountpoint, ch);
     #else
     fuse_session_destroy(se);
     fuse_session_unmount(se);
