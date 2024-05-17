@@ -18,8 +18,9 @@
 #include "mmap.h"
 #include "pagetable.h"
 #include "shm.h"
+#ifndef DISP_LOG_SERIAL
 // #define GDBSTUB
-
+#endif
 #include "../gdbstub/gdbstub.h"
 
 //added by lcy, 2023.10.22 
