@@ -489,13 +489,13 @@ int main(int argc, char *argv[])
         ret = fuse_session_loop_mt(se, &config);
         #endif
     }
-    #ifdef FUSE_OLD
+err_out:
     fuse_remove_signal_handlers(se);
+    #ifdef FUSE_OLD
     fuse_session_remove_chan(ch);
     fuse_session_destroy(se);
     fuse_unmount(opts.mountpoint, ch);
     #else
-err_out:
     fuse_session_destroy(se);
     fuse_session_unmount(se);
     #endif
