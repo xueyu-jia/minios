@@ -17,7 +17,7 @@ else ifneq ($(findstring arch , $(DISINFO)),)
 endif
 
 
-.PHONY: all 
+.PHONY: all clean
 
 all: utils_dep $(ORANGEFS_UTILS)
 
@@ -37,4 +37,7 @@ orangefs_mount: orangefs_mount.c $(ORANGEFS_BASE)
 	$(CC) $^ $(FUSE_CFLAGS)  -lpthread -o $@
 
 orangefs_mkfs: orangefs_mkfs.c $(ORANGEFS_BASE)
-	$(CC) $^  -lpthread -o $@
+	$(CC) $^ $(FUSE_CFLAGS) -lpthread -o $@
+
+clean:
+	rm orangefs_mkfs orangefs_mount

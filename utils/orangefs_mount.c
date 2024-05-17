@@ -15,6 +15,7 @@
 #include <assert.h>
 #include "orangefs.h"
 #include "orangefs_disk.h"
+#include <fuse_log.h>
 
 static struct orangefs_opts
 {
@@ -327,6 +328,7 @@ void orangefs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
     }
     ino = orangefs_allocinode();
     struct orange_inode *pin = orangefs_iget(ino);
+    pin->i_nr_blocks = 0;
     pin->i_size = 0;
     pin->i_mode = I_REGULAR;
     orangefs_syncinode(ino, pin);
