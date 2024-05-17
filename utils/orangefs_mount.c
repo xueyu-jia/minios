@@ -15,7 +15,7 @@
 #include <assert.h>
 #include "orangefs.h"
 #include "orangefs_disk.h"
-#include <fuse_log.h>
+// #include <fuse_log.h>
 
 static struct orangefs_opts
 {
