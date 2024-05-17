@@ -462,18 +462,18 @@ int main(int argc, char *argv[])
         ret = 1;
         goto err_out1;
     }
-
+    #ifdef FUSE_OLD
+    se = fuse_lowlevel_new(&args, &orangefs_oper, sizeof(orangefs_oper), NULL);
+    struct fuse_chan *ch = fuse_mount(opts.mountpoint, &args);
+    fuse_session_add_chan(se, ch);
+    #else
     se = fuse_session_new(&args, &orangefs_oper,
                           sizeof(orangefs_oper), NULL);
-    if (se == NULL)
-        goto err_out1;
+    fuse_session_mount(se, opts.mountpoint);
+    #endif
 
     if (fuse_set_signal_handlers(se) != 0)
-        goto err_out2;
-
-    if (fuse_session_mount(se, opts.mountpoint) != 0)
-        goto err_out3;
-
+        goto err_out;
     fuse_daemonize(opts.foreground);
 
     /* Block until ctrl+c or fusermount -u */
@@ -483,17 +483,24 @@ int main(int argc, char *argv[])
     {
         config.clone_fd = opts.clone_fd;
         config.max_idle_threads = opts.max_idle_threads;
+        #ifdef FUSE_OLD
+        ret = fuse_session_loop_mt(se);
+        #else
         ret = fuse_session_loop_mt(se, &config);
+        #endif
     }
-
-    fuse_session_unmount(se);
-err_out3:
+    #ifdef FUSE_OLD
     fuse_remove_signal_handlers(se);
-err_out2:
+    fuse_session_remove_chan(ch);
     fuse_session_destroy(se);
+    fuse_unmount(opts.mountpoint, ch);
+    #else
+err_out:
+    fuse_session_destroy(se);
+    fuse_session_unmount(se);
 err_out1:
     free(opts.mountpoint);
     fuse_opt_free_args(&args);
-
+    #endif
     return ret ? 1 : 0;
 }
