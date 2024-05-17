@@ -74,18 +74,27 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	}
 	int size = inode->i_sb->sb_blocksize;
 	int nr = PAGE_SIZE/size;
+	int nr_limit = UPPER_BOUND(inode->i_size, size)/size;
+	int block_start = target->pg_off * nr;
+	nr = min(nr_limit - block_start, nr);
 	if((PAGE_SIZE%size) || nr > MAX_BUF_PAGE){
-		disp_str("block size must be 512/1024/2048/4096");
+		disp_str("error: block size must be 512/1024/2048/4096\n");
+	}
+	if(nr == 0){
+		disp_str("error: over limit blk nr\n");
 	}
 	buf_head *bh = NULL;
 	void* page_data = kmap(target);
-	int block_start = target->pg_off * nr;
+	int ret;
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
 			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
-			ops->get_block(inode, block_start + i, bh, 0);
+			ret = ops->get_block(inode, block_start + i, bh, 0);
+			if(ret != 0) {
+				disp_str("error: unmapped blk\n");
+			}
 			target->pg_buffer[i] = bh;
 		}
 	}
@@ -96,7 +105,7 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	// disp_str(" rd");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	kunmap(target);
+	// kunmap(target);
 	return 0;
 }
 
@@ -133,7 +142,7 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	// disp_str(" wb");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	kunmap(target);
+	// kunmap(target);
 	return 0;
 }
 

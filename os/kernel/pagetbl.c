@@ -270,19 +270,16 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 							   u32 cs,		 //发生错误时的代码段寄存器内容
 							   u32 eflags)	 //时发生错误的标志寄存器内容
 {											 //缺页中断处理函数
-	u32 pde_addr_phy_temp;
-	u32 pte_addr_phy_temp;
-	u32 phy_addr;
+	u32 pde_addr_phy_temp = 0;
+	u32 pte_addr_phy_temp = 0;
+	u32 phy_addr = 0;
 	u32 cr2;
+	int fault_flag = 0;
 
 	cr2 = read_cr2();
 
 	//if page fault happens in kernel, it's an error.
 	// if (kernel_initial == 1) // 事实上，内核线性地址造成的缺页中断都不正常吧
-	if (cr2 >= KernelLinBase)
-	{
-		goto fatal;
-	}
 	// if (cr2 == cr2_save) 同一个地址允许无条件缺页5次，难免太抽象了吧
 	// {
 	// 	cr2_count++;
@@ -299,7 +296,12 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	//获取该进程页目录物理地址
 	pde_addr_phy_temp = get_pde_phy_addr(p_proc_current->task.pid);
 	//获取该线性地址对应的页表的物理地址
-	pte_addr_phy_temp = get_pte_phy_addr(pde_addr_phy_temp, cr2);
+	if(pde_addr_phy_temp){
+		pte_addr_phy_temp = get_pte_phy_addr(pde_addr_phy_temp, cr2);
+	}
+	if(pte_addr_phy_temp){
+		phy_addr = get_page_phy_addr_nopid(pte_addr_phy_temp, cr2);
+	}
 	// 这种粗暴的缺页处理办法会导致内存混乱的，连页表里保存的物理地址是什么都不检查就置为有效了
 	// if (0 == pte_exist(pde_addr_phy_temp, cr2))
 	// { //页表不存在
@@ -316,7 +318,6 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 
 	// 目前MiniOS还没有交换页面的选项
 	// 2024.5 mm 重构， page fault handler 最后交由架构无关的相关处理函数
-	int fault_flag = 0;
 	if (0 == pte_exist(pde_addr_phy_temp, cr2) || 0 == phy_exist(pte_addr_phy_temp, cr2)) {
 		fault_flag |= FAULT_NOPAGE;
 	} else { //此处有物理页，那是为什么缺页中断？
@@ -333,6 +334,10 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 			}
 		}
 	}
+	if (cr2 >= KernelLinBase)
+	{
+		goto fatal;
+	}
 	#ifdef MMU_COW
 	if(handle_mm_fault(proc_memmap(p_proc_current), cr2, fault_flag) == 0) {
 		refresh_page_cache();
@@ -342,6 +347,13 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 fatal:
 	disp_str("\n");
 	disp_color_str("Page Fault\n", 0x74);
+	disp_str("fault flag:");
+	disp_int(fault_flag);
+	disp_color_str("pte=", 0x74);
+	disp_int(pte_addr_phy_temp);
+	disp_color_str("phy=", 0x74);
+	disp_int(phy_addr);
+	disp_str("\n");
 	disp_color_str("eip=", 0x74); //灰底红字
 	disp_int(eip);
 	disp_color_str("eflags=", 0x74);
@@ -455,21 +467,23 @@ PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
 // 在公共内核页表映射一个页面到物理地址phy_addr
 PUBLIC int kmapping_phy(u32 phy_addr) {
 	u32 lin_addr;
+	lock_or_yield(&kmap_lock);
 	if(phy_addr >=  K_LIN2PHY(KernelLinMapBase)){// 高端地址，3G+phy_addr无法直接访问
 		if(nr_kmapping_pages == KernelLinMapMaxPage) {
 			disp_str("no free kmapping space");
+			release(&kmap_lock);
 			return -1;
 		}
-		lock_or_yield(&kmap_lock);
+		
 		int index = 0;
 		while(index < KernelLinMapMaxPage && kmapping_pages[index] != 0)index++;
 		kmapping_pages[index] = phy_addr;
 		lin_addr = KernelLinMapBase + (index << PAGE_SHIFT);
 		nr_kmapping_pages++;
-		release(&kmap_lock);
 	}else if(phy_addr >= kernel_size) {
 		lin_addr = K_PHY2LIN(phy_addr); // 用户页物理地址，默认没有内核页表，需要写页表
 	}else {
+		release(&kmap_lock);
 		return K_PHY2LIN(phy_addr); // 无需映射，可直接访问
 	}
 	lin_mapping_phy_nopid(lin_addr, 
@@ -477,18 +491,19 @@ PUBLIC int kmapping_phy(u32 phy_addr) {
 						kernel_pde_phy, 
 						PG_P | PG_USS | PG_RWW,
 						PG_P | PG_USS | PG_RWW);
-
+	release(&kmap_lock);
 	return lin_addr;
 }
 
 PUBLIC int kunmapping_phy(u32 phy_addr) {
 	u32 lin_addr = K_PHY2LIN(phy_addr);
+	lock_or_yield(&kmap_lock);
 	if(phy_addr >=  K_LIN2PHY(KernelLinMapBase)){
 		if(nr_kmapping_pages == 0) {
 			disp_str("no kmapping now");
+			release(&kmap_lock);
 			return -1;
 		}
-		lock_or_yield(&kmap_lock);
 		int index = 0;
 		while(index < KernelLinMapMaxPage && kmapping_pages[index] != phy_addr)index++;
 		if(index == KernelLinMapMaxPage) {
@@ -499,13 +514,14 @@ PUBLIC int kunmapping_phy(u32 phy_addr) {
 		kmapping_pages[index] = 0;
 		lin_addr = KernelLinMapBase + (index << PAGE_SHIFT);
 		nr_kmapping_pages--;
-		release(&kmap_lock);
 	}else if(phy_addr < kernel_size) {
+		release(&kmap_lock);
 		return 0;
 	}
 	u32 pte_phy_addr = get_pte_phy_addr(kernel_pde_phy, lin_addr);
 	write_page_pte(pte_phy_addr, lin_addr, 0, 0);
 	refresh_page_cache();
+	release(&kmap_lock);
 	return 0;
 }
 

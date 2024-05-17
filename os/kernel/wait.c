@@ -75,7 +75,7 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 	}
 	release(&p_proc_current->task.lock);
     //return p_proc_current->task.child_exit_status;;
-	return child_pid;;
+	return child_pid;
 }
 
 PUBLIC int do_wait(int *status) //wait返回的为子进程pid,子进程退出状态通过*status传递 modified by dongzhangqi 2023-4-20

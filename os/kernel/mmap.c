@@ -13,6 +13,8 @@
 */
 PUBLIC void * kmap(page *_page) {
     u32 phy = pfn_to_phy(page_to_pfn(_page));
+    // disp_str("\nkmap:");
+    // disp_int(phy);
     return kmapping_phy(phy);
 }
 
@@ -22,6 +24,8 @@ PUBLIC void * kmap(page *_page) {
 */
 PUBLIC void kunmap(page *_page) {
     u32 phy = pfn_to_phy(page_to_pfn(_page));
+    // disp_str("\nkunmap:");
+    // disp_int(phy);
     kunmapping_phy(phy);
 }
 

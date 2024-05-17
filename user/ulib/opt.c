@@ -9,6 +9,7 @@
    Also, when 'ordering' is RETURN_IN_ORDER,
    each non-option ARGV-element is returned here.  */
 
+// 上一次调用getopt解析得到参数的字符串
 char *optarg;
 
 /* Index in ARGV of the next element to be scanned.
@@ -35,6 +36,12 @@ int optopt = '?';
 
 // self simple implement for getopt
 // optstring: containing the legitimate option characters, : for argument option, see `man 3 getopt`
+
+/// @brief 解析选项参数
+/// @param argc 参数个数，argv的长度
+/// @param argv 参数列表
+/// @param optstring 选项字符
+/// @return 
 int getopt(int argc, char *argv[], const char *optstring)
 {
     char * p_arg, *p_opt;
@@ -42,9 +49,9 @@ int getopt(int argc, char *argv[], const char *optstring)
     int opt_checkind = optind;
     while(opt_checkind < argc && ((p_arg[0] != '-') || (p_arg[1] == '\0')))
     {
-        p_arg = argv[++opt_checkind];
+        p_arg = argv[++opt_checkind]; // 找到第一个选项字符串"-x", x是选项字符
     }
-    if(opt_checkind == argc) {
+    if(opt_checkind == argc) { // 没有选项
         return -1;
     }
     // exchange non option backwards

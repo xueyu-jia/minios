@@ -369,6 +369,14 @@ PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 
 
 PUBLIC void disp_color_str(char* info, int color){
+	
+	if(kernel_initial == 1){
+		disp_pos = _disp_color_str(info, color, disp_pos);
+	}else{
+		acquire(&video_mem_lock);
+		CONSOLE* con = &console_table[current_console];
+		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
+		flush(con);
 	#ifdef DISP_LOG_SERIAL
 	#include "uart.h"
 	for(char *p = info; p && *p; p++) {
@@ -384,13 +392,6 @@ PUBLIC void disp_color_str(char* info, int color){
 		}
 	}
 	#endif
-	if(kernel_initial == 1){
-		disp_pos = _disp_color_str(info, color, disp_pos);
-	}else{
-		acquire(&video_mem_lock);
-		CONSOLE* con = &console_table[current_console];
-		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
-		flush(con);
 		release(&video_mem_lock);
 	}
 }

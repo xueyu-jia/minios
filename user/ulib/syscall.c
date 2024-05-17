@@ -46,7 +46,6 @@ void sleep(int n) {
 }
 
 int open(const char* pathname, int flags, ...) {
-	// syscall_log2("op ", pathname);
 	if(flags & O_CREAT){
 		int mode = *(((char*) &flags) + 4);
 		return _syscall3(_NR_open, pathname, flags, mode);
@@ -55,7 +54,6 @@ int open(const char* pathname, int flags, ...) {
 }
 
 int close(int fd) {
-	// syscall_log("cl");
 	return _syscall1(_NR_close, fd);
 }
 
@@ -72,7 +70,6 @@ int lseek(int fd, int offset, int whence) {
 }
 
 int unlink(const char* pathname) {
-	// syscall_log2("un ", pathname);
 	return _syscall1(_NR_unlink, pathname);
 }
 

@@ -248,8 +248,8 @@
 #define V_MEM_BASE    0xB8000 /* base of color video memory */
 #define V_MEM_SIZE    0x8000  /* 32K: B8000H -> BFFFFH */
 
-// #define DISP_LOG_SERIAL // 是否将disp_xx的输出打印到串口
-#define MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
+#define DISP_LOG_SERIAL // 是否将disp_xx的输出打印到串口
+// #define MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
 
 #define STD_IN  0
 #define STD_OUT 1

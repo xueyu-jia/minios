@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "list.h"
 
-// 向mem_pages结构添加新的物理页
+/// @brief 向mem_pages结构添加新的物理页
 // note: 此处不检查是否已经存在页面，caller应保证在调用此函数之前获得互斥锁之后检查find_cache_page
 // require: mem_pages.lock
 PUBLIC void add_mem_page(mem_pages *mem_page, page *_page) {
@@ -24,7 +24,7 @@ PUBLIC void add_mem_page(mem_pages *mem_page, page *_page) {
 	_page->pg_cache = mem_page;
 }
 
-// 在mem_pages结构中查找对应page offset的物理页
+/// @brief 在mem_pages结构中查找对应page offset的物理页
 // 返回第一个匹配的物理页
 // require: mem_pages.lock
 PUBLIC page *find_mem_page(mem_pages *mem_page, u32 pgoff) {
@@ -53,7 +53,11 @@ PUBLIC void writeback_mem_page(mem_pages *mem_page) {
 	}
 }
 
-// release page from page cache
+/// @brief 释放page cache中的一个物理页
+/// @param mem_page 
+/// @return 
+/// @details
+// release page from mem pages
 // write back if dirty
 // require _page->pg_cache lock
 PUBLIC int free_mem_page(page *_page) 
@@ -72,14 +76,13 @@ PUBLIC int free_mem_page(page *_page)
 	return free_pages(ubud, _page, 0);
 }
 
-// 
-// write back dirty pages
-// require _page->pg_cache lock
 
-
-/// @brief 释放page cache中的所有
+/// @brief 释放page cache中的所有物理页
 /// @param mem_page 
 /// @return 
+/// @details
+// write back dirty pages if any
+// require _page->pg_cache lock
 PUBLIC void free_mem_pages(mem_pages *mem_page) {
 	page * _page = NULL;
 	while(!list_empty(&mem_page->page_list)) { // 因为释放操作会改变链表，所以不能使用list_for_each

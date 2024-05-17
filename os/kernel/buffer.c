@@ -98,9 +98,12 @@ retry:
     }
     // release(&buf_lru_lock);
     if(bh == NULL) {
-        sync_buffers(0);
-        goto retry;
-        // bh = list_front(&buf_lru_list[BUFFER_DIRTY], struct buf_head, b_lru);
+        // sync_buffers(0);
+        // goto retry;
+        bh = list_front(&buf_lru_list[BUFFER_DIRTY], struct buf_head, b_lru);
+    }
+    if(bh == NULL) {
+        disp_str("error: cant find buffer\n");
     }
     return bh;
 }
@@ -190,6 +193,12 @@ void init_buffer(int num_block)
 }
 
 PUBLIC void rw_buffer(int iotype, buf_head* bh) {
+    // disp_str("\nbuffer:");
+    // disp_int((iotype == DEV_WRITE));
+    // disp_str(" blk:");
+    // disp_int(bh->block);
+    // disp_str(" sz:");
+    // disp_int(bh->b_size);
     u64 pos = bh->block * bh->b_size;
     if(kernel_initial == 1) { // init stage no sched
         rw_blocks(iotype, bh->dev, pos, bh->b_size, 
@@ -198,6 +207,10 @@ PUBLIC void rw_buffer(int iotype, buf_head* bh) {
         rw_blocks_sched(iotype, bh->dev, pos, bh->b_size, 
             proc2pid(p_proc_current), bh->buffer);
     }
+    // disp_str("\nbuffer:");
+    // disp_str(" blk:");
+    // disp_int(bh->block);
+    // disp_str(" fin");
 }
 
 PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block)
@@ -257,6 +270,7 @@ PRIVATE int flush_tick;
 PUBLIC void sync_buffers(int flush_delay) {
     int nr_dirty = 0;
     buf_head *bh = NULL;
+    // disp_str("\nbuf sync:");
     if(!(list_empty(&buf_lru_list[BUFFER_DIRTY]))){
         while(nr_dirty <= BUF_SYNC_RATELIMIT){
             bh = list_front(&buf_lru_list[BUFFER_DIRTY], buf_head, b_lru);

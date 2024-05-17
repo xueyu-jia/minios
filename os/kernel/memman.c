@@ -582,8 +582,8 @@ PRIVATE void copy_page(page *dst, page *src) {
 	dst_vaddr = kmap(dst);
 	src_vaddr = kmap(src);
 	memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
-	kunmap(dst);
-	kunmap(src);
+	// kunmap(dst);
+	// kunmap(src);
 	// disp_str("copy:");
 	// disp_int(page_to_pfn(src));
 	// disp_str("->");
@@ -596,19 +596,19 @@ PUBLIC void zero_page(page *_page) {
 	u32 dst_vaddr;
 	dst_vaddr = kmap(_page);
 	memset(dst_vaddr, 0, PAGE_SIZE);
-	kunmap(_page);
+	// kunmap(_page);
 }
 
 PUBLIC void copy_from_page(page *_page, void* buf, u32 len, u32 offset) {
 	u32 vaddr = kmap(_page);
 	memcpy(buf, vaddr + offset, len);
-	kunmap(_page);
+	// kunmap(_page);
 }
 
 PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 	u32 vaddr = kmap(_page);
 	memcpy(vaddr + offset, buf, len);
-	kunmap(_page);
+	// kunmap(_page);
 }
 
 PRIVATE mem_pages* get_mem_pages(LIN_MEMMAP* mmap, struct vmem_area* vma) {
@@ -706,15 +706,21 @@ PUBLIC void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start
     }
 }
 
+/// @brief 复制进程的内存映射(fork 内部调用)
+/// @param p_parent 父进程
+/// @param p_child 子进程
+/// @details 
+/// 当 写时复制(MMU_COW)启用:
+/// 	fork时，将父进程的所有有效页表项设置为对应虚拟地址的只读页表项，并增加对应物理页的引用计数
+/// 	fork之后，只读的页面父子进程使用同一个物理页，可写的页面在写操作时发生缺页，
+/// 	由处理程序复制物理页内容到新匿名页面完成COW处理
+/// 写时复制(MMU_COW)关闭时:
+/// 	fork的过程中不改变父进程的页表，根据权限判断引用父进程的物理页或者复制父进程的物理页，并设置好子进程的页表项
 PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
 	LIN_MEMMAP* new_mmap = proc_memmap(p_child);
 	*new_mmap = *old_mmap;
 	init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO); 
-	// if COW enabled:
-	// as for fork, both parent and child mmap clear and all page tbl set read only, and inc page reference count
-	// old anon_pages detached after fork, the child share the same phy page with the parent,
-	// when write then page fault occurs, COW will copy the origin page to a new anon page
 	list_init(&new_mmap->vma_map);
 	struct vmem_area *vma, *vm;
 	lock_or_yield(&old_mmap->vma_lock);
