@@ -498,9 +498,9 @@ int main(int argc, char *argv[])
 err_out:
     fuse_session_destroy(se);
     fuse_session_unmount(se);
+    #endif
 err_out1:
     free(opts.mountpoint);
     fuse_opt_free_args(&args);
-    #endif
     return ret ? 1 : 0;
 }
