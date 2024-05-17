@@ -462,7 +462,6 @@ int main(int argc, char *argv[])
     #else
     if (fuse_parse_cmdline(&args, &opts) != 0)
         return 1;
-    #endif
     if (opts.show_help)
     {
         show_help(argv[0]);
@@ -478,6 +477,7 @@ int main(int argc, char *argv[])
         ret = 0;
         goto err_out1;
     }
+    #endif
 
     if (opts.mountpoint == NULL)
     {
