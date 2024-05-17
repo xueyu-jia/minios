@@ -504,11 +504,11 @@ int main(int argc, char *argv[])
         ret = fuse_session_loop(se);
     else
     {
-        config.clone_fd = opts.clone_fd;
-        config.max_idle_threads = opts.max_idle_threads;
         #ifdef FUSE_OLD
         ret = fuse_session_loop_mt(se);
         #else
+        config.clone_fd = opts.clone_fd;
+        config.max_idle_threads = opts.max_idle_threads;
         ret = fuse_session_loop_mt(se, &config);
         #endif
     }
