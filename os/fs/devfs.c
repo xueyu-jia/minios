@@ -132,7 +132,6 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 	struct device * dev_struct = NULL;
 	struct dirent* dent = start;
 	char dev_name[8];
-	memset(dev_name, 0, 8);
 	dirent_fill(dent, 1, 1);
 	strcpy(dent->d_name, ".");
 	count -= dent->d_len;
@@ -143,6 +142,7 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 	dent = dirent_next(dent);
 	acquire(&devices_lock);
 	list_for_each(&devices, dev_struct, dev_list) {
+		memset(dev_name, 0, 8);
 		dev_to_basename(dev_struct->dev_major, dev_name);
 		int minor_name = strlen(dev_name);
 		u32 minor_bit = dev_struct->dev_minor_map;

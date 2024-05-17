@@ -54,7 +54,8 @@ fi
 $terminal bash -c "echo 'type in gdb: target remote :1234';echo '';gdb -s kernel.gdb.bin" &
 qemu-system-i386 \
 -device ich9-ahci,id=xiaofeng \
--drive id=disk,file=b.img,if=none -device ide-hd,drive=disk,bus=xiaofeng.0 \
+-device ide-hd,drive=disk,bus=xiaofeng.0 -drive id=disk,file=b.img,if=none,media=disk \
+-device ide-hd,drive=disk2,bus=xiaofeng.1 -drive id=disk2,file=test2.img,if=none,media=disk \
 -rtc base=utc \
 -boot menu=on \
 -serial file:minios.log \
