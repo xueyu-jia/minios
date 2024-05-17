@@ -37,11 +37,11 @@ void orangefs_init(void *userdata, struct fuse_conn_info *conn)
     (void)conn;
     if (disk_open(options.disk) < 0)
     {
-        fuse_log(FUSE_LOG_ERR, "orange: fail to open disk\n");
+        // fuse_log(FUSE_LOG_ERR, "orange: fail to open disk\n");
     }
     if (orangefs_fillsuper() < 0)
     {
-        fuse_log(FUSE_LOG_ERR, "orange: wrong fs type\n");
+        // fuse_log(FUSE_LOG_ERR, "orange: wrong fs type\n");
     }
 }
 
@@ -420,13 +420,31 @@ static int orangefs_opt_proc(void *data, const char *arg, int key,
         abort();
     }
 }
-
+#ifdef FUSE_OLD
+struct fuse_cmdline_opts {
+        int singlethread;
+        int foreground;
+        int debug;
+        int nodefault_subtype;
+        char *mountpoint;
+        int show_version;
+        int show_help;
+        int clone_fd;
+        unsigned int max_idle_threads; /* discouraged, due to thread
+                                        * destruct overhead */
+ 
+        /* Added in libfuse-3.12 */
+        unsigned int max_threads;
+};
+#endif
 int main(int argc, char *argv[])
 {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
     struct fuse_session *se;
     struct fuse_cmdline_opts opts;
+    #ifndef FUSE_OLD
     struct fuse_loop_config config;
+    #endif
     int ret = -1;
     options.disk = NULL;
     /* Parse options */
@@ -438,8 +456,13 @@ int main(int argc, char *argv[])
         show_help(argv[0]);
         exit(1);
     }
+    #ifdef FUSE_OLD // 2.9.4 
+    if (fuse_parse_cmdline(&args, &opts.mountpoint, &opts.singlethread, &opts.foreground) != 0)
+        return 1;
+    #else
     if (fuse_parse_cmdline(&args, &opts) != 0)
         return 1;
+    #endif
     if (opts.show_help)
     {
         show_help(argv[0]);
