@@ -440,7 +440,7 @@ struct fuse_cmdline_opts {
 int main(int argc, char *argv[])
 {
     struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    struct fuse_session *se;
+    struct fuse_session *se = NULL;
     struct fuse_cmdline_opts opts;
     #ifndef FUSE_OLD
     struct fuse_loop_config config;
@@ -488,14 +488,14 @@ int main(int argc, char *argv[])
         goto err_out1;
     }
     #ifdef FUSE_OLD
-    se = fuse_lowlevel_new(&args, &orangefs_oper, sizeof(orangefs_oper), NULL);
-    if(se == NULL)
-        goto err_out1;
     struct fuse_chan *ch = fuse_mount(opts.mountpoint, &args);
     if(ch == NULL) {
-        fuse_session_add_chan(se, ch);
-    }else{
         ret = -1;
+    }else{
+        se = fuse_lowlevel_new(&args, &orangefs_oper, sizeof(orangefs_oper), NULL);
+        if(se == NULL)
+            goto err_out1;
+        fuse_session_add_chan(se, ch);
     }
     #else
     se = fuse_session_new(&args, &orangefs_oper,
