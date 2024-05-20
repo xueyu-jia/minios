@@ -6,6 +6,7 @@
 #include "hd.h"
 #include "memman.h"
 #include "mmap.h"
+#include "assert.h"
 
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
@@ -98,14 +99,14 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 			target->pg_buffer[i] = bh;
 		}
 	}
-	
+	assert((void*)target->pg_buffer[0]->buffer == page_data);
 	for(int i = 0; i < nr; i++) {
 		rw_buffer(DEV_READ, target->pg_buffer[i]);
 	}
 	// disp_str(" rd");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	// kunmap(target);
+	kunmap(target);
 	return 0;
 }
 
@@ -123,12 +124,12 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	if((PAGE_SIZE%size) || nr > MAX_BUF_PAGE){
 		disp_str("block size must be 512/1024/2048/4096");
 	}
-	buf_head *bh = NULL;
+	struct buf_head *bh = NULL;
 	void* page_data = kmap(target);
 	int block_start = target->pg_off * nr;
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
-			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
+			bh = (struct buf_head*)kern_kzalloc(sizeof(struct buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
 			ops->get_block(inode, block_start + i, bh, 1);
@@ -142,7 +143,7 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	// disp_str(" wb");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	// kunmap(target);
+	kunmap(target);
 	return 0;
 }
 

@@ -100,9 +100,9 @@ PUBLIC struct vfs_dentry *devfs_lookup(struct vfs_inode *dir, const char *filena
 	struct device * dev_struct = NULL;
 	int dev = 0;
 	char dev_name[8];
-	memset(dev_name, 0, 8);
 	acquire(&devices_lock);
 	list_for_each(&devices, dev_struct, dev_list) {
+		memset(dev_name, 0, 8);
 		dev_to_basename(dev_struct->dev_major, dev_name);
 		int minor_name = strlen(dev_name);
 		u32 minor_bit = dev_struct->dev_minor_map;

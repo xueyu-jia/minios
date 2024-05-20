@@ -26,7 +26,7 @@
 
 /* make device number from major and minor numbers */
 #define MAJOR_SHIFT    20
-#define MAKE_DEV(a, b) ((a << MAJOR_SHIFT) | b)
+#define MAKE_DEV(a, b) (((a) << MAJOR_SHIFT) | (b))
 
 /* separate major and minor numbers from device number */
 #define MAJOR(x) ((x >> MAJOR_SHIFT) & 0x0FFF)

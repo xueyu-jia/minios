@@ -667,7 +667,7 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 }
 
 PUBLIC int orange_get_block(struct vfs_inode *inode, u32 iblock,
-				  struct buffer_head *bh_result, int create)
+				  struct buf_head *bh_result, int create)
 {
 	struct super_block *sb = inode->i_sb;
 	int phys;

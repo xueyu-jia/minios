@@ -149,7 +149,7 @@ struct inode_operations{
 	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode);
 	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
 	int (*get_block)(struct vfs_inode *inode, u32 iblock,
-				  struct buffer_head *bh_result, int create);
+				  struct buf_head *bh_result, int create);
 };
 
 struct dentry_operations{
