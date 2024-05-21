@@ -96,7 +96,7 @@ PUBLIC int unregister_device(int dev) {
 }
 
 
-PUBLIC struct vfs_dentry *devfs_lookup(struct vfs_inode *dir, const char *filename) {
+PUBLIC struct dentry *devfs_lookup(struct inode *dir, const char *filename) {
 	struct device * dev_struct = NULL;
 	int dev = 0;
 	char dev_name[8];
@@ -122,7 +122,7 @@ PUBLIC struct vfs_dentry *devfs_lookup(struct vfs_inode *dir, const char *filena
 found:
 	release(&devices_lock);
 	if(dev) {
-		struct vfs_inode *inode = vfs_get_inode(dir->i_sb, dev);
+		struct inode *inode = vfs_get_inode(dir->i_sb, dev);
 		return vfs_new_dentry(dev_name, inode);
 	}
 	return NULL;
@@ -163,7 +163,7 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 	return (u32)dent - (u32)start;
 }
 
-PUBLIC void devfs_read_inode(struct vfs_inode *inode) {
+PUBLIC void devfs_read_inode(struct inode *inode) {
 	if(inode->i_no == 1) {
 		inode->i_mode = I_R|I_X;
 		inode->i_type = I_DIRECTORY;
@@ -200,7 +200,7 @@ PUBLIC int devfs_fill_superblock(struct super_block * sb, int dev) {
 	sb->sb_dev = dev;
 	sb->sb_op = &devfs_sb_ops;
 	sb->fs_type = DEV_FS_TYPE;
-	struct vfs_inode *root_inode = vfs_get_inode(sb, 1);
+	struct inode *root_inode = vfs_get_inode(sb, 1);
 	sb->sb_root = vfs_new_dentry("dev", root_inode);
 	return 0;
 }

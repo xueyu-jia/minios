@@ -68,7 +68,7 @@ struct orange_sb_info{
  *
  * \b NOTE: Remember to change INODE_SIZE if the members are changed
  */
-struct inode {
+struct orange_inode {
 	u32	i_mode;		/**< Accsess mode */
 	u32	i_size;		/**< File size */
 	u32	i_start_block;	/**< The first block of the data */

@@ -282,7 +282,7 @@ current sect nr. */
 }
 
 // return inode num otherwise INVALID_INODE
-PRIVATE int lookup_inode_in_dir(struct vfs_inode* dir, char* filename)
+PRIVATE int lookup_inode_in_dir(struct inode* dir, char* filename)
 {
 	if (filename == 0)
 	{
@@ -329,7 +329,7 @@ PRIVATE int lookup_inode_in_dir(struct vfs_inode* dir, char* filename)
 	return INVALID_INODE;
 }
 
-PRIVATE int remove_name_in_dir(struct vfs_inode* dir, int nr_inode)
+PRIVATE int remove_name_in_dir(struct inode* dir, int nr_inode)
 {
 	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
@@ -373,7 +373,7 @@ PRIVATE int remove_name_in_dir(struct vfs_inode* dir, int nr_inode)
 	return -1;
 }
 
-PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
+PRIVATE int orange_check_dir_empty(struct inode* dir)
 {
 	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
@@ -418,7 +418,7 @@ PRIVATE int orange_check_dir_empty(struct vfs_inode* dir)
 
 PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dirent* start)
 {
-	struct vfs_inode* dir = file->fd_dentry->d_inode;
+	struct inode* dir = file->fd_dentry->d_inode;
 	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
@@ -458,15 +458,15 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 	return (u32)dent - (u32)start;;
 }
 
-PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, int num){
+PRIVATE void orange_fill_inode(struct inode* inode, struct super_block* sb, int num){
 	inode->i_sb = sb;
 	inode->i_dev = sb->sb_dev;
 	inode->i_no = num;
 	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev,blk_nr);
 	char *fsbuf = bh->buffer;
-	struct inode *pinode =  
-		(struct inode *)((u8 *)fsbuf +
+	struct orange_inode *pinode =  
+		(struct orange_inode *)((u8 *)fsbuf +
 						 ((num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE);
 	inode->i_type = pinode->i_mode;
 	inode->i_size = pinode->i_size;
@@ -479,13 +479,13 @@ PRIVATE void orange_fill_inode(struct vfs_inode* inode, struct super_block* sb, 
 	brelse(bh);
 }
 
-PRIVATE int orange_sync_inode(struct vfs_inode* inode){
-	struct inode *pinode;
+PRIVATE int orange_sync_inode(struct inode* inode){
+	struct orange_inode *pinode;
 	struct super_block *sb = inode->i_sb;
 	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((inode->i_no - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev, blk_nr);
 	char * fsbuf = bh->buffer;
-	pinode = (struct inode *)((u8 *)fsbuf +
+	pinode = (struct orange_inode *)((u8 *)fsbuf +
 							  (((inode->i_no - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE));
 	pinode->i_mode = inode->i_type;
 	pinode->i_size = inode->i_size;
@@ -493,11 +493,11 @@ PRIVATE int orange_sync_inode(struct vfs_inode* inode){
 	pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
 	mark_buff_dirty(bh);
 	brelse(bh);	
-	sync_buffers(0);
+	// sync_buffers(0);
 	return 0;	
 }
 
-PUBLIC void orange_read_inode(struct vfs_inode * inode){
+PUBLIC void orange_read_inode(struct inode * inode){
 	orange_fill_inode(inode, inode->i_sb, inode->i_no);
 }
 
@@ -511,7 +511,7 @@ PUBLIC void orange_read_inode(struct vfs_inode * inode){
  * @param inode_nr   I-node nr of the new file.
  * @param filename   Filename of the new file.
  *****************************************************************************/
-PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, char *filename)
+PRIVATE void orange_new_dir_entry(struct inode *dir_inode, int inode_nr, char *filename)
 {
 	if(dir_inode->orange_inode.i_nr_blocks == 0){
 		orange_alloc_smap_bit(dir_inode->i_sb, &(dir_inode->orange_inode));
@@ -572,11 +572,11 @@ PRIVATE void orange_new_dir_entry(struct vfs_inode *dir_inode, int inode_nr, cha
 	orange_sync_inode(dir_inode);
 }
 
-PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, const char* filename){
+PUBLIC struct dentry* orange_lookup(struct inode* dir, const char* filename){
 	int inode_nr = lookup_inode_in_dir(dir, filename);
 	if(inode_nr != INVALID_INODE){
-		struct vfs_inode * new_inode = vfs_get_inode(dir->i_sb, inode_nr);
-		struct vfs_dentry * dentry = vfs_new_dentry(filename, new_inode);
+		struct inode * new_inode = vfs_get_inode(dir->i_sb, inode_nr);
+		struct dentry * dentry = vfs_new_dentry(filename, new_inode);
 		return dentry;
 	}
 	return NULL;
@@ -584,7 +584,7 @@ PUBLIC struct vfs_dentry* orange_lookup(struct vfs_inode* dir, const char* filen
 
 PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 	int pos = file->fd_pos;
-	struct vfs_inode *pin = file->fd_dentry->d_inode;
+	struct inode *pin = file->fd_dentry->d_inode;
 	int pos_end = min(pos + count, pin->i_size);
 	if(pin->orange_inode.i_nr_blocks == 0) {
 		return 0;
@@ -619,7 +619,7 @@ PUBLIC int orange_read(struct file_desc* file, unsigned int count, char* buf){
 
 PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* buf){
 	int pos = file->fd_pos;
-	struct vfs_inode *pin = file->fd_dentry->d_inode;
+	struct inode *pin = file->fd_dentry->d_inode;
 	int sync_needed = 0;
 	if(pin->orange_inode.i_nr_blocks == 0) {
 		orange_alloc_smap_bit(pin->i_sb, &(pin->orange_inode));
@@ -666,31 +666,28 @@ PUBLIC int orange_write(struct file_desc* file, unsigned int count, const char* 
 	return bytes_rw;
 }
 
-PUBLIC int orange_get_block(struct vfs_inode *inode, u32 iblock,
-				  struct buf_head *bh_result, int create)
+PUBLIC int orange_get_block(struct inode *inode, u32 iblock, int create)
 {
 	struct super_block *sb = inode->i_sb;
-	int phys;
-	if(inode->orange_inode.i_start_block == 0) {
+	int phys = -1;
+	if(inode->orange_inode.i_nr_blocks == 0) {
 		if(create == 0){
 			return -1;
 		}
 		orange_alloc_smap_bit(inode->i_sb, &(inode->orange_inode));
 	}
-	phys = inode->orange_inode.i_start_block + iblock;
-	if (phys != -1) {
-		map_bh(bh_result, sb, phys);
-		return 0;
+	if(iblock < inode->orange_inode.i_nr_blocks) {
+		phys = inode->orange_inode.i_start_block + iblock;
 	}
-	return -1;
+	return phys;
 }
 
-int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
+int orange_create(struct inode *dir, struct dentry*dentry, int mode){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
 		return -1;
 	}
-	struct vfs_inode *newino = vfs_new_inode(dir->i_sb);
+	struct inode *newino = vfs_new_inode(dir->i_sb);
 	// int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS); 
 	// create empty file not map sector first to save space
 	dentry->d_inode = newino;
@@ -710,16 +707,16 @@ int orange_create(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	return 0;
 }
 
-int orange_unlink(struct vfs_inode *dir, struct vfs_dentry*dentry){
+int orange_unlink(struct inode *dir, struct dentry*dentry){
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 
-int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
+int orange_mkdir(struct inode *dir, struct dentry*dentry, int mode){
 	int inode_nr = orange_alloc_imap_bit(dir->i_sb);
 	if(inode_nr == INVALID_INODE){
 		return -1;
 	}
-	struct vfs_inode *newino = vfs_get_inode(dir->i_sb, inode_nr);
+	struct inode *newino = vfs_get_inode(dir->i_sb, inode_nr);
 	// int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
 	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
@@ -740,14 +737,14 @@ int orange_mkdir(struct vfs_inode *dir, struct vfs_dentry*dentry, int mode){
 	return 0;
 }
 
-int orange_rmdir(struct vfs_inode *dir, struct vfs_dentry*dentry){
+int orange_rmdir(struct inode *dir, struct dentry*dentry){
 	if(orange_check_dir_empty(dentry->d_inode) != 0){
 		return -1;
 	}
 	return remove_name_in_dir(dir, dentry->d_inode->i_no);
 }
 
-void orange_deleteinode(struct vfs_inode* inode){
+void orange_deleteinode(struct inode* inode){
 	orange_free_smap_bit(inode->i_sb, 
 		inode->orange_inode.i_start_block, 
 		inode->orange_inode.i_nr_blocks);
@@ -762,7 +759,7 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 	sb->fs_type = ORANGE_TYPE;
 	sb->sb_op = &orange_sb_ops;
 	sb->sb_blocksize = num_4K;
-	struct vfs_inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
+	struct inode * orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
 	sb->sb_root = vfs_new_dentry("/", orange_root);
 	brelse(bh);
 	return 0;

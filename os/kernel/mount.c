@@ -202,7 +202,7 @@ PRIVATE struct vfs_mount* get_free_vfsmount()
 }
 
 PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path, 
-	struct vfs_dentry * mnt_mountpoint, struct vfs_dentry* mnt_root, struct super_block* sb){
+	struct dentry * mnt_mountpoint, struct dentry* mnt_root, struct super_block* sb){
 	acquire(&mnt_table_lock);
 	struct vfs_mount* mnt = get_free_vfsmount();
 	strcpy(mnt->mnt_devname, dev_path);
@@ -214,7 +214,7 @@ PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path,
 	return mnt;
 }
 
-PUBLIC struct vfs_mount* lookup_vfsmnt(struct vfs_dentry* mountpoint){
+PUBLIC struct vfs_mount* lookup_vfsmnt(struct dentry* mountpoint){
 	struct vfs_mount* mnt = vfs_mnt_table;
 	acquire(&mnt_table_lock);
 	while(mnt < vfs_mnt_table + NR_MNT){
@@ -227,9 +227,9 @@ PUBLIC struct vfs_mount* lookup_vfsmnt(struct vfs_dentry* mountpoint){
 	return mnt;
 }
 
-PUBLIC struct vfs_dentry* remove_vfsmnt(struct vfs_dentry* entry){
+PUBLIC struct dentry* remove_vfsmnt(struct dentry* entry){
 	struct vfs_mount* mnt = vfs_mnt_table;
-	struct vfs_dentry* mountpoint = NULL;
+	struct dentry* mountpoint = NULL;
 	acquire(&mnt_table_lock);
 	while(mnt < vfs_mnt_table + NR_MNT){
 		if(mnt->mnt_root == entry && mnt->used == 1){

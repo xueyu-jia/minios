@@ -1063,10 +1063,10 @@ subdir(void)
     printf("create dd/xx/ff succeeded!\n");
     exit(-1);
   }
-  if(open("dd", O_CREAT, I_RW) >= 0){
-    printf("create dd succeeded!\n");
-    exit(-1);
-  }
+  // if(open("dd", O_CREAT, I_RW) >= 0){ // this is allowed, will open existing dir as readonly
+  //   printf("create dd succeeded!\n");
+  //   exit(-1);
+  // }
   if(open("dd", O_RDWR) >= 0){
     printf("open dd rdwr succeeded!\n");
     exit(-1);

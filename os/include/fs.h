@@ -11,9 +11,9 @@
 #include "atomic.h"
 #include "list.h"
 // forward declarations
-struct vfs_inode;
+struct inode;
 struct address_space;
-struct vfs_dentry;
+struct dentry;
 struct file_desc;
 struct super_block;
 #include "spinlock.h"
@@ -32,10 +32,10 @@ struct super_block;
 #include "fat32.h"
 
 struct address_space {
-	struct vfs_inode *host;
+	struct inode *host;
 	mem_pages pages;
 };
-struct vfs_inode{
+struct inode {
 	u32 i_no;
 	struct super_block* i_sb;
 	u32 i_dev;   // real device
@@ -48,7 +48,7 @@ struct vfs_inode{
 	u32 i_atime; // access time (use UTC timestamp, 下同)
 	u32	i_crtime; // create time
 	u32 i_mtime; // modify time
-	// list_head i_dentry; // connected dentry list，待定
+	list_head i_dentry; // connected dentry list，待定
 	struct list_node i_list; // recently used inodes list
 	// contains inode cached pages, ordered by page offset
 	struct address_space *i_mapping;	
@@ -64,15 +64,16 @@ struct vfs_inode{
 
 
 // **** dentry 的本质是cache !!! ****
-struct vfs_dentry{
+struct dentry{
 	atomic_t d_count;
 	// 对于一般的文件，直接使用d_shortname即可，过长的文件名另单独分配内存
 	char d_shortname[MAX_DNAME_LEN];
 	char *d_longname;
-	struct vfs_inode* d_inode;
+	struct inode* d_inode;
+	struct list_node d_alias;
 	struct list_node d_list;
 	list_head d_subdirs;
-	struct vfs_dentry* d_parent;
+	struct dentry* d_parent;
 	struct vfs_mount* d_vfsmount;
 	int d_mounted;
 	struct dentry_operations * d_op;
@@ -94,7 +95,7 @@ struct super_block {
   /*
    * the following item(s) are only present in memory
    */
-  	struct vfs_dentry* sb_root; // 根dentry
+  	struct dentry* sb_root; // 根dentry
 	struct vfs_mount* sb_vfsmount; // 
 	list_head sb_inode_list;
 	struct superblock_operations * sb_op;
@@ -110,7 +111,7 @@ struct file_desc {
 	int		fd_mode;	/**< R or W */
 	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
 	u64		fd_pos;		/**< Current position for R/W. */
-	struct vfs_dentry *fd_dentry;
+	struct dentry *fd_dentry;
 	struct address_space *fd_mapping;
 	struct file_operations* fd_ops;
 };
@@ -143,13 +144,12 @@ struct dirstream{
 typedef struct dirstream DIR;
 
 struct inode_operations{
-	struct vfs_dentry * (*lookup)(struct vfs_inode *dir, const char *filename);
-	int (*create)(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode);
-	int (*unlink)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*mkdir)(struct vfs_inode *dir, struct vfs_dentry *dentry, int mode);
-	int (*rmdir)(struct vfs_inode *dir, struct vfs_dentry *dentry);
-	int (*get_block)(struct vfs_inode *inode, u32 iblock,
-				  struct buf_head *bh_result, int create);
+	struct dentry * (*lookup)(struct inode *dir, const char *filename);
+	int (*create)(struct inode *dir, struct dentry *dentry, int mode);
+	int (*unlink)(struct inode *dir, struct dentry *dentry);
+	int (*mkdir)(struct inode *dir, struct dentry *dentry, int mode);
+	int (*rmdir)(struct inode *dir, struct dentry *dentry);
+	int (*get_block)(struct inode *inode, u32 iblock, int create);
 };
 
 struct dentry_operations{
@@ -165,11 +165,10 @@ struct file_operations{
 
 struct superblock_operations{
 	int (*fill_superblock)(struct super_block *, int);
-	int (*write_inode)(struct vfs_inode *inode);
-	void (*read_inode)(struct vfs_inode *inode);
-	void (*put_inode)(struct vfs_inode* inode);
-	void (*delete_inode)(struct vfs_inode* inode);
-	int (*get_block)(struct vfs_inode* inode, u32 pgoff);
+	int (*write_inode)(struct inode *inode);
+	void (*read_inode)(struct inode *inode);
+	void (*put_inode)(struct inode* inode);
+	void (*delete_inode)(struct inode* inode);
 };
 
 struct fs_type{

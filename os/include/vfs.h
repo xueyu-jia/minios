@@ -23,11 +23,12 @@
 // #define NR_FS_OP 3		//modified by mingxuan 2020-10-18
 // #define NR_SB_OP 2		//added by mingxuan 2020-10-30
 
-extern struct vfs_dentry *vfs_root;
+extern struct dentry *vfs_root;
 
-PUBLIC struct vfs_inode * vfs_new_inode(struct super_block* sb);
-PUBLIC struct vfs_inode * vfs_get_inode(struct super_block* sb, int ino);
-PUBLIC struct vfs_dentry * vfs_new_dentry(const char* name, struct vfs_inode* inode);
+PUBLIC struct inode * vfs_new_inode(struct super_block* sb);
+PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino);
+PUBLIC void vfs_sync_inode(struct inode * inode);
+PUBLIC struct dentry * vfs_new_dentry(const char* name, struct inode* inode);
 
 
 

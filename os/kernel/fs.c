@@ -67,7 +67,7 @@ int init_char_dev()
 // readpage to file address_space
 // req. inode lock; file page cache list lock  
 int generic_file_readpage(struct address_space* file_mapping, page* target) {
-	struct vfs_inode* inode = file_mapping->host;
+	struct inode* inode = file_mapping->host;
 	struct inode_operations* ops = inode->i_op;
 	if(!(ops && ops->get_block)) { // get block对于一般的文件系统必须实现！
 		disp_str("error: no get_block op\n");
@@ -87,18 +87,19 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	buf_head *bh = NULL;
 	// void* page_data = kmap(target);
 	void *page_data = kpage_lin(target);;
-	int ret;
+	int ret, phy;
 	// disp_str(" rp:");
 	// disp_int(target->pg_off);
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
+			phy = ops->get_block(inode, block_start + i, 0);
+			if(phy == -1) {
+				disp_str("error: unmapped blk\n");
+			}
 			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
-			ret = ops->get_block(inode, block_start + i, bh, 0);
-			if(ret != 0) {
-				disp_str("error: unmapped blk\n");
-			}
+			map_bh(bh, inode->i_sb, phy);
 			target->pg_buffer[i] = bh;
 		}
 	}
@@ -116,7 +117,7 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 // writepage to file address_space
 // req. inode lock; file page cache list lock 
 int generic_file_writepage(struct address_space* file_mapping, page* target) {
-	struct vfs_inode* inode = file_mapping->host;
+	struct inode* inode = file_mapping->host;
 	struct inode_operations* ops = inode->i_op;
 	if(!(ops && ops->get_block)) { // get block对于一般的文件系统必须实现！
 		disp_str("error: no get_block op\n");
@@ -131,15 +132,19 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	// void* page_data = kmap(target);
 	void *page_data = kpage_lin(target);
 	int block_start = target->pg_off * nr;
-	int ret;
+	int ret, phy;
 	// disp_str(" wp:");
 	// disp_int(target->pg_off);
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
-			bh = (struct buf_head*)kern_kzalloc(sizeof(struct buf_head));
+			phy = ops->get_block(inode, block_start + i, 1);
+			if(phy == -1) {
+				disp_str("error: unmapped blk\n");
+			}
+			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
-			ret = ops->get_block(inode, block_start + i, bh, 1);
+			map_bh(bh, inode->i_sb, phy);
 			target->pg_buffer[i] = bh;
 		}
 	}
@@ -246,10 +251,7 @@ int generic_file_fsync(struct file_desc* file, int datasync)
 	if(datasync){ // datasync表示只同步文件数据，不用同步inode等元数据
 		return 0;
 	}
-	struct vfs_inode *inode = file->fd_dentry->d_inode;
-	struct super_block *sb = inode->i_sb;
-	if(sb && sb->sb_op && sb->sb_op->write_inode) {
-		sb->sb_op->write_inode(inode);
-	}
+	struct inode *inode = file->fd_dentry->d_inode;
+	vfs_sync_inode(inode);
 	return 0;
 }
