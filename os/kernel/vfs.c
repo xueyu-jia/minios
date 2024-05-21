@@ -387,36 +387,29 @@ PUBLIC struct vfs_dentry *vfs_lookup(const char *path){
 	if(!path){
 		return NULL;
 	}
-	char d_name[MAX_DNAME_LEN];
-	char *p = path, *p_name = d_name;
+	char d_name[MAX_PATH];
+	char *p = path, *p_name = NULL;
 	int flag_name = 0;
 	struct vfs_dentry *dir = vfs_root;
 	if(path[0] != '/'){
 		dir = p_proc_current->task.cwd;
 	}
 	vfs_get_dentry(dir);
-	while(*p == '/')p++;
-	while(*p || flag_name){
-		if(*p == '/' || *p == 0){// meet file name end
-			if(flag_name){
-				*p_name = 0;
-				flag_name = 0;
-				dir = _do_lookup(dir, d_name, 1);
-				if(!dir){
-					return NULL;
-				}
-				if(*p == 0){//最后一项也查找完毕
-					break;
-				}
-			}
-		}else if(!flag_name){
-			flag_name = 1;
-			p_name = d_name;
+	char c = '\0';
+	while(1) {
+		// 注意：此处是读入一个字符到c, c = *p 是赋值不是比较，下同
+		while((c = *p) && c == '/')p++; //找到这一级名字的开头
+		if(c == '\0') {
+			break; // 查找到末尾
 		}
-		if(flag_name){
-			*p_name++ = *p;
+		p_name = p;
+		while((c = *p) && c != '/')p++; //找到这一级名字的末尾
+		strncpy(d_name, p_name, p - p_name);
+		d_name[p-p_name] = '\0';
+		dir = _do_lookup(dir, d_name, 1);
+		if(dir == NULL) {
+			return NULL; // 中途任意一级不存在，则查找失败
 		}
-		p++;
 	}
 	return dir;
 }
