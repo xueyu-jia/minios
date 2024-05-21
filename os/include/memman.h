@@ -67,7 +67,7 @@ extern page mem_map[ALL_PAGES];
 #define pfn_to_phy(x)   ((x) * PAGE_SIZE)
 #define pfn_to_page(x)  (mem_map + (x))
 #define page_to_pfn(x)  ((x) - mem_map)
-
+#define kpage_lin(_page) K_PHY2LIN(pfn_to_phy(page_to_pfn((_page))))
 void memory_init();
 PUBLIC u32 phy_kmalloc(u32 size);
 PUBLIC u32 phy_kfree(u32 phy_addr);

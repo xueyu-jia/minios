@@ -31,6 +31,44 @@ PRIVATE SPIN_LOCK inode_alloc_lock;
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
+PRIVATE void init_file_desc_table(){
+    int i;
+	for (i = 0; i < NR_FILE_DESC; i++)
+		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
+}
+
+PRIVATE struct file_desc * alloc_file(){
+	struct file_desc * file = NULL;
+	int i;
+	lock_or_yield(&file_desc_lock);
+	/* find a free slot in f_desc_table[] */
+	for (i = 0; i < NR_FILE_DESC; i++){
+		if (f_desc_table[i].flag == 0){
+			file = &f_desc_table[i];
+			break;
+		}	
+	}
+	if (i >= NR_FILE_DESC){
+		release(&file_desc_lock);
+		disp_str("f_desc_table[] is full (PID:");
+		disp_int(proc2pid(p_proc_current));
+		disp_str(")\n");
+		return NULL;
+	}
+	file->flag = 1;
+	atomic_set(&file->fd_count, 1);
+	release(&file_desc_lock);
+	return file;
+}
+
+PRIVATE void release_file(struct file_desc * file) {
+	lock_or_yield(&file_desc_lock);
+	vfs_put_dentry(file->fd_dentry);
+	file->fd_dentry = 0;
+	file->flag = 0;
+	release(&file_desc_lock);
+}
+
 // 申请内存分配新的inode
 // lock require: inode alloc lock
 PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
@@ -48,12 +86,6 @@ PRIVATE struct vfs_inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	return inode;
 }
 
-
-PRIVATE void init_file_desc_table(){
-    int i;
-	for (i = 0; i < NR_FILE_DESC; i++)
-		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
-}
 
 // VFS api
 // alloc a new inode for superblock
@@ -695,24 +727,9 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 		disp_str("error: no permission");
 		goto err;
 	}
-	lock_or_yield(&file_desc_lock);
-	/* find a free slot in f_desc_table[] */
-	for (i = 0; i < NR_FILE_DESC; i++){
-		if (f_desc_table[i].flag == 0){
-			file = &f_desc_table[i];
-			break;
-		}	
-	}
-	if (i >= NR_FILE_DESC){
-		release(&file_desc_lock);
-		disp_str("f_desc_table[] is full (PID:");
-		disp_int(proc2pid(p_proc_current));
-		disp_str(")\n");
+	file = alloc_file();
+	if(file == NULL)
 		goto err;
-	}
-	file->flag = 1;
-	atomic_set(&file->fd_count, 1);
-	release(&file_desc_lock);
 	file->fd_dentry = dentry;
 	file->fd_ops = dentry->d_inode->i_fop;
 	file->fd_mapping = dentry->d_inode->i_mapping;
@@ -774,11 +791,7 @@ PUBLIC int kern_vfs_fsync(struct file_desc* file) {
 void fput(struct file_desc* file) {
 	if(atomic_dec_and_test(&file->fd_count)){
 		kern_vfs_fsync(file);
-		lock_or_yield(&file_desc_lock);
-		vfs_put_dentry(file->fd_dentry);
-		file->fd_dentry = 0;
-		file->flag = 0;
-		release(&file_desc_lock);
+		release_file(file);
 	}
 }
 

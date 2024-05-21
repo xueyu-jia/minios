@@ -571,6 +571,7 @@ PUBLIC page* alloc_user_page(u32 pgoff) {
 	list_init(&_page->pg_list);
 	list_init(&_page->pg_lru);
 	memset(_page->pg_buffer, 0, sizeof(_page->pg_buffer));
+	kmap(_page);
 	return _page;
 }
 
@@ -578,35 +579,42 @@ PUBLIC page* alloc_user_page(u32 pgoff) {
 
 // req. ring 0
 PRIVATE void copy_page(page *dst, page *src) {
-	u32 dst_vaddr, src_vaddr;
-	dst_vaddr = kmap(dst);
-	src_vaddr = kmap(src);
+	u32 dst_vaddr = kpage_lin(dst);
+	u32 src_vaddr = kpage_lin(src);
+	// dst_vaddr = kmap(dst);
+	// src_vaddr = kmap(src);
 	memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
 	// kunmap(dst);
 	// kunmap(src);
+	// disp_str(" cp:");
+	// disp_int(src->pg_off);
 	// disp_str("copy:");
 	// disp_int(page_to_pfn(src));
 	// disp_str("->");
-	// disp_int(page_to_pfn(dst));
+	// disp_int(dst->pg_off);
 	// disp_str("\n");
 }
 
 // req. ring 0
 PUBLIC void zero_page(page *_page) {
-	u32 dst_vaddr;
-	dst_vaddr = kmap(_page);
+	u32 dst_vaddr = kpage_lin(_page);
+	// dst_vaddr = kmap(_page);
 	memset(dst_vaddr, 0, PAGE_SIZE);
 	// kunmap(_page);
+	// disp_str(" zp:");
+	// disp_int(_page->pg_off);
 }
 
 PUBLIC void copy_from_page(page *_page, void* buf, u32 len, u32 offset) {
-	u32 vaddr = kmap(_page);
+	// u32 vaddr = kmap(_page);
+	u32 vaddr = kpage_lin(_page);
 	memcpy(buf, vaddr + offset, len);
 	// kunmap(_page);
 }
 
 PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
-	u32 vaddr = kmap(_page);
+	// u32 vaddr = kmap(_page);
+	u32 vaddr = kpage_lin(_page);
 	memcpy(vaddr + offset, buf, len);
 	// kunmap(_page);
 }

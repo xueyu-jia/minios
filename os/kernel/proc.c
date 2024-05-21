@@ -570,8 +570,8 @@ void wait_for_sem(void* chan, struct spinlock* lk) {
     p_proc_current->task.channel = chan;
     p_proc_current->task.stat    = SLEEPING;
     out_rq(p_proc_current);
-    enable_int();
     release(lk);
+    enable_int();
 
     sched_yield();
 

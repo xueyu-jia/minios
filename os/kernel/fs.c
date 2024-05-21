@@ -85,8 +85,11 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 		disp_str("error: over limit blk nr\n");
 	}
 	buf_head *bh = NULL;
-	void* page_data = kmap(target);
+	// void* page_data = kmap(target);
+	void *page_data = kpage_lin(target);;
 	int ret;
+	// disp_str(" rp:");
+	// disp_int(target->pg_off);
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
 			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
@@ -106,7 +109,7 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	// disp_str(" rd");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	kunmap(target);
+	// kunmap(target);
 	return 0;
 }
 
@@ -125,25 +128,29 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 		disp_str("block size must be 512/1024/2048/4096");
 	}
 	struct buf_head *bh = NULL;
-	void* page_data = kmap(target);
+	// void* page_data = kmap(target);
+	void *page_data = kpage_lin(target);
 	int block_start = target->pg_off * nr;
+	int ret;
+	// disp_str(" wp:");
+	// disp_int(target->pg_off);
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
 			bh = (struct buf_head*)kern_kzalloc(sizeof(struct buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
-			ops->get_block(inode, block_start + i, bh, 1);
+			ret = ops->get_block(inode, block_start + i, bh, 1);
 			target->pg_buffer[i] = bh;
 		}
 	}
-	
+	assert((void*)target->pg_buffer[0]->buffer == page_data);
 	for(int i = 0; i < nr; i++) {
 		rw_buffer(DEV_WRITE, target->pg_buffer[i]);
 	}
 	// disp_str(" wb");
 	// disp_int(target->pg_off);
 	// disp_int(target->pg_buffer[0]->block);
-	kunmap(target);
+	// kunmap(target);
 	return 0;
 }
 
@@ -171,6 +178,8 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 		}
 		len = min(PAGE_SIZE, total) - page_offset;
 		copy_from_page(_page, buf + cnt, len, page_offset);
+		// disp_str(" rd:");
+		// disp_int(len);
 		total -= (len + page_offset);
 		cnt += len;
 		page_offset = 0;
