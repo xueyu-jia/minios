@@ -6,7 +6,7 @@
 // 该系统最大可存储2048B大小的字节，更大的直接分配一个页。所以 KMEM_CACHES_NUM 最大为 9
 kmem_cache_t kmem_caches[KMEM_CACHES_NUM];
 
-PRIVATE bitmap_check_avail(kmem_slab_t *slab);
+PRIVATE u32 bitmap_check_avail(kmem_slab_t *slab);
 PRIVATE void *slab_alloc_object(kmem_slab_t *slab);
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache);
 PRIVATE void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder);
@@ -117,7 +117,7 @@ int kfree(u32 object) {
 	
 	返回值：第一个空闲对象的下标
 */ 
-PRIVATE bitmap_check_avail(kmem_slab_t *slab) {
+PRIVATE u32 bitmap_check_avail(kmem_slab_t *slab) {
 	u32 obj_index, i ,j;
 	bitmap_entry_t *bitmap = slab->bitmap;     // 找到位图起始地址
 	kmem_cache_t *cache = slab->cache;

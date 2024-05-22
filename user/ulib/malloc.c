@@ -24,6 +24,7 @@ static u32 alloc_hpage();
 static int free_page(u32 index);     //当vfree后整个4K页面都空时释放该页
 static int free_vpage(u32 vaddr);
 static int free_ppage(u32 vaddr);
+void malloc_init();
 
 int malloc_initialized=0;          //用于malloc之前标志堆是否已经初始化，初始化了值为1，否则值为0.
 //malloc_page ptable;

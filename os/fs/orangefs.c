@@ -282,7 +282,7 @@ current sect nr. */
 }
 
 // return inode num otherwise INVALID_INODE
-PRIVATE int lookup_inode_in_dir(struct inode* dir, char* filename)
+PRIVATE int lookup_inode_in_dir(struct inode* dir, const char* filename)
 {
 	if (filename == 0)
 	{

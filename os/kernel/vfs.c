@@ -354,7 +354,13 @@ PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_o
 			dentry = vfs_root;
 		} else {
 			while(dir != vfs_root && dir->d_vfsmount && dir->d_vfsmount->mnt_root==dir){
-				dir = dir->d_vfsmount->mnt_mountpoint;
+				struct dentry *_dir = dir->d_vfsmount->mnt_mountpoint;
+				if(_dir){
+					vfs_get_dentry(_dir);
+				}
+				vfs_put_dentry(dir);
+				dir = _dir;
+				// dir = dir->d_vfsmount->mnt_mountpoint;
 			}
 			dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
 		}

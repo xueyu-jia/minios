@@ -43,11 +43,11 @@ bits 32
 clock_int_msg		db	"^", 0
 
 [SECTION .bss]
-StackSpace		resb	2 * 1024
+StackSpace		resb	4 * 1024
 StackTop:		; used only as irq-stack in minios. added by xw
 
 ; added by xw, 18/6/15
-KernelStackSpace	resb	2 * 1024
+KernelStackSpace	resb	4 * 1024
 KernelStackTop:	; used as stack of kernel itself
 ; ~xw
 
