@@ -357,7 +357,7 @@ void orangefs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
     struct orange_inode *pin = orangefs_iget(ino);
     pin->i_size = 0;
     pin->i_mode = I_DIRECTORY;
-    orangefs_allocsector(pin);
+    orangefs_allocsector(pin, 1);
     orangefs_syncinode(ino, pin);
     if(orangefs_add_direntry((int)parent, name, ino) == 0) {
         // orangefs_add_direntry(ino, ".", ino);

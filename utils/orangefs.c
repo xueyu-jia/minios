@@ -114,9 +114,10 @@ int orangefs_allocinode() { // return inode_nr
 
 void orangefs_allocsector(struct orange_inode * pin) {
     int index;
+    int nr_block = max(1, min(superblock.nr_blocks/4, ORANGE_FILE_BLK));
     pin->i_nr_blocks = 
         orangefs_alloc_bitmap(2 + superblock.nr_imap_blocks, 
-            superblock.nr_smap_blocks, ORANGE_FILE_BLK, &index);
+            superblock.nr_smap_blocks, nr_block, &index);
     pin->i_start_block = index + superblock.n_1st_block;
     // fuse_log(FUSE_LOG_DEBUG, "alloc sec:[%d,%d)\n", pin->i_start_block, pin->i_nr_blocks + pin->i_start_block);
 }
