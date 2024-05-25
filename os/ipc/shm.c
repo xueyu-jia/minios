@@ -34,7 +34,7 @@ PUBLIC struct spinlock lock_msg = {
     .name = "ipc_lock",
     .cpu = 0xffffffff};
 struct spinlock lock_shmmemcpy;
-mem_pages shm_pages;
+struct address_space shm_pages;
 
 
 PUBLIC void init_shm() {

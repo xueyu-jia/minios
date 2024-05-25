@@ -511,12 +511,14 @@ PUBLIC void get_page(page *_page) {
 
 PRIVATE int drop_page(page *_page) {
 	int ret = 0;
-	mem_pages * mem_page = _page->pg_cache;
-	if(mem_page) {
-		acquire(&mem_page->lock);
+	struct address_space *mapping = _page->pg_mapping;
+	if(mapping) {
+		lock_or_yield(&mapping->lock);
 		ret = free_mem_page(_page);
-		release(&mem_page->lock);
+		release(&mapping->lock);
 	}else {
+		// disp_str("\n f:");
+		// disp_int(page_to_pfn(_page));
 		ret = free_pages(ubud, _page, 0);
 	}
 	return ret;
@@ -528,8 +530,8 @@ PUBLIC int put_page(page *_page) {
 	// disp_str(" ");
 	if (atomic_dec_and_test(&_page->count)) {
 		int type = MEMPAGE_AUTO, ret = 0;
-		if(_page->pg_cache) {
-			type = _page->pg_cache->type;
+		if(_page->pg_mapping) {
+			type = _page->pg_mapping->type;
 		}
 		switch (type)
 		{
@@ -538,7 +540,7 @@ PUBLIC int put_page(page *_page) {
 			break;
 		case MEMPAGE_CACHED: // 通常是文件映射的页面，将_page插入RLU, 此页面暂时不再使用，可能在未来内存不足时释放
 			acquire(&page_inactive_lock);
-			list_add_last(&_page->pg_lru, &page_inactive_lru);
+			list_add_first(&_page->pg_lru, &page_inactive_lru);
 			release(&page_inactive_lock);
 		case MEMPAGE_SAVE: // 此页面暂时不再使用，由其他组件手动释放
 		default:
@@ -567,11 +569,13 @@ PUBLIC page* alloc_user_page(u32 pgoff) {
 	page *_page = alloc_pages(ubud, 0);
 	atomic_set(&_page->count, 1);
 	_page->pg_off = pgoff;
-	_page->pg_cache = NULL;
+	_page->pg_mapping = NULL;
 	list_init(&_page->pg_list);
 	list_init(&_page->pg_lru);
 	memset(_page->pg_buffer, 0, sizeof(_page->pg_buffer));
 	kmap(_page);
+	// disp_str("\nap:");
+	// disp_int(page_to_pfn(_page));
 	return _page;
 }
 
@@ -619,37 +623,36 @@ PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 	// kunmap(_page);
 }
 
-PRIVATE mem_pages* get_mem_pages(LIN_MEMMAP* mmap, struct vmem_area* vma) {
-	mem_pages *mem_page = NULL;
+PRIVATE struct address_space* get_mapping(LIN_MEMMAP* mmap, struct vmem_area* vma) {
+	struct address_space *mapping = NULL;
     if(vma->file) { // file mapped memory MEMPAGE_CACHED
-		mem_page = &vma->file->fd_mapping->pages;
+		mapping = vma->file->fd_mapping;
     }else if(vma->flags & MAP_PRIVATE){ // process private allocated memory MEMPAGE_AUTO
-		mem_page = &mmap->anon_pages;
+		mapping = &mmap->anon_pages;
 	}else {
-		mem_page = &shm_pages; // shared mem managed by hand MEMPAGE_SAVE
+		mapping = &shm_pages; // shared mem managed by hand MEMPAGE_SAVE
 	}
-	return mem_page;
+	return mapping;
 }
 
 PRIVATE page* find_or_create_page(LIN_MEMMAP* mmap, struct vmem_area* vma, u32 pgoff) {
-	mem_pages* mem_page = get_mem_pages(mmap, vma);
-	lock_or_yield(&mem_page->lock);
-    page *_page = find_mem_page(mem_page, pgoff);
+	struct address_space *mapping = get_mapping(mmap, vma);
+	lock_or_yield(&mapping->lock);
+    page *_page = find_mem_page(mapping, pgoff);
 	if(_page == NULL) {
 		_page = alloc_user_page(pgoff);
 		if(vma->file) {
-			struct address_space * f_mapping = vma->file->fd_mapping;
-			lock_or_yield(&f_mapping->host->lock);
-			generic_file_readpage(f_mapping, _page);
-			release(&f_mapping->host->lock);
+			lock_or_yield(&mapping->host->lock);
+			generic_file_readpage(mapping, _page);
+			release(&mapping->host->lock);
 		}else {
 			zero_page(_page);
 		}
-		add_mem_page(mem_page, _page);
+		add_mem_page(mapping, _page);
 	} else {
 		get_page(_page);
 	}
-	release(&mem_page->lock);
+	release(&mapping->lock);
 	return _page;
 }
 

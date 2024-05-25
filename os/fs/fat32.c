@@ -9,6 +9,8 @@
 #include "buffer.h"
 #include "vfs.h"
 #include "fat32.h"
+#include "clock.h"
+#include "memman.h"
 
 PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len){
 	u16 c;
@@ -18,7 +20,7 @@ PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len){
 	*norm_name = 0;
 }
 
-PRIVATE void char2uni(u16* uni_name, char* norm_name, int max_len){
+PRIVATE void char2uni(u16* uni_name, const char* norm_name, int max_len){
 	char c;
 	for(int i = 0; (c = *(norm_name++)) &&i < max_len; i++){
 		*(uni_name++) = c;
@@ -132,7 +134,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	if(FAT_SB(sb)->fsinfo.cluster_free_count <= 0){
 		return -1;
 	}
-	acquire(&FAT_SB(sb)->lock);
+	acquire(&sb->lock);
 	int i, clus, next_free = FAT_SB(sb)->fsinfo.cluster_next_free, 
 		total = FAT_SB(sb)->max_cluster - 1;
 	buf_head* bh = NULL;
@@ -144,7 +146,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	if(i >= total){
 		FAT_SB(sb)->fsinfo.cluster_free_count = 0;
 		disp_str("error: no space");
-		release(&FAT_SB(sb)->lock);
+		release(&sb->lock);
 		return -1;
 	}
 	read_write_fat(sb, clus, FAT_END);
@@ -163,7 +165,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 	if(tail){
 		read_write_fat(sb, tail, clus);
 	}
-	release(&FAT_SB(sb)->lock);
+	release(&sb->lock);
 	return clus;
 }
 
@@ -176,7 +178,7 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_
 	if(!cluster){
 		return 0; // according to FAT doc, cluster in entry will be 0 for empty file;
 	}
-	acquire(&FAT_SB(sb)->lock);
+	acquire(&sb->lock);
 	while(cluster != FAT_END){
 		next = read_write_fat(sb, cluster, -1);
 		if(next == cluster + 1){
@@ -189,7 +191,7 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_
 		cluster = next;
 		count++;
 	}
-	release(&FAT_SB(sb)->lock);
+	release(&sb->lock);
 	return count;
 }
 
@@ -233,9 +235,9 @@ PRIVATE int fat_get_cluster(struct inode* inode, int cluster, int new_space){
 	if(!info){
 		return -1;
 	}
-	if(new){
-		fat32_sync_inode(inode);
-	}
+	// if(new){
+	// 	fat32_sync_inode(inode);
+	// }
 	return info->cluster_start + clus_skip;
 }
 
@@ -473,7 +475,7 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 			baselen = offset;
 		}
 	}
-	if(shortname[0] == DIR_DELETE){
+	if((u8)shortname[0] == DIR_DELETE){
 		shortname[0] = 0x05;
 	}
 	if(!fat_check_short(dir, shortname))
@@ -501,7 +503,7 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 
 PRIVATE int fat_write_shortname(struct inode* dir, struct fat_dir_entry* entry, int order){
 	buf_head* bh = NULL;
-	struct fat_dir_entry* de = fat_get_slot(dir, order, &bh, 1);
+	struct fat_dir_entry* de = (struct fat_dir_entry*)fat_get_slot(dir, order, &bh, 1);
 	if(!de)
 		return -1;
 	*de = *entry;
@@ -597,7 +599,6 @@ PUBLIC void fat32_read_inode(struct inode* inode){
 	inode->i_op = &fat32_inode_ops;
 	inode->i_fop = &fat32_file_ops;
 	if(bh) brelse(bh);
-	return inode;
 }
 
 PUBLIC int fat32_sync_inode(struct inode* inode){
@@ -607,7 +608,6 @@ PUBLIC int fat32_sync_inode(struct inode* inode){
 	struct super_block* sb = inode->i_sb;
 	int entry_block = sb->sb_blocksize/FAT_ENTRY_SIZE;
 	buf_head* bh = NULL;
-	struct tm time;
 	u32 ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
 	struct fat_dir_entry* de = 
@@ -697,7 +697,7 @@ PRIVATE int fat32_unlink_name(struct inode *dir, struct dentry *dentry) {
 	struct fat_dir_slot* ds;
 	struct inode* inode = dentry->d_inode;
 	u32 ino = inode->i_no;
-	u8 order, chksum;
+	u8 chksum;
 	if(ino == FAT_ROOT_INO) {
 		return -1;
 	}
@@ -708,7 +708,6 @@ PRIVATE int fat32_unlink_name(struct inode *dir, struct dentry *dentry) {
 	ds = fat_get_slot(dir, pos, &bh, 0);
 	chksum = fat_chksum(((struct fat_dir_entry*)ds)->name);
 	do {
-		order = ds->order;
 		ds->order = DIR_DELETE;
 		mark_buff_dirty(bh);
 		pos--;
@@ -824,7 +823,6 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 	struct fat_dir_entry* de;
 	buf_head* bh = NULL;
 	struct inode* dir = file->fd_dentry->d_inode;
-	struct dentry* dentry = NULL;
 	struct dirent* dent = start;
 	if(dir->i_no == FAT_ROOT_INO){
 		dirent_fill(dent, FAT_ROOT_INO, 1);
@@ -854,13 +852,12 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 }
 
 PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
-	int dir_blocks, fsinfo_blk, ext_flag;
+	int dir_blocks, fsinfo_blk;
 	buf_head * fs_info_buf;
 	buf_head * bh = bread(dev, 0);
 	struct fat32_bpb* bpb  = (struct fat32_bpb*)bh->buffer;
 	struct fat32_sb_info *sbi = FAT_SB(sb);
 	sb->sb_blocksize = bpb->BytsPerSec;
-	int sector_size_mult = bpb->BytsPerSec >> SECTOR_SIZE_SHIFT;
 	if(bpb->FATSz16 != 0){
 		// not FAT32 volume, current not supported
 		brelse(bh);
@@ -900,7 +897,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 		brelse(fs_info_buf);
 	}
 	brelse(bh);
-	initlock(&sbi->lock, "FAT");
+	initlock(&sb->lock, "FAT");
 	sb->sb_dev = dev;
 	sb->fs_type = FAT32_TYPE;
 	sb->sb_op = &fat32_sb_ops;

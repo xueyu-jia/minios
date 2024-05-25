@@ -73,6 +73,10 @@ PUBLIC u32 kern_total_mem_size()
 {
 	u32 total_mem_size = 0;
 	total_mem_size = kbud->current_mem_size + ubud->current_mem_size + kmem.current_mem_size;
+	// disp_str("\nfree:");
+	// disp_int(total_mem_size);
+	// disp_str("\nslab:");
+	// printInfoAll();
 	return total_mem_size;
 }
 

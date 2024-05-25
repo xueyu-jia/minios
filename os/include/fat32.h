@@ -105,7 +105,6 @@ struct fat32_sb_info {
     int               max_cluster; // max valid cluster
     int               root_cluster;
     struct fat_fsinfo fsinfo;
-    SPIN_LOCK         lock;
 };
 
 #define FAT_SB(sb) (&((sb)->fat32_sb))

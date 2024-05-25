@@ -1,5 +1,6 @@
 void* memcpy(void* p_dst, const void* p_src, int size){
-	char* d = p_dst, *s = p_src;
+	char* d = p_dst;
+	const char *s = p_src;
 	while(size > 0) {
 		*(d++) = *(s++);
 		size--;

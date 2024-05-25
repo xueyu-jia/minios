@@ -64,37 +64,39 @@ int init_char_dev()
 	return 0;
 }
 
-// readpage to file address_space
+// mapping file page buffer
+// return mapped block number
 // req. inode lock; file page cache list lock  
-int generic_file_readpage(struct address_space* file_mapping, page* target) {
+PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int create) {
+	buf_head *bh = NULL;
 	struct inode* inode = file_mapping->host;
 	struct inode_operations* ops = inode->i_op;
+	int size = inode->i_sb->sb_blocksize;
+	int nr = PAGE_SIZE/size;
+	int block_start = target->pg_off * nr;
+	if(create == 0) {
+		int nr_limit = UPPER_BOUND(inode->i_size, size)/size;
+		nr = min(nr_limit - block_start, nr);
+		if(nr == 0){
+			disp_str("error: over limit blk nr\n");
+		}
+	}
+	if((PAGE_SIZE%size) || nr > MAX_BUF_PAGE){
+		disp_str("block size must be 512/1024/2048/4096");
+	}
 	if(!(ops && ops->get_block)) { // get block对于一般的文件系统必须实现！
 		disp_str("error: no get_block op\n");
 		return -1;
 	}
-	int size = inode->i_sb->sb_blocksize;
-	int nr = PAGE_SIZE/size;
-	int nr_limit = UPPER_BOUND(inode->i_size, size)/size;
-	int block_start = target->pg_off * nr;
-	nr = min(nr_limit - block_start, nr);
-	if((PAGE_SIZE%size) || nr > MAX_BUF_PAGE){
-		disp_str("error: block size must be 512/1024/2048/4096\n");
-	}
-	if(nr == 0){
-		disp_str("error: over limit blk nr\n");
-	}
-	buf_head *bh = NULL;
-	// void* page_data = kmap(target);
-	void *page_data = kpage_lin(target);;
-	int ret, phy;
-	// disp_str(" rp:");
-	// disp_int(target->pg_off);
+	void *page_data = kpage_lin(target);
+	int phy;
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
-			phy = ops->get_block(inode, block_start + i, 0);
+			phy = ops->get_block(inode, block_start + i, create);
 			if(phy == -1) {
 				disp_str("error: unmapped blk\n");
+				disp_str("warning: data in file may lost\n");
+				return i;
 			}
 			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 			bh->buffer = (void*) (page_data + i * size);
@@ -104,11 +106,21 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 		}
 	}
 	assert((void*)target->pg_buffer[0]->buffer == page_data);
+	return nr;
+}
+
+// readpage to file address_space
+// req. inode lock; file page cache list lock  
+int generic_file_readpage(struct address_space* file_mapping, page* target) {
+	int nr = page_filemap(target, file_mapping, 0);
 	for(int i = 0; i < nr; i++) {
+		if(target->pg_buffer[i] == NULL){
+			continue;
+		}
 		rw_buffer(DEV_READ, target->pg_buffer[i]);
 	}
-	// disp_str(" rd");
-	// disp_int(target->pg_off);
+	// disp_str("\nrp:");
+	// disp_int(page_to_pfn(target));
 	// disp_int(target->pg_buffer[0]->block);
 	// kunmap(target);
 	return 0;
@@ -117,44 +129,15 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 // writepage to file address_space
 // req. inode lock; file page cache list lock 
 int generic_file_writepage(struct address_space* file_mapping, page* target) {
-	struct inode* inode = file_mapping->host;
-	struct inode_operations* ops = inode->i_op;
-	if(!(ops && ops->get_block)) { // get block对于一般的文件系统必须实现！
-		disp_str("error: no get_block op\n");
-		return -1;
-	}
-	int size = inode->i_sb->sb_blocksize;
-	int nr = PAGE_SIZE/size;
-	if((PAGE_SIZE%size) || nr > MAX_BUF_PAGE){
-		disp_str("block size must be 512/1024/2048/4096");
-	}
-	struct buf_head *bh = NULL;
-	// void* page_data = kmap(target);
-	void *page_data = kpage_lin(target);
-	int block_start = target->pg_off * nr;
-	int ret, phy;
-	// disp_str(" wp:");
-	// disp_int(target->pg_off);
+	int nr = page_filemap(target, file_mapping, 1);
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
-			phy = ops->get_block(inode, block_start + i, 1);
-			if(phy == -1) {
-				disp_str("error: unmapped blk\n");
-			}
-			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
-			bh->buffer = (void*) (page_data + i * size);
-			initlock(&bh->lock, NULL);
-			map_bh(bh, inode->i_sb, phy);
-			target->pg_buffer[i] = bh;
+			continue;
 		}
-	}
-	assert((void*)target->pg_buffer[0]->buffer == page_data);
-	for(int i = 0; i < nr; i++) {
 		rw_buffer(DEV_WRITE, target->pg_buffer[i]);
 	}
-	// disp_str(" wb");
-	// disp_int(target->pg_off);
-	// disp_int(target->pg_buffer[0]->block);
+	// disp_str("\nwp:");
+	// disp_int(page_to_pfn(target));
 	// kunmap(target);
 	return 0;
 }
@@ -162,7 +145,7 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 // page cache read
 // req. inode lock
 int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
-	mem_pages *page_cache = &file->fd_mapping->pages;
+	struct address_space *mapping = file->fd_mapping;
 	u64 pos = file->fd_pos;
 	u32 pgoff_start = pos >> PAGE_SHIFT;
 	u64 end = min(pos + count, file->fd_dentry->d_inode->i_size);
@@ -170,14 +153,14 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 	u32 page_offset = pos % PAGE_SIZE;
 	int cnt = 0, len, total = end - LOWER_BOUND_4K(pos);
 	page *_page = NULL;
-	lock_or_yield(&page_cache->lock);
+	lock_or_yield(&mapping->lock);
 	for(u32 pgoff = pgoff_start; pgoff < pgoff_end; pgoff++)
 	{
-		_page = find_mem_page(page_cache, pgoff);
+		_page = find_mem_page(mapping, pgoff);
 		if(_page == NULL) {
 			_page = alloc_user_page(pgoff);
-			generic_file_readpage(file->fd_mapping, _page);
-			add_mem_page(page_cache, _page);
+			generic_file_readpage(mapping, _page);
+			add_mem_page(mapping, _page);
 		}else {
 			get_page(_page);
 		}
@@ -190,7 +173,7 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 		page_offset = 0;
 		put_page(_page);
 	}
-	release(&page_cache->lock);
+	release(&mapping->lock);
 	file->fd_pos += cnt;
 	return cnt;
 }
@@ -198,7 +181,7 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 // page cache write
 // req. inode lock
 int generic_file_write(struct file_desc* file, unsigned int count, const char* buf) {
-	mem_pages *page_cache = &file->fd_mapping->pages;
+	struct address_space *mapping = file->fd_mapping;
 	u64 pos = file->fd_pos;
 	u32 pgoff_start = pos >> PAGE_SHIFT;
 	u64 end = pos + count;
@@ -207,18 +190,19 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 	u32 page_offset = pos % PAGE_SIZE;
 	int cnt = 0, len, total = end - LOWER_BOUND_4K(pos);
 	page *_page = NULL;
-	lock_or_yield(&page_cache->lock);
+	lock_or_yield(&mapping->lock);
 	for(u32 pgoff = pgoff_start; pgoff < pgoff_end; pgoff++)
 	{
-		_page = find_mem_page(page_cache, pgoff);
+		_page = find_mem_page(mapping, pgoff);
 		if(_page == NULL) {
 			_page = alloc_user_page(pgoff);
 			if(pgoff < pgoff_file_end){
-				generic_file_readpage(file->fd_mapping, _page);
+				generic_file_readpage(mapping, _page);
 			}else {
 				zero_page(_page);
+				page_filemap(_page, mapping, 1);
 			}
-			add_mem_page(page_cache, _page);
+			add_mem_page(mapping, _page);
 		}else {
 			get_page(_page);
 		}
@@ -230,7 +214,7 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 		page_offset = 0;
 		put_page(_page);
 	}
-	release(&page_cache->lock);
+	release(&mapping->lock);
 	file->fd_pos += cnt;
 	if(file->fd_pos > file->fd_dentry->d_inode->i_size) {
 		file->fd_dentry->d_inode->i_size = file->fd_pos;
@@ -244,10 +228,10 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 // req. inode lock
 int generic_file_fsync(struct file_desc* file, int datasync)
 {
-	mem_pages *page_cache = &file->fd_mapping->pages;
-	lock_or_yield(&page_cache->lock);
-	writeback_mem_page(page_cache);
-	release(&page_cache->lock);
+	struct address_space *mapping = file->fd_mapping;
+	lock_or_yield(&mapping->lock);
+	pagecache_writeback(mapping);
+	release(&mapping->lock);
 	if(datasync){ // datasync表示只同步文件数据，不用同步inode等元数据
 		return 0;
 	}

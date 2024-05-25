@@ -46,7 +46,7 @@ typedef struct page
 	// slab
     kmem_cache_t *cache;    // slab对应的cache
 	// page cache
-	mem_pages* pg_cache;  // page 所属的page cache结构
+	struct address_space* pg_mapping;  // page 所属的page cache结构
 	// 对于正在使用的页面，使用pg_list将page加入到对应的page链表
 	// 如file address_space中的链表，pcb匿名页面链表等
 	struct list_node pg_list;
@@ -84,6 +84,7 @@ PUBLIC int kern_free_4k(void *AddrLin);
 // PUBLIC int kern_mapping_4k(u32 AddrLin, u32 pid, u32 phyAddr, u32 pte_attribute);
 // PUBLIC int ker_umalloc_4k(u32 AddrLin, u32 pid, u32 pte_attribute);
 // PUBLIC int ker_ufree_4k(u32 pid, u32 AddrLin);
+PUBLIC u32 kern_malloc_4k();
 PUBLIC page* alloc_user_page(u32 pgoff);
 PUBLIC void get_page(page *_page);
 PUBLIC int put_page(page *_page);

@@ -42,7 +42,7 @@ struct key2id_form
     struct key2id_form *next;
 } Key_TO_Id_Form;*/
 extern struct spinlock lock_shmmemcpy;
-extern mem_pages shm_pages;
+extern struct address_space shm_pages;
 PUBLIC void init_shm();
 u32 phy_free_4k(u32 phy_addr);
 #endif

@@ -19,7 +19,6 @@ struct super_block;
 #include "spinlock.h"
 #include "fs_const.h"
 #include "mempage.h"
-#include "proc.h"
 
 /**
  * structure for fs common ***文件系统公共数据结构***
@@ -33,7 +32,9 @@ struct super_block;
 
 struct address_space {
 	struct inode *host;
-	mem_pages pages;
+	int type;
+	list_head page_list;
+	struct spinlock lock;
 };
 struct inode {
 	u32 i_no;
@@ -86,15 +87,6 @@ struct dentry{
  */
  //modified by sundong 2023.5.26
 struct super_block {
-	union {
-		struct orange_sb_info orange_sb;
-		struct fat32_sb_info fat32_sb;
-	};
-	// 实际文件系统的元数据
-
-  /*
-   * the following item(s) are only present in memory
-   */
   	struct dentry* sb_root; // 根dentry
 	struct vfs_mount* sb_vfsmount; // 
 	list_head sb_inode_list;
@@ -104,6 +96,11 @@ struct super_block {
 	int fs_type;	//added by mingxuan 2020-10-30
 	int used;
 	struct spinlock lock;
+	union {
+		struct orange_sb_info orange_sb;
+		struct fat32_sb_info fat32_sb;
+	};
+	// 实际文件系统的元数据
 };
 
 struct file_desc {
@@ -125,7 +122,7 @@ struct dirent{
 	char d_name[1]; //just d_name start
 };
 #define dirent_next(dent) ((struct dirent*)(((char*)dent)+(dent->d_len)))
-#define dirent_len(name_len) ((name_len) + 9) // 2*int+end'\0'
+#define dirent_len(name_len) ((u32)(name_len) + 9) // 2*int+end'\0'
 #define dirent_fill(dent, ino, name_len) do{	\
 	(dent)->d_ino = ino;\
 	(dent)->d_len = dirent_len(name_len);\
@@ -183,8 +180,8 @@ struct fs_type{
 extern struct super_block super_blocks[NR_SUPER_BLOCK];
 extern struct fs_type fstype_table[NR_FS_TYPE];
 int get_free_superblock();
-int generic_file_readpage(struct address_space* file_mapping, page* target);
-int generic_file_writepage(struct address_space* file_mapping, page* target);
+int generic_file_readpage(struct address_space* file_mapping, struct page* target);
+int generic_file_writepage(struct address_space* file_mapping, struct page* target);
 int generic_file_read(struct file_desc* file, unsigned int count, char* buf);
 int generic_file_write(struct file_desc* file, unsigned int count, const char* buf);
 int generic_file_fsync(struct file_desc* file, int datasync);

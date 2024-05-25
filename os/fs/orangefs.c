@@ -232,9 +232,9 @@ PRIVATE int orange_free_imap_bit(struct super_block* sb, int inode_nr)
 PRIVATE int orange_free_smap_bit(struct super_block* sb, int start_sect_nr, int nr_sects_to_free)
 {
 	// free_sect_nr = (i * SECTOR_SIZE + j) * 8 + k - 1 + sb->n_1st_sect;
-	int i; /* sector index */
-	int j; /* byte index */
-	int k; /* bit index */
+	unsigned int i; /* sector index */
+	unsigned int j; /* byte index */
+	unsigned int k; /* bit index */
 	int smap_blk0_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks;
 	//char* fsbuf = kern_kmalloc(BLOCK_SIZE);
 	char* fsbuf = NULL;
@@ -288,14 +288,13 @@ PRIVATE int lookup_inode_in_dir(struct inode* dir, const char* filename)
 	{
 		return INVALID_INODE;
 	}
-	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
-	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+	unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
-	int m = 0;
 	struct dir_entry *pde;
-	int i, j;
+	unsigned int i, j, m = 0;
 	char * fsbuf = NULL;
 	buf_head * bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
@@ -331,14 +330,13 @@ PRIVATE int lookup_inode_in_dir(struct inode* dir, const char* filename)
 
 PRIVATE int remove_name_in_dir(struct inode* dir, int nr_inode)
 {
-	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
-	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+	unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
-	int m = 0;
 	struct dir_entry *pde;
-	int i, j;
+	unsigned int i, j, m = 0;
 	char * fsbuf = NULL;
 	buf_head * bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
@@ -375,14 +373,13 @@ PRIVATE int remove_name_in_dir(struct inode* dir, int nr_inode)
 
 PRIVATE int orange_check_dir_empty(struct inode* dir)
 {
-	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
-	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+	unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
-	int m = 0;
 	struct dir_entry *pde;
-	int i, j;
+	unsigned int i, j, m = 0;
 	char * fsbuf = NULL;
 	buf_head * bh = NULL;
 	for (i = 0; i < nr_dir_blks; i++)
@@ -419,14 +416,13 @@ PRIVATE int orange_check_dir_empty(struct inode* dir)
 PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dirent* start)
 {
 	struct inode* dir = file->fd_dentry->d_inode;
-	int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
 	int dir_blk0_nr = dir->orange_inode.i_start_block;
-	int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
+	unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
-	int m = 0;
 	struct dir_entry *pde;
-	int i, j;
+	unsigned int i, j, m = 0;
 	char * fsbuf = NULL;
 	buf_head * bh = NULL;
 	struct dirent* dent = start;
@@ -519,20 +515,19 @@ PRIVATE void orange_new_dir_entry(struct inode *dir_inode, int inode_nr, char *f
 	/* write the dir_entry */
 	// 原orange逻辑存在问题：当目录项使用至Blk边界时,对于仍有空间的目录没有正确分配空间
 	int dir_blk0_nr = dir_inode->orange_inode.i_start_block;
-	int dir_blk_total = dir_inode->orange_inode.i_nr_blocks;
-	int nr_dir_blks = (dir_inode->i_size-1+ BLOCK_SIZE) / BLOCK_SIZE;
-	int nr_dir_entries =
+	unsigned int dir_blk_total = dir_inode->orange_inode.i_nr_blocks;
+	unsigned int nr_dir_blks = (dir_inode->i_size-1+ BLOCK_SIZE) / BLOCK_SIZE;
+	unsigned int nr_dir_entries =
 		dir_inode->i_size / DIR_ENTRY_SIZE; /**
 											 * including unused slots
 											 * (the file has been
 											 * deleted but the slot
 											 * is still there)
 											 */
-	int m = 0;
 	struct dir_entry *pde;
 	struct dir_entry *new_de = 0;
 
-	int i, j;
+	unsigned int i, j, m = 0;
 	char *fsbuf =NULL;
 	buf_head *bh = NULL;
 	// find free slot in disk
@@ -674,7 +669,7 @@ PUBLIC int orange_get_block(struct inode *inode, u32 iblock, int create)
 		if(create == 0){
 			return -1;
 		}
-		orange_alloc_smap_bit(inode->i_sb, &(inode->orange_inode));
+		orange_alloc_smap_bit(sb, &(inode->orange_inode));
 	}
 	if(iblock < inode->orange_inode.i_nr_blocks) {
 		phys = inode->orange_inode.i_start_block + iblock;

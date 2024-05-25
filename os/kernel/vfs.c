@@ -80,10 +80,9 @@ PRIVATE struct inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 	inode->i_sb = sb;
 	list_init(&inode->i_list);
 	list_init(&inode->i_dentry);
-	init_mem_page(&inode->i_data.pages, MEMPAGE_CACHED);
 	inode->i_mapping = &inode->i_data;
 	inode->i_mapping->host = inode;
-	inode->i_mapping->pages.page_mapping = inode->i_mapping;
+	init_mem_page(inode->i_mapping, MEMPAGE_CACHED);
 	return inode;
 }
 
@@ -156,7 +155,9 @@ PUBLIC void vfs_put_inode(struct inode * inode){
 		if(ops && ops->put_inode){
 			ops->put_inode(inode);
 		}
-		free_mem_pages(&inode->i_mapping->pages);
+		lock_or_yield(&inode->i_mapping->lock);
+		free_mem_pages(inode->i_mapping);
+		release(&inode->i_mapping->lock);
 		vfs_sync_inode(inode);
 		vfs_free_inode(inode);
 		return;
@@ -357,6 +358,8 @@ PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_o
 				struct dentry *_dir = dir->d_vfsmount->mnt_mountpoint;
 				if(_dir){
 					vfs_get_dentry(_dir);
+				}else{
+					disp_str("error: invalid mountpoint\n");
 				}
 				vfs_put_dentry(dir);
 				dir = _dir;
@@ -558,7 +561,7 @@ PRIVATE struct super_block * vfs_get_super(int dev, u32 fstype) {
 }
 
 // return mounted root
-PRIVATE struct dentry *kern_mount_dev(int dev, u32 fstype, const char *dev_name, struct dentry * mnt) {
+PRIVATE struct dentry *vfs_mount_dev(int dev, u32 fstype, const char *dev_name, struct dentry * mnt) {
 	struct super_block *sb = vfs_get_super(dev, fstype);
 	if(!sb){
 		return NULL;
@@ -587,7 +590,7 @@ PRIVATE void mount_root(int root_drive){
 		dev = get_hd_dev(root_drive, root_fstype); // 自动匹配符合文件系统类型的第一个分区
 	#endif
 	// struct super_block *sb = vfs_get_super(dev, root_fstype);
-	vfs_root = kern_mount_dev(dev, root_fstype, "/", NULL);
+	vfs_root = vfs_mount_dev(dev, root_fstype, "/", NULL);
 }
 
 int init_block_dev();
@@ -596,7 +599,7 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode);
 PRIVATE void init_fsroot() {
 	kern_vfs_mkdir("/dev", I_RWX);
 	struct dentry *dev_dir = _do_lookup(vfs_root, "dev", 0);
-	kern_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
+	vfs_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
 	vfs_put_dentry(dev_dir);
 	init_block_dev();
 	init_char_dev();
@@ -680,7 +683,7 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
 	int fstype = get_fstype_by_name(filesystemtype);
 	char dev_name[MNT_DEVNAME_LEN];
 	vfs_get_path(block_dev, dev_name, MNT_DEVNAME_LEN);
-	struct dentry * mnt_root = kern_mount_dev(dev, fstype, dev_name, dir_d);
+	struct dentry * mnt_root = vfs_mount_dev(dev, fstype, dev_name, dir_d);
 	if(!mnt_root){
 		vfs_put_dentry(dir_d);
 		return -1;
@@ -770,6 +773,10 @@ no_dentry_out:
 	return NULL;
 }
 
+PRIVATE inline void vfs_file_close(struct file_desc* file) {
+	fput(file);
+}
+
 PUBLIC int kern_vfs_open(const char *path, int flags, int mode) {
 	int fd = -1, i;
 	for (i = 0; i < NR_FILES; i++)
@@ -824,7 +831,7 @@ PUBLIC int kern_vfs_close(int fd) {
 	if(!file){
 		return -1;
 	}
-	fput(file);
+	vfs_file_close(file);
 	p_proc->task.filp[fd] = 0;
 	return 0;
 }
@@ -881,6 +888,9 @@ PUBLIC int kern_vfs_read(int fd, char *buf, int count){
 	if(inode->i_fop && inode->i_fop->read){
 		cnt = inode->i_fop->read(file, count, buf);
 	}
+	if(cnt) {
+		inode->i_atime = current_timestamp;
+	}
 	release(&inode->lock);
 	return cnt;
 }
@@ -900,6 +910,9 @@ PUBLIC int kern_vfs_write(int fd, const char *buf, int count){
 	lock_or_yield(&inode->lock);
 	if(inode->i_fop && inode->i_fop->write){
 		cnt = inode->i_fop->write(file, count, buf);
+	}
+	if(cnt) {
+		inode->i_mtime = current_timestamp;
 	}
 	release(&inode->lock);
 	return cnt;
@@ -1086,7 +1099,7 @@ PUBLIC int kern_vfs_closedir(DIR* dirp){
 	if(!file){
 		return -1;
 	}
-	fput(file);
+	vfs_file_close(file);
 	kern_free_4k(dirp);
 	return 0;
 }

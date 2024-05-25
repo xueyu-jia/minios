@@ -10,7 +10,6 @@
 #include "fs.h" //added by ran
 #include "pthread.h"
 #include "protect.h"
-#include "mempage.h"
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -159,7 +158,7 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 	u32 kernel_lin_limit;					//内核界限
 
 	u32 stack_child_limit;					//分给子线程的栈的界限		//add by visual 2016.5.27
-	mem_pages anon_pages;
+	struct address_space anon_pages;
 	list_head vma_map;	// list of vmem_area
 	struct spinlock vma_lock;
 }LIN_MEMMAP;
