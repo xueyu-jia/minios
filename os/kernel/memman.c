@@ -16,9 +16,9 @@ u32 kernel_code_size = 0;  //为内核代码数据分配的内存大小，     a
 u32 test_phy_mem_size = 0; //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
 u32 MemInfo[256] = {0}; //存放FMIBuff后1k内容
 page mem_map[ALL_PAGES];
-list_head page_inactive_lru = {
-	.next = &page_inactive_lru,
-	.prev = &page_inactive_lru,
+list_head page_inactive = {
+	.next = &page_inactive,
+	.prev = &page_inactive,
 };
 PRIVATE struct spinlock page_inactive_lock;
 
@@ -82,7 +82,10 @@ PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址�
 	if (size <= (1 << MAX_BUFF_ORDER)) {
 		return (u32)kmalloc(size);
 	} else if(size == num_4K) {
-		return phy_kmalloc_4k();
+		u32 phy = phy_kmalloc_4k();
+		
+		return phy;
+		// return phy_kmalloc_4k();
 	}
 	return kmalloc_over4k(size);
 }
@@ -90,13 +93,23 @@ PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址�
 //added by mingxuan 2021-8-16
 PUBLIC u32 kern_kmalloc(u32 size)
 {
-	return K_PHY2LIN(phy_kmalloc(size));
+	void *p = (void*)K_PHY2LIN(phy_kmalloc(size));
+	// disp_str("\na:");
+	// disp_int(p);
+	// disp_str(" ");
+	// disp_int(size);
+	return p;
+	// return K_PHY2LIN(phy_kmalloc(size));
 }
 //add by sundong 2023.6.3
 //分配一段内存,并初始化为0
 PUBLIC u32 kern_kzalloc(u32 size)
 {
 	void *p = (void*)K_PHY2LIN(phy_kmalloc(size));
+	// disp_str("\na:");
+	// disp_int(p);
+	// disp_str(" ");
+	// disp_int(size);
 	memset(p,0,size);
 	return (u32)p;
 }
@@ -159,6 +172,8 @@ PUBLIC u32 phy_kfree(u32 phy_addr) //有unsigned int型参数addr和size，释�
 //added by mingxuan 2021-8-17
 PUBLIC u32 kern_kfree(u32 addr) //addr must be lin addr
 {
+	// disp_str("\nf:");
+	// disp_int(addr);
 	return phy_kfree(K_LIN2PHY(addr));
 }
 
@@ -524,6 +539,22 @@ PRIVATE int drop_page(page *_page) {
 	return ret;
 }
 
+PRIVATE page * get_and_remove_inactive_page() {
+	acquire(&page_inactive_lock);
+	page * _page = list_front(&page_inactive, page, pg_lru);
+	list_remove(&_page->pg_lru);
+	release(&page_inactive_lock);
+	return _page;
+}
+
+PUBLIC void shrink_page_memory() {
+	page * _page;
+	// 因为上锁顺序的限制，持有page_inactive_lock不能再获取mapping的锁(防死锁)
+	while(_page = get_and_remove_inactive_page()) {
+		drop_page(_page);
+	}
+}
+
 PUBLIC int put_page(page *_page) {
 	// disp_str("put:");
 	// disp_int(page_to_pfn(_page));
@@ -540,7 +571,7 @@ PUBLIC int put_page(page *_page) {
 			break;
 		case MEMPAGE_CACHED: // 通常是文件映射的页面，将_page插入RLU, 此页面暂时不再使用，可能在未来内存不足时释放
 			acquire(&page_inactive_lock);
-			list_add_first(&_page->pg_lru, &page_inactive_lru);
+			list_add_first(&_page->pg_lru, &page_inactive);
 			release(&page_inactive_lock);
 		case MEMPAGE_SAVE: // 此页面暂时不再使用，由其他组件手动释放
 		default:

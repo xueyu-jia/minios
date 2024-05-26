@@ -17,7 +17,7 @@ typedef struct spinlock {
   // For debugging:
   char *name;    // Name of lock.
   int  cpu;      // The number of the cpu holding the lock.
-  uint pcs[10];  // The call stack (an array of program counters)
+  uint pcs[5];  // The call stack (an array of program counters)
                  // that locked the lock.
 } SPIN_LOCK;
 

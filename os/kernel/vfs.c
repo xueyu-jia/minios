@@ -41,21 +41,7 @@ PRIVATE struct file_desc * alloc_file(){
 	struct file_desc * file = NULL;
 	int i;
 	lock_or_yield(&file_desc_lock);
-	/* find a free slot in f_desc_table[] */
-	for (i = 0; i < NR_FILE_DESC; i++){
-		if (f_desc_table[i].flag == 0){
-			file = &f_desc_table[i];
-			break;
-		}	
-	}
-	if (i >= NR_FILE_DESC){
-		release(&file_desc_lock);
-		disp_str("f_desc_table[] is full (PID:");
-		disp_int(proc2pid(p_proc_current));
-		disp_str(")\n");
-		return NULL;
-	}
-	file->flag = 1;
+	file = kern_kmalloc(sizeof(struct file_desc));
 	atomic_set(&file->fd_count, 1);
 	release(&file_desc_lock);
 	return file;
@@ -65,7 +51,7 @@ PRIVATE void release_file(struct file_desc * file) {
 	lock_or_yield(&file_desc_lock);
 	vfs_put_dentry(file->fd_dentry);
 	file->fd_dentry = 0;
-	file->flag = 0;
+	kern_kfree(file);
 	release(&file_desc_lock);
 }
 

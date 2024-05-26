@@ -69,11 +69,11 @@ PUBLIC int free_mem_page(page *_page)
 {
 	if(_page->dirty)
 		pagecache_writeback_one(_page);
-	for(int i = 0; i < MAX_BUF_PAGE; i++) {
-		if(_page->pg_buffer[i] != NULL){
-			kern_kfree(_page->pg_buffer[i]);
-		}
-	}
+	// for(int i = 0; i < MAX_BUF_PAGE; i++) {
+	// 	if(_page->pg_buffer[i] != NULL){
+	// 		kern_kfree(_page->pg_buffer[i]);
+	// 	}
+	// }
 	list_remove(&_page->pg_list);
 	// disp_str("\npf:");
 	// disp_int(page_to_pfn(_page));

@@ -3,7 +3,7 @@
 #include "malloc.h"
 #include "env.h"
 #define MAX_ARGC	8
-#define NUM_BUILTIN_CMD	2
+#define NUM_BUILTIN_CMD	3
 #define CMD_LEN	8
 
 // #define SHELL_TEST
@@ -30,6 +30,11 @@ int do_pwd(int argc, char** argv){
 	return 0;
 }
 
+int do_free(int argc, char** argv) {
+    u32 free_mem = total_mem_size();
+	printf("free_mem:%x\n",free_mem);
+	return 0;
+}
 
 void reg_cmd(char* name, int (*handler)(int , char**)){
 	if(num_cmd >= NUM_BUILTIN_CMD){
@@ -176,6 +181,7 @@ int main(int arg,char *argv[],char *envp[])
 	char * args[MAX_ARGC];
 	reg_cmd("cd", do_cd);
 	reg_cmd("pwd", do_pwd);
+	reg_cmd("free", do_free);
 	nice(1);
 	#ifdef SHELL_TEST
 	#define TEST_CMD_LEN_LIMIT	32

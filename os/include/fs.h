@@ -104,7 +104,6 @@ struct super_block {
 };
 
 struct file_desc {
-	int 	flag;	//用于标志描述符是否被使用
 	int		fd_mode;	/**< R or W */
 	atomic_t	fd_count;	//用于维护进程间相同File引用的资源释放
 	u64		fd_pos;		/**< Current position for R/W. */

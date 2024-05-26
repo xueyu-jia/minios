@@ -6,12 +6,15 @@
 /**
  * t_vfsrw.c VFS 文件数据读写测试
  * 测试环境：测试程序运行当前目录
- * 用法：t_vfsrw -[bftr]
+ * 用法：t_vfsrw -[bfrs]
  * 选项：-b blocknum 测试读写的文件大小，以4K字节块单位，默认256块(1M)
  *      -f name 指定测试文件的文件名，默认为"test_file"
  *      -r 只读取指定测试文件并检查内容 
+ *      -s 读测试采用随机读入
  * 主要流程：
- * 1. 创建测试文件，并写入
+ * 1. 如果未指定-r, 创建测试文件，并写入数据
+ * 2. 检查测试文件的大小
+ * 3. 进行测试文件读测试，根据选项决定顺序读或随机读
 */
 
 #define EXPECT_ZERO(exp, testinfo)  if((exp) != 0){printf("%s failed\n", #testinfo);exit(-1);}
@@ -19,6 +22,12 @@
 #define EXPECT_NONNEG(exp, testinfo)  if((exp) < 0){printf("%s failed\n", #testinfo);exit(-1);}
 #define EXPECT_NEG(exp, testinfo)  if((exp) >= 0){printf("%s failed\n", #testinfo);exit(-1);}
 
+unsigned int seed;
+int get_rand(int limit) {
+    seed += get_ticks();
+    seed = (10001 * seed + 1);
+    return (seed%MAX_INT)%limit;
+}
 struct stat statbuf;
 char buf[4096];
 char *test_name = "test_file";
@@ -47,8 +56,8 @@ int check_content(int order) {
 int main(int argc, char **argv) {
     int test_block = 256;
     
-    int opt, show_time = 1, read_only = 0;
-    while((opt = getopt(argc, argv, "b:f:r")) != -1) {
+    int opt, read_only = 0, read_shuffle = 0;
+    while((opt = getopt(argc, argv, "b:f:rs")) != -1) {
         switch (opt)
         {
         case 'b':
@@ -62,6 +71,9 @@ int main(int argc, char **argv) {
         case 'r':
             read_only = 1;
             break;
+
+        case 's':
+            read_shuffle = 1;
         default:
             break;
         }
@@ -93,11 +105,17 @@ int main(int argc, char **argv) {
     lseek(fd, 0, SEEK_SET);
     // read and check content
     for(int i = 0; i < test_block; i++) {
+        int blk = i;
+        if(read_shuffle) {
+            blk = get_rand(test_block);
+            EXPECT_NONZERO(lseek(fd, blk*4096, SEEK_SET) == blk*4096, random lseek);
+        }
+        // printf("%d ", blk);
         tmp_tick = get_ticks();
         cnt = read(fd, buf, 4096);
         read_usage += get_ticks() - tmp_tick;
         EXPECT_NONZERO(cnt == 4096, read buf count);
-        EXPECT_ZERO(check_content(i), read content);
+        EXPECT_ZERO(check_content(blk), read content);
     }
     close(fd);
     printf("read pass, usage: %d\n", read_usage);

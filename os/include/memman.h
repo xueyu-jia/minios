@@ -21,7 +21,6 @@
 
 #define TEST		0x11223344
 
-#define PHY_MEM_SIZE    0x04000000            //64M
 #define ALL_PAGES       ((PHY_MEM_SIZE)/PAGE_SIZE)
 #define MAX_BUF_PAGE	(PAGE_SIZE/SECTOR_SIZE)
 
@@ -57,7 +56,6 @@ typedef struct page
 	u32 pg_off;
 }page;
 
-extern list_head page_inactive_lru;
 extern u32 kernel_size;
 extern int big_kernel;
 extern u32 kernel_code_size;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27

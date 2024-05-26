@@ -109,6 +109,15 @@ PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int c
 	return nr;
 }
 
+PRIVATE void page_unmap_buffer(page* target){
+	for(int i = 0; i < MAX_BUF_PAGE; i++) {
+		if(target->pg_buffer[i] != NULL){
+			kern_kfree(target->pg_buffer[i]);
+		}
+	}
+	memset(target->pg_buffer, 0, sizeof(target->pg_buffer));
+}
+
 // readpage to file address_space
 // req. inode lock; file page cache list lock  
 int generic_file_readpage(struct address_space* file_mapping, page* target) {
@@ -119,6 +128,7 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 		}
 		rw_buffer(DEV_READ, target->pg_buffer[i]);
 	}
+	page_unmap_buffer(target);
 	// disp_str("\nrp:");
 	// disp_int(page_to_pfn(target));
 	// disp_int(target->pg_buffer[0]->block);
@@ -136,6 +146,7 @@ int generic_file_writepage(struct address_space* file_mapping, page* target) {
 		}
 		rw_buffer(DEV_WRITE, target->pg_buffer[i]);
 	}
+	page_unmap_buffer(target);
 	// disp_str("\nwp:");
 	// disp_int(page_to_pfn(target));
 	// kunmap(target);
