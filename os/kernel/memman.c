@@ -192,7 +192,6 @@ PUBLIC u32 do_kmalloc_4k() //无参数，从内核线性地址空间申请一页
 PUBLIC u32 phy_kmalloc_4k() //无参数，从内核线性地址空间申请一页内存
 {
 	page *page = alloc_pages(kbud, 0);
-	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
 	// disp_str(" ka");
 	// disp_int(res);
@@ -287,7 +286,6 @@ PUBLIC u32 do_malloc_4k() //无参数，从用户线性地址空间堆中申请�
 PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请一页内存
 {
 	page *page = alloc_pages(ubud, 0);
-	atomic_set(&page->count, 1);
     int res = pfn_to_phy(page_to_pfn(page));
 	// disp_str(" a");
 	// disp_int(res);
@@ -541,7 +539,7 @@ PRIVATE int drop_page(page *_page) {
 
 PRIVATE page * get_and_remove_inactive_page() {
 	acquire(&page_inactive_lock);
-	page * _page = list_front(&page_inactive, page, pg_lru);
+	page * _page = list_back(&page_inactive, page, pg_lru);
 	list_remove(&_page->pg_lru);
 	release(&page_inactive_lock);
 	return _page;
@@ -549,9 +547,11 @@ PRIVATE page * get_and_remove_inactive_page() {
 
 PUBLIC void shrink_page_memory() {
 	page * _page;
+	int nr_shrink = 0, max_shrink = 16;
 	// 因为上锁顺序的限制，持有page_inactive_lock不能再获取mapping的锁(防死锁)
-	while(_page = get_and_remove_inactive_page()) {
+	while(nr_shrink < max_shrink && (_page = get_and_remove_inactive_page())) {
 		drop_page(_page);
+		nr_shrink++;
 	}
 }
 
@@ -597,6 +597,9 @@ PUBLIC struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr)
 }
 
 PUBLIC page* alloc_user_page(u32 pgoff) {
+	if(ubud->current_mem_size < (ubud->total_mem_size >> 4)) {
+		shrink_page_memory();
+	}
 	page *_page = alloc_pages(ubud, 0);
 	atomic_set(&_page->count, 1);
 	_page->pg_off = pgoff;

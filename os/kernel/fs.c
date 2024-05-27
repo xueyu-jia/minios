@@ -169,8 +169,10 @@ int generic_file_read(struct file_desc* file, unsigned int count, char* buf) {
 	{
 		_page = find_mem_page(mapping, pgoff);
 		if(_page == NULL) {
+			release(&mapping->lock);
 			_page = alloc_user_page(pgoff);
 			generic_file_readpage(mapping, _page);
+			lock_or_yield(&mapping->lock);
 			add_mem_page(mapping, _page);
 		}else {
 			get_page(_page);
@@ -206,6 +208,7 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 	{
 		_page = find_mem_page(mapping, pgoff);
 		if(_page == NULL) {
+			release(&mapping->lock);
 			_page = alloc_user_page(pgoff);
 			if(pgoff < pgoff_file_end){
 				generic_file_readpage(mapping, _page);
@@ -219,6 +222,7 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 					break;
 				}
 			}
+			lock_or_yield(&mapping->lock);
 			add_mem_page(mapping, _page);
 		}else {
 			get_page(_page);
