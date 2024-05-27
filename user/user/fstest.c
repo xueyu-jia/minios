@@ -19,8 +19,12 @@ void main(int argc,char *argv[])
 		// 子进程一直循环，父进程读写硬盘产生的中断实际上会在子进程运行时触发
 		// 如果报错：SATA handler:No error but interrupt
 		// 说明子进程没有映射sata寄存器的端口（AHCI的端口）
+		// v1.5.2之后子进程改为可以正常退出，
+		// 所有进程都在sleep的情况下，cfs调度会唤醒idle进程(pid=0)
+		// 2024.5 jiangfeng
 		child_function();
-		while(1){};
+		// while(1){};
+		exit(0);
 	}
 	// 创建长目录
 	char path[128], buff[128], filename[128];
@@ -137,5 +141,5 @@ int child_function()
 	user_test(test_order++, ret, ret==0, "child write and read cmp");
 
 	printf("CHILD FINISHED!!!\n");
-	while(1);
+	// while(1);
 }

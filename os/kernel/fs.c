@@ -211,7 +211,13 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 				generic_file_readpage(mapping, _page);
 			}else {
 				zero_page(_page);
-				page_filemap(_page, mapping, 1);
+				if(page_filemap(_page, mapping, 1) > 0) {
+					page_unmap_buffer(_page);
+				}else{
+					disp_str("error: no space for write\n");
+					put_page(_page);
+					break;
+				}
 			}
 			add_mem_page(mapping, _page);
 		}else {
