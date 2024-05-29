@@ -18,7 +18,7 @@
 #include "mmap.h"
 #include "pagetable.h"
 #include "shm.h"
-#ifndef DISP_LOG_SERIAL
+#ifndef OPT_DISP_SERIAL
 // #define GDBSTUB
 #endif
 #include "../gdbstub/gdbstub.h"

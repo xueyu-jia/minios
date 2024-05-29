@@ -68,7 +68,7 @@ PUBLIC void init_gdt()
 PUBLIC void cstart()
 {
 	kernel_initial = 1;
-	#ifdef DISP_LOG_SERIAL
+	#ifdef OPT_DISP_SERIAL
 	init_simple_serial();
 	#endif
 	disp_str("\n\n\n\n\n\n-----\"cstart\" begins-----\n");

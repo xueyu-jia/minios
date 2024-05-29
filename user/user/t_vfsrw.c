@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "syscall.h"
+#include "malloc.h"
 #include "opt.h"
 
 /**
@@ -10,7 +11,7 @@
  * 选项：-b blocknum 测试读写的文件大小，以4K字节块单位，默认256块(1M)
  *      -f name 指定测试文件的文件名，默认为"test_file"
  *      -r 只读取指定测试文件并检查内容 
- *      -s 读测试采用随机读入
+ *      -s 测试采用随机读写
  * 主要流程：
  * 1. 如果未指定-r, 创建测试文件，并写入数据
  * 2. 检查测试文件的大小
@@ -55,8 +56,7 @@ int check_content(int order) {
 
 int main(int argc, char **argv) {
     int test_block = 256;
-    
-    int opt, read_only = 0, read_shuffle = 0;
+    int opt, read_only = 0, shuffle = 0;
     while((opt = getopt(argc, argv, "b:f:rs")) != -1) {
         switch (opt)
         {
@@ -73,11 +73,13 @@ int main(int argc, char **argv) {
             break;
 
         case 's':
-            read_shuffle = 1;
+            shuffle = 1;
         default:
             break;
         }
     }
+    char *block_history = malloc(test_block);
+    memset(block_history, 0, test_block);
     int write_usage = 0, read_usage = 0, tmp_tick = 0, cnt;
     int fd;
     if(!read_only) 
@@ -88,8 +90,16 @@ int main(int argc, char **argv) {
         lseek(fd, 0, SEEK_SET);
         // write
         for(int i = 0; i < test_block; i++) {
-            memset(buf, ('0'+i)%256, 4096);
-            *((int*)buf) = i;
+            int blk = i;
+            if(shuffle) {
+                do{
+                    blk = get_rand(test_block);
+                }while(block_history[blk]);
+                block_history[blk] = 1;
+                EXPECT_NONZERO(lseek(fd, blk*4096, SEEK_SET) == blk*4096, random lseek);
+            }
+            memset(buf, ('0'+blk)%256, 4096);
+            *((int*)buf) = blk;
             tmp_tick = get_ticks();
             cnt = write(fd, buf, 4096);
             write_usage += get_ticks() - tmp_tick;
@@ -101,13 +111,17 @@ int main(int argc, char **argv) {
         printf("write ok, usage: %d\n", write_usage);
     }
     EXPECT_NONZERO((check_filesize() == (test_block*4096)), check filesize);
+    memset(block_history, 0, test_block);
     fd = open(test_name, O_RDONLY);
     lseek(fd, 0, SEEK_SET);
     // read and check content
     for(int i = 0; i < test_block; i++) {
         int blk = i;
-        if(read_shuffle) {
-            blk = get_rand(test_block);
+        if(shuffle) {
+            do{
+                blk = get_rand(test_block);
+            }while(block_history[blk]);
+            block_history[blk] = 1;
             EXPECT_NONZERO(lseek(fd, blk*4096, SEEK_SET) == blk*4096, random lseek);
         }
         // printf("%d ", blk);
@@ -119,5 +133,6 @@ int main(int argc, char **argv) {
     }
     close(fd);
     printf("read pass, usage: %d\n", read_usage);
+    free(block_history);
     return 0;
 }

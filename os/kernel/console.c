@@ -377,7 +377,7 @@ PUBLIC void disp_color_str(char* info, int color){
 		CONSOLE* con = &console_table[current_console];
 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
 		flush(con);
-	#ifdef DISP_LOG_SERIAL
+	#ifdef OPT_DISP_SERIAL
 	#include "uart.h"
 	for(char *p = info; p && *p; p++) {
 		write_serial(*p);

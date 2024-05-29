@@ -234,6 +234,7 @@ PUBLIC void vfs_put_dentry(struct dentry* dentry) {
 			free_dentry(dentry);
 			return;
 		}
+		vfs_sync_inode(dentry->d_inode);
 	}
 	release(&dentry->lock);
 }

@@ -14,7 +14,7 @@ PUBLIC void add_mem_page(struct address_space *mapping, page *_page) {
 	list_for_each(page_list_head, next, pg_list)
 	{
 		if(next->pg_off >= _page->pg_off)break;
-		// 事实上，此处允许存在多个同一pgoff的页存在（当且仅当MMU_COW开启,fork之后出现）
+		// 事实上，此处允许存在多个同一pgoff的页存在（当且仅当OPT_MMU_COW开启,fork之后出现）
 		// 跳出条件设为>=保证在插入之后查找时会找到新插入的页
 		// if(next->pg_off == _page->pg_off) {
 		// 	disp_str("error: multi pages to be inserted?");

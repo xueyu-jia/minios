@@ -89,7 +89,7 @@ PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int c
 		return -1;
 	}
 	void *page_data = kpage_lin(target);
-	int phy;
+	int phy, last_phy, last;
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
 			phy = ops->get_block(inode, block_start + i, create);
@@ -98,11 +98,16 @@ PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int c
 				disp_str("warning: data in file may lost\n");
 				return i;
 			}
+			if(i && (phy==last_phy + i - last)) {
+				continue;
+			}
 			bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
 			bh->buffer = (void*) (page_data + i * size);
 			initlock(&bh->lock, NULL);
 			map_bh(bh, inode->i_sb, phy);
 			target->pg_buffer[i] = bh;
+			last = i;
+			last_phy = phy;
 		}
 	}
 	assert((void*)target->pg_buffer[0]->buffer == page_data);
@@ -122,11 +127,14 @@ PRIVATE void page_unmap_buffer(page* target){
 // req. inode lock; file page cache list lock  
 int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	int nr = page_filemap(target, file_mapping, 0);
-	for(int i = 0; i < nr; i++) {
+	int size = file_mapping->host->i_sb->sb_blocksize;
+	int length = size;
+	for(int i = nr - 1; i >= 0; i--) {
 		if(target->pg_buffer[i] == NULL){
+			length += size;
 			continue;
 		}
-		rw_buffer(DEV_READ, target->pg_buffer[i]);
+		rw_buffer(DEV_READ, target->pg_buffer[i], length);
 	}
 	page_unmap_buffer(target);
 	// disp_str("\nrp:");
@@ -140,11 +148,14 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 // req. inode lock; file page cache list lock 
 int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	int nr = page_filemap(target, file_mapping, 1);
-	for(int i = 0; i < nr; i++) {
+	int size = file_mapping->host->i_sb->sb_blocksize;
+	int length = size;
+	for(int i = nr - 1; i >= 0; i--) {
 		if(target->pg_buffer[i] == NULL){
+			length += size;
 			continue;
 		}
-		rw_buffer(DEV_WRITE, target->pg_buffer[i]);
+		rw_buffer(DEV_WRITE, target->pg_buffer[i], length);
 	}
 	page_unmap_buffer(target);
 	// disp_str("\nwp:");

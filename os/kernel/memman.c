@@ -755,11 +755,11 @@ PUBLIC void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start
 /// @param p_parent 父进程
 /// @param p_child 子进程
 /// @details 
-/// 当 写时复制(MMU_COW)启用:
+/// 当 写时复制(OPT_MMU_COW)启用:
 /// 	fork时，将父进程的所有有效页表项设置为对应虚拟地址的只读页表项，并增加对应物理页的引用计数
 /// 	fork之后，只读的页面父子进程使用同一个物理页，可写的页面在写操作时发生缺页，
 /// 	由处理程序复制物理页内容到新匿名页面完成COW处理
-/// 写时复制(MMU_COW)关闭时:
+/// 写时复制(OPT_MMU_COW)关闭时:
 /// 	fork的过程中不改变父进程的页表，根据权限判断引用父进程的物理页或者复制父进程的物理页，并设置好子进程的页表项
 PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
@@ -782,7 +782,7 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 			u32 phy = get_page_phy_addr(proc2pid(p_parent), addr);
 			if(phy) {
 				page *pte_page = pfn_to_page(phy_to_pfn(phy));
-				#ifdef MMU_COW
+				#ifdef OPT_MMU_COW
 				// 写时复制，将父子进程页表同时置为只读
 					get_page(pte_page); // add reference
 					lin_mapping_phy(addr, phy, 
@@ -823,7 +823,7 @@ void memmap_clear(PROCESS* p_proc) {
 
 // handle generic mm fault, return 0 if handle normal ok, -1 for error
 int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
-	#ifndef MMU_COW
+	#ifndef OPT_MMU_COW
 		disp_color_str("error: no cow, this handler is unreachable!", 0x74);
 	#endif
 	struct vmem_area *vma = find_vma(mmap, vaddr);

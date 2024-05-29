@@ -58,7 +58,7 @@ PRIVATE u32 get_unmapped_addr(LIN_MEMMAP* mmap, u32 addr, u32 len, struct vmem_a
 
 /// @brief kern_mmap: mmap 核心实现 jiangfeng 2024.5
 /// 尝试将进程p_proc的虚拟内存区域([addr,addr+len) 4K对齐,即不包含结束地址)映射到文件file
-/// 如果没有配置MMU_COW写时复制标志，则在此处直接设置物理页和页表
+/// 如果没有配置OPT_MMU_COW写时复制标志，则在此处直接设置物理页和页表
 /// 
 /// @param p_proc 要进行内存映射的pcb,对于线程pcb则会使用其进程的memmap
 /// @param file 要映射到内存的打开文件指针，如果file为NULL, 则设置匿名虚拟内存页
@@ -136,7 +136,7 @@ PUBLIC int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len,
     list_add_before(&vma->vma_list, (succ)?(&succ->vma_list):&mmap->vma_map);
     // 对于没有写时复制的mmap, 需要设置好物理页和页表
     release(&mmap->vma_lock);
-    #ifndef MMU_COW
+    #ifndef OPT_MMU_COW
         prepare_vma(p_proc, mmap, vma);
     #endif
     // release(&p_proc->task.lock);

@@ -192,7 +192,7 @@ void init_buffer(int num_block)
 	}
 }
 
-PUBLIC void rw_buffer(int iotype, buf_head* bh) {
+PUBLIC void rw_buffer(int iotype, buf_head* bh, int length) {
     // disp_str("\nbuffer:");
     // disp_int((iotype == DEV_WRITE));
     // disp_str(" blk:");
@@ -201,10 +201,10 @@ PUBLIC void rw_buffer(int iotype, buf_head* bh) {
     // disp_int(bh->b_size);
     u64 pos = bh->block * bh->b_size;
     if(kernel_initial == 1) { // init stage no sched
-        rw_blocks(iotype, bh->dev, pos, bh->b_size, 
+        rw_blocks(iotype, bh->dev, pos, length, 
             proc2pid(p_proc_current), bh->buffer);
     }else {
-        rw_blocks_sched(iotype, bh->dev, pos, bh->b_size, 
+        rw_blocks_sched(iotype, bh->dev, pos, length, 
             proc2pid(p_proc_current), bh->buffer);
     }
     // disp_str("\nbuffer:");
@@ -259,7 +259,7 @@ static inline void sync_buff(buf_head *bh){
 	// }else{
 	// 	WR_BLOCK_SCHED(bh->dev, bh->block, bh->buffer);
 	// }
-    rw_buffer(DEV_WRITE, bh);
+    rw_buffer(DEV_WRITE, bh, bh->b_size);
 	// disp_int(ticks-tick);
 	// disp_str(" ");
     bh->b_flush = 0;
@@ -417,7 +417,7 @@ buf_head *bread(int dev, int block)
 		// }else{
 		// 	RD_BLOCK_SCHED(dev, block, bh->buffer);
 		// }
-        rw_buffer(DEV_READ, bh);
+        rw_buffer(DEV_READ, bh, bh->b_size);
         // 标记为已被使用
         bh->used = 1;
         bh->count = 1;

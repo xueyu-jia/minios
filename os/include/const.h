@@ -250,9 +250,6 @@
 #define V_MEM_BASE    0xB8000 /* base of color video memory */
 #define V_MEM_SIZE    0x8000  /* 32K: B8000H -> BFFFFH */
 
-#define DISP_LOG_SERIAL // 是否将disp_xx的输出打印到串口
-// #define MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
-
 #define STD_IN  0
 #define STD_OUT 1
 #define STD_ERR 2
@@ -270,5 +267,10 @@
         const typeof(((type *)0)->member) *__mptr = (ptr); \
         (type *)((char *)(__mptr)-offsetof(type, member)); \
     })
+
+// Options
+#define OPT_DISP_SERIAL // 是否将disp_xx的输出打印到串口
+// #define OPT_MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
+#define OPT_PAGE_CACHE // 是否启用一般read/write的Page Cache
 
 #endif /* _ORANGES_CONST_H_ */

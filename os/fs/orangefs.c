@@ -778,9 +778,15 @@ struct inode_operations orange_inode_ops = {
 };
 
 struct file_operations orange_file_ops = {
+#ifdef OPT_PAGE_CACHE
 .write = generic_file_write,
 .read = generic_file_read,
 .fsync = generic_file_fsync,
+#else
+.write = orange_write,
+.read = orange_read,
+.fsync = NULL,
+#endif
 .readdir = orange_readdir,
 };
 // #endif

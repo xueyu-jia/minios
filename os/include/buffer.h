@@ -36,7 +36,7 @@ PUBLIC void mark_buff_dirty(buf_head *bh);
 PUBLIC void brelse(buf_head *bh);
 PUBLIC void sync_buffers(int flush_delay);
 struct super_block;
-PUBLIC void rw_buffer(int iotype, buf_head* bh);
+PUBLIC void rw_buffer(int iotype, buf_head* bh, int length);
 PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block);
 
 // #define BUFFER_SYNC_TASK

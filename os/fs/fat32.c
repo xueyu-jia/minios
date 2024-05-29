@@ -513,7 +513,7 @@ PRIVATE int fat_write_shortname(struct inode* dir, struct fat_dir_entry* entry, 
 }
 
 PRIVATE struct inode* fat_add_entry(struct inode* dir, const char* name, int is_dir, u32 timestamp){
-	int nslot = strlen(name)/13  + 1;
+	int nslot = (strlen(name) + 12)/13;
 	int free_slot_order = fat_find_free(dir, nslot+1);
 	buf_head* bh = NULL;
 	u8 chksum;
@@ -794,7 +794,7 @@ PUBLIC int fat32_write(struct file_desc* file, unsigned int count, const char* b
 	buf_head* bh = NULL;
 	char* file_buf;
 	start = file->fd_pos;
-	end = max(start + count, inode->i_size);
+	end = start + count;
 	for(pos = start; pos < end;){
 		len = min(SECTOR_SIZE - (pos&(SECTOR_SIZE-1)), end - pos);
 		file_buf = fat_get_data(inode, pos, &bh, 1);
@@ -930,9 +930,15 @@ struct dentry_operations fat32_dentry_ops = {
 };
 
 struct file_operations fat32_file_ops = {
+#ifdef	OPT_PAGE_CACHE
 .read = generic_file_read,
 .write = generic_file_write,
 .fsync = generic_file_fsync,
+#else
+.read = fat32_read,
+.write = fat32_write,
+.fsync = NULL,
+#endif
 .readdir = fat32_readdir,
 };
 // unit test
