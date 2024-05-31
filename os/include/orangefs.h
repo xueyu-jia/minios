@@ -17,7 +17,7 @@
 #define	MAGIC_V1	0x111
 // #define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
 //add by sundong 2023.5.26
-#define NR_DEFAULT_FILE_BLOCKS	256
+#define NR_DEFAULT_FILE_BLOCKS	1024
 
 // mark 路径最大长度
 // #define	MAX_PATH	128 common macro in fs_const.h

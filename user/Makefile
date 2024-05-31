@@ -26,7 +26,7 @@ USER_SYS_DIR=user/system
 
 ORANGESINIT	= user/init/init.bin	#added by mingxuan 2021-4-6
 
-USER_SRC =  t_xv6.c  twait.c test_0.c test_1.c fstest.c t_vfspth.c t_vfsrw.c t_pthr01.c t_pthr02.c t_pthr03.c t_shm.c
+USER_SRC =  t_xv6.c  twait.c test_0.c test_1.c fstest.c t_vfspth.c t_vfsrw.c t_vfsmp.c t_pthr01.c t_pthr02.c t_pthr03.c t_shm.c
 # user/user/test10.c  user/user/test_2.c  user/user/test4.c   user/user/test_7.c  \
 user/user/test_0.c   user/user/test_1.c  user/user/test_4.c  user/user/test6.c  \
 user/user/t_exit01.c  user/user/twait.c	user/user/tfork.c  user/user/fstest.c  \

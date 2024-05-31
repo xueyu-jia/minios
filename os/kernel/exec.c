@@ -10,7 +10,7 @@
 #include "memman.h"
 #include "pagetable.h"
 
-PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr);
+// PRIVATE u32 exec_elfcpy(u32 fd, Elf32_Phdr *Echo_Phdr);
 PRIVATE u32
     exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(char *path);
@@ -195,7 +195,7 @@ fatal_error:    // 对于已经执行load及之后的错误已经不能恢复，
     kern_kfree(Echo_Phdr);
     kern_kfree(Echo_Shdr);
     kern_vfs_close(fd);
-    kern_exit(-1);
+    do_exit(-1);
 close_on_error:
     kern_kfree(_path);
     kern_kfree(Echo_Ehdr);
@@ -415,7 +415,7 @@ PRIVATE u32 exec_load(
                         disp_str("error: execve mmap bss failed!");
                     }
                 }
-                memset(mem_start + file_size, 0, file_page_size - file_size);
+                memset((void*)(mem_start + file_size), 0, file_page_size - file_size);
             }
         }
     }

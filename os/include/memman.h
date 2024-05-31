@@ -70,6 +70,7 @@ void memory_init();
 PUBLIC u32 phy_kmalloc(u32 size);
 PUBLIC u32 phy_kfree(u32 phy_addr);
 PUBLIC u32 kern_kmalloc(u32 size);
+PUBLIC u32 kern_kzalloc(u32 size);
 PUBLIC u32 kern_kfree(u32 addr);
 PUBLIC u32 phy_kmalloc_4k();
 PUBLIC u32 phy_kfree_4k(u32 phy_addr);

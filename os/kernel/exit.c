@@ -6,7 +6,7 @@
 
 // 将p_proc的所有子进程转移给p_proc_init
 // req. p_proc_init->task.lock p_proc->task.lock **注意上锁顺序，防死锁**
-PRIVATE transfer_child_process(PROCESS* p_proc, PROCESS* p_proc_init) {
+PRIVATE void transfer_child_process(PROCESS* p_proc, PROCESS* p_proc_init) {
 	if(p_proc->task.info.child_p_num > 0){//有子进程
 		for(int i = 0;i < NR_CHILD_MAX;i++){
 			if(p_proc_current->task.info.child_process[i] !=0){//所有子进程都过继给init进程

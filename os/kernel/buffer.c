@@ -5,6 +5,7 @@
 #include "vfs.h"
 #include "hd.h"
 #include "string.h"
+#include "memman.h"
 #include "semaphore.h"
 #include "buffer.h"
 
@@ -84,7 +85,7 @@ static inline buf_head *get_bh_lru()
     // 需要将buf head 从lru双向链表中“摘”出来
     // buf_head *bh = lru_list.lru_head;
     // lru_list.lru_head = bh->nxt_lru;
-retry:
+// retry:
     // acquire(&buf_lru_lock);
 	buf_head *bh = list_front(&buf_free_list, struct buf_head, b_lru);
     if(bh && bh->count){
@@ -477,7 +478,7 @@ PUBLIC void bsync_service() {
 	}
 }
 
-PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, char* buf){
+PUBLIC int blk_file_write(struct file_desc* file, unsigned int count, const char* buf){
 	u64 pos = file->fd_pos;
 	struct inode *inode = file->fd_dentry->d_inode;
 	u64 pos_end = min(pos + count, inode->i_size);
@@ -550,4 +551,5 @@ PUBLIC int blk_file_read(struct file_desc* file, unsigned int count, char* buf){
 struct file_operations blk_file_ops = {
 .read = blk_file_read,
 .write = blk_file_write,
+.fsync = NULL
 };
