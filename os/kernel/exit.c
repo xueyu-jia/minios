@@ -8,9 +8,14 @@
 // req. p_proc_init->task.lock p_proc->task.lock **注意上锁顺序，防死锁**
 PRIVATE void transfer_child_process(PROCESS* p_proc, PROCESS* p_proc_init) {
 	if(p_proc->task.info.child_p_num > 0){//有子进程
+	// 函数拆分 jiangfeng 2024-05-05
+	// pcb lock 注意上锁顺序 jiangfeng 2024-05-05
+		lock_or_yield(&p_proc_init->task.lock);
+		lock_or_yield(&p_proc->task.lock);
 		for(int i = 0;i < NR_CHILD_MAX;i++){
 			if(p_proc_current->task.info.child_process[i] !=0){//所有子进程都过继给init进程
 				PROCESS* p_child = &proc_table[p_proc_current->task.info.child_process[i]];
+				lock_or_yield(&p_child->task.lock);
 				//子进程的父进程pid设为init进程的pid
 				p_child->task.info.ppid = PID_INIT;
 
@@ -19,11 +24,13 @@ PRIVATE void transfer_child_process(PROCESS* p_proc, PROCESS* p_proc_init) {
 
 				//更改init进程的子进程列表
 				p_proc_init->task.info.child_process[index] = proc2pid(p_child); 
-
+				release(&p_child->task.lock);
 			}
 
 		}
 		p_proc->task.info.child_p_num = 0; //自己的子进程数量设为0
+		release(&p_proc->task.lock);
+		release(&p_proc_init->task.lock);
 	}
 }
 
@@ -91,22 +98,19 @@ PUBLIC void kern_exit(int status) //status为子进程返回的状态
 	PROCESS *p_proc_init = &proc_table[PID_INIT];
     //p_proc->task.we_flag = NORMAL;
 
-	// pcb lock 注意上锁顺序 jiangfeng 2024-05-05
-	lock_or_yield(&p_proc_init->task.lock);
+	//过继机制，added by dongzhangqi 2023-4-14
+	transfer_child_process(p_proc, p_proc_init);
+	
+	// 释放所有文件资源 xv6也测了这个 jiangfeng 2024-03-11
+	// 可能触发文件同步和硬盘IO,在上锁之前完成
+	exit_file(p_proc);
 	lock_or_yield(&p_proc->task.lock);
     //exit_status
 	p_proc->task.exit_status = status;
 
-	//过继机制，added by dongzhangqi 2023-4-14
-	// 函数拆分 jiangfeng 2024-05-05
-	transfer_child_process(p_proc, p_proc_init);
 
 	//如果有线程, 先把线程释放 mingxuan 2021-8-17
 	exit_thread(p_proc);
-	// 释放所有文件资源 xv6也测了这个 jiangfeng 2024-03-11
-	release(&p_proc->task.lock); // 可能触发硬盘写回临时解除锁
-	exit_file(p_proc);
-	lock_or_yield(&p_proc->task.lock);
 
 	//释放进程的所有页地址空间
 	// free_all_phypage(p_proc->task.pid);

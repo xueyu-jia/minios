@@ -195,7 +195,7 @@ PUBLIC u32 phy_kmalloc_4k() //无参数，从内核线性地址空间申请一�
     int res = pfn_to_phy(page_to_pfn(page));
 	// disp_str(" ka");
 	// disp_int(res);
-	if (res == 0)
+	if (page == 0)
 		disp_color_str("phy_kmalloc_4k: alloc_pages Error,no memory", 0x74);
 	return res;
 }
@@ -260,10 +260,7 @@ PUBLIC u32 phy_kfree_4k(u32 phy_addr) //有unsigned int型参数addr，释放掉
 	// disp_str(" kf");
 	// disp_int(phy_addr);
     page *page = pfn_to_page(phy_to_pfn(phy_addr));
-	if (atomic_dec_and_test(&page->count)) {
-		return free_pages(kbud, page, 0);
-	}
-	return 0;
+	return free_pages(kbud, page, 0);
 }
 
 //added by mingxuan 2021-8-17
@@ -289,7 +286,7 @@ PUBLIC u32 phy_malloc_4k() //无参数，从用户线性地址空间堆中申请
     int res = pfn_to_phy(page_to_pfn(page));
 	// disp_str(" a");
 	// disp_int(res);
-	if (res == 0)
+	if (page == 0)
 		disp_color_str("phy_malloc_4k:alloc_pages Error,no memory", 0x74);
 	return res;
 }

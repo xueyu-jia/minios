@@ -377,9 +377,12 @@ PRIVATE int fat_find_free(struct inode* dir, int num){
 	int start, count = 0, res = -1, end_flag = 0;
 	for(start = 0; ; start++){
 		ds = fat_get_slot(dir, start, &bh, 1);
-		if(end_flag || (ds->order == DIR_DELETE) || (ds->order == 0)) {
+		if(end_flag || (ds->order == DIR_DELETE) 
+		|| (ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size)) {
 			// 如果为0应该已经不用找了(后面均为空闲)，但是要进行可能的FAT空间分配，所以不立即跳出
-			if(ds->order == 0) end_flag = 1;
+			if(end_flag == 0 && 
+				((ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size))) 
+					end_flag = 1;
 			if(count == 0)res = start;
 			count++;
 			if(count >= num)break;

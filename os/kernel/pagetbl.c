@@ -698,33 +698,27 @@ PUBLIC u32 get_seg_limit(u32 pid, u32 type) //modified by mingxuan 2021-8-17
 PUBLIC void free_seg_pagetbl(u32 pid, u8 type)
 {
 	u32 addr_lin;
-	u32 base, limit;
+	u32 low, high;
 
 	//base = set_seg_base(pid, type);
 	//limit = set_seg_limit(pid, type);
 	//modified by mingxuan 2021-8-17
-	base = get_seg_base(pid, type);
-	limit = get_seg_limit(pid, type);
+	low = get_seg_base(pid, type);
+	high = get_seg_limit(pid, type);
 
 	//释放栈
 	if (type == MEMMAP_STACK) //栈段是从高低址向低地址生长的，释放时与其他不同
 	{
-		for (addr_lin = limit; addr_lin < base; addr_lin += num_4M)
-		{
-			if (1 == pte_exist(get_pde_phy_addr(pid), addr_lin)) //解决重复释放的问题
-			{
-				free_pagetbl(pid, addr_lin);
-			}
-		}
+		addr_lin = low;
+		low = high;
+		high = addr_lin;
 	}
-	else //释放其他段
+	low = LOWER_BOUND(low, num_4M);
+	for (addr_lin = low; addr_lin < high; addr_lin += num_4M)
 	{
-		for (addr_lin = base; addr_lin < limit; addr_lin += num_4M)
+		if (1 == pte_exist(get_pde_phy_addr(pid), addr_lin)) //解决重复释放的问题
 		{
-			if (1 == pte_exist(get_pde_phy_addr(pid), addr_lin)) //解决重复释放的问题
-			{
-				free_pagetbl(pid, addr_lin);
-			}
+			free_pagetbl(pid, addr_lin);
 		}
 	}
 }
