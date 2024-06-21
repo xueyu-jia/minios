@@ -92,9 +92,8 @@ PUBLIC u32 kern_execve(
 
     //  处理参数 argc 放在 main ebp + 8 (ArgLinBase); argv 放在 ebp + 12
     // low<--     ---stack---       -->high(base)
-    //   | 		user main stack		|   argc 					|  argv
-    //   | envp	| argv[0]... argv[argc-1]| 0 |... argv raw data | env data | |
-    //   main esp  |  call main rt	|	StackLinBase/ArgLinBase |
+    //            user main stack  |        argc             | argv | envp | argv[0]... argv[argc-1]| 0 |... argv raw data | env data | |
+    // main esp  |  call main rt   | StackLinBase/ArgLinBase |
     int argc, env_space, arr = 0, space = 0;
     space     += exec_count_args(argv, &arr);
     argc       = arr;

@@ -40,7 +40,7 @@ struct inode {
 	u32 i_no;
 	struct super_block* i_sb;
 	u32 i_dev;   // real device
-	u32 i_b_cdev; // for char special inode
+	u32 i_b_cdev; // for block/char special inode
 	u32 i_nlink; // file linked
 	atomic_t i_count; // reference count
 	u64 i_size;  // file size in byte
@@ -161,7 +161,7 @@ struct file_operations{
 
 struct superblock_operations{
 	int (*fill_superblock)(struct super_block *, int);
-	int (*write_inode)(struct inode *inode);
+	int (*sync_inode)(struct inode *inode);
 	void (*read_inode)(struct inode *inode);
 	void (*put_inode)(struct inode* inode);
 	void (*delete_inode)(struct inode* inode);

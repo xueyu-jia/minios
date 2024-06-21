@@ -7,6 +7,7 @@
 #include "memman.h"
 #include "mmap.h"
 #include "assert.h"
+#include "devfs.h"
 
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];

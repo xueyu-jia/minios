@@ -762,7 +762,7 @@ int orange_fill_superblock(struct super_block* sb, int dev){
 
 struct superblock_operations orange_sb_ops = {
 .fill_superblock = orange_fill_superblock,
-.write_inode = orange_sync_inode,
+.sync_inode = orange_sync_inode,
 .read_inode = orange_read_inode,
 .put_inode = NULL,
 .delete_inode = orange_deleteinode,

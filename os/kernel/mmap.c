@@ -29,7 +29,7 @@ PUBLIC void kunmap(page *_page) {
     kunmapping_phy(phy);
 }
 
-// addr 查找的起始线性地址, succ 返回时保存后继的vma
+// addr 查找的起始线性地址, 返回地址区间与已有页面的重叠页面数
 PRIVATE u32 count_mapped_pages(LIN_MEMMAP* mmap, u32 start, u32 end) {
     struct vmem_area *vma;
     u32 nr_pages = 0;
@@ -124,7 +124,8 @@ PUBLIC int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len,
     }else if(flag & MAP_PRIVATE){
         pgoff = start_addr >> PAGE_SHIFT;
     }
-    // 为简化流程，mmap这里没有实现vma的merge,所有vma必须没有重叠
+    // 所有vma必须没有重叠，按照地址顺序排列于memmap.vma_map的链表
+    // 为简化流程，mmap这里没有实现vma的merge
     // 对于mmap, merge操作不是必要的，但是对于某些对已有vma的操作，如mprotect必须实现merge
     vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
     vma->start = start_addr;

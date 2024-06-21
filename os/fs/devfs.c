@@ -1,4 +1,4 @@
-#include "dev.h"
+#include "devfs.h"
 #include "string.h"
 #include "memman.h"
 #include "hd.h"
@@ -39,6 +39,7 @@ PRIVATE void dev_to_basename(int major, char* dev_name) {
 		strcpy(dev_name, prefix);
 		break;
 	
+	// 这种写法的含义是：case L ... R: 匹配 >=L且<=R的值
 	case DEV_HD_BASE ... (DEV_HD_LIMIT - 1):
 		major -= DEV_HD_BASE;
 		switch (major)
@@ -182,7 +183,8 @@ PUBLIC void devfs_read_inode(struct inode *inode) {
 		{
 		case DEV_BLOCK_TYPE:
 			inode->i_type = I_BLOCK_SPECIAL;
-			inode->i_size = hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].size << SECTOR_SIZE_SHIFT;
+			inode->i_size = ((u64)hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].size)
+				 << SECTOR_SIZE_SHIFT;
 			break;
 		case DEV_CHAR_TYPE:
 			inode->i_type = I_CHAR_SPECIAL;

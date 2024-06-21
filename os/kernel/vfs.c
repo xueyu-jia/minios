@@ -16,7 +16,7 @@
 #include "mount.h"
 #include "stat.h"
 
-PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
+// PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct dentry *vfs_root;
 
 // 实例文件系统调用：
@@ -25,39 +25,39 @@ PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino); //inode lo
 PUBLIC struct dentry * vfs_new_dentry(const char* name, struct inode* inode); //inode lookup
 
 // 此锁维护inode内存申请释放以及超级块(super_block)中使用中inode链表的一致性
-PRIVATE SPIN_LOCK inode_alloc_lock;
+PRIVATE SPIN_LOCK inode_lock;
 
 // 
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
 PRIVATE void init_file_desc_table(){
-    int i;
-	for (i = 0; i < NR_FILE_DESC; i++)
-		memset(&f_desc_table[i], 0, sizeof(struct file_desc));
+    // int i;
+	// for (i = 0; i < NR_FILE_DESC; i++)
+	// 	memset(&f_desc_table[i], 0, sizeof(struct file_desc));
 }
 
 PRIVATE struct file_desc * alloc_file(){
 	struct file_desc * file = NULL;
 	int i;
-	lock_or_yield(&file_desc_lock);
+	// lock_or_yield(&file_desc_lock);
 	file = kern_kmalloc(sizeof(struct file_desc));
 	atomic_set(&file->fd_count, 1);
-	release(&file_desc_lock);
+	// release(&file_desc_lock);
 	return file;
 }
 
-PRIVATE void release_file(struct file_desc * file) {
-	lock_or_yield(&file_desc_lock);
+PRIVATE void free_file(struct file_desc * file) {
+	// lock_or_yield(&file_desc_lock); // file动态分配不再需要锁
 	vfs_put_dentry(file->fd_dentry);
 	file->fd_dentry = 0;
 	kern_kfree(file);
-	release(&file_desc_lock);
+	// release(&file_desc_lock);
 }
 
 // 申请内存分配新的inode
 // lock require: inode alloc lock
-PRIVATE struct inode* vfs_alloc_inode_no_lock(struct super_block* sb){
+PRIVATE struct inode* alloc_inode_locked(struct super_block* sb){
 	struct inode* inode = NULL;
 	inode = (struct inode*)kern_kmalloc(sizeof(struct inode));
 	memset(inode, 0, sizeof(struct inode));
@@ -78,18 +78,18 @@ PRIVATE struct inode* vfs_alloc_inode_no_lock(struct super_block* sb){
 // 调用此函数分配新的inode
 PUBLIC struct inode * vfs_new_inode(struct super_block* sb){
 	struct inode* res = NULL;
-	lock_or_yield(&inode_alloc_lock);
-	res = vfs_alloc_inode_no_lock(sb);
+	lock_or_yield(&inode_lock);
+	res = alloc_inode_locked(sb);
 	list_add_first(&res->i_list, &sb->sb_inode_list);
-	release(&inode_alloc_lock);
+	release(&inode_lock);
 	return res;
 }
 
-PRIVATE void vfs_free_inode(struct inode* inode) {
-	lock_or_yield(&inode_alloc_lock);
+PRIVATE void free_inode(struct inode* inode) {
+	lock_or_yield(&inode_lock);
 	list_remove(&inode->i_list);
 	kern_kfree((u32)inode);
-	release(&inode_alloc_lock);
+	release(&inode_lock);
 }
 
 // VFS api
@@ -97,7 +97,7 @@ PRIVATE void vfs_free_inode(struct inode* inode) {
 // 调用此函数获取inode
 PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino){
 	struct inode *res = 0, *inode;
-	lock_or_yield(&inode_alloc_lock);
+	lock_or_yield(&inode_lock);
 	list_for_each(&sb->sb_inode_list, inode, i_list)
 	{
 		if(inode->i_no == ino){
@@ -109,19 +109,19 @@ PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino){
 	if(res){
 		atomic_inc(&res->i_count);
 	}else{
-		res = vfs_alloc_inode_no_lock(sb);
+		res = alloc_inode_locked(sb);
 		res->i_no = ino;
 		sb->sb_op->read_inode(res);
 	}
 	list_add_first(&res->i_list, &sb->sb_inode_list);
-	release(&inode_alloc_lock);
+	release(&inode_lock);
 	return res;
 }
 
 PUBLIC void vfs_sync_inode(struct inode * inode) {
 	struct superblock_operations* ops = inode->i_sb->sb_op;
-	if(ops && ops->write_inode) {
-		ops->write_inode(inode);
+	if(ops && ops->sync_inode) {
+		ops->sync_inode(inode);
 	}
 	sync_buffers(0);
 }
@@ -145,7 +145,7 @@ PUBLIC void vfs_put_inode(struct inode * inode){
 		free_mem_pages(inode->i_mapping);
 		release(&inode->i_mapping->lock);
 		vfs_sync_inode(inode);
-		vfs_free_inode(inode);
+		free_inode(inode);
 		return;
 	}
 	release(&inode->lock);
@@ -521,9 +521,16 @@ PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
 	}
 	struct fs_type* file_sys = &fstype_table[fstype];
 	lock_or_yield(&superblock_lock);
-	struct super_block* sb = &super_blocks[get_free_superblock()];
+	int sb_index = get_free_superblock();
+	if(-1 == sb_index) {
+		release(&superblock_lock);
+		disp_str("error: no available superblock\n");
+		return NULL;
+	}
+	struct super_block* sb = &super_blocks[sb_index];
 	if(!(file_sys->fs_sop && file_sys->fs_sop->fill_superblock)){
 		release(&superblock_lock);
+		disp_str("error: fstype undefined fill_superblock\n");
 		return NULL;
 	}
 	list_init(&sb->sb_inode_list);
@@ -531,6 +538,7 @@ PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
 	if(state){
 		//error
 		release(&superblock_lock);
+		disp_str("error: fs fill_superblock failed\n");
 		return NULL;
 	}
 	sb->used = 1;
@@ -616,7 +624,7 @@ PUBLIC void register_fs_types() {
 }
 
 PUBLIC void init_fs(int drive){
-	initlock(&inode_alloc_lock, "");
+	initlock(&inode_lock, "");
 	initlock(&file_desc_lock, "");
 	init_file_desc_table();
 	mount_root(drive);
@@ -808,7 +816,7 @@ PUBLIC int kern_vfs_fsync(struct file_desc* file) {
 void fput(struct file_desc* file) {
 	if(atomic_dec_and_test(&file->fd_count)){
 		kern_vfs_fsync(file);
-		release_file(file);
+		free_file(file);
 	}
 }
 
