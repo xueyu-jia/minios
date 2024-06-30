@@ -15,6 +15,9 @@
 #include "hd.h"
 #include "mount.h"
 #include "stat.h"
+#include "orangefs.h"
+#include "fat32.h"
+#include "devfs.h"
 
 // PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct dentry *vfs_root;
@@ -326,10 +329,10 @@ PUBLIC int vfs_check_exec_permission(struct inode* inode){
 	return 0;
 }
 // 上锁规则: 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁,
-//(todo:对于访问..可能产生的顺序是否存在死锁的可能,有待探究)
 // dir lock must held, return dentry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
-PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_origin){
+// 如果dir和dentry目录项的关系满足dentry在dir之下，且release_base为1,则此函数释放dir的目录项
+PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_base){
 	// lock_or_yield(&dir->lock);
 	struct dentry* dentry = NULL;
 	// root 特判
@@ -353,6 +356,15 @@ PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_o
 				// dir = dir->d_vfsmount->mnt_mountpoint;
 			}
 			dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
+			// 对于..的路径，由于严格要求目录项的锁持有顺序满足：
+			// 目录项到根目录项的距离递增，
+			// 所以访问上层目录项之前释放父目录项的锁，此情况dentry在dir上层，
+			// 故release_base参数不起作用
+			if(dentry != dir){
+				vfs_put_dentry(dir);
+				vfs_get_dentry(dentry);
+			}
+			return dentry;
 		}
 	}
 	int (*compare)(const char*, const char*) = strcmp;// default compare func
@@ -413,8 +425,8 @@ PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_o
 		vfs_put_dentry(dentry);
 		dentry = mnt->mnt_root;
 	}
-	if(dentry != dir){
-		if(release_origin){
+	if(release_base){
+		if(dentry != dir){
 			vfs_put_dentry(dir);
 		}
 	}
@@ -546,6 +558,41 @@ PRIVATE struct super_block * vfs_read_super(int dev, u32 fstype){
 	return sb;
 }
 
+PRIVATE int vfs_clear_super(struct super_block * sb){
+	struct inode *inode = NULL;
+	struct dentry *dentry = NULL;
+	int check_busy = 0;
+	// check and clean all mounted inode
+	lock_or_yield(&inode_lock);
+	list_head dentry_list;
+	list_init(&dentry_list);
+	list_for_each(&sb->sb_inode_list, inode, i_list)
+	{
+		while(!list_empty(&inode->i_dentry)) {
+			dentry = list_front(&inode->i_dentry, struct dentry, d_alias);
+			if((atomic_get(&dentry->d_count) > 0) || dentry->d_mounted) {
+				check_busy = 1;
+				goto out_inode;
+			}else {
+				list_move(&dentry->d_alias, &dentry_list);
+			}
+		}
+	}
+out_inode:
+	release(&inode_lock);
+	if(check_busy) {
+		disp_str("error: superblock busy\n");
+		return -1;
+	}
+	while(dentry = list_front(&dentry_list, struct dentry, d_alias)){
+		lock_or_yield(&dentry->d_inode->lock);
+		vfs_put_inode(dentry->d_inode);
+		list_remove(&dentry->d_alias);
+		free_dentry(dentry);
+	}
+	return 0;
+}
+
 PRIVATE struct super_block * vfs_get_super(int dev, u32 fstype) {
 	for(int i = 0; i < NR_SUPER_BLOCK; i++) {
 		if(super_blocks[i].used && super_blocks[i].sb_dev == dev) {
@@ -555,7 +602,8 @@ PRIVATE struct super_block * vfs_get_super(int dev, u32 fstype) {
 	return vfs_read_super(dev, fstype);
 }
 
-// return mounted root
+// 挂载块设备核心实现
+// 返回文件系统分区实例的根目录项
 PRIVATE struct dentry *vfs_mount_dev(int dev, u32 fstype, const char *dev_name, struct dentry * mnt) {
 	struct super_block *sb = vfs_get_super(dev, fstype);
 	if(!sb){
@@ -575,7 +623,8 @@ PRIVATE struct dentry *vfs_mount_dev(int dev, u32 fstype, const char *dev_name, 
 PRIVATE void mount_root(int root_drive){
 	//ROOT_FSTYPE 和 ROOT_PART 由Makefile中的配置传递，这样不用再手动修改了 2024-03-10 jiangfeng
 	#ifndef ROOT_FSTYPE
-	#define ROOT_FSTYPE "orangefs"
+		// 若配置未指定根文件系统类型，默认为orangefs
+		#define ROOT_FSTYPE "orangefs"
 	#endif
 	int root_fstype = get_fstype_by_name(ROOT_FSTYPE);
 	int dev = -1;
@@ -596,6 +645,7 @@ PRIVATE void init_fsroot() {
 	struct dentry *dev_dir = _do_lookup(vfs_root, "dev", 0);
 	vfs_mount_dev(NO_DEV, DEV_FS_TYPE, "dev", dev_dir);
 	vfs_put_dentry(dev_dir);
+	// 加入devfs之后，设备文件的初始化实际上只进行设备的注册
 	init_block_dev();
 	init_char_dev();
 }
@@ -693,11 +743,23 @@ PUBLIC int kern_vfs_umount(const char *target){
 	if(!mnt){
 		return -1;
 	}
-	mountpoint = remove_vfsmnt(mnt);
+	struct super_block * sb = mnt->d_inode->i_sb;
 	vfs_put_dentry(mnt);
+	// clean inode
+	int state = vfs_clear_super(sb);
+	// 如果存在正在使用的目录项，或者存在嵌套的下级挂载点
+	// 则报busy不予卸载
+	if(state) {
+		return -1;
+	}
+	
+	mountpoint = remove_vfsmnt(mnt);
 	if(!mountpoint){
 		return -1;
 	}
+	lock_or_yield(&superblock_lock);
+	sb->used = 0;
+	release(&superblock_lock);
 	mountpoint->d_mounted = 0;
 	// mnt->
 	vfs_put_dentry(mountpoint);

@@ -6,6 +6,10 @@
 #define NUM_BUILTIN_CMD	3
 #define CMD_LEN	8
 
+#define CMD_ELF 0
+#define CMD_SCRIPT 1
+#define CMD_INVAL -1
+
 // #define SHELL_TEST
 
 struct cmd{
@@ -88,7 +92,7 @@ void printstring(char *prompt, char **p) {
     printf("\n");
 }
 
-int test_command(char *completed, const char * cmd) {
+int test_command_path(char *completed, const char * cmd) {
 	char *path = getenv("PATH"), *pstr;
 	int status, _fd;
 	char sample[4];
@@ -104,14 +108,14 @@ int test_command(char *completed, const char * cmd) {
 		if(status == 0 && statbuf.st_type == I_REGULAR){
 			char *extname = strrchr(completed, '.');
 			if(strcmp(extname, ".sh") == 0) {
-				return 1;
+				return CMD_SCRIPT;
 			}
 			_fd = open(completed, O_RDONLY);
 			lseek(_fd, 0, SEEK_SET);
 			read(_fd, sample, 4);
 			close(_fd);
 			if(sample[1]=='E' && sample[2]=='L' && sample[3]=='F') {
-				return 0;
+				return CMD_ELF;
 			}
 		}
 		if(*pstr == NULL){
@@ -119,7 +123,7 @@ int test_command(char *completed, const char * cmd) {
 		}
 		path = pstr + 1;
 	}
-	return -1;
+	return CMD_INVAL;
 }
 
 void do_command(int argc, char** args) {
@@ -131,14 +135,19 @@ void do_command(int argc, char** args) {
 		return;
 	}
 	// test cmd exec file
-	int rt = test_command(cmd, args[0]);
-	if(-1 == rt) {
+	// 此函数根据PATH环境变量查找得到真正的可执行文件的类型和实际路径(cmd)
+	int cmd_type = test_command_path(cmd, args[0]);
+	if(CMD_INVAL == cmd_type) {
 		printf("command not found:%s\n", args[0]);
 		return;
-	}else if(1 == rt) {
+	}else if(CMD_SCRIPT == cmd_type) {
+		// 此命令是脚本类型，打开脚本文件并将全局fd置为打开的文件描述符
+		// 直接返回，进行脚本文件内容的读取
 		fd = open(cmd, O_RDONLY);
 		return;
-	}
+	} 
+	// CMD_ELF == cmd_type
+	char* simple_cmd = args[0];
 	args[0] = cmd;
 	int pid = fork();
 	// printf("%d: fork return %d\n", get_pid(), pid);
@@ -150,7 +159,7 @@ void do_command(int argc, char** args) {
 		}
        	int exit_status;
         wait(&exit_status);//modified by dongzhangqi 2023.4.20 因wait的调整而修改
-		printf("pid:%d exit_status:%d\n", pid, exit_status);
+		printf("%s(pid:%d): exit_status:%d\n", simple_cmd, pid, exit_status);
 	}
 	else
 	{	//child
@@ -171,9 +180,9 @@ int main(int arg,char *argv[],char *envp[])
 	int stdout= open("dev_tty0",O_RDWR);
 	int stderr= open("dev_tty0",O_RDWR);
 	*/
-	printf("argc:%d\n", arg);
-    printstring("argv:", argv);
-    printstring("env:", envp);
+	// printf("argc:%d\n", arg);
+    // printstring("argv:", argv);
+    // printstring("env:", envp);
 	env = envp;
     char buf[BUF_SIZE];
 	char pwd[MAX_PATH];
@@ -228,7 +237,7 @@ int main(int arg,char *argv[],char *envp[])
 		}
 		if(len != 0 && buf[0] != '#')
 		{
-			printf("input: %s\n", buf);
+			// printf("input: %s\n", buf);
 			int argc = parse(buf, args, MAX_ARGC);
 			do_command(argc, args);
    		}
