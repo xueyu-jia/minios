@@ -37,6 +37,51 @@ PRIVATE u8 fat_chksum(const char* shortname){
 	}
 	return sum;
 }
+/*
+根据FAT文件系统文档:
+短文件名中，
+ 所有大写字母和数字，以及下面的特殊字符合法
+ $ % ' - _ @ ~ ` ! ( ) { } ^ # &
+长文件名中，除了短文件名的合法字符外，
+" "(space)和"."(period) (在短文件名中忽略)以及 + , ; = [ ] (在短文件名中替换为"_")也合法
+
+其余的字符，根据ASCII表，即space之前的控制字符以及: " * / : < > ? \ | 为非法字符(bad char)
+*/
+// 判断c是否是非法字符
+PRIVATE inline int fat_bad_char(char c) {
+	return ((c < 0x20) || (strchr("\"*/\\:<>?|", c) != NULL));
+}
+
+PRIVATE inline int fat_skip_char(char c) {
+	return ((c == ' ') || (c == '.'));
+}
+
+// 判断c是否需要在短文件名替换为"_"
+PRIVATE inline int fat_replace_char(char c) {
+	return (strchr("+,;=[]", c) != NULL);
+}
+
+PRIVATE char fat_shortname_char(char c) {
+	if(c >= 'a' && c <= 'z'){
+		c = c -'a' + 'A';
+	}
+	if(fat_replace_char(c)) {
+		c = '_';
+	}
+	return c;
+}
+
+PRIVATE int fat_badname(const char* name) {
+	if(NULL == name)
+		return 1;
+	for(const char* s = name; *s; s++) {
+		if(fat_bad_char(*s)){
+			return 1;
+		}
+	}
+	return 0;
+}
+
 
 PRIVATE void fat_update_datetime(u32 timestamp, u16* date, u16* time, u8* centi_sec){
 	struct tm time_s;
@@ -454,6 +499,8 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 			break;
 		}
 	}
+	// ext_start: 最后一个.
+	// type: 0忽略的前缀字符;1 文件名(8); 2 扩展名(3) 
 	for(int i = 0; i < len; i++) {
 		c = fullname[i];
 		if(type == 0){// skipped start
@@ -467,12 +514,14 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 			type = 2;
 			offset = 8;
 		}
+		// 跳过超出短文件名8.3的部分
 		if(!((type == 1 && offset < 8 && ((ext_start == -1) || (i < ext_start - 1)))
 			||(type == 2 && offset < 11)))
 			continue;
-		if(c >= 'a' && c <= 'z'){
-			c = c -'a' + 'A';
+		if(fat_skip_char(c)) {
+			continue;
 		}
+		
 		shortname[offset++] = c;
 		if(type){
 			baselen = offset;
@@ -685,7 +734,11 @@ PUBLIC struct dentry* fat32_lookup(struct inode* dir, const char* filename){
 PUBLIC int fat32_create(struct inode* dir, struct dentry* dentry, int mode){
 	// struct tm time;
 	u32 timestamp = current_timestamp;
-	struct inode* inode = fat_add_entry(dir, dentry_name(dentry), 0, timestamp);
+	char* name = dentry_name(dentry);
+	if(fat_badname(name)){
+		return -1;
+	}
+	struct inode* inode = fat_add_entry(dir, name, 0, timestamp);
 	inode->i_type = I_REGULAR;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;
@@ -737,7 +790,11 @@ PUBLIC int fat32_mkdir(struct inode* dir, struct dentry* dentry, int mode){
 	// struct tm time;
 	struct super_block* sb = dir->i_sb;
 	u32 timestamp = current_timestamp;
-	struct inode* inode = fat_add_entry(dir, dentry_name(dentry), 1, timestamp);
+	char* name = dentry_name(dentry);
+	if(fat_badname(name)){
+		return -1;
+	}
+	struct inode* inode = fat_add_entry(dir, name, 1, timestamp);
 	inode->i_type = I_DIRECTORY;
 	inode->i_mode = mode;
 	inode->i_op = &fat32_inode_ops;

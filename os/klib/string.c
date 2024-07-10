@@ -139,3 +139,35 @@ int stricmp(const char *s1, const char *s2)
 	}
 	return (int)c1 - (int)c2;
 }
+
+char *strchr(const char *s, char c) {
+	if (!s)
+    {
+        return 0;
+    }
+	char *p;
+	for(p = s; *p; p++) {
+		if(*p == c) {
+			break;
+		}
+	}
+	return (*p == c)? p: 0;
+}
+
+char* strrchr(const char *s, char c)
+{
+    if (!s)
+    {
+        return 0;
+    }
+	char *r = 0;
+	while (*s)
+	{
+		if (*s == c)
+		{
+			r = s;
+		}
+		++s;
+	}
+	return r;
+}
