@@ -92,11 +92,35 @@ void printstring(char *prompt, char **p) {
     printf("\n");
 }
 
-int test_command_path(char *completed, const char * cmd) {
-	char *path = getenv("PATH"), *pstr;
+int _test_command(const char* path) {
+	struct stat statbuf;
 	int status, _fd;
 	char sample[4];
-	struct stat statbuf;
+	status = stat(path, &statbuf);
+	if(status == 0 && statbuf.st_type == I_REGULAR){
+		char *extname = strrchr(path, '.');
+		if(strcmp(extname, ".sh") == 0) {
+			return CMD_SCRIPT;
+		}
+		_fd = open(path, O_RDONLY);
+		lseek(_fd, 0, SEEK_SET);
+		read(_fd, sample, 4);
+		close(_fd);
+		if(sample[1]=='E' && sample[2]=='L' && sample[3]=='F') {
+			return CMD_ELF;
+		}
+	}
+	return CMD_INVAL;
+}
+
+int test_command_path(char *completed, const char * cmd) {
+	char *path = getenv("PATH"), *pstr;
+	int result;
+	// 存在'/',直接传递路径，VFS会处理相对cwd和绝对路径两种情况
+	if(strchr(cmd, '/') != NULL) {
+		return _test_command(cmd);
+	}
+	// 路径只有文件名，要从PATH搜索，并拼接路径
 	while(path != NULL) {
 		pstr = strchr(path, ';');
 		if(pstr == 0)pstr = path + strlen(path);
@@ -104,19 +128,9 @@ int test_command_path(char *completed, const char * cmd) {
 		completed[pstr-path] = 0;
 		strcat(completed, "/");
 		strcat(completed, cmd);
-		status = stat(completed, &statbuf);
-		if(status == 0 && statbuf.st_type == I_REGULAR){
-			char *extname = strrchr(completed, '.');
-			if(strcmp(extname, ".sh") == 0) {
-				return CMD_SCRIPT;
-			}
-			_fd = open(completed, O_RDONLY);
-			lseek(_fd, 0, SEEK_SET);
-			read(_fd, sample, 4);
-			close(_fd);
-			if(sample[1]=='E' && sample[2]=='L' && sample[3]=='F') {
-				return CMD_ELF;
-			}
+		result = _test_command(completed);
+		if(CMD_INVAL != result) {
+			return result;
 		}
 		if(*pstr == NULL){
 			break;

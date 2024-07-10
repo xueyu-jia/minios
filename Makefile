@@ -177,10 +177,16 @@ endif
 
 ifneq ($(findstring orangefs,$(BOOT_PART_FS_TYPE) $(ROOT_PART_FS_TYPE)),)
 ifneq ($(wildcard $(ORANGE_MAKER) $(ORANGE_MOUNT)), $(ORANGE_MAKER) $(ORANGE_MOUNT))
-	$(error orangefs needed but orangefs_mount and orangefs_mkfs not ready, please cd into "utils" and execute make)
+#$(error orangefs needed but orangefs_mount and orangefs_mkfs not ready, please cd into "utils" and execute make)
+	cd utils && make
 endif
 endif
 
+define copy_user 
+	sudo mkdir -p $(ROOT_MOUNTPOINT)/$(dir $(2))
+	sudo cp $(1) $(ROOT_MOUNTPOINT)/$(2)
+	echo "$(1) => /$(2)"
+endef
 
 build_img:
 	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
@@ -234,15 +240,12 @@ build_fs:
 	
 	sudo $(ROOT_MOUNT) $(ROOT_FS_PART) $(ROOT_MOUNTPOINT)
 	
-	sudo mkdir $(ROOT_MOUNTPOINT)/bin
-# 在此处根据USER_TEST变量添加用户程序的文件 user/dir/file.bin ==> root/bin/file.bin
-	$(foreach USER_BIN,$(ORANGESBIN),\
-		sudo cp $(USER_BIN) $(ROOT_MOUNTPOINT)/bin/$(basename $(notdir $(USER_BIN)));\
+	@echo "copy user files ..."
+# 在此处根据USER_TEST变量添加用户程序的文件 user/user/dir/file.bin ==> root/dir/file
+	@$(foreach FILE,$(USER_IMG),\
+	    $(call copy_user,$(FILE),$(subst $(USER_SRC_DIR)/,,$(subst .bin,,$(FILE))));\
 	)
 	
-	$(foreach USER_RAW, $(ORANGESRAW),\
-		sudo cp $(USER_RAW) $(ROOT_MOUNTPOINT)/$(notdir $(USER_RAW));\
-	)
 
 	sudo umount $(ROOT_MOUNTPOINT)
 
