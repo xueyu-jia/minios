@@ -67,7 +67,7 @@ int main(int arg, char *argv[])
 
     pthread_mutex_init(&mutex, NULL);
 
-    fd = open(filename, O_CREAT | O_RDWR);
+    fd = open(filename, O_CREAT | O_RDWR, I_RW);
     if(fd == -1) {
         fd = open(filename, O_RDWR);
     }

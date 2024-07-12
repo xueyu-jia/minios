@@ -20,7 +20,7 @@ void main(int arg,char *argv[])
                 printf("exit_status:%d", exit_status);
             }else{
                 //child
-                if(execve("/bin/test_1", NULL, NULL)!=0){
+                if(execve("test_1", NULL, NULL)!=0){
                     printf("exec failed: file not found!");
                 }
             }
@@ -28,7 +28,7 @@ void main(int arg,char *argv[])
             printf("fstest exit_status:%d", exit_status);
         }else{	
             //child
-            if(execve("/bin/fstest", NULL, NULL)!=0){
+            if(execve("fstest", NULL, NULL)!=0){
                 printf("exec failed: file not found!");
             }
         }

@@ -21,6 +21,9 @@ struct cmd cmds[NUM_BUILTIN_CMD];
 int num_cmd;
 int fd = STD_IN;
 char **env;
+// 全局便于使用，每条命令解析时更新
+char disk_cmd_path[MAX_PATH];
+char *current_cmd; // 实际内存位于栈(main.buff)
 
 int do_cd(int argc, char** argv){
 	char* path = argv[1];
@@ -92,10 +95,10 @@ void printstring(char *prompt, char **p) {
     printf("\n");
 }
 
-int _test_command(const char* path) {
+int check_disk_command(const char* path) {
 	struct stat statbuf;
 	int status, _fd;
-	char sample[4];
+	char sample_buff[MAX_PATH];
 	status = stat(path, &statbuf);
 	if(status == 0 && statbuf.st_type == I_REGULAR){
 		char *extname = strrchr(path, '.');
@@ -104,21 +107,25 @@ int _test_command(const char* path) {
 		}
 		_fd = open(path, O_RDONLY);
 		lseek(_fd, 0, SEEK_SET);
-		read(_fd, sample, 4);
+		fgets(sample_buff, MAX_PATH, _fd);
 		close(_fd);
-		if(sample[1]=='E' && sample[2]=='L' && sample[3]=='F') {
+		if(sample_buff[1]=='E' && sample_buff[2]=='L' && sample_buff[3]=='F') {
 			return CMD_ELF;
 		}
 	}
 	return CMD_INVAL;
 }
 
-int test_command_path(char *completed, const char * cmd) {
+// 搜索cmd并更新可执行文件的路径至disk_cmd_path
+int search_command_path(const char * cmd) {
+	current_cmd = cmd;
 	char *path = getenv("PATH"), *pstr;
+	char *completed = disk_cmd_path;
 	int result;
 	// 存在'/',直接传递路径，VFS会处理相对cwd和绝对路径两种情况
 	if(strchr(cmd, '/') != NULL) {
-		return _test_command(cmd);
+		strcpy(completed, cmd);
+		return check_disk_command(cmd);
 	}
 	// 路径只有文件名，要从PATH搜索，并拼接路径
 	while(path != NULL) {
@@ -128,7 +135,7 @@ int test_command_path(char *completed, const char * cmd) {
 		completed[pstr-path] = 0;
 		strcat(completed, "/");
 		strcat(completed, cmd);
-		result = _test_command(completed);
+		result = check_disk_command(completed);
 		if(CMD_INVAL != result) {
 			return result;
 		}
@@ -141,28 +148,31 @@ int test_command_path(char *completed, const char * cmd) {
 }
 
 void do_command(int argc, char** args) {
-	char cmd[256];
+	// builtin
 	int cmdid = match_build_in(argc, args);
 	if(cmdid != -1){
 		int ret = cmds[cmdid].handler(argc, args);
-		printf("%s exit %d", cmds[cmdid].cmd_name, ret);
+		if(ret != 0){
+			printf("%s exit %d", cmds[cmdid].cmd_name, ret);
+		}
 		return;
 	}
 	// test cmd exec file
 	// 此函数根据PATH环境变量查找得到真正的可执行文件的类型和实际路径(cmd)
-	int cmd_type = test_command_path(cmd, args[0]);
+	int cmd_type = search_command_path(args[0]);
 	if(CMD_INVAL == cmd_type) {
-		printf("command not found:%s\n", args[0]);
+		fprintf(STD_ERR, "command not found:%s\n", args[0]);
 		return;
 	}else if(CMD_SCRIPT == cmd_type) {
-		// 此命令是脚本类型，打开脚本文件并将全局fd置为打开的文件描述符
-		// 直接返回，进行脚本文件内容的读取
-		fd = open(cmd, O_RDONLY);
-		return;
-	} 
-	// CMD_ELF == cmd_type
-	char* simple_cmd = args[0];
-	args[0] = cmd;
+		// 此命令是脚本类型，cmd实际是interpreter的参数
+		args[1] = args[0];
+		args[0] = "/bin/shell";
+		if(CMD_ELF != search_command_path(args[0])) {
+			fprintf(STD_ERR, "%s:script interpreter not executable!\n", args[0]);
+			return;
+		}
+	}
+	// CMD_ELF
 	int pid = fork();
 	// printf("%d: fork return %d\n", get_pid(), pid);
 	if(pid != 0)
@@ -173,13 +183,15 @@ void do_command(int argc, char** args) {
 		}
        	int exit_status;
         wait(&exit_status);//modified by dongzhangqi 2023.4.20 因wait的调整而修改
-		printf("%s(pid:%d): exit_status:%d\n", simple_cmd, pid, exit_status);
+		if(CMD_ELF == cmd_type) {
+			printf("%s(pid:%d): exit_status:%d\n", current_cmd, pid, exit_status);
+		}
 	}
 	else
 	{	//child
-		if(execve(cmd, args, env)!=0)
+		if(execve(disk_cmd_path, args, env)!=0)
 		{
-			printf("exec failed: file not found!");
+			fprintf(STD_ERR, "%s: exec failed!\n", disk_cmd_path);
           	exit(-1);
        	}
 		fprintf(STD_ERR, "unreachable area\n");
@@ -221,8 +233,15 @@ int main(int arg,char *argv[],char *envp[])
 	pre = TEST_CMD_NUM;
 	#endif
 	if(arg > 1) {
-		do_command(arg - 1, &argv[1]);
-		return 0;
+		if(CMD_SCRIPT != search_command_path(argv[1])) {
+			fprintf(STD_ERR, "not a script %s\n", argv[1]);
+			return -1;
+		}
+		fd = open(argv[1], O_RDONLY);
+		if(fd < 0) {
+			fprintf(STD_ERR, "fail to open script %s\n", argv[1]);
+			return -1;
+		}
 	}
   	while(1)
 	{
@@ -246,12 +265,13 @@ int main(int arg,char *argv[],char *envp[])
 		if(fd != STD_IN && len == 0){
 			// printf("%d", fd);
 			close(fd);
+			break; // script shell exit
 			fd = STD_IN;
 			// while(1);
 		}
 		if(len != 0 && buf[0] != '#')
 		{
-			// printf("input: %s\n", buf);
+			// printf("cmd: %s\n", buf);
 			int argc = parse(buf, args, MAX_ARGC);
 			do_command(argc, args);
    		}
