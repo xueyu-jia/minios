@@ -817,7 +817,7 @@ PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
 	file->fd_ops = dentry->d_inode->i_fop;
 	file->fd_mapping = dentry->d_inode->i_mapping;
 	file->fd_mode = rmode;//fd_mode: bit 0:read 1:write
-	file->fd_pos = 0;	
+	file->fd_pos = ((flags & O_APPEND)? inode->i_size : 0);	
 	release(&inode->lock);
 	release(&dentry->lock);
 	vfs_put_dentry(dir);

@@ -172,7 +172,7 @@ void do_command(int argc, char** args) {
 			return;
 		}
 	}
-	// CMD_ELF
+	// CMD_ELF || (CMD_SCRIPT && args[0] is interpreter)
 	int pid = fork();
 	// printf("%d: fork return %d\n", get_pid(), pid);
 	if(pid != 0)
@@ -266,12 +266,12 @@ int main(int arg,char *argv[],char *envp[])
 			// printf("%d", fd);
 			close(fd);
 			break; // script shell exit
-			fd = STD_IN;
+			// fd = STD_IN;
 			// while(1);
 		}
 		if(len != 0 && buf[0] != '#')
 		{
-			// printf("cmd: %s\n", buf);
+			printf("cmd: %s\n", buf);
 			int argc = parse(buf, args, MAX_ARGC);
 			do_command(argc, args);
    		}

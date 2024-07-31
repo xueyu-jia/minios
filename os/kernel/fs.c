@@ -54,7 +54,7 @@ int init_block_dev()
 int init_char_dev()
 {
 	// struct super_block *sb = get_super_block(drive);
-	//real_createdir(sb, "dev");
+	//real_mkdir(sb, "dev");
 	// char ttypath[MAX_DEV_PATH] = {"/dev/tty0"};
 	for (int i = 0; i < NR_CONSOLES; ++i)
 	{

@@ -12,7 +12,7 @@ void main(int arg,char *argv[])
             //father
             // int exit_status;
             int exit_status;
-            // wait_(&exit_status);
+            // wait(&exit_status);
             // printf("exit_status:%d", exit_status);
             if(fork()!=0){
                 // father

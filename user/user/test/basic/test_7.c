@@ -1,6 +1,6 @@
 #include "stdio.h"
 
-void main(int argc,char *argv[])
+int main(int argc,char *argv[])
 {
 	printf("I'm test.\n");
 	printf("argc:");
@@ -14,4 +14,5 @@ void main(int argc,char *argv[])
 		printf("\n");
 	}
 	// while(1);
+	return 0;
 }

@@ -42,7 +42,7 @@ void main(int argc,char *argv[])
 		path[i++] = 'a' + (i % 26);
 		path[i] = 'a' + (i % 26);
 		ret = mkdir(path, I_RWX);
-		user_test(test_order++, ret, ret==0, "createdir");
+		user_test(test_order++, ret, ret==0, "mkdir");
 	}
 	printf("path:%s\n", path);
 	printf("path length :%d\n", strlen(path));

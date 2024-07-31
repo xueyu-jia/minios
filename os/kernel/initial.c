@@ -612,8 +612,8 @@ void initial()
 	// do_init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
 	// get_datetime();
 	//mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
-/* 	createdir("test");
-	createdir("test/dir");
+/* 	mkdir("test");
+	mkdir("test/dir");
 	int fd = open("test/dir/file",O_CREAT|O_RDWR);
 	//orangefs_dir_test();
 	char * buff = kern_kzalloc(4096*2);
@@ -625,7 +625,7 @@ void initial()
 		close(fd);
 	}
 	fd = open("test/dir/file",O_RDWR);
-	//int ret = deletedir("test");
+	//int ret = rmdir("test");
 	memset(buff,0,8);
 	lseek(fd,4097,SEEK_SET);
 	read(fd,buff,4);
@@ -634,10 +634,10 @@ void initial()
 	disp_str("\n");
 	unlink("test/dir/file");
 	close(fd);
-	int ret = deletedir("test/dir");
+	int ret = rmdir("test/dir");
 	unlink("test/dir/file");
 	fd = open("test/dir/file",O_RDWR);
-	ret = deletedir("test/dir"); */
+	ret = rmdir("test/dir"); */
 
 	//orangefs_dir_test();
 	//orangefs_dir_test();

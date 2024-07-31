@@ -1,0 +1,9 @@
+./child01
+./child02
+./child06
+./execve01
+./execve02
+./execve03
+./execve04
+./execve05
+./execve06

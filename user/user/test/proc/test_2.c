@@ -28,7 +28,7 @@
 // 			printf("parent:%d\n", i);
 // 		}
 // 		int childStatues;
-// 		wait_(&childStatues);
+// 		wait(&childStatues);
 // 		exit(0);
 // 		return 0;
 // 	}

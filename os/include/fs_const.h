@@ -30,6 +30,7 @@
 
 /* APIs of file operation */
 // octol
+#define O_APPEND	32 // 040
 #define O_TRUNC		16
 #define O_DIRECTORY 8
 #define	O_CREAT		4

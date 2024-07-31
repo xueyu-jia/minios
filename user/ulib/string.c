@@ -15,6 +15,20 @@ void memset(void* p_dst, char ch, int size){
 	}
 }
 
+int memcmp(const void* p1, const void*  p2, int size) {
+	const char* pchar1 = p1, *pchar2 = p2;
+	char c1, c2;
+	while(size > 0) {
+		c1 = *(pchar1++);
+		c2 = *(pchar2++);
+		if(c1 != c2) {
+			return c1 - c2;
+		}
+		size--;
+	}
+	return 0;
+}
+
 char* strcat(char *dst, const char *src)
 {
     if(dst==0 || src==0) return 0;

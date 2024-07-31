@@ -1,15 +1,15 @@
-cd basic
+cd ./basic
 run.sh
 cd ..
-cd proc
+cd ./fs
 run.sh
 cd ..
-cd fs
+cd ./ipc
 run.sh
 cd ..
-cd pthread
+cd ./proc
 run.sh
 cd ..
-cd ipc
+cd ./pthread
 run.sh
 cd ..

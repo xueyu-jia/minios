@@ -510,7 +510,7 @@ void main(int arg,char *argv[])
 // 	strcpy(pathname + len, argv[1]);
 // 	strcpy(fullpath, "V:");
 // 	strcpy(fullpath + 2, pathname);
-// 	int state = fat_createdir(fullpath);
+// 	int state = fat_mkdir(fullpath);
 // 	if (state != 1)
 // 	{
 // 		write(tty, "ERROR: directory exists\n", 25);
@@ -571,7 +571,7 @@ void main(int arg,char *argv[])
 // 	strcpy(pathname + len, argv[1]);
 // 	strcpy(fullpath, "V:");
 // 	strcpy(fullpath + 2, pathname);
-// 	int state = fat_deletedir(fullpath);
+// 	int state = fat_rmdir(fullpath);
 // 	if (state != 1)
 // 	{
 // 		write(tty, "ERROR: directory not exists\n", 29);
@@ -593,7 +593,7 @@ void main(int arg,char *argv[])
 // 	total = optr - buf;
 // 	optr = buf;
 // 	chdir("fat1/V:\\");
-// 	createdir("fat1/b");
+// 	mkdir("fat1/b");
 // 	chdir("fat1/b");
 // 	int fd;
 // 	fd = open("fat1/2000.txt", O_RDWR | O_CREAT);
@@ -625,7 +625,7 @@ void main(int arg,char *argv[])
 // 	{
 // 		getcwd(buf, 256);
 // 		fprintf(tty, "child cwd is: %s\n", buf);
-// 		createdir("fat0/child");
+// 		mkdir("fat0/child");
 // 		chdir("fat0/child");
 // 		getcwd(buf, 256);
 // 		fprintf(tty, "child cwd changes to: %s\n", buf);
@@ -637,7 +637,7 @@ void main(int arg,char *argv[])
 // 	}
 // 	getcwd(buf, 256);
 // 	fprintf(tty, "parent cwd is: %s\n", buf);
-// 	createdir("fat0/parent");
+// 	mkdir("fat0/parent");
 // 	chdir("fat0/parent");
 // 	getcwd(buf, 256);
 // 	fprintf(tty, "parent cwd changes to: %s\n", buf);

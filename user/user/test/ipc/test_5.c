@@ -52,7 +52,7 @@
 // 		exit(0);
 // 	}else{
 // 		printf("parent\n");
-// 		wait_();
+// 		wait();
 // 		clear_msg(&recv);
 // 		l = msgrcv(q1, &recv, 10, 0, IPC_NOWAIT|MSG_NOERROR);
 // 		printf("(parent)from q1 length: %d, type: %d, msg:%s\n", l, recv.t, recv.m);

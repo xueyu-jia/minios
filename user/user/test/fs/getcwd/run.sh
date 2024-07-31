@@ -1,0 +1,3 @@
+./getcwd01
+./getcwd02
+./getcwd03

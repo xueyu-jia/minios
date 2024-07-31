@@ -1,0 +1,36 @@
+/*
+ * pthread_mutex_unlock 一个已初始化、未被获取的 mutex 应返回 0
+ *
+ */
+
+#include "usertest.h"
+
+const char *test_name = "pthread_mutex_unlock04";
+const char *syscall_name = "pthread_mutex_unlock";
+
+logging logger;
+
+void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+
+void cleanup() { logger_close(&logger); }
+
+void run() {
+  int rval;
+  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+  rval = pthread_mutex_unlock(&mutex);
+  info(&logger, "pthread_mutex_unlock return %d\n", rval);
+  if (rval != 0) {
+    cleanup();
+    exit(TC_FAIL);
+  }
+
+  info(&logger, "passed\n");
+}
+
+int main(int argc, char *argv[]) {
+  setup();
+  run();
+  cleanup();
+  exit(0);
+}

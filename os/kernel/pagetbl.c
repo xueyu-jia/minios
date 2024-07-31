@@ -364,9 +364,9 @@ fatal:
 	disp_int(err_code);
 	disp_color_str("Cr2=", 0x74); //灰底红字
 	disp_int(cr2);
+	do_exit(-1);
 	proc_backtrace();
 	// halt();
-	// do_exit(-1);
 }
 
 
