@@ -28,7 +28,10 @@ cd ..
 cd ./wait
 run.sh
 cd ..
+./sig_0
+./sig_1
 ./test_2
 ./t_exit01
+./tfork
 ./t_printpid
 ./twait

@@ -7,18 +7,20 @@
 int suspend_with_cancellation(PROCESS *self, int timeout)
 { // 挂起等待条件满足后被唤醒
   int ticks0 = ticks;
-  p_proc_current->task.channel = &ticks;
+  // p_proc_current->task.channel = &ticks;
   while (ticks - ticks0 < timeout)
   {
     if (self->task.suspended == READY) //统一PCB state 20240314
     {
       self->task.stat = READY;
+      in_rq(self);
       return 0;
     }
-    self->task.stat = SLEEPING;
-    sched();
+    // self->task.stat = SLEEPING;
+    // sched();
+    wait_event(&ticks); // 使用统一的上层函数而非直接修改底层PCB
   }
-  self->task.stat = READY;
+  // self->task.stat = READY;
   return -1; //超时
 }
 

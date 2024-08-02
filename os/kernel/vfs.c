@@ -1209,6 +1209,9 @@ PUBLIC int kern_vfs_chdir(const char* path){
 
 
 PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
+	if(NULL == buf || (-1 == buf)) {
+		return NULL;
+	}
 	PROCESS* p_proc = proc_real(p_proc_current);
     vfs_get_path(p_proc->task.cwd, buf, size);
     return buf;

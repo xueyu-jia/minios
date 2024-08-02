@@ -445,7 +445,7 @@ PRIVATE int fat_check_short(struct inode* dir, const char* name){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
-	for(start = 0; start < (dir->i_size >> FAT_DPS_SHIFT); start++){
+	for(start = 0; start * FAT_ENTRY_SIZE < dir->i_size; start++){
 		ds = fat_get_slot(dir, start, &bh, 0);
 		if(ds->order == DIR_DELETE){
 			continue;
@@ -467,7 +467,7 @@ PRIVATE int fat_check_empty(struct inode* dir){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
-	for(start = 0; start < (dir->i_size >> FAT_DPS_SHIFT); start++){
+	for(start = 0; start * FAT_ENTRY_SIZE < dir->i_size; start++){
 		ds = fat_get_slot(dir, start, &bh, 0);
 		if(ds->order == DIR_DELETE){
 			continue;

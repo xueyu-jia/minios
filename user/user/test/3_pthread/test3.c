@@ -34,6 +34,6 @@ int main(int arg,char *argv[])
 		sleep(50);
 		pthread_create(&ntid, NULL, test2, NULL);
 	}
-	while(1);
+	// while(1);
 	return 0;
 }

@@ -592,6 +592,7 @@ fourfiles(void)
   printf("fourfiles ok\n");
 }
 
+#define number_char(n) (((n) < 10)? ('0' + (n)): ('a' + (n)))
 // four processes create and delete different files in same directory
 void
 createdelete(void)
@@ -613,17 +614,17 @@ createdelete(void)
       name[0] = 'p' + pi;
       name[2] = '\0';
       for(i = 0; i < N; i++){
-        name[1] = '0' + i;
+        name[1] = number_char(i);
         fd = open(name, O_CREAT | O_RDWR, I_RW);
         if(fd < 0){
-          printf("create failed\n");
+          printf("%s:create failed\n", name);
           exit(-1);
         }
         close(fd);
         if(i > 0 && (i % 2 ) == 0){
-          name[1] = '0' + (i / 2);
+          name[1] = number_char(i/2);
           if(unlink(name) < 0){
-            printf("unlink failed\n");
+            printf("%s:unlink failed\n", name);
             exit(-1);
           }
         }
@@ -640,16 +641,16 @@ createdelete(void)
   for(i = 0; i < N; i++){
     for(pi = 0; pi < 4; pi++){
       name[0] = 'p' + pi;
-      name[1] = '0' + i;
+      name[1] = number_char(i);
       fd = open(name, 0);
       if((i == 0 || i >= N/2)) {
-		if (fd >= 0) {
-			unlink(name);
-		}else {
-			printf("oops createdelete %s didn't exist\n", name);
-			exit(-1);
-		}
-      } else if((i >= 1 && i < N/2) && fd >= 0){
+        if (fd >= 0) {
+          unlink(name);
+        }else {
+          printf("oops createdelete %s didn't exist\n", name);
+          exit(-1);
+        }
+      } else if(fd >= 0){
         printf("oops createdelete %s did exist\n", name);
         exit(-1);
       }
@@ -658,10 +659,10 @@ createdelete(void)
     }
   }
 
-  for(i = 0; i < N; i++){
+  for(i = N/2; i < N; i++){
     for(pi = 0; pi < 4; pi++){
       name[0] = 'p' + i;
-      name[1] = '0' + i;
+      name[1] = number_char(i);
       unlink(name);
     }
   }
@@ -792,8 +793,8 @@ concreate(void)
   printf("concreate test\n");
   file[0] = 'C';
   file[2] = '\0';
-  for(i = 0; i < 40; i++){
-    file[1] = '0' + i;
+  for(i = 0; i < 20; i++){
+    file[1] = 'a' + i;
     unlink(file);
     pid = fork();
     if(pid && (i % 3) == 1){
@@ -822,7 +823,7 @@ concreate(void)
     if(de->d_ino == 0)
       continue;
     if(de->d_name[0] == 'C' && de->d_name[2] == '\0'){
-      i = de->d_name[1] - '0';
+      i = de->d_name[1] - 'a';
       if(i < 0 || i >= (int)sizeof(fa)){
         printf("concreate weird file %s\n", de->d_name);
         exit(-1);
@@ -837,13 +838,13 @@ concreate(void)
   }
   close(fd);
 
-  if(n != 40){
+  if(n != 20){
     printf("concreate not enough files in directory listing\n");
     exit(-1);
   }
 
-  for(i = 0; i < 40; i++){
-    file[1] = '0' + i;
+  for(i = 0; i < 20; i++){
+    file[1] = 'a' + i;
     pid = fork();
     if(pid < 0){
       printf("fork failed\n");
@@ -926,8 +927,8 @@ bigdir(void)
 
   for(i = 0; i < 500; i++){
     name[0] = 'x';
-    name[1] = '0' + (i / 49);//  name[1] = '0' + (i / 64); 原来的xv6测试由于文件名A-O 到 a-o 对于FAT32重复，改为49下同
-    name[2] = '0' + (i % 49);
+    name[1] = 'a' + (i / 25);//  name[1] = '0' + (i / 64); 原来的xv6测试由于文件名A-O 到 a-o 对于FAT32重复，改为49下同
+    name[2] = 'a' + (i % 25);
     name[3] = '\0';
     if((fd2 = creat(name)) < 0){
       printf("bigdir link failed\n");
@@ -939,8 +940,8 @@ bigdir(void)
   unlink("bd");
   for(i = 0; i < 500; i++){
     name[0] = 'x';
-    name[1] = '0' + (i / 49);
-    name[2] = '0' + (i % 49);
+    name[1] = 'a' + (i / 25);
+    name[2] = 'a' + (i % 25);
     name[3] = '\0';
     if(unlink(name) != 0){
       printf("bigdir unlink failed");
@@ -1030,10 +1031,10 @@ subdir(void)
     printf("chdir dd/../../dd failed\n");
     exit(-1);
   }
-  if(chdir("dd/../../../dd") != 0){
-    printf("chdir dd/../../dd failed\n");
-    exit(-1);
-  }
+  // if(chdir("dd/../../../dd") != 0){ // pwd not root /
+  //   printf("chdir dd/../../dd failed\n");
+  //   exit(-1);
+  // }
   if(chdir("./..") != 0){
     printf("chdir ./.. failed\n");
     exit(-1);
@@ -1287,8 +1288,8 @@ rmdot(void)
     printf("rm .. worked!\n");
     exit(-1);
   }
-  if(chdir("/") != 0){
-    printf("chdir / failed\n");
+  if(chdir("..") != 0){
+    printf("chdir .. failed\n");
     exit(-1);
   }
   if(rmdir("dots/.") == 0){

@@ -20,20 +20,20 @@ void main(int arg,char *argv[]) {
     if(fork_res == 0) {
         int tmp = get_pid();
         int tick = 0;
-        while(1) {
-            for(int i = 0; i < 5000000; i++) ;
+        // while(1) {
+            for(int i = 0; i < 500; i++) ;
             if(kill(pid, sig, tick++) < 0) {
                 printf("not register");
             }
-        }
+        // }
     }
     else {
-        for(int i = 0; i < 10000000; i++) ;
+        for(int i = 0; i < 1000; i++) ;
         signal(sig, handler);
         
-        while(1) {
-            for(int i = 0; i < 1000000; i++) ;
+        // while(1) {
+            for(int i = 0; i < 1000; i++) ;
             printf(". ");
-        }
+        // }
     }
 }

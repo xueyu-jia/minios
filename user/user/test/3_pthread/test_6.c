@@ -26,12 +26,12 @@ void *pthread_test1(void* args)
 		:"memory"
 	);
 	printf("%x\n",vebp);
-	while(1)
-	{
+	// while(1)
+	// {
 		//printf("%d %d\n",*(int*)args,*(((int*)args)+1));
 		i=10000000;
 		while(--i){}
-	}
+	// }
 }
 
 /*======================================================================*
@@ -71,14 +71,14 @@ int main(int arg,char *argv[])
 
 	printf("ntid=%d\n", ntid);
 
-	while(1)
-	{	
+	// while(1)
+	// {	
 		// printf("init");
 		// printf("%d",++global);
 		// printf(" ");
 		i=10000000;
 		while(--i){}
-	}
+	// }
 	return 0;
 }
 

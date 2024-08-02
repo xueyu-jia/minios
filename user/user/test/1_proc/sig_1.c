@@ -23,28 +23,28 @@ void main(int arg,char *argv[]) {
         int tick = 0;
         int pid2 = fork();
         if(pid2 == 0) {
-            while(1) {
-                for(int i = 0; i < 5000000; i++) ;
+            // while(1) {
+                for(int i = 0; i < 500; i++) ;
                 while(kill(pid, sig_0, tick++) < 0) {
                     ;
                 }
-            }
+            // }
         } 
         else {
-            while(1) {
-                for(int i = 0; i < 5000000; i++) ;
+            // while(1) {
+                for(int i = 0; i < 500; i++) ;
                 while(kill(pid, sig_1, tick++) < 0) {
 
                 }
-            }
+            // }
         }
     }
     else {
         signal(sig_0, handler);
         signal(sig_1, handler);
-        while(1) {
-            for(int i = 0; i < 1000000; i++) ;
+        // while(1) {
+            for(int i = 0; i < 1000; i++) ;
             printf(". ");
-        }
+        // }
     }
 }
