@@ -5,7 +5,7 @@
 
 void read_Ehdr(u32 fd,Elf32_Ehdr *File_Ehdr,u32 offset)
 {
-	
+
 	kern_vfs_lseek(fd,offset,SEEK_SET);
 	kern_vfs_read(fd,(void*)File_Ehdr,sizeof(Elf32_Ehdr));
 	//added by mingxuan 2019-5-23
@@ -45,22 +45,26 @@ void read_Shdr(u32 fd,Elf32_Shdr *File_Shdr,u32 offset)
 	return;
 }
 
-PUBLIC int read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr)
+/**
+ * @brief 读取elf文件头，并将信息保存在缓冲区Echo_Ehdr、Echo_Phdr和Echo_Shdr中
+ */
+PUBLIC int read_elf(u32 fd, Elf32_Ehdr* Echo_Ehdr, Elf32_Phdr *Echo_Phdr, Elf32_Shdr *Echo_Shdr)
 {
 	int i;
 	read_Ehdr(fd,Echo_Ehdr,0);
 	if((*(u32*)Echo_Ehdr->e_ident) != 0x464C457F) {
 		return -1;
 	}
+
 	if(Echo_Ehdr->e_machine != EM_386) {
 		return -1;
 	}
-	for(i = 0; i < Echo_Ehdr->e_phnum; i++)
-	{
+
+	for(i = 0; i < Echo_Ehdr->e_phnum; i++){
 		read_Phdr(fd,&Echo_Phdr[i],Echo_Ehdr->e_phoff + Echo_Ehdr->e_phentsize * i);
 	}
-	for(i=0 ; i < Echo_Ehdr->e_shnum ; i++)
-	{
+
+	for(i=0 ; i < Echo_Ehdr->e_shnum ; i++){
 		read_Shdr(fd,&Echo_Shdr[i],Echo_Ehdr->e_shoff + Echo_Ehdr->e_shentsize * i);
 	}
 	return 0;
@@ -127,4 +131,3 @@ PUBLIC void disp_Elf(Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr Echo_Phdr[])
 	}
 	return;
 }
-

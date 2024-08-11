@@ -83,7 +83,7 @@ PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址�
 		return (u32)kmalloc(size);
 	} else if(size == num_4K) {
 		u32 phy = phy_kmalloc_4k();
-		
+
 		return phy;
 		// return phy_kmalloc_4k();
 	}
@@ -455,7 +455,7 @@ PUBLIC u32 kern_malloc_4k() //modified by mingxuan 2021-8-19
 
 	AddrLin = get_heap_limit(p_proc_current->task.pid);
 	update_heap_limit(p_proc_current->task.pid, 1);
-	// kern_mapping_4k(AddrLin, p_proc_current->task.pid, 
+	// kern_mapping_4k(AddrLin, p_proc_current->task.pid,
 	// 	MAX_UNSIGNED_INT, PG_P | PG_USU | PG_RWW);
 	int addr = do_mmap(AddrLin, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
 	if(addr == -1) {
@@ -581,7 +581,7 @@ PUBLIC int put_page(page *_page) {
 
 // find first vma->end > addr
 // require: pcb.memmap.vma_lock
-PUBLIC struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr) 
+PUBLIC struct vmem_area * find_vma(LIN_MEMMAP* mmap, u32 addr)
 {
     struct vmem_area *vma = NULL;
     list_for_each(&mmap->vma_map, vma, vma_list)
@@ -717,11 +717,11 @@ PUBLIC void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma
 			copy_page(_page, content_page);
 			put_page(content_page);
 			add_mem_page(&mmap->anon_pages, _page);
-        } else { 
+        } else {
             // 其他情况直接使用page cache的物理页就行
             _page = content_page;
         }
-        lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)), 
+        lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)),
                 proc2pid(p_proc),
                 PG_P | PG_USU | PG_RWW,
                 pte_attr);
@@ -751,7 +751,7 @@ PUBLIC void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start
 /// @brief 复制进程的内存映射(fork 内部调用)
 /// @param p_parent 父进程
 /// @param p_child 子进程
-/// @details 
+/// @details
 /// 当 写时复制(OPT_MMU_COW)启用:
 /// 	fork时，将父进程的所有有效页表项设置为对应虚拟地址的只读页表项，并增加对应物理页的引用计数
 /// 	fork之后，只读的页面父子进程使用同一个物理页，可写的页面在写操作时发生缺页，
@@ -762,7 +762,7 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 	LIN_MEMMAP* old_mmap = proc_memmap(p_parent);
 	LIN_MEMMAP* new_mmap = proc_memmap(p_child);
 	*new_mmap = *old_mmap;
-	init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO); 
+	init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO);
 	list_init(&new_mmap->vma_map);
 	struct vmem_area *vma, *vm;
 	lock_or_yield(&old_mmap->vma_lock);
@@ -782,27 +782,27 @@ PUBLIC void memmap_copy(PROCESS* p_parent, PROCESS* p_child) {
 				#ifdef OPT_MMU_COW
 				// 写时复制，将父子进程页表同时置为只读
 					get_page(pte_page); // add reference
-					lin_mapping_phy(addr, phy, 
-						proc2pid(p_parent), 
+					lin_mapping_phy(addr, phy,
+						proc2pid(p_parent),
 						PG_P | PG_USU | PG_RWW,
 						PG_P | PG_USU | PG_RWR); // set read only
-					lin_mapping_phy(addr, phy, 
-						proc2pid(p_child), 
+					lin_mapping_phy(addr, phy,
+						proc2pid(p_child),
 						PG_P | PG_USU | PG_RWW,
-						PG_P | PG_USU | PG_RWR); 
-				#else 
+						PG_P | PG_USU | PG_RWR);
+				#else
 				// 无写时复制， 根据权限决定，只读的页面共享，可写的私有页面申请新页面并复制
 					page *_page = NULL;
 					if((vma->flags & MAP_PRIVATE) && (vma->flags & PROT_WRITE)) {
 						_page = alloc_user_page(addr>>PAGE_SHIFT);
 						copy_page(_page, pte_page);
 						add_mem_page(&new_mmap->anon_pages, _page);
-					} else { 
+					} else {
 						// 其他情况直接使用父进程的物理页就行,要增加父进程物理页的引用计数
 						get_page(pte_page);
 						_page = pte_page;
 					}
-					lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)), 
+					lin_mapping_phy(addr, pfn_to_phy(page_to_pfn(_page)),
 							proc2pid(p_child),
 							PG_P | PG_USU | PG_RWW,
 							pte_attr);
@@ -858,7 +858,7 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 				attr |= PG_RWW;
 			}
 		}
-		
+
 		if(_page) {// now new page is ready
 			// disp_int(proc2pid(p_proc_current));
 			// disp_str(":");
@@ -866,7 +866,7 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 			// disp_str("->");
 			// disp_int(page_to_pfn(_page));
 			// disp_str("\n");
-			lin_mapping_phy(vaddr, pfn_to_phy(page_to_pfn(_page)), 
+			lin_mapping_phy(vaddr, pfn_to_phy(page_to_pfn(_page)),
 				proc2pid(p_proc_current), PG_P | PG_USU | PG_RWW, attr);
 			return 0;
 		}

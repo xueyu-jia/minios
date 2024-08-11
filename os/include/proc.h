@@ -55,7 +55,7 @@
 #define NR_K_PCBS	16								//modified by zhenhao 2023.3.5
 #define PID_INIT NR_K_PCBS
 #define PID_NO_PROC	1000
-#define PROC_READY_MAX	NR_PCBS	//xiaofeng // 30 -> NR_PCBS jiangfeng 24-5-5 
+#define PROC_READY_MAX	NR_PCBS	//xiaofeng // 30 -> NR_PCBS jiangfeng 24-5-5
 #define PROC_NICE_MAX	19
 
 //~xw
@@ -80,7 +80,7 @@
 //	FREE: 此PCB空闲未分配
 //	READY: 此PCB表示的进程/线程正在使用且可被调度
 //	SLEEPING: 此PCB表示的进程/线程处于睡眠等待状态
-//	KILLED: 
+//	KILLED:
 enum proc_stat	{FREE,READY,SLEEPING,KILLED}; //simplify 20240314 jiangfeng
 
 // enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 2021-1-6
@@ -212,17 +212,17 @@ typedef struct s_proc {
 
 	//add by dongzhangqi 2023.5.8
 	//线程相关
-	pthread_attr_t attr;           
+	pthread_attr_t attr;
 	void * retval;
-	u32 who_wait_flag;   
+	u32 who_wait_flag;
 	struct spinlock lock;
 
-	// cfs attr added by xiaofeng 
+	// cfs attr added by xiaofeng
 	int is_rt;			//flag for Real-time(T) and not-Real-time(F) process
-    int rt_priority;	//priority for Real-time process 
+    int rt_priority;	//priority for Real-time process
 
 	int nice;
-	int weight; 		//priority for not-Real-time process 
+	int weight; 		//priority for not-Real-time process
 	double vruntime;
 	u32 cpu_use;
 	u64 sum_cpu_use;
@@ -280,7 +280,7 @@ PUBLIC void idle();
 void proc_update();
 
 // 通过pcb找到真正的进程, added by jiangfeng
-#define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc) 
+#define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc)
 
 // 获得pcb对应的memmap
 PRIVATE inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {
