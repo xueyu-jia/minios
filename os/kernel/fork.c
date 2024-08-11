@@ -60,7 +60,8 @@ PUBLIC int kern_fork()
 	return ch->task.pid;	
 
 alloc_PCB_faile:
-	disp_color_str("PCB NULL,fork faild!",0x74);
+	release(&fa->task.lock);
+	disp_color_str("ALLOC PCB NULL,fork faild!",0x74);
 	return -1;
 
 }
