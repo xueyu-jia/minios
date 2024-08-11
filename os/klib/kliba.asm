@@ -26,8 +26,8 @@ global  enable_irq
 global  disable_irq
 global	port_read
 global	port_write
-global	enable_int
-global	disable_int
+; global	enable_int
+; global	disable_int
 global  write_char	; added by mingxuan 2019-5-19
 
 ; ========================================================================
@@ -331,16 +331,16 @@ port_write:
 ; ========================================================================
 ;		   void disable_int();
 ; ========================================================================
-disable_int:
-	cli
-	ret
+; disable_int:
+; 	cli
+; 	ret
 
 ; ========================================================================
 ;		   void enable_int();
 ; ========================================================================
-enable_int:
-	sti
-	ret
+; enable_int:
+; 	sti
+; 	ret
 ; added by zcr end
 
 ; ========================================================================

@@ -242,6 +242,7 @@ PRIVATE sched_entity* find_new_sched_entity(sched_entity* array) {
     return NULL;
 }
 
+// todo: rename
 void in_rq(PROCESS* p_in) {
     int is_rt = p_in->task.is_rt;
     sched_entity* _rq_head = (is_rt)? rt_rq: rq;
@@ -331,19 +332,18 @@ void out_rq(PROCESS* p_out) {
 /*======================================================================*
                            alloc_PCB  add by visual 2016.4.8
  *======================================================================*/
-PUBLIC PROCESS* alloc_PCB() { // 分配PCB表
-    PROCESS* p;
-    int      i;
-    p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
-    for (i = NR_K_PCBS; i < NR_PCBS; i++) {
-        if (p->task.stat == FREE)
-            break; // FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
+// todo：增加锁
+PUBLIC PROCESS* alloc_PCB() { // 分配PCB
+
+    PROCESS* p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
+    for (int i = NR_K_PCBS; i < NR_PCBS; i++) {
+        if (p->task.stat == FREE){
+            p->task.stat = SLEEPING;
+            return p;
+        }
         p++;
     }
-    if (i >= NR_PCBS)
-        return 0; // NULL
-    else
-        return p;
+    return NULL;
 }
 
 /*======================================================================*

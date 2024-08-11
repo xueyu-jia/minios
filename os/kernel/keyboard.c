@@ -4,6 +4,7 @@
 #include "console.h"
 #include "keyboard.h"
 #include "keymap.h"
+#include "proto.h"
 
 PRIVATE KB_INPUT kb_in;
 PRIVATE MOUSE_INPUT mouse_in;

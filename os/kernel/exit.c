@@ -3,6 +3,7 @@
 #include "proc.h"
 #include "pagetable.h"
 #include "memman.h"
+#include "proto.h"
 
 // 将p_proc的所有子进程转移给p_proc_init
 // req. p_proc_init->task.lock p_proc->task.lock **注意上锁顺序，防死锁**

@@ -15,6 +15,7 @@
 #include "tty.h"
 #include "proc.h"
 #include "time.h"
+#include "x86.h"
 
 // split all unnecessary part, functions defined in .asm & klib
 
@@ -33,8 +34,8 @@ PUBLIC void write_char(char ch, int pos);    //added by mingxuan 2019-5-19
 //added by zcr
 PUBLIC void	disable_irq(int irq);
 PUBLIC void	enable_irq(int irq);
-PUBLIC void	disable_int();
-PUBLIC void	enable_int();
+// PUBLIC void	disable_int();
+// PUBLIC void	enable_int();
 PUBLIC void	port_read(u16 port, void* buf, int n);
 PUBLIC void	port_write(u16 port, void* buf, int n);
 //~zcr

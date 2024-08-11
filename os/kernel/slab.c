@@ -157,7 +157,7 @@ PRIVATE void *slab_alloc_object(kmem_slab_t *slab) {
 	return obj;  // 返回对象地址
 }
 
-/*
+/**
 * @brief 	给定cache分配新的slab
 * @param 	cache:某个cache的指针
 * @retval 	新创建的slab的指针

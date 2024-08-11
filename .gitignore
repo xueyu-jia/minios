@@ -2,7 +2,8 @@
 *.[oa]
 
 # ignore all files in the ** directory
-/.vscode/*
+.vscode/
+.cache/
 /.VSCodeCounter/*
 /tmp/*
 /build/

@@ -172,7 +172,7 @@ PUBLIC void write_page_pte(u32 TblPhyAddr, //页表物理地址
 PUBLIC int init_proc_page(u32 pid)
 { //页表初始化函数
 
-	u32 AddrLin, pde_addr_phy_temp, pte_addr_phy_temp, err_temp;
+	u32 pde_addr_phy_temp;
 
 	//pde_addr_phy_temp = do_kmalloc_4k();//为页目录申请一页
 	pde_addr_phy_temp = phy_kmalloc_4k(); //为页目录申请一页	//modified by mingxuan 2021-8-16
