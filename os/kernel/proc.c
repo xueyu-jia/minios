@@ -350,7 +350,7 @@ PUBLIC PROCESS* alloc_PCB() { // 分配PCB
                            free_PCB  add by visual 2016.4.8
  *======================================================================*/
 PUBLIC void free_PCB(PROCESS* p) { // 释放PCB表
-    p->task.stat = FREE; 
+    p->task.stat = FREE;
     // FREE表示当前PCB是空闲的, modified by mingxuan 2021-8-21
 }
 
@@ -373,7 +373,7 @@ PUBLIC int sys_get_pid() {
 PUBLIC int kern_get_pid_byname(char* name) {
     for (PROCESS* proc = proc_table; proc < proc_table + NR_PCBS; proc++) {
         if (strcmp(proc->task.p_name, name) == 0) {
-            return proc->task.pid; 
+            return proc->task.pid;
         }
     }
     return -1;
@@ -418,7 +418,7 @@ PUBLIC void kern_sleep(int n) {
     int ticks0;
 
     ticks0 = ticks;
-    // 
+    //
     while (ticks - ticks0 < n) {
         wait_event(&ticks);
     }
