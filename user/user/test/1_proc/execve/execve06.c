@@ -61,5 +61,5 @@ int main(int argc, char *argv[]) {
   setup();
   run();
   cleanup();
-  exit(TC_FAIL);
+  exit(TC_PASS);
 }

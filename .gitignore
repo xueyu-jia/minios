@@ -12,6 +12,7 @@
 /*.assets/*
 utils/orangefs_mount
 utils/orangefs_mkfs
+/root/*
 
 # ignore *.bin
 *.bin

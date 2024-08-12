@@ -6,7 +6,7 @@
 #include "const.h"
 #include "string.h"
 #include "elf.h"
-#include "vfs.h"   //added by xyx && wjh 2021-12-31
+#include "vfs.h"
 #include "memman.h"
 #include "pagetable.h"
 #include "mmap.h"
@@ -17,6 +17,11 @@ PRIVATE int exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Ech
 PRIVATE int exec_pcb_init(const char *path);
 PRIVATE int exec_count_args(char* const* pstr, int *count);
 PRIVATE int exec_copy_args(char* const* pstr, char** parr, char *dst, u32 offset);
+PRIVATE int exec_replace_argv_and_envp(
+    const char*     path,
+    char* const*    argv,
+    char* const*    envp
+);
 
 PUBLIC u32 do_execve(const char* path, char* const* argv, char* const* envp); // added by xyx&&wjh 2021.12.31
 PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp); // added by xyx&&wjh 2021.12.31
@@ -48,7 +53,11 @@ PUBLIC u32 do_execve(const char* path, char* const* argv, char* const* envp) {
 
 /*   end added   */
 
-static int exec_replace_argv_and_envp(
+/**
+ * @brief   将参数和环境变量加载到进程的内存中
+ * @note    会释放进程的所有内存，重新映射虚拟地址空间
+ */
+PRIVATE int exec_replace_argv_and_envp(
     const char*     path,
     char* const*    argv,
     char* const*    envp
@@ -178,12 +187,15 @@ open_file_failed:
 }
 
 
-/*======================================================================*
- *                          exec_load		add by visual 2016.5.23
- *根据elf的program复制文件信息
- *======================================================================*/
+/**
+ * @brief 将elf文件加载到进程的内存中
+ */
 PRIVATE int exec_load(
-    u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr) {
+    u32 fd,
+    const Elf32_Ehdr *Echo_Ehdr,
+    const Elf32_Phdr *Echo_Phdr
+)
+{
     u32 ph_num;
 
     if (0 == Echo_Ehdr->e_phnum) {
