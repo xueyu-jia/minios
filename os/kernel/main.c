@@ -23,7 +23,7 @@
 #endif
 #include "../gdbstub/gdbstub.h"
 
-//added by lcy, 2023.10.22 
+//added by lcy, 2023.10.22
 //与权限信息 RPL 存在耦合，不利于简化，不如这样： 20240418
 
 PRIVATE int initialize_processes(); //added by xw, 18/5/26
@@ -35,13 +35,13 @@ PRIVATE void init_reg(PROCESS *proc,u32 cs,u32 ds,u32 es,u32 fs,u32 ss,u32 gs,u3
                             kernel_main
  *======================================================================*/
 PUBLIC int kernel_main()
-{   
+{
 #ifdef GDBSTUB
 	gdb_sys_init();
 #endif
 	int error;
 
-	// kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31 
+	// kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
 	// moved to cstart begin
 	//zcr added(清屏)
 	disp_pos = 0;
@@ -53,7 +53,7 @@ PUBLIC int kernel_main()
 		}
 	}
 	disp_pos = 0;
-    
+
 
 	disp_str("-----Kernel Initialization Begins-----\n");
 
@@ -122,7 +122,7 @@ PUBLIC int kernel_main()
 	//init_vfs();	//added by mingxuan 2019-5-17	//deleted by mingxuan 2020-10-30
 
 	// ksem_init(&proc_table_sem,1); 	//init PCB sem
-	
+
 	//初始状态确保hd_service放在实时队列第一个
 	// in_rq(&proc_table[1]);
 	// in_rq(&proc_table[0]);
@@ -170,7 +170,7 @@ PUBLIC int kernel_main()
 	disp_str("\n");
 	init_ttys();
 	initlock(&video_mem_lock, "vmem");
-	kernel_initial = 0; 
+	kernel_initial = 0;
 	//kernel initialization is done. added by xw, 18/5/31
 
 	//test_kbud_mem_size();
@@ -207,7 +207,7 @@ PRIVATE void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int
 		proc->task.stat = stat;				   //初始化状态 -1表示未初始化
 		proc->task.ticks = proc->task.priority = 1;	//时间片和优先级
 		//proc->task.regs.eip = eip;
-		
+
 		//CFS
 		proc->task.is_rt=is_rt;
 		if(is_rt) {
@@ -232,7 +232,7 @@ PRIVATE void init_proc_page_addr(u32 low, u32 high, PROCESS* proc){
 // 	u32 addr;
 // 	int err_temp;
 // 	for (addr = low; addr < UPPER_BOUND_4K(high); addr += num_4K)
-// 	{ 
+// 	{
 // 		err_temp=ker_umalloc_4k(addr,pid,attr);          //edited by wang 2021.8.27
 
 // 		if (err_temp != 0)
@@ -296,7 +296,7 @@ PRIVATE int initialize_processes()
 	***************************************************************************/
 	int pid;
 	// u32 AddrLin, pte_addr_phy_temp, addr_phy_temp, err_temp; //edit by visual 2016.5.9
-	
+
 	/* set common fields in PCB. added by xw, 18/5/25 */
 	p_proc = proc_table;
 	for (pid = 0; pid < NR_PCBS; pid++)
@@ -346,13 +346,13 @@ PRIVATE int initialize_processes()
 	}
 	p_proc = &proc_table[PID_INIT];
 	/*************************进程树信息初始化***************************************/
-	p_proc->task.info.type = TYPE_PROCESS; //当前是进程还是线程
-	p_proc->task.info.real_ppid = -1;	   //亲父进程，创建它的那个进程
-	p_proc->task.info.ppid = -1;		   //当前父进程
-	p_proc->task.info.child_p_num = 0;	   //子进程数量
-	// p_proc->task.info.child_process[NR_CHILD_MAX];//子进程列表
-	p_proc->task.info.child_t_num = 0; //子线程数量
-	// p_proc->task.info.child_thread[NR_CHILD_MAX];//子线程列表
+	p_proc->task.tree_info.type = TYPE_PROCESS; //当前是进程还是线程
+	p_proc->task.tree_info.real_ppid = -1;	   //亲父进程，创建它的那个进程
+	p_proc->task.tree_info.ppid = -1;		   //当前父进程
+	p_proc->task.tree_info.child_p_num = 0;	   //子进程数量
+	// p_proc->task.tree_info.child_process[NR_CHILD_MAX];//子进程列表
+	p_proc->task.tree_info.child_t_num = 0; //子线程数量
+	// p_proc->task.tree_info.child_thread[NR_CHILD_MAX];//子线程列表
 	// p_proc->task.memmap.text_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在中赋新值
 	// p_proc->task.memmap.text_lin_limit = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
 	// p_proc->task.memmap.data_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
@@ -363,4 +363,3 @@ PRIVATE int initialize_processes()
 	return 0;
 
 }
-

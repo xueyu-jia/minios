@@ -58,4 +58,5 @@ PUBLIC int kern_vfs_mount(const char *source, const char *target,
                       const char *filesystemtype, unsigned long mountflags, const void *data);
 PUBLIC int kern_vfs_umount(const char *target);
 PUBLIC void init_fs(int root_drive);
+PUBLIC void vfs_put_dentry(struct dentry* dentry);
 #endif

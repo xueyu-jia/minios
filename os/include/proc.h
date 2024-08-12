@@ -57,7 +57,8 @@
 #define PID_NO_PROC	1000
 #define PROC_READY_MAX	NR_PCBS	//xiaofeng // 30 -> NR_PCBS jiangfeng 24-5-5
 #define PROC_NICE_MAX	19
-
+// 初始进程为回收进程
+#define NR_RECY_PROC PID_INIT
 //~xw
 
 #define NR_CPUS		1		//numbers of cpu. added by xw, 18/6/1
@@ -180,7 +181,7 @@ typedef struct s_proc {
 							*/
 
 	LIN_MEMMAP	memmap;			//线性内存分部信息 		add by visual 2016.5.4
-	TREE_INFO info;				//记录进程树关系	add by visual 2016.5.25
+	TREE_INFO tree_info;				//记录进程树关系	add by visual 2016.5.25
     int ticks;                 /* remained ticks */
     int priority;
 
@@ -280,7 +281,7 @@ PUBLIC void idle();
 void proc_update();
 
 // 通过pcb找到真正的进程, added by jiangfeng
-#define proc_real(proc) ((proc->task.info.type == TYPE_THREAD)? &(proc_table[proc->task.info.ppid]):proc)
+#define proc_real(proc) ((proc->task.tree_info.type == TYPE_THREAD)? &(proc_table[proc->task.tree_info.ppid]):proc)
 
 // 获得pcb对应的memmap
 PRIVATE inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {

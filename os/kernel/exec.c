@@ -300,15 +300,15 @@ PRIVATE int exec_pcb_init(const char *path) {
     list_init(&p_proc_current->task.memmap.vma_map);
 	init_mem_page(&p_proc_current->task.memmap.anon_pages, MEMPAGE_AUTO);
     // 进程树属性,只要改两项，其余不用改
-    // p_proc_current->task.info.type = TYPE_PROCESS;
-    // //当前是进程还是线程 p_proc_current->task.info.real_ppid = -1;
-    // //亲父进程，创建它的那个进程 p_proc_current->task.info.ppid = -1;
-    // //当前父进程 p_proc_current->task.info.child_p_num = 0;	//子进程数量
-    // p_proc_current->task.info.child_process[NR_CHILD_MAX];//子进程列表
-    // p_proc_current->task.info.child_t_num = 0;		//子线程数量
-    // p_proc_current->task.info.child_thread[NR_CHILD_MAX];//子线程列表
-    p_proc_current->task.info.text_hold = 1; // 是否拥有代码
-    p_proc_current->task.info.data_hold = 1; // 是否拥有数据
+    // p_proc_current->task.tree_info.type = TYPE_PROCESS;
+    // //当前是进程还是线程 p_proc_current->task.tree_info.real_ppid = -1;
+    // //亲父进程，创建它的那个进程 p_proc_current->task.tree_info.ppid = -1;
+    // //当前父进程 p_proc_current->task.tree_info.child_p_num = 0;	//子进程数量
+    // p_proc_current->task.tree_info.child_process[NR_CHILD_MAX];//子进程列表
+    // p_proc_current->task.tree_info.child_t_num = 0;		//子线程数量
+    // p_proc_current->task.tree_info.child_thread[NR_CHILD_MAX];//子线程列表
+    p_proc_current->task.tree_info.text_hold = 1; // 是否拥有代码
+    p_proc_current->task.tree_info.data_hold = 1; // 是否拥有数据
     p_proc_current->task.nice = 0;
     p_proc_current->task.weight=nice_to_weight[p_proc_current->task.nice+20];
     return 0;

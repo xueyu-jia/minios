@@ -189,7 +189,7 @@ PUBLIC int init_proc_page(u32 pid)
 
 	/*********************页表初始化部分*********************************/
 	u32 kernel_pde_offset = KernelLinBase/num_4M * 4;
-	memcpy((void*)(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset), 
+	memcpy((void*)(K_PHY2LIN(pde_addr_phy_temp) + kernel_pde_offset),
 		(void*)(K_PHY2LIN(kernel_pde_phy) + kernel_pde_offset), num_4K - kernel_pde_offset);
 
 	return 0;
@@ -325,7 +325,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 		u32 attr = phy_addr&0xFFF;
 		phy_addr = phy_addr&0xFFFFF000;
 		// 检查是否为合法物理地址?
-		if((phy_addr) < ((big_kernel)?KUWALL2:KUWALL1)) { // 错误的物理页，这不对吧, 
+		if((phy_addr) < ((big_kernel)?KUWALL2:KUWALL1)) { // 错误的物理页，这不对吧,
 			goto fatal;
 		} else {
 			// 检查权限
@@ -343,7 +343,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 		refresh_page_cache();
 		return;
 	}
-	#endif	
+	#endif
 fatal:
 	disp_str("\n");
 	disp_color_str("Page Fault\n", 0x74);
@@ -460,7 +460,7 @@ PUBLIC int lin_mapping_phy(u32 AddrLin,		  //线性地址
 						   u32 pte_Attribute) //页表中的属性位
 {
 	u32 pde_addr_phy = get_pde_phy_addr(pid); //add by visual 2016.5.19
-	return lin_mapping_phy_nopid(AddrLin, phy_addr, pde_addr_phy, pde_Attribute, pte_Attribute);	
+	return lin_mapping_phy_nopid(AddrLin, phy_addr, pde_addr_phy, pde_Attribute, pte_Attribute);
 }
 
 // used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
@@ -474,7 +474,7 @@ PUBLIC int kmapping_phy(u32 phy_addr) {
 			release(&kmap_lock);
 			return -1;
 		}
-		
+
 		int index = 0;
 		while(index < KernelLinMapMaxPage && kmapping_pages[index] != 0)index++;
 		kmapping_pages[index] = phy_addr;
@@ -486,9 +486,9 @@ PUBLIC int kmapping_phy(u32 phy_addr) {
 		release(&kmap_lock);
 		return K_PHY2LIN(phy_addr); // 无需映射，可直接访问
 	}
-	lin_mapping_phy_nopid(lin_addr, 
-						phy_addr, 
-						kernel_pde_phy, 
+	lin_mapping_phy_nopid(lin_addr,
+						phy_addr,
+						kernel_pde_phy,
 						PG_P | PG_USS | PG_RWW,
 						PG_P | PG_USS | PG_RWW);
 	release(&kmap_lock);
@@ -679,7 +679,7 @@ PUBLIC u32 get_seg_limit(u32 pid, u32 type) //modified by mingxuan 2021-8-17
 // PUBLIC void free_all_phypage(u32 pid)
 // {
 // 	//释放代码段，text_hold为1就释放掉.为0不处理
-// 	// if (proc_table[pid].task.info.text_hold == 1)
+// 	// if (proc_table[pid].task.tree_info.text_hold == 1)
 // 	// {
 // 	// 全局页管理引入计数，不用再管代码持有问题
 // 	free_seg_phypage(pid, MEMMAP_TEXT);
@@ -751,7 +751,7 @@ void update_heap_limit(u32 pid, int tag)
 {
 	if (tag == 1) //heap_limit加上4K
 	{
-		if (proc_table[pid].task.info.type == TYPE_PROCESS)
+		if (proc_table[pid].task.tree_info.type == TYPE_PROCESS)
 		{
 			p_proc_current->task.memmap.heap_lin_limit += num_4K;
 		}
@@ -762,7 +762,7 @@ void update_heap_limit(u32 pid, int tag)
 	}
 	else if (tag == -1) //heap_limit减去4K
 	{
-		if (proc_table[pid].task.info.type == TYPE_PROCESS)
+		if (proc_table[pid].task.tree_info.type == TYPE_PROCESS)
 		{
 			p_proc_current->task.memmap.heap_lin_limit -= num_4K;
 		}
@@ -780,7 +780,7 @@ void update_heap_limit(u32 pid, int tag)
 *======================================================================*/
 u32 get_heap_limit(u32 pid)
 {
-	if (proc_table[pid].task.info.type == TYPE_PROCESS)
+	if (proc_table[pid].task.tree_info.type == TYPE_PROCESS)
 	{
 		return proc_table[pid].task.memmap.heap_lin_limit;
 	}

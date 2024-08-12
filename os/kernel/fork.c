@@ -150,17 +150,17 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
 PRIVATE int update_proc_tree(PROCESS* p_child)
 {
 	/************更新父进程的info***************/
-	p_proc_current->task.info.child_p_num += 1; //子进程数量
-	p_proc_current->task.info.child_process[p_proc_current->task.info.child_p_num-1] = p_child->task.pid;//子进程列表
+	p_proc_current->task.tree_info.child_p_num += 1; //子进程数量
+	p_proc_current->task.tree_info.child_process[p_proc_current->task.tree_info.child_p_num-1] = p_child->task.pid;//子进程列表
 
 	/************更新子进程的info***************/
-	p_child->task.info.type = p_proc_current->task.info.type;	//当前进程属性跟父进程一样
-	p_child->task.info.real_ppid = p_proc_current->task.pid;  //亲父进程，创建它的那个进程
-	p_child->task.info.ppid = p_proc_current->task.pid;		//当前父进程
-	p_child->task.info.child_p_num = 0; //子进程数量
-	p_child->task.info.child_t_num = 0;	//子线程数量
-	p_child->task.info.text_hold = 0;			//是否拥有代码，子进程不拥有代码
-	p_child->task.info.data_hold = 1;			//是否拥有数据，子进程拥有数据
+	p_child->task.tree_info.type = p_proc_current->task.tree_info.type;	//当前进程属性跟父进程一样
+	p_child->task.tree_info.real_ppid = p_proc_current->task.pid;  //亲父进程，创建它的那个进程
+	p_child->task.tree_info.ppid = p_proc_current->task.pid;		//当前父进程
+	p_child->task.tree_info.child_p_num = 0; //子进程数量
+	p_child->task.tree_info.child_t_num = 0;	//子线程数量
+	p_child->task.tree_info.text_hold = 0;			//是否拥有代码，子进程不拥有代码
+	p_child->task.tree_info.data_hold = 1;			//是否拥有数据，子进程拥有数据
 
 	return 0;
 }
