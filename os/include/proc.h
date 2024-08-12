@@ -81,8 +81,10 @@
 //	FREE: 此PCB空闲未分配
 //	READY: 此PCB表示的进程/线程正在使用且可被调度
 //	SLEEPING: 此PCB表示的进程/线程处于睡眠等待状态
-//	KILLED:
-enum proc_stat	{FREE,READY,SLEEPING,KILLED}; //simplify 20240314 jiangfeng
+//	KILLED: 进程收到了一个信号（通常是 SIGKILL 或其他无法被忽略的致命信号），导致它被立即终止。被杀死的进程不会保留其 PCB 以供父进程检索状态。
+//	ZOMBY：僵尸状态通常指的是子进程已经结束运行，但其父进程尚未通过调用如 wait 或 waitpid 这样的系统调用来检索其退出状态。
+//	note: KILLED和ZOMBY的差异请参考wait.c的注释
+enum proc_stat	{FREE, READY, SLEEPING, KILLED, ZOMBY}; //simplify 20240314 jiangfeng
 
 // enum wait_exit_flag	{NORMAL};    		//used for exit and wait //added by mingxuan 2021-1-6
 														//deleted by dongzhangqi 2023-6-2

@@ -59,7 +59,7 @@ PUBLIC void kern_exit(int exit_code)
         release(&recy_pcb->task.lock);
     }
 
-    exit_pcb->task.stat      	= KILLED;
+    exit_pcb->task.stat      	= ZOMBY;
     exit_pcb->task.exit_status 	= exit_code;
 	out_rq(exit_pcb);
 
@@ -226,8 +226,8 @@ PRIVATE void exit_handle_child_thread(u32 pid, bool lock_recy)
             transfer_child_proc(child_pcb->task.pid, NR_RECY_PROC);
         }
 		// free PCBs of child thread
-        child_pcb->task.stat = KILLED;
-		free_PCB(child_pcb);		// todo：不太明白KILLED状态存在的意义
+        child_pcb->task.stat = ZOMBY;
+		free_PCB(child_pcb);
     }
     pcb->task.tree_info.child_t_num = 0;
     return;

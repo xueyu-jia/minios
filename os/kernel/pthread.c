@@ -306,15 +306,8 @@ PUBLIC pthread_t  kern_pthread_self()
 *		pthread_exit			//add by dongzhangqi 2023.5.4
 *
 *************************************************************/
-PUBLIC void sys_pthread_exit()
-{
-    return do_pthread_exit(get_arg(1));
-}
 
-PUBLIC void do_pthread_exit(void *retval)
-{
-	return kern_pthread_exit(retval);
-}
+
 
 PUBLIC void kern_pthread_exit(void *retval)
 {
@@ -330,11 +323,21 @@ PUBLIC void kern_pthread_exit(void *retval)
 
 	//设置返回值
 	p_proc->task.retval = retval;
-	p_proc->task.stat = KILLED; //统一PCB state 20240314
+	p_proc->task.stat = ZOMBY;
 	out_rq(p_proc);
 	sched_yield();
 	return;
 
+}
+
+PUBLIC void do_pthread_exit(void *retval)
+{
+	return kern_pthread_exit(retval);
+}
+
+PUBLIC void sys_pthread_exit()
+{
+    return do_pthread_exit(get_arg(1));
 }
 
 
@@ -363,7 +366,7 @@ PUBLIC int kern_pthread_join(pthread_t thread, void **retval)
 	}
 	while(1){
 		lock_or_yield(&p_proc_father->task.lock);
-		if(p_proc_child->task.stat != KILLED){ //统一PCB state 20240314
+		if(p_proc_child->task.stat != ZOMBY){
 			//挂起，并告知被等待的线程，线程退出时再唤醒
 			lock_or_yield(&p_proc_child->task.lock);
 			p_proc_child->task.who_wait_flag = p_proc_father->task.pid;

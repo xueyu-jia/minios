@@ -1,5 +1,86 @@
 #include "const.h"
 #include "proc.h"
+#include "console.h"
+#include "proto.h"
+#include "spinlock.h"
+
+/*
+在操作系统中，特别是在进程的状态管理中，"ZOMBIE"（僵尸）和"KILLED"（被杀死）是两种不同的状态，它们表示进程生命周期中的不同阶段：
+
+ZOMBIE（僵尸状态）：
+
+僵尸状态通常指的是子进程已经结束运行，但其父进程尚未通过调用如 wait 或 waitpid 这样的系统调用来检索其退出状态。
+在这种状态下，子进程的进程控制块（PCB）依然存在，以便父进程能够获取退出码或其他退出相关信息。
+僵尸进程不占用 CPU 时间，也不会消耗系统资源，但它们仍然占用一个进程ID（PID）和其他一些有限的资源。
+父进程必须调用特定的系统调用来回收僵尸进程的状态信息，之后操作系统才会释放与该进程相关的资源。
+KILLED（被杀死状态）：
+
+被杀死状态指的是进程收到了一个信号（通常是 SIGKILL 或其他无法被忽略的致命信号），导致它被立即终止。
+在这种状态下，进程可能需要进行一些清理工作，比如关闭打开的文件描述符、释放内存等，但这些操作通常是由操作系统或者回收站进程自动完成的。
+与僵尸状态不同，被杀死的进程不会保留其 PCB 以供父进程检索状态，因为操作系统会认为该进程已经终止，且其状态不再重要。
+被杀死的进程状态可能不会立即变为 "terminated"，直到操作系统的某个部分（如回收站进程）处理了该进程的资源回收。
+在提供的代码片段中，try_get_zombie_child 函数用于查找已经结束但尚未被父进程回收的子进程，而 try_remove_killed_child 函数可能用于处理那些因为某些原因被终止的子进程。在实际的操作系统实现中，"KILLED" 状态可能需要特定的处理逻辑来确保资源被适当地回收和清理。
+
+总的来说，"ZOMBIE" 和 "KILLED" 状态的主要区别在于父进程是否有机会检索子进程的退出状态，以及操作系统如何处理这些进程的资源回收。
+*/
+
+
+// static PROCESS* try_get_zombie_child(u32 pid)
+// {
+//     PROCESS* pcb = (PROCESS*)pid2proc(pid);
+//     for (int i = 0; i < pcb->task.tree_info.child_p_num; i++) {
+//         PROCESS* exit_child = (PROCESS*)pid2proc(pcb->task.tree_info.child_process[i]);
+//         if (exit_child->task.stat == KILLED) return exit_child;
+//     }
+//     return NULL;
+// }
+
+// int do_wait(int* wstatus)
+// {
+//     PROCESS* fa_pcb = p_proc_current;
+//     while (true) {
+//         lock_or_yield(&fa_pcb->task.lock);
+//         if (fa_pcb->task.tree_info.child_p_num == 0) {
+//             if (wstatus != NULL) { *wstatus = 0; }
+//             release(&fa_pcb->task.lock);
+//             return -1;
+//         }
+
+//         PROCESS* exit_pcb = try_get_zombie_child(fa_pcb->task.pid);
+//         if (exit_pcb == NULL) {
+//             int pid = try_remove_killed_child(fa_pcb->task.pid);
+//             if (pid != -1) {
+//                 release(&fa_pcb->task.lock);
+//                 return pid;
+//             }
+//             disable_int();
+//             fa_pcb->task.stat = SLEEPING;
+//             release(&fa_pcb->task.lock);
+//             schedule();
+//             continue;
+//         }
+//         lock_or(&exit_pcb->task.lock, schedule);
+//         remove_zombie_child(exit_pcb->task.pid);
+//         if (wstatus != NULL) { *wstatus = exit_pcb->task.exit_status; }
+//         //! FIXME: no thread release here
+//         wait_recycle_memory(exit_pcb->task.pid);
+//         int pid = exit_pcb->task.pid;
+//         //! FIXME: lock also release here
+//         disable_int();
+//         memset(exit_pcb, 0, sizeof(PROCESS));
+//         assert(!exit_pcb->task.tree_info.child_k_num);
+//         assert(!exit_pcb->task.tree_info.child_p_num);
+//         assert(!exit_pcb->task.tree_info.child_t_num);
+//         assert(!exit_pcb->task.tree_info.ppid);
+//         assert(!exit_pcb->task.tree_info.real_ppid);
+//         exit_pcb->task.pid  = -1;
+//         exit_pcb->task.stat = FREE;
+//         release(&exit_pcb->task.lock);
+//         release(&fa_pcb->task.lock);
+//         enable_int();
+//         return pid;
+//     }
+// }
 
 /*======================================================================*
                       sys_wait            added by mingxuan 2021-1-6
@@ -25,13 +106,13 @@ PUBLIC int kern_wait(int *status) //wait返回的为子进程pid,子进程退出
 		for(i = 0;i < NR_CHILD_MAX;i++)
 		{
 			//该子进程表项中有值且处于ZOMBY
-			if(p_proc_current->task.tree_info.child_process[i] !=0 && proc_table[p_proc_current->task.tree_info.child_process[i]].task.stat == KILLED)//统一PCB stat 20240314
+			if(p_proc_current->task.tree_info.child_process[i] !=0 && proc_table[p_proc_current->task.tree_info.child_process[i]].task.stat == ZOMBY)
 			{
 				exit_child_hanging = 1;
 
 				//置子进程的状态为正常
 				//proc_table[p_proc_current->task.tree_info.child_process[i]].task.we_flag = NORMAL;
-				//proc_table[p_proc_current->task.tree_info.child_process[i]].task.stat = KILLED;
+				//proc_table[p_proc_current->task.tree_info.child_process[i]].task.stat = ZOMBY;
 
 				//取走子进程的exit_status，并赋值给自己的child_exit_status
 				p_proc = &proc_table[p_proc_current->task.tree_info.child_process[i]];
