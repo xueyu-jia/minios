@@ -37,6 +37,7 @@ PUBLIC int kern_wait(int* wstatus)
         if (fa_pcb->task.tree_info.child_p_num == 0) {
             if (wstatus != NULL)	*wstatus = 0;
             release(&fa_pcb->task.lock);
+			disp_str("no child_process!! error\n");
             return -1;
         }
 
@@ -53,28 +54,22 @@ PUBLIC int kern_wait(int* wstatus)
 			wait_event(fa_pcb);
             continue;
         }
-        lock_or_yield(&exit_pcb->task.lock);
+
         remove_zombie_child(exit_pcb->task.pid);
-		fa_pcb->task.child_exit_status = exit_pcb->task.exit_status;
-		if (wstatus != NULL)	*wstatus = exit_pcb->task.exit_status;
         //! FIXME: no thread release here
         // wait_recycle_memory(exit_pcb->task.pid);
 		// 内存资源已经在exit时就释放了
 
+		fa_pcb->task.child_exit_status = exit_pcb->task.exit_status;
         int child_pid = exit_pcb->task.pid;
-
 		disable_int();
-		//释放子进程的进程表项，内存资源已经在exit时就释放了
+		lock_or_yield(&exit_pcb->task.lock);
+		//释放子进程的进程表项
 		free_PCB(exit_pcb);	//modified by mingxuan 2021-8-21
-        //! FIXME: lock also release here
-        // assert(!exit_pcb->task.tree_info.child_k_num);
-        // assert(!exit_pcb->task.tree_info.child_p_num);
-        // assert(!exit_pcb->task.tree_info.child_t_num);
-        // assert(!exit_pcb->task.tree_info.ppid);
-        // assert(!exit_pcb->task.tree_info.real_ppid);
         release(&exit_pcb->task.lock);
         release(&fa_pcb->task.lock);
         enable_int();
+		if (wstatus != NULL)	*wstatus = fa_pcb->task.child_exit_status;
         return child_pid;
     }
 }
