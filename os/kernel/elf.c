@@ -7,12 +7,12 @@ void read_Ehdr(u32 fd,Elf32_Ehdr *File_Ehdr,u32 offset)
 {
 
 	kern_vfs_lseek(fd,offset,SEEK_SET);
-	kern_vfs_read(fd,(void*)File_Ehdr,sizeof(Elf32_Ehdr));
+	kern_vfs_read(fd,(char*)File_Ehdr,sizeof(Elf32_Ehdr));
 	//added by mingxuan 2019-5-23
-	int i=0;
-	for(i = 0;i<sizeof(Elf32_Ehdr);i++){
-		((char*)File_Ehdr) [i];
-	}
+	// int i=0;
+	// for(i = 0;i<sizeof(Elf32_Ehdr);i++){
+	// 	((char*)File_Ehdr) [i];
+	// }
 
 	//~xw
 	return;
@@ -21,12 +21,12 @@ void read_Ehdr(u32 fd,Elf32_Ehdr *File_Ehdr,u32 offset)
 void read_Phdr(u32 fd,Elf32_Phdr *File_Phdr,u32 offset)
 {
 	kern_vfs_lseek(fd,offset,SEEK_SET);
-	kern_vfs_read(fd,(void*)File_Phdr,sizeof(Elf32_Phdr));
+	kern_vfs_read(fd,(char*)File_Phdr,sizeof(Elf32_Phdr));
 	//added by mingxuan 2019-5-23
-	int i=0;
-	for(i = 0;i<sizeof(Elf32_Phdr);i++){
-		 ((char*)File_Phdr) [i];
-	}
+	// int i=0;
+	// for(i = 0;i<sizeof(Elf32_Phdr);i++){
+	// 	 ((char*)File_Phdr) [i];
+	// }
 
 	//~xw
 	return;
@@ -35,12 +35,12 @@ void read_Phdr(u32 fd,Elf32_Phdr *File_Phdr,u32 offset)
 void read_Shdr(u32 fd,Elf32_Shdr *File_Shdr,u32 offset)
 {
 	kern_vfs_lseek(fd,offset,SEEK_SET);
-	kern_vfs_read(fd,(void*)File_Shdr,sizeof(Elf32_Shdr));
-	//added by mingxuan 2019-5-23
-	int i=0;
-	for(i = 0;i<sizeof(Elf32_Shdr);i++){
-		((char*)File_Shdr) [i];
-	}
+	kern_vfs_read(fd,(char*)File_Shdr,sizeof(Elf32_Shdr));
+	// // added by mingxuan 2019-5-23
+	// int i=0;
+	// for(i = 0;i<sizeof(Elf32_Shdr);i++){
+	// 	((char*)File_Shdr) [i];
+	// }
 
 	return;
 }

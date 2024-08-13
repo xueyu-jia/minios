@@ -24,16 +24,16 @@ PUBLIC int _disp_color_str(char * info, int color, int pos);// return new pos
  *****************************************************************************/
 /**
  * Initialize the console of a certain tty.
- * 
+ *
  * @param tty  Whose console is to be initialized.
  *****************************************************************************/
 PUBLIC void init_screen(TTY* tty)
 {
 	int nr_tty = tty - tty_table;
-	
+
 	tty->console = console_table + nr_tty;
 
-	/* 
+	/*
 	 * NOTE:
 	 *   variables related to `position' and `size' below are
 	 *   in WORDs, but not in BYTEs.
@@ -58,7 +58,7 @@ PUBLIC void init_screen(TTY* tty)
 		//tty->console->cursor = disp_pos / 2;
 		out_char(tty->console, *p == '?' ? nr_tty + '0' : *p);
 	}
-	
+
 	set_cursor(tty->console->cursor);
 }
 
@@ -68,7 +68,7 @@ PUBLIC void init_screen(TTY* tty)
  *****************************************************************************/
 /**
  * Print a char in a certain console.
- * 
+ *
  * @param con  The console to which the char is printed.
  * @param ch   The char to print.
  *****************************************************************************/
@@ -77,13 +77,13 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 {
 	// acquire(&video_mem_lock);
 	disable_int();
-	
+
 
 	//u8* pch = (u8*)(V_MEM_BASE + con->cursor * 2);
 	//unsigned int pos = V_MEM_BASE+con->cursor*2;
 
 
-	
+
 	//assert(con->cursor - con->orig < con->con_size);
 
 	/*
@@ -92,7 +92,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 	 */
 	int cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
 	int cursor_y = (con->cursor - con->orig) / SCR_WIDTH;
-	
+
 	switch(ch) {
 	case '\n':
 		clear_screen(con->cursor, SCR_WIDTH - cursor_x);
@@ -113,10 +113,10 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 		// disp_pos = con->cursor*2;
 		write_char(ch, con->cursor*2);
 		con->cursor++;
-		
+
 		break;
 	}
-	
+
 
 
 	cursor_x = (con->cursor - con->orig) % SCR_WIDTH;
@@ -154,7 +154,7 @@ PUBLIC void out_char(CONSOLE* con, char ch)
  *****************************************************************************/
 /**
  * Write whitespaces to the screen.
- * 
+ *
  * @param pos  Write from here.
  * @param len  How many whitespaces will be written.
  *****************************************************************************/
@@ -173,9 +173,9 @@ PRIVATE void clear_screen(int pos, int len)
  *****************************************************************************/
 /**
  * Uses `nr_current_console' to determine if a console is the current one.
- * 
+ *
  * @param con   Ptr to console.
- * 
+ *
  * @return   TRUE if con is the current console.
  *****************************************************************************/
 PUBLIC int is_current_console(CONSOLE* con)
@@ -189,7 +189,7 @@ PUBLIC int is_current_console(CONSOLE* con)
  *****************************************************************************/
 /**
  * Display the cursor by setting CRTC (6845 compatible) registers.
- * 
+ *
  * @param position  Position of the cursor based on the beginning of the video
  *                  memory. Note that it counts in WORDs, not in BYTEs.
  *****************************************************************************/
@@ -209,7 +209,7 @@ PRIVATE void set_cursor(unsigned int position)
  *****************************************************************************/
 /**
  * Routine for hardware screen scrolling.
- * 
+ *
  * @param addr  Offset in the video memory.
  *****************************************************************************/
 PRIVATE void set_video_start_addr(u32 addr)
@@ -228,7 +228,7 @@ PRIVATE void set_video_start_addr(u32 addr)
  *****************************************************************************/
 /**
  * Select a console as the current.
- * 
+ *
  * @param nr_console   Console nr, range in [0, NR_CONSOLES-1].
  *****************************************************************************/
 PUBLIC void select_console(int nr_console)
@@ -253,7 +253,7 @@ PUBLIC void select_console(int nr_console)
  * When there is no line below the bottom of the screen, scrolling UP takes no
  * effects; when there is no line above the top of the screen, scrolling DOWN
  * takes no effects.
- * 
+ *
  * @param con   The console whose screen is to be scrolled.
  * @param dir   SCR_UP : scroll the screen upwards;
  *              SCR_DN : scroll the screen downwards
@@ -322,7 +322,7 @@ PUBLIC void reset_screen(CONSOLE* con) {
 /**
  * Set the cursor and starting address of a console by writing the
  * CRT Controller Registers.
- * 
+ *
  * @param con  The console to be set.
  *****************************************************************************/
 PRIVATE void flush(CONSOLE* con)
@@ -355,7 +355,7 @@ PRIVATE void flush(CONSOLE* con)
  *
  * Note that the addresses of dst and src are not pointers, but integers, 'coz
  * in most cases we pass integers into it as parameters.
- * 
+ *
  * @param dst   Addr of destination.
  * @param src   Addr of source.
  * @param size  How many words will be copied.
@@ -368,8 +368,8 @@ PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 }
 
 
-PUBLIC void disp_color_str(char* info, int color){
-	
+PUBLIC void disp_color_str(const char* info, int color){
+
 	if(kernel_initial == 1){
 		disp_pos = _disp_color_str(info, color, disp_pos);
 	}else{
@@ -396,6 +396,6 @@ PUBLIC void disp_color_str(char* info, int color){
 	}
 }
 
-PUBLIC void disp_str(char* info){
+PUBLIC void disp_str(const char* info){
 	disp_color_str(info, DEFAULT_CHAR_COLOR);
 }

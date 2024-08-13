@@ -11,6 +11,7 @@
 #include "pagetable.h"
 #include "mmap.h"
 #include "console.h"
+#include "assert.h"
 
 
 PRIVATE int exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
@@ -104,20 +105,39 @@ PRIVATE int exec_replace_argv_and_envp(
 
     // 将暂存区的数据拷贝到进程新的内存
     memcpy((void *)ArgLinBase, tmp_buf, space);
-    kern_kfree_4k(tmp_buf);
+    kern_kfree_4k((u32)tmp_buf);
     return 0;
 
 close_on_error:
     return -1;
 }
 
-/*======================================================================*
- *                          kern_exec		add by visual 2016.5.23
- *exec系统调用功能实现部分
- *======================================================================*/
+static void* exec_read_and_load(int fd)
+{
+    Elf32_Ehdr* elf_header = (Elf32_Ehdr*)kern_kmalloc(sizeof(Elf32_Ehdr));
+    assert(elf_header != NULL);
+    read_Ehdr(fd, elf_header, 0);
+
+    Elf32_Phdr* elf_proghs = (Elf32_Phdr*)kern_kmalloc(sizeof(Elf32_Phdr) * elf_header->e_phnum);
+    assert(elf_proghs != NULL);
+
+    for (int i = 0; i < elf_header->e_phnum; i++) {
+        u32 offset = elf_header->e_phoff + i * sizeof(Elf32_Phdr);//计算当前程序头在文件中的偏移量。
+        read_Phdr(fd, elf_proghs + i, offset);//函数读取程序头的内容，将其存储在程序头表中的相应位置。
+    }
+
+    void* entry_point = (void*)elf_header->e_entry;
+    int   resp        = exec_load(fd, elf_header, elf_proghs);
+
+    kern_kfree(elf_header);
+    kern_kfree(elf_proghs);
+
+    return resp == 0 ? entry_point : NULL;
+}
+
 PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp)
 {
-    u32 err_temp;
+    int err_temp;
     STACK_FRAME *p_reg;
 
     /*******************打开文件************************/
@@ -125,66 +145,133 @@ PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp)
     if (fd == -1)
         goto open_file_failed;
 
-    Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
-    Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
-    Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
-    char       *_path     = kern_kmalloc(strlen(path) + 1);
+    char* _path = (char*)kern_kmalloc(strlen(path) + 1);
     strcpy(_path, path);
 
-    /*************获取elf信息**************/
-    err_temp = read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr);
-    if (0 != err_temp) {
-        disp_str("not valid elf file");
-        goto close_on_error;
-    }
-
+    // update argv and envp
     err_temp = exec_replace_argv_and_envp(_path, argv, envp);
+
     if (0 != err_temp) {
         disp_str("exec:replace argv and envp failed");
         goto close_on_error;
     }
 
-    /*************根据elf的program复制文件信息**************/
-    if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr)) {
+    //! ATTENTION: from here, subsequent operations will massively
+    //! modify the pcb's data and page tables, and the recovery of
+    //! errors will also be extremely costly. therefore, we directly
+    //! mark the errors that occur in the future as unrecoverable
+    //! errors. when these errors occur, execve directly panic and does
+    //! not return
+    //! TODO: introduec a more advanced architecture to solve this kind
+    //! of problem
+
+    void* entry_point = exec_read_and_load(fd);//读取并加载可执行文件的内容，并关闭文件
+    kern_vfs_close(fd);
+    if(entry_point == NULL){
         disp_str("exec_load error!\n");
         goto fatal_error;
     }
 
-    /***********************代码、数据、堆、栈***************************/
+    // update eip and esp, remap the stack
     p_reg = proc_kstacktop(p_proc_current);
-    p_reg->eip = Echo_Ehdr->e_entry;
+    p_reg->eip = (u32)entry_point;
     p_reg->esp = (u32)p_proc_current->task.memmap.stack_lin_base;
-    do_mmap(p_proc_current->task.memmap.stack_lin_limit,
+    err_temp = do_mmap(
+        p_proc_current->task.memmap.stack_lin_limit,
         p_proc_current->task.memmap.stack_lin_base-p_proc_current->task.memmap.stack_lin_limit,
         PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
-
-    kern_kfree(_path);
-    kern_kfree(Echo_Ehdr);
-    kern_kfree(Echo_Phdr);
-    kern_kfree(Echo_Shdr);
-    kern_vfs_close(fd);
+    if(-1 == err_temp){
+        disp_str("do_mmap in exec error!\n");
+        goto fatal_error;
+    }
     return 0;
-fatal_error:    // 对于已经执行load及之后的错误已经不能恢复，故将当前进程退出
-    kern_kfree(_path);
-    kern_kfree(Echo_Ehdr);
-    kern_kfree(Echo_Phdr);
-    kern_kfree(Echo_Shdr);
-    kern_vfs_close(fd);
-    do_exit(-1);
-close_on_error:
-    kern_kfree(_path);
-    kern_kfree(Echo_Ehdr);
-    kern_kfree(Echo_Phdr);
-    kern_kfree(Echo_Shdr);
-    kern_vfs_close(fd);
-    return -1;
 
 open_file_failed:
     disp_str(path);
-    disp_str(":sys_exec open error!\n"); // added by mingxuan 2020-12-22
+    disp_str(":sys_exec open error!\n");
     return -1;
 
+close_on_error:
+    kern_kfree((u32)_path);
+    kern_vfs_close(fd);
+    return -1;
+
+fatal_error:
+    kern_kfree((u32)_path);
+    do_exit(-1);
+
 }
+
+// PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp)
+// {
+//     u32 err_temp;
+//     STACK_FRAME *p_reg;
+
+//     /*******************打开文件************************/
+//     u32 fd = kern_vfs_open(path, O_RDONLY, 0);
+//     if (fd == -1)
+//         goto open_file_failed;
+
+//     Elf32_Ehdr *Echo_Ehdr = kern_kmalloc(sizeof(Elf32_Ehdr));
+//     Elf32_Phdr *Echo_Phdr = kern_kmalloc(10 * sizeof(Elf32_Phdr));
+//     Elf32_Shdr *Echo_Shdr = kern_kmalloc(10 * sizeof(Elf32_Shdr));
+//     char       *_path     = kern_kmalloc(strlen(path) + 1);
+//     strcpy(_path, path);
+
+//     /*************获取elf信息**************/
+//     err_temp = read_elf(fd, Echo_Ehdr, Echo_Phdr, Echo_Shdr);
+//     if (0 != err_temp) {
+//         disp_str("not valid elf file");
+//         goto close_on_error;
+//     }
+
+//     err_temp = exec_replace_argv_and_envp(_path, argv, envp);
+//     if (0 != err_temp) {
+//         disp_str("exec:replace argv and envp failed");
+//         goto close_on_error;
+//     }
+
+//     /*************根据elf的program复制文件信息**************/
+//     if (-1 == exec_load(fd, Echo_Ehdr, Echo_Phdr)) {
+//         disp_str("exec_load error!\n");
+//         goto fatal_error;
+//     }
+
+//     /***********************代码、数据、堆、栈***************************/
+//     p_reg = proc_kstacktop(p_proc_current);
+//     p_reg->eip = Echo_Ehdr->e_entry;
+//     p_reg->esp = (u32)p_proc_current->task.memmap.stack_lin_base;
+//     do_mmap(p_proc_current->task.memmap.stack_lin_limit,
+//         p_proc_current->task.memmap.stack_lin_base-p_proc_current->task.memmap.stack_lin_limit,
+//         PROT_READ|PROT_WRITE, MAP_PRIVATE, -1, 0);
+
+//     kern_kfree(_path);
+//     kern_kfree(Echo_Ehdr);
+//     kern_kfree(Echo_Phdr);
+//     kern_kfree(Echo_Shdr);
+//     kern_vfs_close(fd);
+//     return 0;
+// fatal_error:    // 对于已经执行load及之后的错误已经不能恢复，故将当前进程退出
+//     kern_kfree(_path);
+//     kern_kfree(Echo_Ehdr);
+//     kern_kfree(Echo_Phdr);
+//     kern_kfree(Echo_Shdr);
+//     kern_vfs_close(fd);
+//     do_exit(-1);
+// close_on_error:
+//     kern_kfree(_path);
+//     kern_kfree(Echo_Ehdr);
+//     kern_kfree(Echo_Phdr);
+//     kern_kfree(Echo_Shdr);
+//     kern_vfs_close(fd);
+//     return -1;
+
+// open_file_failed:
+//     disp_str(path);
+//     disp_str(":sys_exec open error!\n"); // added by mingxuan 2020-12-22
+//     return -1;
+
+// }
 
 
 /**

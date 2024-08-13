@@ -12,18 +12,18 @@
 typedef struct{
 	u8	e_ident[EI_NIDENT];		//ELF魔数，ELF字长，字节序，ELF文件版本等
 	u16	e_type;					//ELF文件类型，REL, 可执行文件，共享目标文件等
-	u16	e_machine;				//ELF的CPU平台属性 
+	u16	e_machine;				//ELF的CPU平台属性
 	u32	e_version;				//ELF版本号
 	u32	e_entry;				//ELF程序的入口虚拟地址
 	u32	e_phoff;				//program header table(program头)在文件中的偏移
 	u32	e_shoff;				//section header table(section头)在文件中的偏移
-	u32	e_flags;				//用于标识ELF文件平台相关的属性 
-	u16	e_ehsize;				//elf header（本文件头）的长度 
+	u32	e_flags;				//用于标识ELF文件平台相关的属性
+	u16	e_ehsize;				//elf header（本文件头）的长度
 	u16	e_phentsize;			//program header table 中每一个条目的长度
 	u16	e_phnum;				//program header table 中有多少个条目
 	u16	e_shentsize;			//section header table 中每一个条目的长度
 	u16	e_shnum;				//section header table 中有多少个条目
-	u16	e_shstrndx;				//section header table 中字符索引 
+	u16	e_shstrndx;				//section header table 中字符索引
 }Elf32_Ehdr;
 #define EM_386	3
 /*******************************************
@@ -59,4 +59,7 @@ typedef struct
 }Elf32_Shdr;
 
 PUBLIC int read_elf(u32 fd,Elf32_Ehdr* Echo_Ehdr,Elf32_Phdr *Echo_Phdr,Elf32_Shdr *Echo_Shdr);
+PUBLIC void read_Ehdr(u32 fd, Elf32_Ehdr *File_Ehdr, u32 offset);
+PUBLIC void read_Phdr(u32 fd, Elf32_Phdr *File_Phdr, u32 offset);
+PUBLIC void read_Shdr(u32 fd, Elf32_Shdr *File_Shdr, u32 offset);
 #endif

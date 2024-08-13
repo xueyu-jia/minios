@@ -11,8 +11,8 @@
 #include "pagetable.h"
 #include "memman.h"
 
-PRIVATE int fork_pcb_cpy(PROCESS* p_child);
-PRIVATE int update_proc_tree(PROCESS* p_child);
+PRIVATE int fork_pcb_info_cpy(PROCESS* p_child);
+PRIVATE int fork_update_proc_tree(PROCESS* p_child);
 
 
 /**
@@ -38,7 +38,7 @@ PUBLIC int kern_fork()
 		goto init_page_failed;
 
 	// cp the infomation from parent PCB
-	fork_pcb_cpy(ch);
+	fork_pcb_info_cpy(ch);
 	release(&ch->task.lock);
 
 	disable_int();
@@ -49,7 +49,7 @@ PUBLIC int kern_fork()
 	enable_int();
 
 	// update the proc tree
-	update_proc_tree(ch);
+	fork_update_proc_tree(ch);
 	// rename the child proc
 	strcpy(ch->task.p_name,"fork");	// 所有的子进程都叫fork
 
@@ -57,7 +57,7 @@ PUBLIC int kern_fork()
 	proc_kstacktop(ch)->eax = 0; // 设置返回值，改为使用内核栈宏 2024.05.05 jiangfeng
 	u_proc_sum += 1;
 
-	//anything child need is prepared now, set its state to ready. added by xw, 17/12/11
+	//anything child need is prepared now, set its state to ready.
 	disable_int();
 	ch->task.stat = READY;
 	release(&fa->task.lock);
@@ -94,7 +94,7 @@ PUBLIC int sys_fork()
  * @retval	0
  * @param	child's PROCESS
  */
-PRIVATE int fork_pcb_cpy(PROCESS* p_child)
+PRIVATE int fork_pcb_info_cpy(PROCESS* p_child)
 {
 	int pid;
 	u32 cr3_child;
@@ -147,7 +147,7 @@ PRIVATE int fork_pcb_cpy(PROCESS* p_child)
  * @retval 	0
  */
 
-PRIVATE int update_proc_tree(PROCESS* p_child)
+PRIVATE int fork_update_proc_tree(PROCESS* p_child)
 {
 	/************更新父进程的info***************/
 	p_proc_current->task.tree_info.child_p_num += 1; //子进程数量
