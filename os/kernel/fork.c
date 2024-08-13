@@ -10,6 +10,7 @@
 #include "fs.h"
 #include "pagetable.h"
 #include "memman.h"
+#include "fork.h"
 
 PRIVATE int fork_pcb_info_cpy(PROCESS* p_child);
 PRIVATE int fork_update_proc_tree(PROCESS* p_child);

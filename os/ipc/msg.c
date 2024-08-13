@@ -10,6 +10,7 @@
 #include "memman.h"
 #include "pagetable.h"
 #include "msg.h"
+#include "proto.h"
 
 // instances
 msg_queue q_list[MAX_MSQ_NUM];

@@ -24,10 +24,10 @@ PUBLIC void	out_byte(u16 port, u8 value);
 PUBLIC u8	in_byte(u16 port);
 PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
 PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglong
-// PUBLIC u32	in_mem_32(u32 phy_addr); 
+// PUBLIC u32	in_mem_32(u32 phy_addr);
 // PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
 
-// PUBLIC void	disp_str(char* info); // implement in tty 
+// PUBLIC void	disp_str(char* info); // implement in tty
 // PUBLIC void	disp_color_str(char* info, int color);
 PUBLIC void write_char(char ch, int pos);    //added by mingxuan 2019-5-19
 
@@ -97,52 +97,6 @@ PUBLIC void spurious_irq(int irq);
 
 /* clock.c */
 
-/***************************************************************
-* 以下是系统调用相关函数的声明
-****************************************************************/
-/* syscall.asm */
-/*
-PUBLIC void  sys_call();                //int_handler
-PUBLIC int   get_ticks();
-PUBLIC int   get_pid();					//add by visual 2016.4.6
-PUBLIC int   get_pid_byname(char *);
-PUBLIC pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
-PUBLIC void* kmalloc(int size);			//edit by visual 2016.5.9
-PUBLIC void* kmalloc_4k();				//edit by visual 2016.5.9
-// PUBLIC void* malloc(int size);			//edit by visual 2016.5.9
-PUBLIC void* malloc_4k();				//edit by visual 2016.5.9
-// PUBLIC int free(void *arg);				//edit by visual 2016.5.9
-PUBLIC int free_4k(void* AdddrLin);		//edit by visual 2016.5.9
-PUBLIC int fork();						//add by visual 2016.4.8
-PUBLIC int pthread_create(void *arg);			//add by visual 2016.4.11
-PUBLIC void udisp_int(int arg);		//add by visual 2016.5.16
-PUBLIC void udisp_str(char* arg);	//add by visual 2016.5.16
-// PUBLIC u32 execve(char* path);		//add by visual 2016.5.16
-PUBLIC u32 execve(char* path, char *argv[], char *envp[]);     //added by xyx&&wjh 2021.12.31
-PUBLIC u32 execvp(char* file, char *argv[]);    //added by xyx&&wjh 2021.12.31
-PUBLIC u32 execv(char* path, char *argv[]);     //added by xyx&&wjh 2021.12.31
-PUBLIC void yield();				//added by xw, 18/4/19
-PUBLIC void sleep(int n);			//added by xw, 18/4/19
-PUBLIC void print_E();
-PUBLIC void print_F();
-PUBLIC u32 toatl_mem_size();           //added by wang 2021.8.26
-PUBLIC int shmget(void *uesp);              //added by xiaofeng 2021-9-8
-PUBLIC void *_shmat(void *uesp);             //added by xiaofeng 2021-9-8
-PUBLIC void _shmdt(void *uesp);               //added by xiaofeng 2021-9-8
-PUBLIC struct ipc_shm *shmctl(void *uesp);  //added by xiaofeng 2021-9-8
-PUBLIC void *shmmemcpy(void *uesp);         //added by xiaofeng 2021-9-8
-PUBLIC int pthread_mutex_init (pthread_mutex_t *mutex, pthread_mutexattr_t *mutexattr);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_mutex_destroy(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_mutex_lock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_mutex_unlock (pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_mutex_trylock(pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_init(pthread_cond_t *cond,const pthread_condattr_t *cond_attr);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_timewait(pthread_cond_t *cond,pthread_mutex_t *mutex,int timeout);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_signal(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_broadcast(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
-PUBLIC int pthread_cond_destroy(pthread_cond_t *cond);//added by ZengHao & MaLinhan 2021.12.23
-*/
 
 /*syscall.c*/   //added by zhenhao 2023.3.5
 u32 get_arg(int order);
@@ -257,27 +211,18 @@ PUBLIC int sys_pthread_cond_destroy();//added by ZengHao & MaLinhan 2021.12.23
 /* proc.c */
 
 
-/* testfunc.c */
-/*  //deleted by mingxuan 2021-8-13
-PUBLIC void sys_print_E();
-PUBLIC void sys_print_F();
-*/
-
 /*exec.c*/
-//PUBLIC u32 sys_execve(char* path);		//add by visual 2016.5.23
-PUBLIC u32 sys_execvp();      //added by xyx&&wjh 2021.12.31
-PUBLIC u32 sys_execv();       //added by xyx&&wjh 2021.12.31
-PUBLIC u32 sys_execve();    //modified by mingxuan 2021-8-11
-//PUBLIC u32 do_execve(char *path);     //added by mingxuan 2021-8-11
+#include "exec.h"
 
 /*fork.c*/
-PUBLIC int sys_fork();					//add by visual 2016.5.25
+#include "fork.h"
 
 /*wait.c*/
-PUBLIC int sys_wait();                 //added by mingxuan 2021-1-6
+#include "wait.h"
+
 /*exit.c*/
-//PUBLIC void sys_exit(int status);       //added by mingxuan 2021-1-6
-PUBLIC void sys_exit();         //modified by mingxuan 2021-8-13
+#include "exit.h"
+
 
 /* shm.c */
 PUBLIC int sys_shmget();              //added by xiaofeng 2021-9-8

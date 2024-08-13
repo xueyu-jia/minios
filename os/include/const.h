@@ -5,8 +5,7 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#ifndef _ORANGES_CONST_H_
-#define _ORANGES_CONST_H_
+#pragma once
 #include "type.h"
 /*最大整数定义*/
 #define MAX_UNSIGNED_INT 0xFFFFFFFF // 最大的无符号整形
@@ -93,15 +92,15 @@
 //#define NR_SYS_CALL     33    //modified by mingxuan 2021-2-7
 //#define NR_SYS_CALL     36	//modified by mingxuan 2021-2-28
 // #define NR_SYS_CALL       31	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
-//#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API 
+//#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API
 //#define NR_SYS_CALL       42	//modified by xiaofeng 2022-1-10     增加了1个关于内核锁测试的接口
-// #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
-//#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口 
+// #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口
+//#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口
 //#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
 // #define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
 // modified by jiangfeng 2024.5 增加重构后vfs文件系统调用
 // devfs支持以后，移除初始化设备的系统调用
-#define NR_SYS_CALL		  67 
+#define NR_SYS_CALL		  67
 /* TTY */
 // added by mingxuan 2019-5-19
 #define NR_CONSOLES 3 /* consoles */
@@ -272,5 +271,3 @@
 #define OPT_DISP_SERIAL // 是否将disp_xx的输出打印到串口
 // #define OPT_MMU_COW // 是否启用page cache 的写时复制 (Copy-On-Write)
 #define OPT_PAGE_CACHE // 是否启用一般read/write的Page Cache
-
-#endif /* _ORANGES_CONST_H_ */

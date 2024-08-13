@@ -12,7 +12,7 @@
 extern	cstart
 extern	kernel_main
 extern	exception_handler
-; extern	spurious_irq 
+; extern	spurious_irq
 ; extern	clock_handler
 extern	disp_str
 extern	delay
@@ -67,7 +67,7 @@ global read_cr3   ;//add by visual 2016.5.9
 global refresh_page_cache ; // add by visual 2016.5.12
 global refresh_gdt 		;add by sundong 2023.3.8
 global halt  			;added by xw, 18/6/11
-global get_arg			;added by xw, 18/6/18
+; global get_arg			;added by xw, 18/6/18
 
 global	divide_error
 global	single_step_exception
@@ -822,10 +822,10 @@ restart_initial:
 	popad
 	popfd
 	ret
-	
+
 	;mov		eax, [p_proc_current]
 	;mov 	esp, [eax + ESP_SAVE_INT]		;restore esp position
-	
+
 	;jmp 	restart_restore
 
 ; ====================================================================================
@@ -837,7 +837,7 @@ read_cr2:
 
 read_cr3:
 	mov eax,cr3
-	ret	
+	ret
 
 ; ====================================================================================
 ;				    refresh_page_cache		//add by visual 2016.5.12
@@ -856,7 +856,7 @@ refresh_page_cache:
 	lgdt	[gdt_ptr]	; 使用新的GDT
 	xor		ax,	ax
 	;由于gdt的video相关的描述符发生更改，因此需要重置gs，以刷新gs隐藏部分的内容
-	mov 	ax,	SELECTOR_VIDEO 
+	mov 	ax,	SELECTOR_VIDEO
 	mov 	gs,	ax
 	xor		ax,	ax
 	;尽管SELECTOR_FLAT_RW对应的描述符的内容没有发生改变，此处仍然更新了ds、ss、es、fs、ss
@@ -892,9 +892,3 @@ halt:
 ; 	pop esi
 ; 	pop ebp
 ; 	ret
-
-
-
-
-
-

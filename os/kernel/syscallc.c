@@ -13,7 +13,7 @@
 #include "ksignal.h"
 #include "semaphore.h"
 #include "syscall.h"
-PUBLIC u32 get_arg(int order);
+
 //modified by mingxuan 2021-8-14
 //PUBLIC u32 do_malloc_4k()
 
@@ -95,13 +95,13 @@ PUBLIC u32 sys_total_mem_size()
 PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_get_ticks] =	sys_get_ticks,
 	[_NR_get_pid]	= 	sys_get_pid,
-	[_NR_malloc_4k] = 	sys_malloc_4k,		
+	[_NR_malloc_4k] = 	sys_malloc_4k,
 	[_NR_free_4k] 	= 	sys_free_4k,
 	[_NR_fork] 		=	sys_fork,
 	[_NR_pthread_create] = sys_pthread_create,
 	[_NR_udisp_int] =	sys_udisp_int,
 	[_NR_udisp_str] = 	sys_udisp_str,
-	[_NR_execve]	=	sys_execve,	
+	[_NR_execve]	=	sys_execve,
 	[_NR_yield]		=	sys_yield,
 	[_NR_sleep]		=	sys_sleep,
 	[_NR_open]		=	sys_open,
@@ -116,13 +116,13 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_mkdir]		=	sys_mkdir,
 	[_NR_rmdir]		=	sys_rmdir,
 	[_NR_readdir]	=	sys_readdir,
-	[_NR_chdir]		=	sys_chdir, 
+	[_NR_chdir]		=	sys_chdir,
 	[_NR_getcwd]	=	sys_getcwd,
 	[_NR_wait]		=	sys_wait,
 	[_NR_exit]		=	sys_exit,
 	[_NR_signal]	=	sys_signal,
 	[_NR_sigsend]	=	sys_sigsend,
-	[_NR_sigreturn]	=	sys_sigreturn,	
+	[_NR_sigreturn]	=	sys_sigreturn,
 	[_NR_total_mem_size]	=	sys_total_mem_size,
 	[_NR_shmget]	=	sys_shmget,
 	[_NR_shmat]		=	sys_shmat,
@@ -130,12 +130,12 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_shmctl]	=	sys_shmctl,
 	[_NR_shmmemcpy]	=	sys_shmmemcpy,
 	[_NR_ftok]		=	sys_ftok,
-	[_NR_msgget]	=	sys_msgget,	
-	[_NR_msgsnd]	=	sys_msgsnd,	
+	[_NR_msgget]	=	sys_msgget,
+	[_NR_msgsnd]	=	sys_msgsnd,
 	[_NR_msgrcv]	=	sys_msgrcv,
-	[_NR_msgctl]	=	sys_msgctl,	
+	[_NR_msgctl]	=	sys_msgctl,
 		// sys_test,
-	[_NR_execvp]	=	sys_execvp,	
+	[_NR_execvp]	=	sys_execvp,
 	[_NR_execv]		=	sys_execv,
 	[_NR_pthread_self]	=	sys_pthread_self,
 	[_NR_pthread_mutex_init]	=	sys_pthread_mutex_init,
@@ -178,8 +178,8 @@ struct Semaphore print_sem,full,empty;
 #define EMPTY 0
 int sum=0;
 /*
-*This function is used to ensure that 
-*the first addition operation 
+*This function is used to ensure that
+*the first addition operation
 *can be completed completely
 *without being interrupted by another
 *added by cjj 2021-12-25
@@ -199,26 +199,26 @@ int test1(void)
 		}
 		sum=tmp+1;
 		i--;
-	
+
 	disp_str("sum1=");
 	disp_int(sum);
 
-	
+
 		ksem_post(&print_sem,1);//Release lock and Exit conflict domain
 	}
 
     return 0;
 }
  /*
-*This function is used to ensure that 
-*the second addition operation 
+*This function is used to ensure that
+*the second addition operation
 *can be completed completely
 *without being interrupted by another
 *added by cjj 2021-12-25
 */
 int test2(void)
 {
-	
+
     int i=10;
 	int tmp;
     while(i)
@@ -243,12 +243,12 @@ int test2(void)
     return 0;
 }
 /*
-*This function is used to represent producers. 
+*This function is used to represent producers.
 *There are three producers in total
 */
 int test_produce(int x)
 {
-	
+
     while(1)
     {
 		int j =70000000;
@@ -256,7 +256,7 @@ int test_produce(int x)
 		{
 			j--;
 		}
-		
+
 		ksem_wait(&full,1);
 		ksem_wait(&print_sem,1);
 		// printf("pth%d ",x);
@@ -273,11 +273,11 @@ int test_produce(int x)
 	{
 		/* code */
 	}
-	
+
     return 0;
 }
 /*
-*This function is used to represent consumer. 
+*This function is used to represent consumer.
 */
 int test_consume(int x)
 {
@@ -289,8 +289,8 @@ int test_consume(int x)
 		{
 			j--;
 		}
-		
-#ifdef TEST1	
+
+#ifdef TEST1
 		int num=ksem_getvalue(&empty);
 
 		if (ksem_trywait(&empty,num) !=-1)
@@ -307,7 +307,7 @@ int test_consume(int x)
 			ksem_post(&full,num);
 		}
 #endif
-#ifdef TEST2	
+#ifdef TEST2
 			ksem_wait(&empty,1);
 			ksem_wait(&print_sem,1);
 			disp_str("pth");
@@ -321,7 +321,7 @@ int test_consume(int x)
 #endif
     }
 
-	
+
     return 0;
 }
 void kern_sem_test(int function) {
@@ -349,12 +349,12 @@ void kern_sem_test(int function) {
 								break;
 
 		case 	consumer:	   //	ksem_wait(print_sem,1);
-								i++; 
+								i++;
 								test_consume(i);
 								//ksem_post(print_sem,1);
-								break;	
+								break;
 
-		default	: break;					
+		default	: break;
 	}
 	return ;
 
@@ -368,7 +368,7 @@ void kern_sem_test(int function) {
 
 PUBLIC void kern_test(int function)
 {
-	
+
 }
 
 PUBLIC void do_test(int function)

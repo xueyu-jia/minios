@@ -5,6 +5,7 @@
 #include "proc.h"
 #include "msg.h"
 #include "signal.h"
+#include "proto.h"
 
 PUBLIC u32 get_arg(int order)
 {
@@ -65,7 +66,7 @@ void yield() {
 }
 
 void sleep(int n) {
-	return _syscall1(_NR_sleep, n);
+	_syscall1(_NR_sleep, n);
 }
 
 int open(const char* pathname, int flags, ...) {
@@ -260,7 +261,7 @@ int get_pid_byname(char* name) {
 	return _syscall1(_NR_get_pid_byname, name);
 }
 
-int mount(const char *source, const char *target,const char *filesystemtype, 
+int mount(const char *source, const char *target,const char *filesystemtype,
 			unsigned long mountflags, const void *data) {
 	return _syscall5(_NR_mount, source, target, filesystemtype, mountflags, data);
 }

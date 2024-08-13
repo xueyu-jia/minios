@@ -299,7 +299,7 @@ PUBLIC void sys_sleep(); //modified by mingxuan 2021-8-13
 PUBLIC void wakeup(void *channel);
 PUBLIC int ldt_seg_linear(PROCESS *p, int idx);
 PUBLIC void* va2la(int pid, void* va);
-PUBLIC void do_exit(int status);
+// PUBLIC void do_exit(int status);
 
 PUBLIC void wait_for_sem(void *chan, struct spinlock *lk);
 PUBLIC void wakeup_for_sem(void *chan);//modified by cjj 2021-12-23
