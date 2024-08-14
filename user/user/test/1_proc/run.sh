@@ -22,9 +22,9 @@ cd ..
 cd ./sigsend
 run.sh
 cd ..
-cd ./sleep
-run.sh
-cd ..
+# cd ./sleep
+# run.sh
+# cd ..
 cd ./wait
 run.sh
 cd ..

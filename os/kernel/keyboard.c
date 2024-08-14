@@ -1,10 +1,10 @@
-#include "const.h"
-#include "protect.h"
-#include "tty.h"
-#include "console.h"
-#include "keyboard.h"
-#include "keymap.h"
-#include "proto.h"
+#include <kernel/const.h>
+#include <kernel/protect.h>
+#include <kernel/tty.h>
+#include <kernel/console.h>
+#include <kernel/keyboard.h>
+#include <kernel/keymap.h>
+#include <kernel/proto.h>
 
 PRIVATE KB_INPUT kb_in;
 PRIVATE MOUSE_INPUT mouse_in;
@@ -60,7 +60,7 @@ void mouse_handler(int irq){
 		for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
 			if(p_tty->console==&console_table[current_console]){
 				p_tty->mouse_left_button = mouse_in.buf[0]&0x01;
-				
+
 				u8 mid_button = mouse_in.buf[0]&0x4;
 				if(mid_button==0x4){
 					p_tty->mouse_mid_button = 1;
@@ -107,7 +107,7 @@ PUBLIC void init_kb(){
 	scroll_lock	= 0;
 
 	column		= 0;
-	
+
 	set_leds();
 	put_irq_handler(KEYBOARD_IRQ, kb_handler);
 	enable_irq(KEYBOARD_IRQ);
@@ -118,7 +118,7 @@ PUBLIC void init_kb(){
 
 PUBLIC void init_mouse(){
 	mouse_in.count = 0;
-	
+
 	put_irq_handler(MOUSE_IRQ,mouse_handler);
 	enable_irq(MOUSE_IRQ);
 
@@ -200,7 +200,7 @@ PUBLIC void keyboard_read(TTY* p_tty)
 
 			/* make or break */
 			make = (scan_code & FLAG_BREAK ? 0 : 1);
-			
+
 			keyrow = &keymap[(scan_code & 0x7F) * MAP_COLS];
 
 			column = 0;
@@ -353,7 +353,7 @@ PUBLIC void keyboard_read(TTY* p_tty)
  *****************************************************************************/
 /**
  * Read a byte from the keyboard buffer.
- * 
+ *
  * @return The byte read.
  *****************************************************************************/
 PRIVATE u8 get_byte_from_kb_buf()
@@ -380,7 +380,7 @@ PRIVATE u8 get_byte_from_kb_buf()
  *****************************************************************************/
 /**
  * Wait until the input buffer of 8042 is empty.
- * 
+ *
  *****************************************************************************/
 PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
 {
@@ -388,7 +388,7 @@ PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
 
 	do {
 		kb_stat = in_byte(KB_CMD);
-		
+
 	} while (kb_stat & 0x02);
 }
 
@@ -398,7 +398,7 @@ PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
  *****************************************************************************/
 /**
  * Read from the keyboard controller until a KB_ACK is received.
- * 
+ *
  *****************************************************************************/
 PRIVATE void kb_ack()
 {
@@ -415,7 +415,7 @@ PRIVATE void kb_ack()
  *****************************************************************************/
 /**
  * Set the leds according to: caps_lock, num_lock & scroll_lock.
- * 
+ *
  *****************************************************************************/
 PRIVATE void set_leds()
 {
@@ -446,4 +446,3 @@ PRIVATE void set_mouse_leds(){
 	kb_wait();
 	out_byte(KB_DATA, KBC_MODE);
 }
-

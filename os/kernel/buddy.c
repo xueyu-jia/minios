@@ -2,11 +2,11 @@
 * 内存管理-buddy系统相关代码     add by wang   2021.3.3
 **************************************************************/
 
-#include "string.h"
-#include "console.h"
-#include "buddy.h"
-#include "kmalloc.h"
-#include "proto.h"
+#include <kernel/string.h>
+#include <kernel/console.h>
+#include <kernel/buddy.h>
+#include <kernel/kmalloc.h>
+#include <kernel/proto.h>
 
 
 buddy kbuddy, ubuddy;
@@ -27,7 +27,7 @@ PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
 
 
 void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {
-    
+
     bud->current_mem_size = 0;
     bud->total_mem_size = end_addr - bgn_addr;
     for (int i = 0; i < MAX_ORDER; i++) {
@@ -44,7 +44,7 @@ int block_init(u32 bgn_addr, u32 end_addr, buddy *bud)
 	u32 bsize;
     if (bgn_addr % num_4K != 0) {
         int tmp = bgn_addr % num_4K;
-        if(bud==kbud) 
+        if(bud==kbud)
             fragmentUse(bgn_addr, num_4K - tmp); //edited by wang 2021.6.25
         bgn_addr = bgn_addr - tmp + num_4K;
     }
@@ -89,7 +89,7 @@ continue_merging:
 		//若在，将伙伴块从free_list中删除
 		del_page_from_free_list(buddy, bud, order);
 		//合并伙伴块
-		combined_pfn = buddy_pfn & pfn;     // find head of block by & 
+		combined_pfn = buddy_pfn & pfn;     // find head of block by &
 		page = page + (combined_pfn - pfn);
 		pfn = combined_pfn;
 		order++;
@@ -108,7 +108,7 @@ page* alloc_pages(buddy *bud, u32 order) {
 	u32 current_order;
     page *page = NULL;
 	struct free_area *area;
-	
+
     //从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
 	for (current_order = order; current_order < MAX_ORDER; ++current_order) {
 		area = &(bud->free_area[current_order]);
@@ -174,7 +174,7 @@ PRIVATE void add_to_free_list(page *page, buddy *bud,u32 order) {
 	struct free_area *area = &bud->free_area[order];
 	page->next = NULL;
 	if (area->free_list==NULL) {
-		
+
 		area->free_list = page;
 	} else {
 		struct page * node;
@@ -199,7 +199,7 @@ PRIVATE void set_buddy_order(page *page, u32 order) {
 	page->inbuddy = TRUE;
 }
 
-PRIVATE page* get_page_from_free_area(struct free_area *area) {   
+PRIVATE page* get_page_from_free_area(struct free_area *area) {
     struct page * node ;
     //返回该链表第一个块或者返回NULL
     node = area->free_list; // *page

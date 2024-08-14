@@ -1,10 +1,10 @@
-#include "type.h"
-#include "const.h"
-#include "tty.h"
-#include "dev.h"
-#include "console.h"
-#include "keyboard.h"
-#include "semaphore.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/tty.h>
+#include <kernel/dev.h>
+#include <kernel/console.h>
+#include <kernel/keyboard.h>
+#include <kernel/semaphore.h>
 
 
 TTY         tty_table[NR_CONSOLES];
@@ -37,11 +37,11 @@ PUBLIC void wake_the_tty()
 
 PUBLIC void in_process(TTY* p_tty , u32 key){
     int real_line = p_tty->console->orig / SCR_WIDTH;
-    
-	
+
+
 	if(!(key&FLAG_EXT)){
 		put_key(p_tty,key);
-        
+
 		/*
         disp_str(output);
         disable_int( );
@@ -63,7 +63,7 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 			    put_key(p_tty, '\b');
 			    break;
             case UP:
-				// 
+				//
                 // if(p_tty->console->current_line < 43){
                 //     disable_int( );
                 //     p_tty->console->current_line ++;
@@ -131,7 +131,7 @@ PRIVATE void tty_mouse(TTY* tty){
     if (is_current_console(tty->console)){
         int real_line = tty->console->orig / SCR_WIDTH;
         if(tty->mouse_left_button){
-            
+
             if(tty->mouse_Y>MOUSE_UPDOWN_BOUND){//按住鼠标左键向上滚动
                 // if(tty->console->current_line < 43){
                 //     disable_int( );
@@ -179,7 +179,7 @@ PRIVATE void tty_dev_read(TTY* tty)
     if (is_current_console(tty->console)){
         keyboard_read(tty);
     }
-		
+
 }
 
 PRIVATE void tty_dev_write(TTY* tty){
@@ -200,8 +200,8 @@ PRIVATE void tty_dev_write(TTY* tty){
                 return;
             }else{
                 tty->ibuf_read_cnt-=2;
-                //tty->ibuf_read++; 
-                //tty->ibuf_read++; 
+                //tty->ibuf_read++;
+                //tty->ibuf_read++;
                 if(tty->ibuf_head == tty->ibuf){
                     tty->ibuf_head = tty->ibuf_tail = &tty->ibuf[256-2];
                 }else{
@@ -210,7 +210,7 @@ PRIVATE void tty_dev_write(TTY* tty){
                     tty->ibuf_head--;
                     tty->ibuf_tail--;
                 }
-            }   
+            }
         }
 		acquire(&video_mem_lock);
         out_char(tty->console,ch);

@@ -1,8 +1,8 @@
-#include "const.h"
-#include "string.h"
-#include "vfs.h"
-#include "fs.h"
-#include "mount.h"
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/vfs.h>
+#include <kernel/fs.h>
+#include <kernel/mount.h>
 
 // PRIVATE void update_mnttable();
 // PUBLIC mount_table mnt_table[MAX_mnt_table_length];
@@ -119,7 +119,7 @@ PUBLIC int do_umount(const char *target);
 // /**
 // * 根据mnt_table 中的下标索引来确定
 // * @param index_mnt_table 挂载点在mnt_table的下标
-// * @return -1代表查找失败 
+// * @return -1代表查找失败
 // */
 // PUBLIC int get_fs_index(u8 index_mnt_table)
 // {
@@ -132,7 +132,7 @@ PUBLIC int do_umount(const char *target);
 //     } */
 //     if(index_mnt_table>=MAX_mnt_table_length)return -1;
 //     return mnt_table[index_mnt_table].vfs_index;
-    
+
 // }
 //deleted by sundong 2023.5.19 mount open 不再发挥作用，vfs中已经能够区分开路径属于哪个文件系统了
 /* PUBLIC int mount_open(char *pathname, int flags)
@@ -201,7 +201,7 @@ PRIVATE struct vfs_mount* get_free_vfsmount()
     return NULL;
 }
 
-PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path, 
+PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path,
 	struct dentry * mnt_mountpoint, struct dentry* mnt_root, struct super_block* sb){
 	acquire(&mnt_table_lock);
 	struct vfs_mount* mnt = get_free_vfsmount();

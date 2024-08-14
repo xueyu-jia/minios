@@ -5,11 +5,11 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "const.h"
-#include "protect.h"
-#include "proc.h"
-#include "proto.h"
-#include "console.h"
+#include <kernel/const.h>
+#include <kernel/protect.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
+#include <kernel/console.h>
 
 
 u32		k_reenter;
@@ -413,7 +413,7 @@ PUBLIC void exception_handler(int vec_no, int err_code, int eip, int cs, int efl
 		disp_int(err_code);
 	}
 	if(vec_no == 6) {// undefined op
-		
+
 	}
 	//added by xw, 18/12/19
 	disp_str("\n");

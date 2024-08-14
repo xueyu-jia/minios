@@ -3,13 +3,13 @@
 *系统调用pthread()
 *******************************************************************/
 
-#include "type.h"
-#include "const.h"
-#include "proc.h"
-#include "fs.h"
-#include "pthread.h"
-#include "memman.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proc.h>
+#include <kernel/fs.h>
+#include <kernel/pthread.h>
+#include <kernel/memman.h>
+#include <kernel/proto.h>
 
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);

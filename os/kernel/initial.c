@@ -4,11 +4,11 @@
  * added by xw, 18/4/27
  */
 
-#include "type.h"
-#include "const.h"
-#include "proto.h"
-#include "fs.h"
-#include "ksignal.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proto.h>
+#include <kernel/fs.h>
+#include <kernel/ksignal.h>
 
 //modified by mingxuan 2021-4-2
 
@@ -603,7 +603,7 @@ void initial()
 	// 	while(1);
 	// }
 	// else {
-		
+
 	// }
 
 	//get_pid();
@@ -643,14 +643,14 @@ void initial()
 	//orangefs_dir_test();
 
 	//while (1);
-	
+
 	//int fd = open("fat0/init.bin",O_RDWR);
 	//open("fat0/init.bin",O_RDWR);
 	//unlink("fat0/f1");
 	//orangefs_dir_test();
 	//orangefs_test();
 	//while (1);
-	
+
 // #ifdef FAT32_BOOT
 // 	execve("fat0/init.bin",NULL,NULL);
 // #endif

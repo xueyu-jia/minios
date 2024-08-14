@@ -5,12 +5,12 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "clock.h"
-#include "proc.h"
-#include "string.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/clock.h>
+#include <kernel/proc.h>
+#include <kernel/string.h>
+#include <kernel/proto.h>
 
 int		ticks;
 u32 	current_timestamp;
@@ -23,7 +23,7 @@ PUBLIC void clock_handler(int irq)
 	if(!(ticks % HZ)){
 		current_timestamp++;
 	}
-	
+
 	/* There is two stages - in kernel intializing or in process running.
 	 * Some operation shouldn't be valid in kernel intializing stage.
 	 * added by xw, 18/6/1
@@ -31,7 +31,7 @@ PUBLIC void clock_handler(int irq)
 	if(kernel_initial == 1){
 		return;
 	}
-	
+
 	proc_update();
 	wakeup(&ticks);
 

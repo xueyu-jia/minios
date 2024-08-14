@@ -1,5 +1,5 @@
-#include "proto.h"
-#include "uart.h"
+#include <kernel/proto.h>
+#include <kernel/uart.h>
 // port from uniform os
 int init_simple_serial() {
     out_byte(PORT_COM1 + 1, 0x00); // Disable all interrupts

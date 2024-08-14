@@ -1,13 +1,13 @@
-#include "const.h"
-#include "fs_const.h"
-#include "proc.h"
-#include "clock.h"
-#include "vfs.h"
-#include "hd.h"
-#include "string.h"
-#include "memman.h"
-#include "semaphore.h"
-#include "buffer.h"
+#include <kernel/const.h>
+#include <kernel/fs_const.h>
+#include <kernel/proc.h>
+#include <kernel/clock.h>
+#include <kernel/vfs.h>
+#include <kernel/hd.h>
+#include <kernel/string.h>
+#include <kernel/memman.h>
+#include <kernel/semaphore.h>
+#include <kernel/buffer.h>
 
 int buffer_debug = 0;
 #define buff_log(bh, info_type) if(buffer_debug == 1){disp_int(info_type);disp_str(":");disp_int(bh->block);disp_str(" ");}
@@ -202,10 +202,10 @@ PUBLIC void rw_buffer(int iotype, buf_head* bh, int length) {
     // disp_int(bh->b_size);
     u64 pos = bh->block * bh->b_size;
     if(kernel_initial == 1) { // init stage no sched
-        rw_blocks(iotype, bh->dev, pos, length, 
+        rw_blocks(iotype, bh->dev, pos, length,
             proc2pid(p_proc_current), bh->buffer);
     }else {
-        rw_blocks_sched(iotype, bh->dev, pos, length, 
+        rw_blocks_sched(iotype, bh->dev, pos, length,
             proc2pid(p_proc_current), bh->buffer);
     }
     // disp_str("\nbuffer:");

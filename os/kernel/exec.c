@@ -2,18 +2,18 @@
  *			exec.c 		add by visual 2016.5.23
  *************************************************/
 
-#include "type.h"
-#include "const.h"
-#include "string.h"
-#include "elf.h"
-#include "vfs.h"
-#include "memman.h"
-#include "pagetable.h"
-#include "mmap.h"
-#include "console.h"
-#include "assert.h"
-#include "proto.h"
-#include "exec.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/elf.h>
+#include <kernel/vfs.h>
+#include <kernel/memman.h>
+#include <kernel/pagetable.h>
+#include <kernel/mmap.h>
+#include <kernel/console.h>
+#include <kernel/assert.h>
+#include <kernel/proto.h>
+#include <kernel/exec.h>
 
 
 PRIVATE int exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);

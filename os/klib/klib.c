@@ -6,9 +6,9 @@
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 //modified by mingxuan 2021-4-3
-#include "type.h"
-#include "const.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proto.h>
 
 
 /*======================================================================*
@@ -69,7 +69,7 @@ PUBLIC char *itoa(int num, char *str, int radix)
 // 	if(num == 0){
 // 		*p++ = '0';
 // 	}
-// 	else{	
+// 	else{
 // 		for(i=28;i>=0;i-=4){
 // 			ch = (num >> i) & 0xF;
 // 			if(flag || (ch > 0)){

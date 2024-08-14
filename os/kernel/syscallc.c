@@ -5,14 +5,14 @@
 *
 **********************************************************/
 
-#include "const.h"
-#include "string.h"
-#include "time.h"
-#include "buddy.h"
-#include "kmalloc.h"
-#include "ksignal.h"
-#include "semaphore.h"
-#include "syscall.h"
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/time.h>
+#include <kernel/buddy.h>
+#include <kernel/kmalloc.h>
+#include <kernel/ksignal.h>
+#include <kernel/semaphore.h>
+#include <kernel/syscall.h>
 
 //modified by mingxuan 2021-8-14
 //PUBLIC u32 do_malloc_4k()

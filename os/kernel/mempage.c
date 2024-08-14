@@ -1,9 +1,9 @@
-#include "const.h"
-#include "mempage.h"
-#include "buddy.h"
-#include "memman.h"
-#include "fs.h"
-#include "list.h"
+#include <kernel/const.h>
+#include <kernel/mempage.h>
+#include <kernel/buddy.h>
+#include <kernel/memman.h>
+#include <kernel/fs.h>
+#include <kernel/list.h>
 
 /// @brief 向address_space结构添加新的物理页
 // note: 此处不检查是否已经存在页面，caller应保证在调用此函数之前获得互斥锁之后检查find_cache_page
@@ -46,7 +46,7 @@ PRIVATE void pagecache_writeback_one(page *_page) {
 
 /// @brief 写回page cache
 /// @param mapping
-/// @return 
+/// @return
 PUBLIC void pagecache_writeback(struct address_space* mapping) {
 	if(mapping->host == NULL) {
 		return;
@@ -60,12 +60,12 @@ PUBLIC void pagecache_writeback(struct address_space* mapping) {
 
 /// @brief 释放page cache中的一个物理页
 /// @param _page
-/// @return 
+/// @return
 /// @details
 // release page from mem pages
 // write back if dirty
 // require _page->pg_mapping lock
-PUBLIC int free_mem_page(page *_page) 
+PUBLIC int free_mem_page(page *_page)
 {
 	if(_page->dirty)
 		pagecache_writeback_one(_page);
@@ -82,8 +82,8 @@ PUBLIC int free_mem_page(page *_page)
 
 
 /// @brief 释放page cache中的所有物理页
-/// @param mapping 
-/// @return 
+/// @param mapping
+/// @return
 /// @details
 // write back dirty pages if any
 // require _page->pg_mapping lock

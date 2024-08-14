@@ -1,11 +1,11 @@
-#include "type.h"
-#include "const.h"
-#include "string.h"
-#include "proto.h"
-#include "tty.h"
-#include "console.h"
-#include "clock.h"
-#include "spinlock.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/proto.h>
+#include <kernel/tty.h>
+#include <kernel/console.h>
+#include <kernel/clock.h>
+#include <kernel/spinlock.h>
 
 int		disp_pos;
 CONSOLE     console_table[NR_CONSOLES];
@@ -378,7 +378,7 @@ PUBLIC void disp_color_str(const char* info, int color){
 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
 		flush(con);
 	#ifdef OPT_DISP_SERIAL
-	#include "uart.h"
+	#include <kernel/uart.h>
 	for(char *p = info; p && *p; p++) {
 		write_serial(*p);
 		if(*p == '\n'){

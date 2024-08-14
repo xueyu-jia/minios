@@ -3,7 +3,7 @@
 *   信号量实现。有函数定义。
 */
 
-#include "semaphore.h"
+#include <kernel/semaphore.h>
 
 struct 	Semaphore	proc_table_sem;
 
@@ -25,7 +25,7 @@ int ksem_destroy(struct Semaphore *sem)
 
   acquire(&(sem->lock));
   // check if the entry is actived
-  if((*sem).active != 1) 
+  if((*sem).active != 1)
   {
     release(&(sem->lock));
     return -1;
@@ -38,10 +38,10 @@ int ksem_destroy(struct Semaphore *sem)
 
 int ksem_wait(struct Semaphore *sem, int count)
 {
-  
+
   acquire(&(sem->lock));
   // check if the entry is actived
-  if((*sem).active == 0) 
+  if((*sem).active == 0)
   {
     release(&(sem->lock));
     return -1;
@@ -62,7 +62,7 @@ int ksem_wait(struct Semaphore *sem, int count)
   //the thread enter the critical section, grap a lock
   (*sem).value -= count;
   release(&(sem->lock));
-  
+
   return 0;
 }
 
@@ -70,7 +70,7 @@ int ksem_trywait(struct Semaphore *sem,int count)
 {
   acquire(&(sem->lock));
   // check if the entry is actived
-  if((*sem).active == 0) 
+  if((*sem).active == 0)
   {
     release(&(sem->lock));
     return -1;
@@ -96,10 +96,10 @@ int ksem_trywait(struct Semaphore *sem,int count)
 
 int ksem_post(struct Semaphore *sem, int count)
 {
-  
+
   acquire(&(sem->lock));
   // check if the entry is actived
-  if((*sem).active == 0) 
+  if((*sem).active == 0)
   {
     release(&(sem->lock));
     return -1;
@@ -107,10 +107,10 @@ int ksem_post(struct Semaphore *sem, int count)
   // the thread exit the critical section, return a lock
   (*sem).value += count;
   // if there is any available lock, call wakeup
-  if((*sem).value > 0) 
+  if((*sem).value > 0)
     wakeup_for_sem(sem);
   release(&(sem->lock));
-  
+
   return 0;
 }
 
@@ -118,7 +118,7 @@ int ksem_getvalue(struct Semaphore *sem)
 {
   acquire(&(sem->lock));
   // check if the entry is actived
-  if((*sem).active == 0) 
+  if((*sem).active == 0)
   {
     release(&(sem->lock));
     return -1;
@@ -128,6 +128,3 @@ int ksem_getvalue(struct Semaphore *sem)
   release(&(sem->lock));
   return value1;
 }
-
-
-

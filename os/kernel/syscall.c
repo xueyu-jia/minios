@@ -1,11 +1,11 @@
-#include "type.h"
-#include "const.h"
-#include "syscall.h"
-#include "protect.h"
-#include "proc.h"
-#include "msg.h"
-#include "signal.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/syscall.h>
+#include <kernel/protect.h>
+#include <kernel/proc.h>
+#include <kernel/msg.h>
+#include <kernel/signal.h>
+#include <kernel/proto.h>
 
 PUBLIC u32 get_arg(int order)
 {

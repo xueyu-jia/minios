@@ -1,13 +1,13 @@
-#include "console.h"
-#include "spinlock.h"
-#include "type.h"
-#include "const.h"
-#include "proc.h"
-#include "pagetable.h"
-#include "memman.h"
-#include "proto.h"
-#include "assert.h"
-#include "exit.h"
+#include <kernel/console.h>
+#include <kernel/spinlock.h>
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proc.h>
+#include <kernel/pagetable.h>
+#include <kernel/memman.h>
+#include <kernel/proto.h>
+#include <kernel/assert.h>
+#include <kernel/exit.h>
 
 PRIVATE void exit_file(PROCESS* p_proc);
 PRIVATE int transfer_child_proc(u32 src_pid, u32 dst_pid);

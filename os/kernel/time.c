@@ -1,8 +1,8 @@
-#include "time.h"
-#include "clock.h"
-#include "const.h"
-#include "protect.h"
-#include "proto.h"
+#include <kernel/time.h>
+#include <kernel/clock.h>
+#include <kernel/const.h>
+#include <kernel/protect.h>
+#include <kernel/proto.h>
 
 
 #define RTC_ADDR	0x70
@@ -20,8 +20,8 @@ int bcd2byte(u8 x){
 
 // 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的Gauss算法, copy自linux kernel
 u32 mktime(struct tm* time){
-	unsigned int mon = time->tm_mon + 1, 
-	year = time->tm_year + 1900, day = time->tm_mday, 
+	unsigned int mon = time->tm_mon + 1,
+	year = time->tm_year + 1900, day = time->tm_mday,
 	hour = time->tm_hour, min = time->tm_min, sec = time->tm_sec;
 
 	/* 1..12 -> 11,12,1..10 */

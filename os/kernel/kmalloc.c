@@ -2,10 +2,10 @@
 *内核地址空间小内存管理相关代码    add by wang  2021.3.3
 **************************************************************/
 
-#include "kmalloc.h"
-#include "buddy.h"
-#include "console.h"
-//#include "../include/memman.h"    //deleted by mingxuan 2021-8-13
+#include <kernel/kmalloc.h>
+#include <kernel/buddy.h>
+#include <kernel/console.h>
+//#include <kernel/../include/memman.h>    //deleted by mingxuan 2021-8-13
 
 malloced mal;
 free_kmem kmem;
@@ -345,14 +345,14 @@ static u32 do_kfree_static(u32 addr,u32 size)   //modified by mingxuan 2021-3-25
     {
         for(j = kmem.count; j > i; j--)
         {
-           
+
             kmem.kmem_table[j] = kmem.kmem_table[j-1];
 
         }
 
         kmem.count++;
 
-        if(kmem.count >= MAX_KFREE)                   //add by wang 2021.3.25 
+        if(kmem.count >= MAX_KFREE)                   //add by wang 2021.3.25
             disp_str("kmalloc error: free partition table is full");
 
 

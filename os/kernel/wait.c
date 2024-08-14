@@ -1,10 +1,10 @@
-#include "const.h"
-#include "proc.h"
-#include "console.h"
-#include "proto.h"
-#include "spinlock.h"
-#include "assert.h"
-#include "wait.h"
+#include <kernel/const.h>
+#include <kernel/proc.h>
+#include <kernel/console.h>
+#include <kernel/proto.h>
+#include <kernel/spinlock.h>
+#include <kernel/assert.h>
+#include <kernel/wait.h>
 
 /*
 在Linux操作系统中，"ZOMBIE"（僵尸）和"KILLED"（被杀死）这两个术语描述了进程的不同终止状态，但它们并不是官方的进程状态。

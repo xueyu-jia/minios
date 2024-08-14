@@ -1,20 +1,20 @@
 /************************************************************
 ********************** add by dingleilei*********************/
 
-#include "shm.h"
-#include "type.h"
-#include "const.h"
-#include "proto.h"
-#include "console.h"
-#include "clock.h"
-#include "spinlock.h"
-#include "pagetable.h"
-#include "memman.h"
-#include "string.h"
-#include "syscall.h"
-#include "proc.h"
-#include "mmap.h"
-#include "mempage.h"
+#include <kernel/shm.h>
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proto.h>
+#include <kernel/console.h>
+#include <kernel/clock.h>
+#include <kernel/spinlock.h>
+#include <kernel/pagetable.h>
+#include <kernel/memman.h>
+#include <kernel/string.h>
+#include <kernel/syscall.h>
+#include <kernel/proc.h>
+#include <kernel/mmap.h>
+#include <kernel/mempage.h>
 
 struct spinlock lock_shmmemcpy;
 PUBLIC void do_shmdt(char *shmaddr);
@@ -156,7 +156,7 @@ PUBLIC int kern_shmget(int key, int size, int shmflg)
             }
         }
 
-        
+
 
         //disp_int(id);
     }
@@ -185,7 +185,7 @@ PUBLIC int do_shmget(int key, int size, int shmflg)
 }
 
 PUBLIC int sys_shmget()
-{  
+{
     return do_shmget(get_arg(1), get_arg(2), get_arg(3));
 }
 
@@ -215,20 +215,20 @@ PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
     // u32 vir_addr;
     u32 phy_addr = (u32)ids.perms[shmid].phy_address;
     // // int size = ids.perms[shmid].size;
-    
+
     // if(phy_addr == NULL)
     // {
     //     ids.perms[shmid].phy_address = (void*)phy_malloc_4k();
     //     phy_addr = (u32)ids.perms[shmid].phy_address;
     // }
-    
+
     // vir_addr = (u32)shmaddr;
-    
+
     // alignment(vir_addr);
     // lin_mapping_phy(vir_addr, phy_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, PG_P | PG_USU | PG_RWW);
-    int vir_addr = kern_mmap(p_proc_current, NULL, shmaddr, PAGE_SIZE, 
+    int vir_addr = kern_mmap(p_proc_current, NULL, shmaddr, PAGE_SIZE,
         PROT_READ|PROT_WRITE, MAP_SHARED, shmid);
-    
+
     if(phy_addr == NULL)
     {
         lock_or_yield(&shm_pages.lock);
@@ -250,7 +250,7 @@ PUBLIC void *sys_shmat()
 }
 
 /*======================================================================*
-                            shmdt 
+                            shmdt
  *======================================================================*/
 PUBLIC void kern_shmdt(char *shmaddr)
 {

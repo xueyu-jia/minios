@@ -1,13 +1,13 @@
-#include "type.h"
-#include "const.h"
-#include "string.h"
-#include "protect.h"
-#include "proc.h"
-#include "proto.h"
-#include "memman.h"
-#include "pagetable.h"
-#include "pci.h"
-#include "ahci.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/protect.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
+#include <kernel/memman.h>
+#include <kernel/pagetable.h>
+#include <kernel/pci.h>
+#include <kernel/ahci.h>
 
 // 0: free;  1: waiting
 PUBLIC volatile int sata_wait_flag = 1;

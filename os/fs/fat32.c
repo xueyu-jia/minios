@@ -1,16 +1,16 @@
 // /**********************************************************
-// *	fat32.c       
+// *	fat32.c
 // ***********************************************************/
 // #define FAT_TEST
-#include "type.h"
-#include "const.h"
-#include "time.h"
-#include "string.h"
-#include "buffer.h"
-#include "vfs.h"
-#include "fat32.h"
-#include "clock.h"
-#include "memman.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/time.h>
+#include <kernel/string.h>
+#include <kernel/buffer.h>
+#include <kernel/vfs.h>
+#include <kernel/fat32.h>
+#include <kernel/clock.h>
+#include <kernel/memman.h>
 
 PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len){
 	u16 c;
@@ -32,7 +32,7 @@ PRIVATE u8 fat_chksum(const char* shortname){
 	u8 sum = 0;
 	int i;
 	for (sum = 0, i = 0; i < 11; i++) {
-		sum = (((sum&1)<<7)|((sum&0xfe)>>1)) + shortname[i]; 
+		sum = (((sum&1)<<7)|((sum&0xfe)>>1)) + shortname[i];
 		//两部分的name实际是连续的，所以get entry 中传入de->name没问题
 	}
 	return sum;
@@ -151,7 +151,7 @@ PRIVATE int read_write_fat(struct super_block* sb, int cluster, int value){
 	if(cluster > FAT_SB(sb)->max_cluster){
 		return 0;
 	}
-	int fat_offset = cluster * 4; 
+	int fat_offset = cluster * 4;
 	// only support FAT32, other implements should judge FAT_SB(sb)->fat_bit
 	int fat_block = FAT_SB(sb)->fat_start_block + (fat_offset / sb->sb_blocksize);
 	struct buf_head *bh = NULL, *bh2 = NULL;
@@ -163,7 +163,7 @@ PRIVATE int read_write_fat(struct super_block* sb, int cluster, int value){
 		mark_buff_dirty(bh);
 		// fat copy
 		for(int fat = 1; fat < FAT_SB(sb)->fat_num; fat++){
-			fat_block = FAT_SB(sb)->fat_start_block 
+			fat_block = FAT_SB(sb)->fat_start_block
 				+ (fat * FAT_SB(sb)->fat_size) + (fat_offset / sb->sb_blocksize);
 			fat_bread(sb, fat_block, &bh2);
 			memcpy(bh2->buffer, bh->buffer, num_4K);
@@ -180,7 +180,7 @@ PRIVATE int add_new_cluster(struct super_block* sb, int tail){
 		return -1;
 	}
 	acquire(&sb->lock);
-	int i, clus, next_free = FAT_SB(sb)->fsinfo.cluster_next_free, 
+	int i, clus, next_free = FAT_SB(sb)->fsinfo.cluster_next_free,
 		total = FAT_SB(sb)->max_cluster - 1;
 	buf_head* bh = NULL;
 	for(i = 0; i < total; i++){// we must check before use,(linux dont use fsinfo.nextfree)
@@ -286,7 +286,7 @@ PRIVATE int fat_get_cluster(struct inode* inode, int cluster, int new_space){
 	return info->cluster_start + clus_skip;
 }
 
-PUBLIC int fat32_get_block(struct inode *inode, u32 iblock, int create) 
+PUBLIC int fat32_get_block(struct inode *inode, u32 iblock, int create)
 {
 	struct fat32_sb_info* sbi = FAT_SB(inode->i_sb);
 	int clus = fat_get_cluster(inode, iblock / sbi->cluster_block, create);
@@ -342,7 +342,7 @@ PRIVATE inline struct fat_dir_slot* fat_get_slot(struct inode* dir, int order, b
 	return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
-// get next fat short entry from *%start in inode %dir, 
+// get next fat short entry from *%start in inode %dir,
 //   long dir full name stored in %full_name and %bh updated
 PRIVATE struct fat_dir_entry* fat_get_entry(struct inode* dir, int* start, buf_head** bh, char* full_name){
 	if(!start){
@@ -422,11 +422,11 @@ PRIVATE int fat_find_free(struct inode* dir, int num){
 	int start, count = 0, res = -1, end_flag = 0;
 	for(start = 0; ; start++){
 		ds = fat_get_slot(dir, start, &bh, 1);
-		if(end_flag || (ds->order == DIR_DELETE) 
+		if(end_flag || (ds->order == DIR_DELETE)
 		|| (ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size)) {
 			// 如果为0应该已经不用找了(后面均为空闲)，但是要进行可能的FAT空间分配，所以不立即跳出
-			if(end_flag == 0 && 
-				((ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size))) 
+			if(end_flag == 0 &&
+				((ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size)))
 					end_flag = 1;
 			if(count == 0)res = start;
 			count++;
@@ -500,7 +500,7 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 		}
 	}
 	// ext_start: 最后一个.
-	// type: 0忽略的前缀字符;1 文件名(8); 2 扩展名(3) 
+	// type: 0忽略的前缀字符;1 文件名(8); 2 扩展名(3)
 	for(int i = 0; i < len; i++) {
 		c = fullname[i];
 		if(type == 0){// skipped start
@@ -521,7 +521,7 @@ PRIVATE int fat_gen_shortname(struct inode* dir, const char* fullname, char* sho
 		if(fat_skip_char(c)) {
 			continue;
 		}
-		
+
 		shortname[offset++] = c;
 		if(type){
 			baselen = offset;
@@ -593,7 +593,7 @@ PRIVATE struct inode* fat_add_entry(struct inode* dir, const char* name, int is_
 		mark_buff_dirty(bh);
 	}
 	if(bh)brelse(bh);
-	dir->i_mtime = timestamp; 
+	dir->i_mtime = timestamp;
 	struct inode *inode = vfs_new_inode(dir->i_sb);
 	inode->i_dev = dir->i_sb->sb_dev;
 	inode->i_no = fat_ino(dir, free_slot_order + nslot);
@@ -605,7 +605,7 @@ PRIVATE struct inode* fat_add_entry(struct inode* dir, const char* name, int is_
 	de.attr = (is_dir)? ATTR_DIR : ATTR_ARCH;
 	fat_update_datetime(timestamp, &de.cdate, &de.ctime, &de.ctime_10ms);
 	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
-	// fat_update_datetime(timestamp, &de.adate, NULL); 
+	// fat_update_datetime(timestamp, &de.adate, NULL);
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
 	if((free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
 		dir->i_size = (free_slot_order + nslot + 1)*FAT_ENTRY_SIZE;
@@ -662,7 +662,7 @@ PUBLIC int fat32_sync_inode(struct inode* inode){
 	buf_head* bh = NULL;
 	u32 ino = inode->i_no;
 	int start = inode->fat32_inode.fat_info->cluster_start;
-	struct fat_dir_entry* de = 
+	struct fat_dir_entry* de =
 		&((struct fat_dir_entry*)fat_bread(inode->i_sb, ino/entry_block, &bh))[ino%entry_block];
 	if(!de){
 		return -1;
@@ -784,7 +784,7 @@ PUBLIC int fat32_rmdir(struct inode *dir, struct dentry *dentry) {
 		return -1;
 	}
 	return fat32_unlink_name(dir, dentry);
-} 
+}
 
 PUBLIC int fat32_mkdir(struct inode* dir, struct dentry* dentry, int mode){
 	// struct tm time;
@@ -938,7 +938,7 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev){
 	dir_blocks = (((bpb->RootEntCnt*32) + bpb->BytsPerSec -1 )/ bpb->BytsPerSec);
 	// for FAT32, dir_blocks should be 0
 	sbi->data_start_block = sbi->dir_start_block + dir_blocks;
-	sbi->max_cluster = 
+	sbi->max_cluster =
 		(sbi->tot_block - sbi->data_start_block)/sbi->cluster_block + 1;
 	sbi->root_cluster = bpb->RootClus;
 	sbi->fsinfo_block = bpb->FSInfo;

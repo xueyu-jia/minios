@@ -5,14 +5,14 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "proto.h"
-#include "protect.h"
-#include "pagetable.h"
-#include "proc.h"
-#include "buddy.h"
-#include "uart.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proto.h>
+#include <kernel/protect.h>
+#include <kernel/pagetable.h>
+#include <kernel/proc.h>
+#include <kernel/buddy.h>
+#include <kernel/uart.h>
 
 PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute); //added by mingxuan 2021-8-25
 

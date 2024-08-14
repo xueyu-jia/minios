@@ -3,14 +3,14 @@
 *系统调用fork()功能实现部分sys_fork()
 ********************************************************/
 
-#include "const.h"
-#include "proc.h"
-#include "proto.h"
-#include "string.h"
-#include "fs.h"
-#include "pagetable.h"
-#include "memman.h"
-#include "fork.h"
+#include <kernel/const.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
+#include <kernel/string.h>
+#include <kernel/fs.h>
+#include <kernel/pagetable.h>
+#include <kernel/memman.h>
+#include <kernel/fork.h>
 
 PRIVATE int fork_pcb_info_cpy(PROCESS* p_child);
 PRIVATE int fork_update_proc_tree(PROCESS* p_child);

@@ -5,10 +5,10 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/protect.h>
+#include <kernel/proto.h>
 
 /*======================================================================*
                            spurious_irq
@@ -34,7 +34,7 @@ PUBLIC void init_8259A()
 	out_byte(INT_M_CTLMASK,	0x1);			// Master 8259, ICW4.
 	out_byte(INT_S_CTLMASK,	0x1);			// Slave  8259, ICW4.
 
-	out_byte(INT_M_CTLMASK,	0xFF);	// Master 8259, OCW1. 
+	out_byte(INT_M_CTLMASK,	0xFF);	// Master 8259, OCW1.
 	out_byte(INT_S_CTLMASK,	0xFF);	// Slave  8259, OCW1.
 
 	int i;
@@ -42,4 +42,3 @@ PUBLIC void init_8259A()
 		irq_table[i] = spurious_irq;
 	}
 }
-

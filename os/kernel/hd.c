@@ -10,19 +10,19 @@
  *****************************************************************************
  *****************************************************************************/
 
-#include "type.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "proc.h"
-#include "proto.h"
-#include "fs_const.h"
-#include "hd.h"
-#include "fs.h"
-#include "ahci.h"
-#include "semaphore.h"
-#include "memman.h"
-#include "blame.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/protect.h>
+#include <kernel/string.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
+#include <kernel/fs_const.h>
+#include <kernel/hd.h>
+#include <kernel/fs.h>
+#include <kernel/ahci.h>
+#include <kernel/semaphore.h>
+#include <kernel/memman.h>
+#include <kernel/blame.h>
 
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
@@ -74,7 +74,7 @@ PUBLIC void init_hd()
 	for (i = 0; i < (sizeof(hd_infos) / sizeof(hd_infos[0])); i++)
 		memset(&hd_infos[i], 0, sizeof(hd_infos[0]));
 	hd_infos[0].open_cnt = 0;
-	
+
 	//init hd rdwt queue. added by xw, 18/8/27
 	init_hd_queue(&hdque);
 	ksem_init(&hdque_mutex, 1);
@@ -89,7 +89,7 @@ PUBLIC void init_hd()
  * <Ring 1> This routine handles DEV_OPEN message. It identify the drive
  * of the given device and read the partition table of the drive if it
  * has not been read.
- * 
+ *
  * @param device The device to be opened.
  *****************************************************************************/
 //PUBLIC void hd_open(int device) //no need for int device, mingxuan
@@ -103,7 +103,7 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
 	//disp_str("NrDrives:");	//deleted by mingxuan 2019-5-20
 	//disp_int(*pNrDrives);		//deleted by mingxuan 2019-5-20
 	//disp_str("\n");			//deleted by mingxuan 2019-5-20
-	
+
 	//int drive = DRV_OF_DEV(device); //deleted by mingxuan 2020-10-27
 
 	if (drive >=SATA_BASE && drive <SATA_LIMIT)//SATA
@@ -134,8 +134,8 @@ PUBLIC void hd_open(int drive)	//modified by mingxuan 2020-10-27
  *                                hd_close
  *****************************************************************************/
 /**
- * <Ring 1> This routine handles DEV_CLOSE message. 
- * 
+ * <Ring 1> This routine handles DEV_CLOSE message.
+ *
  * @param device The device to be opened.
  *****************************************************************************/
 PUBLIC void hd_close(int device)
@@ -183,7 +183,7 @@ u32 get_hd_fstype(int dev) {
 
 // hd_rdwt_base
 // 		low level hd read write count bytes, must start from sector boundary
-// 		count <= BLOCK_SIZE 
+// 		count <= BLOCK_SIZE
 PUBLIC int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) {
 	u64 sect = (u64) sect_nr;
 	if (drive >= SATA_BASE && drive < SATA_LIMIT)
@@ -202,7 +202,7 @@ PUBLIC int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) 
  *****************************************************************************/
 /**
  * <Ring 1> This routine handles DEV_READ and DEV_WRITE message.
- * 
+ *
  * @param p Message ptr.
  *****************************************************************************/
 PUBLIC void hd_rdwt(MESSAGE * p)
@@ -230,7 +230,7 @@ PUBLIC void hd_service()
 	PROCESS *proc;
 	int wait;
 	while(1)
-	{	
+	{
 		// disp_str("-hd-"); //mark debug
 		// //the hd queue is not empty when out_hd_queue return 1.
 		// while(out_hd_queue(&hdque, &rwinfo))
@@ -246,11 +246,11 @@ PUBLIC void hd_service()
 			kern_kfree((u32)rwinfo);
 			wakeup(&hdque);
 		}
-		
+
 		//disp_str("H ");
 		//milli_delay(100);
 	}
-	
+
 }
 
 PRIVATE void hd_rdwt_real(RWInfo *p)
@@ -262,13 +262,13 @@ PUBLIC void hd_rdwt_sched(MESSAGE *p)
 {
 	RWInfo* rwinfo = (RWInfo*) kern_kmalloc(sizeof(RWInfo));
 	int size = p->CNT;
-	
+
 	//buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
 	//buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan 2021-3-25
 	// buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
 	rwinfo->msg = p;
 	rwinfo->proc = p_proc_current;
-	
+
 	if (p->type == DEV_READ) {
 		in_hd_queue(&hdque, rwinfo);
 		// phys_copy(p->BUF, buffer, p->CNT);
@@ -307,7 +307,7 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
 {
 	ksem_wait(&hdque_full, 1);
 	ksem_wait(&hdque_mutex, 1);
-	
+
 	*p = hdq->front;
 	if (hdq->front == hdq->rear) {	//put out the last node
 		hdq->front = hdq->rear = NULL;
@@ -325,7 +325,7 @@ PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
  *****************************************************************************/
 /**
  * <Ring 1> This routine handles the DEV_IOCTL message.
- * 
+ *
  * @param p  Ptr to the MESSAGE.
  *****************************************************************************/
 PUBLIC void hd_ioctl(MESSAGE * p)
@@ -358,7 +358,7 @@ PUBLIC void hd_ioctl(MESSAGE * p)
  *****************************************************************************/
 /**
  * <Ring 1> Get a partition table of a drive. modify 20240331: 统一优化为读取所在的扇区，但是内核栈只有2K尽量减少 内核栈占用
- * 
+ *
  * @param drive   Drive nr (0 for the 1st disk, 1 for the 2nd, ...)n
  * @param sect_nr The sector at which the partition table is located.
  * @param entry   Ptr to part_ent struct.
@@ -386,7 +386,7 @@ PRIVATE int partition_get_fstype(int drive, int start_sect) {
 /**
  * <Ring 1> This routine is called when a device is opened. It reads the
  * partition table(s) and fills the hd_info struct.
- * 
+ *
  * @param device Device nr.
  * @param style  P_PRIMARY or P_EXTENDED.
  *****************************************************************************/
@@ -503,7 +503,7 @@ PRIVATE void partition(int device, int style)
  *****************************************************************************/
 /**
  * <Ring 1> Print disk info.
- * 
+ *
  * @param hdi  Ptr to struct hd_info.
  *****************************************************************************/
 PRIVATE void print_hdinfo(struct hd_info * hdi)
@@ -519,7 +519,7 @@ PRIVATE void print_hdinfo(struct hd_info * hdi)
 		//        hdi->primary[i].base,
 		//        hdi->primary[i].size,
 		//        hdi->primary[i].size);
-		if(i == 0) {	
+		if(i == 0) {
 			disp_str(" ");
 		}
 		else {
@@ -551,7 +551,7 @@ PRIVATE void print_hdinfo(struct hd_info * hdi)
 		disp_str(", size ");
 		disp_int(hdi->part[i].size);
 		disp_str(" (in sector)\n");
-		
+
 	}
 }
 
@@ -560,7 +560,7 @@ PRIVATE void print_hdinfo(struct hd_info * hdi)
  *****************************************************************************/
 /**
  * <Ring 1> Get the disk information.
- * 
+ *
  * @param drive  Drive Nr.
  *****************************************************************************/
 PRIVATE void hd_identify(int drive)
@@ -594,7 +594,7 @@ PRIVATE void hd_identify(int drive)
  *****************************************************************************/
 /**
  * <Ring 1> Print the hdinfo retrieved via ATA_IDENTIFY command.
- * 
+ *
  * @param hdinfo  The buffer read from the disk i/o port.
  *****************************************************************************/
 PRIVATE void print_identify_info(u16* hdinfo)
@@ -651,7 +651,7 @@ PRIVATE void print_identify_info(u16* hdinfo)
  *****************************************************************************/
 /**
  * <Ring 1> Output a command to HD controller.
- * 
+ *
  * @param cmd  The command struct ptr.
  *****************************************************************************/
 PRIVATE void hd_cmd_out(struct hd_cmd* cmd,int drive)
@@ -692,7 +692,7 @@ PRIVATE void hd_cmd_out(struct hd_cmd* cmd,int drive)
  *****************************************************************************/
 /**
  * <Ring 1> Wait until a disk interrupt occurs.
- * 
+ *
  *****************************************************************************/
 /// modified by zcr(using Huper's method.)
 // PUBLIC void interrupt_wait()
@@ -709,7 +709,7 @@ PRIVATE void interrupt_wait()
 	while(hd_int_waiting_flag) {
 		// milli_delay invoke syscall get_ticks, so we can't use it here.
 		// for this scene, just do nothing is OK. modified by xw, 18/6/1
-		
+
 		//milli_delay(5);/// waiting for the harddisk interrupt.
 	}
 	hd_int_waiting_flag = 1;
@@ -724,7 +724,7 @@ PUBLIC void interrupt_wait_sched()
 		sched();
 	}
 	hd_int_waiting_flag = 1;
-}	
+}
 //	*/
 
 
@@ -733,11 +733,11 @@ PUBLIC void interrupt_wait_sched()
  *****************************************************************************/
 /**
  * <Ring 1> Wait for a certain status.
- * 
+ *
  * @param mask    Status mask.
  * @param val     Required status.
  * @param timeout Timeout in milliseconds.
- * 
+ *
  * @return One if sucess, zero if timeout.
  *****************************************************************************/
 PRIVATE int waitfor(int mask, int val, int timeout)
@@ -745,7 +745,7 @@ PRIVATE int waitfor(int mask, int val, int timeout)
 	//we can't use syscall get_ticks before process run. modified by xw, 18/5/31
 	/*
 	int t = get_ticks();
-	
+
 	while(((get_ticks() - t) * 1000 / HZ) < timeout)
 		if ((in_byte(REG_STATUS) & mask) == val)
 			return 1;
@@ -753,13 +753,13 @@ PRIVATE int waitfor(int mask, int val, int timeout)
 
 	//int t = sys_get_ticks();
 	int t = kern_get_ticks();	//modified by mingxuan 2021-8-14
-	
+
 	//while(((sys_get_ticks() - t) * 1000 / HZ) < timeout){
 	while(((kern_get_ticks() - t) * 1000 / HZ) < timeout){	//modified by mingxuan 2021-8-14
 		if ((in_byte(REG_STATUS) & mask) == val)
 			return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -768,7 +768,7 @@ PRIVATE int waitfor(int mask, int val, int timeout)
  *****************************************************************************/
 /**
  * <Ring 0> Interrupt handler.
- * 
+ *
  * @param irq  IRQ nr of the disk interrupt.
  *****************************************************************************/
 PRIVATE void hd_handler(int irq)
@@ -781,7 +781,7 @@ PRIVATE void hd_handler(int irq)
 	 */
 	hd_status = in_byte(REG_STATUS);
 	inform_int();
-	
+
 	/* There is two stages - in kernel intializing or in process running.
 	 * Some operation shouldn't be valid in kernel intializing stage.
 	 * added by xw, 18/6/1
@@ -789,9 +789,9 @@ PRIVATE void hd_handler(int irq)
 	if(kernel_initial == 1){
 		return;
 	}
-	
+
 	//some operation only for process
-	
+
 	return;
 }
 
@@ -855,7 +855,7 @@ PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
 }
 
 PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
-{	
+{
 
 	// int drive = DRV_OF_DEV(p->DEVICE);
 
@@ -865,7 +865,7 @@ PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
 	// sect_nr += hd_infos[drive].part[p->DEVICE & 0x0FFFFF].base;
 
 	u32	sector_count =(count + SECTOR_SIZE - 1) / SECTOR_SIZE;
- 
+
 
 	if(type == DEV_WRITE)
 	{
@@ -889,7 +889,7 @@ PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
  * @param type 		0: read, device to host ;	1: write, host to device
  * @param sect_nr	读/写的起始扇区
  * @param count 	读/写扇区的数量
- * @retval			0: error  ;  1:sucess 
+ * @retval			0: error  ;  1:sucess
  * @note			还没实现出错重发的功能;"satabuf += 8*1024;"这行存在bug;
 */
 PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
@@ -915,15 +915,15 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 	// memset(cmdheader, 0, sizeof(HBA_CMD_HEADER));
 	cmdheader->cfl = sizeof(FIS_REG_H2D)/sizeof(u32);	// Command FIS size
 	cmdheader->w = (type == DEV_READ) ? 0 : 1;		// 0:device to host,read ;1:host to device,write
-	cmdheader->c = 0;               
-    cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.   
+	cmdheader->c = 0;
+    cmdheader->p = 0;          //Software shall not set CH(pFreeSlot).P when building queued ATA commands.
 	cmdheader->prdbc = 0;
 	cmdheader->prdtl =  1;	// PRDT entries count
- 
+
 	HBA_CMD_TBL *cmdtbl = (HBA_CMD_TBL*)K_PHY2LIN(cmdheader->ctba);
 	memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) +
  		(cmdheader->prdtl-1)*sizeof(HBA_PRDT_ENTRY));
- 
+
 	int i=0;
 	for ( i=0; i<cmdheader->prdtl-1; i++)
 	{
@@ -940,25 +940,25 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 
 	// Setup command
 	FIS_REG_H2D *cmdfis = (FIS_REG_H2D*)(&cmdtbl->cfis);
- 
+
 	cmdfis->fis_type = FIS_TYPE_REG_H2D;
 	cmdfis->c = 1;	// Command
 
 	// cmdfis->command = (p->type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
  	cmdfis->command = (type == DEV_READ) ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
-	
+
 	cmdfis->lba0 = sect_nr & 0xFF;
 	cmdfis->lba1 = (sect_nr >>  8) & 0xFF;
 	cmdfis->lba2 = (sect_nr >> 16) & 0xFF;
 	cmdfis->device = 1<<6;	// LBA mode
- 
+
 	cmdfis->lba3 = (sect_nr >> 24) & 0xFF;
 	cmdfis->lba4 = (sect_nr >> 32) & 0xFF;
 	cmdfis->lba5 = (sect_nr >> 40) & 0xFF;
- 
+
 	cmdfis->countl = count & 0xFF;
 	cmdfis->counth = (count >> 8) & 0xFF;
- 
+
 	// The below loop waits until the port is no longer busy before issuing a new command
 	int spin = 0; // Spin lock timeout counter
 	while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000)
@@ -982,12 +982,12 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 		wait_event((void *)&sata_wait_flag);
 		enable_int();
 	}
-	
+
 	if(sata_error_flag == 1)	return FALSE;
 	else 						return TRUE;
 }
 
-// add by sundong 2023.6.3 
+// add by sundong 2023.6.3
 //读写扇区  读写块的函数实现应该放在驱动层 而不是放在文件系统的实现中
 /*****************************************************************************
  *                                rw_sector
@@ -1036,7 +1036,7 @@ PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 // 	driver_msg->DEVICE = dev;
 
 // 	driver_msg->POSITION = pos;
-// 	driver_msg->CNT = bytes; 
+// 	driver_msg->CNT = bytes;
 // 	driver_msg->PROC_NR = proc_nr;
 // 	driver_msg->BUF = buf;
 
@@ -1055,7 +1055,7 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf)
 	driver_msg->DEVICE = dev;
 
 	driver_msg->POSITION = pos;
-	driver_msg->CNT = bytes; 
+	driver_msg->CNT = bytes;
 	driver_msg->PROC_NR = proc_nr;
 	driver_msg->BUF = buf;
 
@@ -1080,13 +1080,13 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 	driver_msg->DEVICE = dev;
 
 	driver_msg->POSITION = pos;
-	driver_msg->CNT = bytes; 
+	driver_msg->CNT = bytes;
 	driver_msg->PROC_NR = proc_nr;
 	driver_msg->BUF = buf;
 
 	hd_rdwt_sched(driver_msg);
 	// kern_kfree((u32)driver_msg);
-	
+
 	return 0;
 }
 

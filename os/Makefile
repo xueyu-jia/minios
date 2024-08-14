@@ -63,8 +63,8 @@ ORANGESKERNEL	= kernel.bin
 
 OBJS =  os/kernel/kernel.o \
 	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c) $(wildcard os/fs/*.c)) \
-	os/klib/klib.a os/gdbstub/gdbstub_x86_int.o 
-			
+	os/klib/klib.a os/gdbstub/gdbstub_x86_int.o
+
 #added by mingxuan 2021-2-28
 
 OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
@@ -113,7 +113,7 @@ kernel.gdb.bin : $(OBJS)
 #	$(LD) $(LDFLAGS_init_gdb) -o $@ $(OBJSINIT)
 
 # spinlock.o	added by mingxuan 2019-1-5
-os/kernel/spinlock.o: os/kernel/spinlock.c os/include/spinlock.h
+os/kernel/spinlock.o: os/kernel/spinlock.c
 	$(CC) -masm=intel  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/kernel/%.o : os/kernel/%.c

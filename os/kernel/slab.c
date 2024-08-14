@@ -1,6 +1,6 @@
-#include "slab.h"
-#include "buddy.h"
-#include "proto.h"
+#include <kernel/slab.h>
+#include <kernel/buddy.h>
+#include <kernel/proto.h>
 
 // cache数组下标从0开始，对应对象是8B。
 // 该系统最大可存储2048B大小的字节，更大的直接分配一个页。所以 KMEM_CACHES_NUM 最大为 9
@@ -27,7 +27,7 @@ void init_cache() {
 	char name[CACHE_NAME_LEN] = "Buffer_";
 
 	for (order = MIN_BUFF_ORDER; order <= MAX_BUFF_ORDER; order++)
-	{	
+	{
 		int index = 7, temp = order;
 		// 计算temp的位数
 		int digits = 1;
@@ -55,7 +55,7 @@ void init_cache() {
 
 	传入参数：
 		size：要分配的对象大小
-	
+
 	输出：
 		对象地址
 */
@@ -74,7 +74,7 @@ void *kmalloc(u32 size) {
 
 */
 int kfree(u32 object) {
-	
+
 	kmem_slab_t *slab = NULL;
 	page *page = pfn_to_page(phy_to_pfn(object));
 	int objsize = page->cache->objsize;  // 得到对象的大小
@@ -90,7 +90,7 @@ int kfree(u32 object) {
 			acquire(&(cache->list[i].lock));  // 先对每一个链上锁
 			kmem_slab_t *temp = cache->list[i].head;
 			while(temp){
-				if((object>=(u32)temp) && 
+				if((object>=(u32)temp) &&
 						(object<(u32)temp+BLOCK_SIZE)){
 					slab = temp;
 					move = freeObjectToSlab(temp, object);
@@ -114,15 +114,15 @@ int kfree(u32 object) {
 
 	传入参数：
 		slab ： slab结构指针。从指针指向的slab所管理的page中分配对象
-	
+
 	返回值：第一个空闲对象的下标
-*/ 
+*/
 PRIVATE u32 bitmap_check_avail(kmem_slab_t *slab) {
 	u32 obj_index, i ,j;
 	bitmap_entry_t *bitmap = slab->bitmap;     // 找到位图起始地址
 	kmem_cache_t *cache = slab->cache;
 	for (i = 0; i < cache->bitmap_length; i++) // 遍历位图的每一个块
-	{	 
+	{
 		if (bitmap[i] != BITMAP_FULL) 			//当前块没有被完全分配
 		{
 			j = 0;								//j是空闲对象在位图块中的相对地址
@@ -132,19 +132,19 @@ PRIVATE u32 bitmap_check_avail(kmem_slab_t *slab) {
 			break;
 		}
 	}
-	
+
 	return obj_index;
 
 }
 
 /*
-	从 slab 中分配对象 
+	从 slab 中分配对象
 
 	传入参数：
 		slab ： slab结构指针。从指针指向的slab所管理的page中分配对象
-	
+
 	返回值：分配的对象的地址
-*/ 
+*/
 PRIVATE void *slab_alloc_object(kmem_slab_t *slab) {
 
 	u32 obj_index;
@@ -162,7 +162,7 @@ PRIVATE void *slab_alloc_object(kmem_slab_t *slab) {
 * @param 	cache:某个cache的指针
 * @retval 	新创建的slab的指针
 * @details	给cache创建新的page。在page中初始化slab、位图、对象。
-*/ 
+*/
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
 	int i;
 	kmem_slab_t *slab;
@@ -178,7 +178,7 @@ kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
 	slab->objects = ptr_offset(slab->bitmap, (cache->bitmap_length)*sizeof(bitmap_entry_t));
 	slab->objects = ROUNDUP(slab->objects, cache->objorder);		//按照size对齐	lirong
 	slab->type = EMPTY;
-	
+
 	/* 初始化位图 */
 	i=0;
 	while(i<cache->bitmap_length)
@@ -235,7 +235,7 @@ PRIVATE void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder
 	输出：
 		0：不是empty
 		1：是empty
-*/ 
+*/
 PRIVATE int slabCheckempty(kmem_slab_t *slab) {
 	if(slab->used_obj==0){
 		return 1;
@@ -251,13 +251,13 @@ PRIVATE int slabCheckempty(kmem_slab_t *slab) {
 	输出：
 		0：不是full
 		1：是full
-*/ 
+*/
 PRIVATE int slabCheckfull(kmem_slab_t* slab) {
-	
+
 	if(slab->used_obj==slab->cache->obj_per_slab)
 		return 1;
 	return 0;
-	
+
 }
 
 /*
@@ -265,8 +265,8 @@ PRIVATE int slabCheckfull(kmem_slab_t* slab) {
 
 	传入参数：
 		slab ： 要删除的slab的指针
-	
-*/ 
+
+*/
 PRIVATE void deleteSlabfromOld(kmem_slab_t *slab) {
 
 	kmem_cache_t *cache = slab->cache;
@@ -295,17 +295,17 @@ PRIVATE void deleteSlabfromOld(kmem_slab_t *slab) {
 
 	cache->slab_count[type]--;
 }
- 
+
 /*
 	从cache分配一个对象，返回对象的地址。分配后要对slab的类型进行判断，按照规则将slab从某个链中
 	移除，并且插入到新的链中。
 
 	传入参数：
 		cache ： 指向cache的指针，从这个指针指向的cache中分配对象
-	
+
 	输出：
 		对象地址
-*/ 
+*/
 PRIVATE void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
 	void *obj = NULL;
 	int move = 0;
@@ -322,13 +322,13 @@ PRIVATE void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
 			deleteSlabfromOld(slab);    // 将page从原来的链中删除
 			slab->type = FULL;			// 修改当前的slab的类型
 			move = 1;					// 表示之后要将slab插入新的链表中
-		} 
+		}
 		release(&(cache->list[PARTIAL].lock)); // 分配成功，释放锁
-	}else{ 
+	}else{
 		release(&(cache->list[PARTIAL].lock)); // 没有 PARTIAL 链表，释放锁
 	}
-	
-	
+
+
 	// 没有partial类型的slab，就从empty类型的slab分配
 	if(!flag){
 		acquire(&(cache->list[EMPTY].lock));
@@ -344,7 +344,7 @@ PRIVATE void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
 			release(&(cache->list[EMPTY].lock));
 		}
 	}
-	
+
 	// 两种类型都没有
 	if(!flag){
 		slab = kmem_cache_new_slab(cache); // 分配一个新的page，初始化slab
@@ -352,12 +352,12 @@ PRIVATE void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
 		slab->type = PARTIAL;			   // 修改类型
 		move = 1;						   // 移动
 	}
-	
+
 
 	if(move){
 		moveSlab(slab);    // 将slab移动到对应的类型链表上
 	}
-	
+
 	return obj;
 }
 
@@ -366,7 +366,7 @@ PRIVATE void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
 
 	传入参数：
 		size：要分配的对象大小
-	
+
 	输出：
 		cache的指针
 */
@@ -401,7 +401,7 @@ PRIVATE int freeObjectToSlab(kmem_slab_t *slab, u32 obj) {
 
 	if(slab->type == PARTIAL){ // slab 释放之前是 PARTIAL 类型
 		if(slabCheckempty(slab)){ // 释放后是 EMPTY 类型
-			deleteSlabfromOld(slab); 
+			deleteSlabfromOld(slab);
 			slab->type = EMPTY;
 			return 1;
 		}
@@ -426,7 +426,7 @@ PRIVATE void moveSlab(kmem_slab_t* slab) {
 	slab_type_t type = slab->type;
 
 	// empty链上的page个数不能超过最大值，多的需要被释放
-	if(type == EMPTY){                                 
+	if(type == EMPTY){
 		if(slab->cache->slab_count[EMPTY] >= MAX_EMPTY) {
 			phy_kfree_4k(K_LIN2PHY(slab));
 			return ;
@@ -440,29 +440,29 @@ PRIVATE void moveSlab(kmem_slab_t* slab) {
 
 	cache->slab_count[type]++;
 	release(&(cache->list[type].lock));
-}  
+}
 
 /*
 	由对象的大小得到要操作的cache的下标
 
 	传入参数：
 		objsize ：对象的大小
-		
+
 	输出：
 		kmem_caches数组的下标
 
 
 */
 PRIVATE int get_index(int objsize) {
-	int index = 0; 
-    int temp = (objsize-1)>>MIN_BUFF_ORDER; 
+	int index = 0;
+    int temp = (objsize-1)>>MIN_BUFF_ORDER;
 	// objsize-1 是为了8、16、32、64...这些大小的对象找到对应的index
 	// >>MIN_BUFF_ORDER 是为了以 0 为起始
     while(temp){
         index++;
         temp >>= 1;
     }
-	return index; 
+	return index;
 }
 
 

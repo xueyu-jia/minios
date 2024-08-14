@@ -3,8 +3,8 @@
 ***********************************************************/
 // Mutual exclusion spin locks.
 
-#include "spinlock.h"
-#include "proc.h"
+#include <kernel/spinlock.h>
+#include <kernel/proc.h>
 #define lock_log(info) { disp_str(info); disp_int(p_proc_current->task.pid); disp_str(" ");}
 //extern int use_console_lock;
 
@@ -34,7 +34,7 @@ initlock(struct spinlock *lock, char *name)
 void
 acquire(struct spinlock *lock)
 {
-  
+
   while(cmpxchg(0, 1, &lock->locked) == 1);
   lock->pcs[0] = proc2pid(p_proc_current);
 }
@@ -55,8 +55,5 @@ void lock_or(struct spinlock *lock, void (*callback)()) {
 
 // 尝试对lock上锁，如果是锁着的状态则放弃cpu进行调度
 void lock_or_yield(struct spinlock *lock) {
-  return lock_or(lock, sched_yield); 
+  return lock_or(lock, sched_yield);
 }
-
-
-

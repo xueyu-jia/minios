@@ -1,9 +1,9 @@
 //added by mingxuan 2021-2-28
 
-#include "ksignal.h"
-#include "type.h"
-#include "proc.h"
-#include "proto.h"
+#include <kernel/ksignal.h>
+#include <kernel/type.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
 
 /*  //deleted by mingxuan 2021-8-20
 int do_signal(int sig, void *handler, void* _Handler) {

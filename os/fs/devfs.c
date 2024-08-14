@@ -1,10 +1,10 @@
-#include "devfs.h"
-#include "string.h"
-#include "memman.h"
-#include "hd.h"
-#include "fs.h"
-#include "spinlock.h"
-#include "proto.h"
+#include <kernel/devfs.h>
+#include <kernel/string.h>
+#include <kernel/memman.h>
+#include <kernel/hd.h>
+#include <kernel/fs.h>
+#include <kernel/spinlock.h>
+#include <kernel/proto.h>
 
 PRIVATE list_head devices;
 
@@ -38,7 +38,7 @@ PRIVATE void dev_to_basename(int major, char* dev_name) {
 		prefix = "tty";
 		strcpy(dev_name, prefix);
 		break;
-	
+
 	// 这种写法的含义是：case L ... R: 匹配 >=L且<=R的值
 	case DEV_HD_BASE ... (DEV_HD_LIMIT - 1):
 		major -= DEV_HD_BASE;
@@ -151,7 +151,7 @@ PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count, struct dire
 			if(minor_bit & 1) {
 				if(!(i == 0 && dev_struct->dev_type == DEV_BLOCK_TYPE)) {
 					itoa(i, dev_name + minor_name, 10);
-				} 
+				}
 				dirent_fill(dent, MAKE_DEV(dev_struct->dev_major, i), strlen(dev_name));
 				strcpy(dent->d_name, dev_name);
 				count -= dent->d_len;

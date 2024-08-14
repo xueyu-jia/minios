@@ -1,16 +1,16 @@
 /// zcr copy from chapter9/d fs/main.c and modified it.
 
-#include "type.h"
-#include "const.h"
-#include "string.h"
-#include "proto.h"
-#include "vfs.h"
-#include "fs.h"
-#include "orangefs.h"
-#include "hd.h"
-#include "protect.h"
-#include "mount.h"
-#include "buffer.h" 
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/string.h>
+#include <kernel/proto.h>
+#include <kernel/vfs.h>
+#include <kernel/fs.h>
+#include <kernel/orangefs.h>
+#include <kernel/hd.h>
+#include <kernel/protect.h>
+#include <kernel/mount.h>
+#include <kernel/buffer.h>
 
 
 static int orangefs_alloc_bitmap(int dev, int blk_base, int blk_nr, int cnt, int *pindex) {
@@ -97,7 +97,7 @@ PRIVATE int orange_alloc_imap_bit(struct super_block* sb)
 // 		}
 // 		brelse(bh);
 // 		if(inode_nr)goto alloc_end;
-		
+
 // 	}
 // alloc_end:
 // 	if(!inode_nr)disp_str("Panic: inode-map is probably full.\n");/* no free bit in imap */
@@ -133,7 +133,7 @@ PRIVATE int orange_alloc_smap_bit(struct super_block* sb, struct orange_inode_in
 	// buf_head *bh = NULL;
 	// int block_end = ORANGE_SB(sb)->nr_blocks;
 	// for (i = 0; i < ORANGE_SB(sb)->nr_smap_blocks; i++)
-	// {												 
+	// {
 	// 	bh = bread(sb->sb_dev, smap_blk0_nr + i);
 	// 	fsbuf = bh->buffer;
 
@@ -173,8 +173,8 @@ PRIVATE int orange_alloc_smap_bit(struct super_block* sb, struct orange_inode_in
 
 	// return free_sect_nr;
 	int index;
-    pin->i_nr_blocks = 
-        orangefs_alloc_bitmap(sb->sb_dev, 2 + ORANGE_SB(sb)->nr_imap_blocks, 
+    pin->i_nr_blocks =
+        orangefs_alloc_bitmap(sb->sb_dev, 2 + ORANGE_SB(sb)->nr_imap_blocks,
             ORANGE_SB(sb)->nr_smap_blocks, NR_DEFAULT_FILE_BLOCKS, &index);
     pin->i_start_block = index + ORANGE_SB(sb)->n_1st_block;
 	return 0;
@@ -323,7 +323,7 @@ PRIVATE int lookup_inode_in_dir(struct inode* dir, const char* filename)
 			}
 		}
 		brelse(bh);
-		
+
 	}
 	return INVALID_INODE;
 }
@@ -366,7 +366,7 @@ PRIVATE int remove_name_in_dir(struct inode* dir, int nr_inode)
 			}
 		}
 		brelse(bh);
-		
+
 	}
 	return -1;
 }
@@ -408,7 +408,7 @@ PRIVATE int orange_check_dir_empty(struct inode* dir)
 
 		}
 		brelse(bh);
-		
+
 	}
 	return 0;
 }
@@ -449,7 +449,7 @@ PUBLIC int orange_readdir(struct file_desc* file, unsigned int count, struct dir
 			dent = dirent_next(dent);
 		}
 		brelse(bh);
-		
+
 	}
 	return (u32)dent - (u32)start;;
 }
@@ -461,7 +461,7 @@ PRIVATE void orange_fill_inode(struct inode* inode, struct super_block* sb, int 
 	int blk_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks + ORANGE_SB(sb)->nr_smap_blocks + ((num - 1) / (BLOCK_SIZE / INODE_SIZE));
 	buf_head *bh = bread(sb->sb_dev,blk_nr);
 	char *fsbuf = bh->buffer;
-	struct orange_inode *pinode =  
+	struct orange_inode *pinode =
 		(struct orange_inode *)((u8 *)fsbuf +
 						 ((num - 1) % (BLOCK_SIZE / INODE_SIZE)) * INODE_SIZE);
 	inode->i_type = pinode->i_mode;
@@ -488,9 +488,9 @@ PRIVATE int orange_sync_inode(struct inode* inode){
 	pinode->i_start_block = inode->orange_inode.i_start_block;
 	pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
 	mark_buff_dirty(bh);
-	brelse(bh);	
+	brelse(bh);
 	// sync_buffers(0);
-	return 0;	
+	return 0;
 }
 
 PUBLIC void orange_read_inode(struct inode * inode){
@@ -683,7 +683,7 @@ int orange_create(struct inode *dir, struct dentry*dentry, int mode){
 		return -1;
 	}
 	struct inode *newino = vfs_new_inode(dir->i_sb);
-	// int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS); 
+	// int free_sect_nr = orange_alloc_smap_bit(dir->i_sb, NR_DEFAULT_FILE_BLOCKS);
 	// create empty file not map sector first to save space
 	dentry->d_inode = newino;
 	newino->i_no = inode_nr;
@@ -740,8 +740,8 @@ int orange_rmdir(struct inode *dir, struct dentry*dentry){
 }
 
 void orange_deleteinode(struct inode* inode){
-	orange_free_smap_bit(inode->i_sb, 
-		inode->orange_inode.i_start_block, 
+	orange_free_smap_bit(inode->i_sb,
+		inode->orange_inode.i_start_block,
 		inode->orange_inode.i_nr_blocks);
 	orange_free_imap_bit(inode->i_sb, inode->i_no);
 }

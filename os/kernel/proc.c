@@ -5,15 +5,15 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "clock.h"
-#include "console.h"
-#include "proc.h"
-#include "proto.h"
-#include "hd.h"
-#include "string.h"
-#include "buffer.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/clock.h>
+#include <kernel/console.h>
+#include <kernel/proc.h>
+#include <kernel/proto.h>
+#include <kernel/hd.h>
+#include <kernel/string.h>
+#include <kernel/buffer.h>
 
 // process entity
 typedef struct sched_process_entity {

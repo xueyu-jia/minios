@@ -5,19 +5,19 @@
                                                     Forrest Yu, 2005
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
-#include "type.h"
-#include "const.h"
-#include "proc.h"
-#include "clock.h"
-#include "proto.h"
-#include "console.h"
-#include "buddy.h"
-#include "ahci.h"
-#include "dev.h"
-#include "blame.h"
-#include "mmap.h"
-#include "pagetable.h"
-#include "shm.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/proc.h>
+#include <kernel/clock.h>
+#include <kernel/proto.h>
+#include <kernel/console.h>
+#include <kernel/buddy.h>
+#include <kernel/ahci.h>
+#include <kernel/dev.h>
+#include <kernel/blame.h>
+#include <kernel/mmap.h>
+#include <kernel/pagetable.h>
+#include <kernel/shm.h>
 #ifndef OPT_DISP_SERIAL
 // #define GDBSTUB
 #endif

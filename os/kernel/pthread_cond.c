@@ -1,5 +1,5 @@
-#include "proc.h"
-#include "clock.h"
+#include <kernel/proc.h>
+#include <kernel/clock.h>
 
 
 /*						added by ZengHao & MaLinhan 2021.12.23						*/

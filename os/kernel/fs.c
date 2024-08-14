@@ -1,13 +1,13 @@
-#include "hd.h"
-#include "string.h"
-#include "vfs.h"
-#include "buffer.h"
-#include "tty.h"
-#include "hd.h"
-#include "memman.h"
-#include "mmap.h"
-#include "assert.h"
-#include "devfs.h"
+#include <kernel/hd.h>
+#include <kernel/string.h>
+#include <kernel/vfs.h>
+#include <kernel/buffer.h>
+#include <kernel/tty.h>
+#include <kernel/hd.h>
+#include <kernel/memman.h>
+#include <kernel/mmap.h>
+#include <kernel/assert.h>
+#include <kernel/devfs.h>
 
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
@@ -49,7 +49,7 @@ int init_block_dev()
 	return 0;
 }
 
-// add by sundong 2023.5.19 
+// add by sundong 2023.5.19
 //在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
 int init_char_dev()
 {
@@ -67,7 +67,7 @@ int init_char_dev()
 
 // mapping file page buffer
 // return mapped block number
-// req. inode lock; file page cache list lock  
+// req. inode lock; file page cache list lock
 PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int create) {
 	buf_head *bh = NULL;
 	struct inode* inode = file_mapping->host;
@@ -125,7 +125,7 @@ PRIVATE void page_unmap_buffer(page* target){
 }
 
 // readpage to file address_space
-// req. inode lock; file page cache list lock  
+// req. inode lock; file page cache list lock
 int generic_file_readpage(struct address_space* file_mapping, page* target) {
 	int nr = page_filemap(target, file_mapping, 0);
 	int size = file_mapping->host->i_sb->sb_blocksize;
@@ -146,7 +146,7 @@ int generic_file_readpage(struct address_space* file_mapping, page* target) {
 }
 
 // writepage to file address_space
-// req. inode lock; file page cache list lock 
+// req. inode lock; file page cache list lock
 int generic_file_writepage(struct address_space* file_mapping, page* target) {
 	int nr = page_filemap(target, file_mapping, 1);
 	int size = file_mapping->host->i_sb->sb_blocksize;

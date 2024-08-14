@@ -1,16 +1,16 @@
 /*************************************************************
  *        msg.c by Li Yingchi Jiao Yuanxiang 2021.12.20
  *************************************************************/
-#include "type.h"
-#include "const.h"
-#include "console.h"
-#include "clock.h"
-#include "string.h"
-#include "proc.h"
-#include "memman.h"
-#include "pagetable.h"
-#include "msg.h"
-#include "proto.h"
+#include <kernel/type.h>
+#include <kernel/const.h>
+#include <kernel/console.h>
+#include <kernel/clock.h>
+#include <kernel/string.h>
+#include <kernel/proc.h>
+#include <kernel/memman.h>
+#include <kernel/pagetable.h>
+#include <kernel/msg.h>
+#include <kernel/proto.h>
 
 // instances
 msg_queue q_list[MAX_MSQ_NUM];

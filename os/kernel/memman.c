@@ -1,14 +1,14 @@
-#include "memman.h"
-#include "buddy.h" //added by mingxuan 2021-3-8
-#include "slab.h"
-#include "pagetable.h"
-#include "shm.h"
-#include "fs.h"
-#include "proto.h"
-#include "mmap.h"
-#include "mempage.h"
-#include "kmalloc.h"
-#include "string.h"
+#include <kernel/memman.h>
+#include <kernel/buddy.h> //added by mingxuan 2021-3-8
+#include <kernel/slab.h>
+#include <kernel/pagetable.h>
+#include <kernel/shm.h>
+#include <kernel/fs.h>
+#include <kernel/proto.h>
+#include <kernel/mmap.h>
+#include <kernel/mempage.h>
+#include <kernel/kmalloc.h>
+#include <kernel/string.h>
 
 int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
 u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27
