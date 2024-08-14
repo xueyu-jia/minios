@@ -1,9 +1,9 @@
 //ported by sundong 2023.3.26
-#include "loaderprint.h"
-#include "memblock.h"
-#include "paging.h"
-#include "string.h"
-#include "x86.h"
+#include <mbr/loaderprint.h>
+#include <mbr/memblock.h>
+#include <mbr/paging.h>
+#include <mbr/string.h>
+#include <mbr/x86.h>
 static phyaddr_t phy_malloc_pde =
     PageDirBase;  // 读汇编得到页目录存放地址宏定义
 static phyaddr_t phy_malloc_pte =

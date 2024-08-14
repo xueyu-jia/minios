@@ -1,10 +1,10 @@
 //ported by sundong 2023.3.26
-#include "disk.h"
-#include "loadkernel.h"
-#include "x86.h"
-#include "fat32.h"
-#include "loaderprint.h"
-#include "ahci.h"
+#include <mbr/disk.h>
+#include <mbr/loadkernel.h>
+#include <mbr/x86.h>
+#include <mbr/fat32.h>
+#include <mbr/loaderprint.h>
+#include <mbr/ahci.h>
 u32 bootPartStartSector;
 bool found_sata_dev = false;
 static void ide_waitdisk(void) {
@@ -50,7 +50,7 @@ void find_act_part(void *dst) {
   // read a sector
   insl(0x1F0, dst, SECTSIZE / 4);  // 从port0x1F0读取SECTSIZE/4个双字到dst中 */
   readsect(dst,offset);
- 
+
   BYTE *start = (BYTE *)(dst + MBR_CODE_LEN);  // 查找后64个字节的分区信息
   part_tbl_entry *p_mbr_entry = (part_tbl_entry *)start;
   for (int i = 0; i < PART_NUM; i++)  // 只有4个分区，每个分区16个字节
@@ -77,7 +77,7 @@ void find_act_part(void *dst) {
         if(find_act_part_in_ext(ebr_buff,ext_part_start_sect)){
             return ;
         };
-      
+
     }
     p_mbr_entry++;
     //start = start + PART_TABLE_ENTRY_SIZE;  // 查找下一个分区
@@ -95,7 +95,7 @@ static int ide_readsect(void *dst,u32 offset){
   // wait for disk to be ready
   ide_waitdisk();
   // read a sector
-  insl(DISK_PORT, dst, (SECTSIZE / 4));  // 从port0x1F0读取SECTSIZE/4个双字到dst中 
+  insl(DISK_PORT, dst, (SECTSIZE / 4));  // 从port0x1F0读取SECTSIZE/4个双字到dst中
   return TRUE;
 }
 static int ide_read(void *dst, u32 offset,int count){
@@ -121,4 +121,3 @@ int readsects(void* dst, u32 offset,u32 count){
   else                return ide_read(dst,offset,count);
   //ide_read(dst,offset,count);
 }
-

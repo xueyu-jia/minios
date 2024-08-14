@@ -1,9 +1,9 @@
-#include "fs.h"
-#include "type.h"
-#include "fat32.h"
-#include "orangefs.h"
-#include "disk.h"
-#include "loaderprint.h"
+#include <mbr/fs.h>
+#include <mbr/type.h>
+#include <mbr/fat32.h>
+#include <mbr/orangefs.h>
+#include <mbr/disk.h>
+#include <mbr/loaderprint.h>
 //读文件函数指针，根据不同的fs，有不同的实现；
 // int (*read_file)(char* filename, void* buf);
 int (*read)(u32 offset, u32 lenth, void *buf);

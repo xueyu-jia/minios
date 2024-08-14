@@ -1,12 +1,12 @@
 //ported by sundong 2023.3.26
-#include "loadkernel.h"
-#include "loaderprint.h"
-#include "./include/elf.h"
-#include "disk.h"
-#include "string.h"
-#include "paging.h"
-#include "ahci.h"
-#include "./include/fs.h"
+#include <mbr/loadkernel.h>
+#include <mbr/loaderprint.h>
+#include <mbr/elf.h>
+#include <mbr/disk.h>
+#include <mbr/string.h>
+#include <mbr/paging.h>
+#include <mbr/ahci.h>
+#include <mbr/fs.h>
 void loader_cstart(u32 MemChkBuf,u32 MCRNumber){
     clear_screen();
     lprintf("MemChkBuf: %d MCRNumber %d \n",MemChkBuf,MCRNumber);
@@ -42,14 +42,14 @@ void load_kernel() {
     }
     // int ret = read_file(KERNEL_FILENAME,(void *)ELF_ADDR);
     open_file(KERNEL_FILENAME);
-    
+
     struct Elfdr eh;
     struct Proghdr *ph = (struct Proghdr *)ELF_ADDR;
     struct Secthdr sh;
     // 读elf文件头
     int ret = read(0, sizeof(struct Elfdr), (void *)&eh);
     if(ret != TRUE) goto bad;
-    
+
     // 读program头
     if(ELF_BUF_LEN < eh.e_phentsize*eh.e_phnum){
         lprintf("load kernel: ELF Buffer overflow\n");

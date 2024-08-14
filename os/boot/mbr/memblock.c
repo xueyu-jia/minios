@@ -1,6 +1,6 @@
 //ported by sundong 2023.3.26
-#include "loaderprint.h"
-#include "memblock.h"
+#include <mbr/loaderprint.h>
+#include <mbr/memblock.h>
 void mem_check_32M() {
   lprintf("----start memblock----\n");
   // 禁止缓存
@@ -37,7 +37,7 @@ void mem_check_32M() {
 // 检查起始地址往后的内存块是否可用
 u32 mem_test(u32 startaddr, u32 endaddr) {
   u32 start = startaddr;
-  while (start <= endaddr) {  
+  while (start <= endaddr) {
     u32 check_4b = start + 0xffc;  // 检查最后4B
     u32* check_4b_ptr = (u32*)check_4b;
     u32 origin_check_4b = (*check_4b_ptr);

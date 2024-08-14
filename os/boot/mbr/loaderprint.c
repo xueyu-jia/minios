@@ -1,6 +1,6 @@
 //ported by sundong 2023.3.26
-#include "loaderprint.h"
-#include "string.h"
+#include <mbr/loaderprint.h>
+#include <mbr/string.h>
 int video_row = 0;
 int video_col = 0;
 // 清除屏幕
@@ -92,5 +92,5 @@ void print_mem(struct ARDStruct *adr) {
 void print_elf(struct Proghdr *ph ) {
   lprintf("%d %d %d %d\n", ph->p_type, ph->p_va, ph->p_filesz,
           ph->p_offset);
- 
+
 }

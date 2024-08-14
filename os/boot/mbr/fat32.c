@@ -1,12 +1,12 @@
 //ported by sundong 2023.3.26
-#include "fat32.h"
-#include "disk.h"
-#include "string.h"
+#include <mbr/fat32.h>
+#include <mbr/disk.h>
+#include <mbr/string.h>
 #define MIN(x,y)	(x>y ? y : x)
 struct BPB bpb;
 u32 fat_start_sec;
 u32 data_start_sec;
-u32 elf_off; 
+u32 elf_off;
 u32 fat_now_sec;
 u32 elf_first;
 void fat32_init();
@@ -18,7 +18,7 @@ int fat32_read(u32 offset, u32 lenth, void *buf);
 //一个简单地文件描述符
 struct fat32_fd{
     char *filename;
-    u32 first_clus; 
+    u32 first_clus;
     u32 fat_start_sec;          //  fat表起始扇区号
     u32 data_start_sec;         //  data起始扇区号
 };
@@ -27,11 +27,11 @@ struct fat32_fd elf_fd;
 struct BPB bpb;
 u32 fat_start_sec;
 u32 data_start_sec;
-u32 elf_off; 
+u32 elf_off;
 u32 fat_now_sec;
 u32 elf_first;
 
-#include "string.h"
+#include <mbr/string.h>
 /*
 获取下一个扇区号
 扇区号 = 簇号*4/每个扇区的字节数 + （隐藏扇区数 +
@@ -70,11 +70,11 @@ static void fat32_uppercase_filename(char*src,char*dst){
  */
 static void * read_cluster(void *dst, u32 current_clus) {
     // 计算簇号对应的数据区的簇号 = （簇号-2）*每个簇的扇区数+数据区起始扇区数
-    int data_clus = current_clus - bpb.BPB_RootClus; 
+    int data_clus = current_clus - bpb.BPB_RootClus;
     int clus_start_sect = data_clus * bpb.BPB_SecPerClus + elf_fd.data_start_sec;
     // 根据每个簇包含的扇区数量将数据读入目的地址
     //for (int i = 0; i < bpb.BPB_SecPerClus; i++, dst += SECTSIZE)
-      //readsect(dst, bootPartStartSector+clus_start_sect + i); 
+      //readsect(dst, bootPartStartSector+clus_start_sect + i);
     readsects(dst, bootPartStartSector+clus_start_sect, bpb.BPB_SecPerClus);
     return dst+bpb.BPB_SecPerClus*SECTSIZE;
 }
@@ -92,7 +92,7 @@ void fat32_init(){
 }
 
 /*
- * @brief 
+ * @brief
  * @param
  * @return 0 if faile or the first clus number ot the file if success
 */
@@ -121,12 +121,12 @@ u32 fat32_find_file(char *filename)
 // 读一个完整的文件，目前loader不需要
 // /*
 //  * @brief   read a file to buf
-//  * @param   filename 
+//  * @param   filename
 //  * @param   buf
 //  * @return  0 if faile or 1 for success
 // */
 // int fat32_read_file(char *filename,void *buf)
-// {	
+// {
 // 	fat32_open_file(filename);
 //     u32 file_clus = fat32_find_file(filename);
 //     if (file_clus == 0) return FALSE;
@@ -142,7 +142,7 @@ u32 fat32_find_file(char *filename)
  * @brief 得到文件的第i个簇的簇号
 */
 u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
-{	
+{
 	u32 current_clus = first_clus;
 	for(int i = 0; i < clus_i; i++){
 		current_clus = get_next_clus_number(current_clus);
@@ -159,7 +159,7 @@ u32 fat32_find_clus_i(u32 first_clus, u32 clus_i)
 */
 int fat32_read(u32 offset, u32 lenth, void *buf)
 {
-	if(lenth <= 0)	return TRUE;	
+	if(lenth <= 0)	return TRUE;
     u32 clus_size = bpb.BPB_SecPerClus * SECTSIZE;
 	// int retval = TRUE;
 
@@ -167,13 +167,13 @@ int fat32_read(u32 offset, u32 lenth, void *buf)
 	u32 offset_in_clus = offset % clus_size;
 	u32 current_clus = fat32_find_clus_i(elf_fd.first_clus, clus_i);	// 找到要读取的第一个簇的簇号
 	u32 first_read_lenth = MIN(clus_size-offset_in_clus, lenth);
-	
+
 	read_cluster((void *)BUF_ADDR, current_clus);
 	memcpy(buf, (void *)(BUF_ADDR+offset_in_clus), first_read_lenth);
 	current_clus = get_next_clus_number(current_clus);
 	lenth -= first_read_lenth;
 	buf += first_read_lenth;
-	
+
 	while(lenth>0 && 0x0FFFFFF8>current_clus){
 		read_cluster((void *)BUF_ADDR, current_clus);
 		memcpy(buf, (void *)BUF_ADDR, MIN(clus_size, lenth));
@@ -182,7 +182,7 @@ int fat32_read(u32 offset, u32 lenth, void *buf)
 		buf += clus_size;
 		lenth -= clus_size;
 	}
-	
+
     return TRUE;
 }
 /*

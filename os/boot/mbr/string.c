@@ -1,5 +1,5 @@
 //ported by sundong 2023.3.26
-#include "string.h"
+#include <mbr/string.h>
 int strlen(const char *s)
 {
 	int n = 0;
