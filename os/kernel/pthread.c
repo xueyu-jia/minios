@@ -163,7 +163,7 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	int pid;
 	u32 eflags, cr3_child;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
-	char /*esp_save_int,*/ *esp_save_context;	//use to save corresponding field in child's PCB, xw, 18/4/21
+	CONTEXT_FRAME* esp_save_context;	//use to save corresponding field in child's PCB, xw, 18/4/21
 	STACK_FRAME* esp_save_int;  		//added by lcy, 2023.10.24
 	//暂存标识信息
 	pid = p_child->task.pid;
@@ -187,11 +187,12 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	// p_child->task.esp_save_context = esp_save_context;	//same above
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	//modified end
+	p_child->task.pid = pid;
 	init_user_cpu_context(&p_child->task.context, p_child->task.pid);
 	// proc_init_ldt_kstack(p_child, RPL_USER);
 	// proc_init_context(p_child);
 	//恢复标识信息
-	p_child->task.pid = pid;
+
 
 	//p_child->task.regs.eflags = eflags;
 	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11

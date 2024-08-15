@@ -19,17 +19,13 @@ PRIVATE void exit_handle_child_thread(u32 pid, bool lock_recy);
  */
 PUBLIC void kern_exit(int exit_code)
 {
-    PROCESS *exit_pcb = NULL;
-    PROCESS *fa_pcb   = NULL;
+    PROCESS *exit_pcb = proc_real(p_proc_current); //线程执行退出，则退出整个进程
+    PROCESS *fa_pcb   = pid2proc(exit_pcb->task.tree_info.ppid);
     PROCESS *recy_pcb = (PROCESS*)pid2proc(NR_RECY_PROC);
-
-	exit_pcb = (PROCESS*)pid2proc(p_proc_current->task.pid);
-	lock_or_yield(&exit_pcb->task.lock);
-	fa_pcb = (PROCESS*)pid2proc(exit_pcb->task.tree_info.ppid);
-
-	// 释放所有文件资源 xv6也测了这个 jiangfeng 2024-03-11
+    // 释放所有文件资源 xv6也测了这个 jiangfeng 2024-03-11
 	// 可能触发文件同步和硬盘IO,在上锁之前完成
 	exit_file(exit_pcb);
+	lock_or_yield(&exit_pcb->task.lock);
 
 	lock_or_yield(&fa_pcb->task.lock);
     assert(exit_pcb->task.tree_info.ppid >= 0 && exit_pcb->task.tree_info.ppid < NR_PCBS);
@@ -147,17 +143,18 @@ PRIVATE void exit_handle_child_thread(u32 pid, bool lock_recy)
     for (int i = 0; i < pcb->task.tree_info.child_t_num; ++i) {
         PROCESS* child_pcb = (PROCESS*)pid2proc(pcb->task.tree_info.child_thread[i]);
 		// mmu 重构后，子线程直接引用父进程的memmap, 故不用单独释放子线程的内存空间
-        for (int i = 0; i < child_pcb->task.tree_info.child_t_num; ++i) {
-            exit_handle_child_thread(child_pcb->task.tree_info.child_thread[i], lock_recy);
-        }
-		// 处理子线程拥有的子进程
-        if (lock_recy) {
-            lock_or_yield(&recy_pcb->task.lock);
-            transfer_child_proc(child_pcb->task.pid, NR_RECY_PROC);
-            release(&recy_pcb->task.lock);
-        } else {
-            transfer_child_proc(child_pcb->task.pid, NR_RECY_PROC);
-        }
+        // 子线程禁止拥有进程和线程
+        // for (int i = 0; i < child_pcb->task.tree_info.child_t_num; ++i) {
+        //     exit_handle_child_thread(child_pcb->task.tree_info.child_thread[i], lock_recy);
+        // }
+		// // 处理子线程拥有的子进程
+        // if (lock_recy) {
+        //     lock_or_yield(&recy_pcb->task.lock);
+        //     transfer_child_proc(child_pcb->task.pid, NR_RECY_PROC);
+        //     release(&recy_pcb->task.lock);
+        // } else {
+        //     transfer_child_proc(child_pcb->task.pid, NR_RECY_PROC);
+        // }
 		// free PCBs of child thread
         child_pcb->task.stat = ZOMBY;
 		free_PCB(child_pcb);

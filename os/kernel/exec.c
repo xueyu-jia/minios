@@ -269,7 +269,7 @@ PRIVATE int exec_pcb_init(const char *proc_name) {
     // 名称 状态 特权级 寄存器
     strcpy(p_proc_current->task.p_name, proc_name); // 名称
 
-    init_user_cpu_context(&p_proc_current->task.context, p_proc_current->task.pid);
+    init_user_cpu_context(&p_proc_current->task.context, proc2pid((p_proc_current)));
     // proc_init_ldt_kstack(p_proc_current, RPL_USER); //多个功能 都用到的就抽象出来吧，别造轮子了 modified 2024.05.06
     // memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 

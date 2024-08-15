@@ -406,12 +406,12 @@ void init_a_PCB(PROCESS* pcb)
     }
 }
 
-void set_rpl(cpu_context *context, int pid, int rpl)
+void set_rpl(cpu_context *context, int pid, u32 rpl)
 {
     init_cpu_context(context, pid,
     context->esp_save_int->eip,
     context->esp_save_int->esp,
-    restart_restore,
+    (u32)restart_restore,
     rpl);
 }
 

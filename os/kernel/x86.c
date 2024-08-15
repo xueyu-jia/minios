@@ -33,14 +33,11 @@ void init_context_frame(CONTEXT_FRAME* context_frame, u32 eip, u32 eflags)
 	context_frame->eflags = eflags;
 }
 
-void alloc_ldt(int pcb_nr, cpu_context *context, int rpl)
+void alloc_ldt(int pid, cpu_context *context, u32 rpl)
 {
 	u8 privilege = (u8)rpl;
-	u16 selector_ldt = SELECTOR_LDT_FIRST;
-	while(pcb_nr > 0){
-			selector_ldt += 1 << 3;
-			pcb_nr--;
-	}
+	u16 selector_ldt = SELECTOR_LDT_FIRST + (pid*(1 << 3));
+
     context->ldt_sel = selector_ldt;
     memcpy(&context->ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
     context->ldts[0].attr1 = DA_C | privilege << 5;
@@ -48,7 +45,7 @@ void alloc_ldt(int pcb_nr, cpu_context *context, int rpl)
     context->ldts[1].attr1 = DA_DRW | privilege << 5;
 
 }
-void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip, int rpl)
+void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip, u32 rpl)
 {
     if(rpl != RPL_USER && rpl != RPL_TASK &&rpl != RPL_KRNL){
         // ! panic
