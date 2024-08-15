@@ -260,3 +260,5 @@ typedef struct cpu_context{
 	CONTEXT_FRAME* esp_save_context;	//to save the position of esp in the kernel stack of the process
 
 } cpu_context;  // 加上关键字__attribute__((packed))反而报错了
+
+void init_cpu_context(cpu_context *context, int pid, void *func, u32 esp, u32 restart_restore, int priority);

@@ -315,4 +315,8 @@ static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
 	p_proc->task.context.esp_save_int->gs = common_gs|rpl;
 	p_proc->task.context.esp_save_int->eflags = eflags;
 }
+
+PUBLIC void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice);
+void init_all_PCB();
+int kthread_create(char *name, void *func, int is_rt, int priority, int rtpriority_or_nice);
 #endif
