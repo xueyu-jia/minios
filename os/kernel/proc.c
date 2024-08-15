@@ -142,7 +142,7 @@ void wakeup_for_sem(void* chan) {
 
 // added by zcr
 PUBLIC int ldt_seg_linear(PROCESS* p, int idx) {
-    struct s_descriptor* d = &p->task.ldts[idx];
+    struct s_descriptor* d = &p->task.context.ldts[idx];
     return d->base_high << 24 | d->base_mid << 16 | d->base_low;
 }
 

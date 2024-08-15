@@ -274,6 +274,8 @@ PRIVATE void init_proc_ldt_regs(PROCESS* p_proc, u32 rpl, u32 entry){
 	////初始化内核栈
 	/***************some field about process switch****************************/
 	proc_init_ldt_kstack(p_proc, rpl);
+	// p_proc->task.context.esp_save_int->eip = entry;
+	// p_proc->task.context.esp_save_int->esp = p_proc->task.memmap.stack_lin_base;
 	proc_kstacktop(p_proc)->eip = entry;
 	proc_kstacktop(p_proc)->esp = p_proc->task.memmap.stack_lin_base;
 	//p_proc->task.save_type = 1;

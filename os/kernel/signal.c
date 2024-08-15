@@ -118,11 +118,11 @@ void kern_sigreturn(int ebp)
     // copy saved regs from stack to  this regs
     // to some operation to compute true address
     // int ebp = msg->data[1];
-    u32* esp_syscall = p_proc_current->task.esp_save_int;
+    u32 *esp_syscall = p_proc_current->task.context.esp_save_int;
     int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
 
    // u16 user_ss = p_proc_current->task.regs.ss;
-    u16 user_ss = p_proc_current->task.esp_save_int->ss;
+    u16 user_ss = p_proc_current->task.context.esp_save_int->ss;
     u16 kernel_es ;
 
     // change es to B_ss
@@ -211,7 +211,7 @@ void process_signal() {
     STACK_FRAME *regs1;
     PROCESS* proc = p_proc_current;
     //memcpy(&regs, &proc->task.regs, sizeof(STACK_FRAME));
-    regs1=p_proc_current->task.esp_save_int;
+    regs1=p_proc_current->task.context.esp_save_int;
     Sigaction sigaction = {
         .sig = sig,
         .handler = proc->task.sig_handler[sig],
@@ -234,8 +234,8 @@ void process_signal() {
     );
 
     /* save context */
-    int start = proc->task.esp_save_int->esp - sizeof(regs);
-    for(u32* p = start, *sf = proc->task.esp_save_int, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
+    int start = proc->task.context.esp_save_int->esp - sizeof(regs);
+    for(u32 *p = start, *sf = proc->task.context.esp_save_int, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
             :
@@ -246,7 +246,7 @@ void process_signal() {
 
     /* push para */
     start -= sizeof(Sigaction);
-    for(u32* p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(u32) ;i++, p++, sf++) {
+    for(u32 *p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(u32) ;i++, p++, sf++) {
         __asm__ (
             "mov %%eax, %%es:(%%edi)"
             :
@@ -260,8 +260,8 @@ void process_signal() {
 
     /* switch to Handler */
     //u32 *context_p = proc->task.esp_save_int;
-    proc->task.esp_save_int->eip = proc->task._Hanlder;
-    proc->task.esp_save_int->esp = start;
+    proc->task.context.esp_save_int->eip = proc->task._Hanlder;
+    proc->task.context.esp_save_int->esp = start;
     //*(context_p + 14) =  proc->task._Hanlder; /* eip */
     //*(context_p + 17) = start;                /* esp */
 

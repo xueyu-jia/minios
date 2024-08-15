@@ -49,7 +49,7 @@ PUBLIC void init_gdt()
 	//for(i=0;i<NR_TASKS;i++){
 	for(i=0;i<NR_PCBS;i++){										//edit by visual 2016.4.5
 		init_descriptor(&gdt[selector_ldt>>3],
-				vir2phys(seg2phys(SELECTOR_KERNEL_DS),proc_table[i].task.ldts),
+				vir2phys(seg2phys(SELECTOR_KERNEL_DS),proc_table[i].task.context.ldts),
 				LDT_SIZE * sizeof(DESCRIPTOR) - 1,
 				DA_LDT);
 		p_proc++;

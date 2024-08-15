@@ -55,8 +55,6 @@ u32  read_cr2();			//add by visual 2016.5.9
 u32  read_cr3();
 void refresh_page_cache();  //add by visual 2016.5.12
 void refresh_gdt();//add by sundong 2023.3.8
-//void restart_int();
-//void save_context();
 void restart_initial();		//added by xw, 18/4/18
 void restart_restore();		//added by xw, 18/4/20
 void sched();				//added by xw, 18/4/18
