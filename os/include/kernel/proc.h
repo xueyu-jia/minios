@@ -10,7 +10,6 @@
 #include <kernel/fs.h> //added by ran
 #include <kernel/pthread.h>
 #include <kernel/protect.h>
-#include <kernel/x86.h>
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -95,58 +94,27 @@ enum proc_stat	{FREE, READY, SLEEPING, KILLED, ZOMBY}; //simplify 20240314 jiang
 #define TYPE_THREAD		1//线程//add by visual 2016.5.26
 #define TIME_SCALE		100
 
-// typedef struct s_stackframe {	/* proc_ptr points here				↑ Low			*/
-// 	u32	gs;			/* ┓						│			*/
-// 	u32	fs;			/* ┃						│			*/
-// 	u32	es;			/* ┃						│			*/
-// 	u32	ds;			/* ┃						│			*/
-// 	u32	edi;		/* ┃						│			*/
-// 	u32	esi;		/* ┣ pushed by save()				│			*/
-// 	u32	ebp;		/* ┃						│			*/
-// 	u32	kernel_esp;	/* <- 'popad' will ignore it			│			*/
-// 	u32	ebx;		/* ┃						↑栈从高地址往低地址增长*/
-// 	u32	edx;		/* ┃						│			*/
-// 	u32	ecx;		/* ┃						│			*/
-// 	u32	eax;		/* ┛						│			*/
-// 	u32	retaddr;	/* return address for assembly code save()	│			*/
-// 	u32	error;		//add by lcy 2023.10.26
-// 	u32	eip;		/*  ┓						│			*/
-// 	u32	cs;			/*  ┃						│			*/
-// 	u32	eflags;		/*  ┣ these are pushed by CPU during interrupt	│			*/
-// 	u32	esp;		/*  ┃						│			*/
-// 	u32	ss;			/*  ┛						┷High			*/
-// }STACK_FRAME;
-
-// typedef struct CONTEXT_FRAME{
-// 	u32 edi;
-// 	u32 esi;
-// 	u32 ebp;
-// 	u32 esp;
-// 	u32 ebx;
-// 	u32 edx;
-// 	u32 ecx;
-// 	u32 eax;			// 以上均由pushad压栈
-// 	u32 eflags;			// 由 pushfd 压栈
-// 	u32 eip;			// 由函数调用自动压栈
-// }__attribute__((packed)) CONTEXT_FRAME;
-
-
-// /*
-// 因为x86版本使用偏移量访问变量，所以该结构体内部成员请保持原有顺序
-// 注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构
-// */
-// typedef struct cpu_context{
-// 	u16 ldt_sel;               /* gdt selector giving ldt base and limit */
-// 	DESCRIPTOR ldts[LDT_SIZE]; /* local descriptors for code and data */
-
-// 	STACK_FRAME* esp_save_int;	// 需要保存的寄存器，定义在各个架构的processor.h中
-// 	//char* esp_save_int;		//to save the position of esp in the kernel stack of the process
-// 							//added by xw, 17/12/11
-// 	char* esp_save_syscall;	//to save the position of esp in the kernel stack of the process
-// 	CONTEXT_FRAME* esp_save_context;	//to save the position of esp in the kernel stack of the process
-
-// } cpu_context;  // 加上关键字__attribute__((packed))反而会报错，原因未知
-
+typedef struct s_stackframe {	/* proc_ptr points here				↑ Low			*/
+	u32	gs;			/* ┓						│			*/
+	u32	fs;			/* ┃						│			*/
+	u32	es;			/* ┃						│			*/
+	u32	ds;			/* ┃						│			*/
+	u32	edi;		/* ┃						│			*/
+	u32	esi;		/* ┣ pushed by save()				│			*/
+	u32	ebp;		/* ┃						│			*/
+	u32	kernel_esp;	/* <- 'popad' will ignore it			│			*/
+	u32	ebx;		/* ┃						↑栈从高地址往低地址增长*/
+	u32	edx;		/* ┃						│			*/
+	u32	ecx;		/* ┃						│			*/
+	u32	eax;		/* ┛						│			*/
+	u32	retaddr;	/* return address for assembly code save()	│			*/
+	u32	error;		//add by lcy 2023.10.26
+	u32	eip;		/*  ┓						│			*/
+	u32	cs;			/*  ┃						│			*/
+	u32	eflags;		/*  ┣ these are pushed by CPU during interrupt	│			*/
+	u32	esp;		/*  ┃						│			*/
+	u32	ss;			/*  ┛						┷High			*/
+}STACK_FRAME;
 
 typedef struct s_tree_info{//进程树记录，包括父进程，子进程，子线程  //add by visual 2016.5.25
 	int type;			//当前是进程还是线程
@@ -200,11 +168,20 @@ typedef struct s_lin_memmap {//线性地址分布结构体	edit by visual 2016.5
 
 /*注意：sconst.inc文件中规定了变量间的偏移值，新添变量不要破坏原有顺序结构*/
 typedef struct s_proc {
-	cpu_context context;	// 因为x86版本使用偏移量访问变量，所以请将该变量放在开头
+	//STACK_FRAME regs;          /* process registers saved in stack frame */ deleted by lcy 2023.10.25
+
+	u16 ldt_sel;               /* gdt selector giving ldt base and limit */
+	DESCRIPTOR ldts[LDT_SIZE]; /* local descriptors for code and data */
+
+	STACK_FRAME* esp_save_int;	//to save the position of esp in the kernel stack of the process
+
+	char* esp_save_context;	//to save the position of esp in the kernel stack of the process
+
 	void* channel;			/*if non-zero, sleeping on channel, which is a pointer of the target field
 							for example, as for syscall sleep(int n), the target field is 'ticks',
 							and the channel is a pointer of 'ticks'.
 							*/
+
 	LIN_MEMMAP	memmap;			//线性内存分部信息 		add by visual 2016.5.4
 	TREE_INFO tree_info;				//记录进程树关系	add by visual 2016.5.25
     int ticks;                 /* remained ticks */
@@ -252,6 +229,7 @@ typedef struct s_proc {
 	double vruntime;
 	u32 cpu_use;
 	u64 sum_cpu_use;
+
 
 }PROCESS_0;
 
@@ -333,7 +311,7 @@ void restart_restore();
 
 static inline void proc_init_context(PROCESS *p_proc) {
 	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
-	p_proc->task.context.esp_save_context = ((char*)context_base) - PROC_CONTEXT;
+	p_proc->task.esp_save_context = ((char*)context_base) - PROC_CONTEXT;
 	*(context_base-1) = (u32)(restart_restore);
 	*(context_base-2) = 0x1202;
 }
@@ -343,22 +321,18 @@ static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
 	u16 ldt_sel = SELECTOR_LDT_FIRST + ((proc2pid(p_proc))*(1 << 3));
 	u8 privilege = rpl;
 	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
-	p_proc->task.context.ldt_sel = ldt_sel;
-	memcpy(&p_proc->task.context.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[0].attr1 = DA_C | privilege << 5;
-	memcpy(&p_proc->task.context.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[1].attr1 = DA_DRW | privilege << 5;
-	p_proc->task.context.esp_save_int = proc_kstacktop(p_proc);
-	p_proc->task.context.esp_save_int->cs = common_cs|rpl;
-	p_proc->task.context.esp_save_int->ds = common_ds|rpl;
-	p_proc->task.context.esp_save_int->es = common_es|rpl;
-	p_proc->task.context.esp_save_int->fs = common_fs|rpl;
-	p_proc->task.context.esp_save_int->ss = common_ss|rpl;
-	p_proc->task.context.esp_save_int->gs = common_gs|rpl;
-	p_proc->task.context.esp_save_int->eflags = eflags;
+	p_proc->task.ldt_sel = ldt_sel;
+	memcpy(&p_proc->task.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
+	p_proc->task.ldts[0].attr1 = DA_C | privilege << 5;
+	memcpy(&p_proc->task.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
+	p_proc->task.ldts[1].attr1 = DA_DRW | privilege << 5;
+	p_proc->task.esp_save_int = proc_kstacktop(p_proc);
+	p_proc->task.esp_save_int->cs = common_cs|rpl;
+	p_proc->task.esp_save_int->ds = common_ds|rpl;
+	p_proc->task.esp_save_int->es = common_es|rpl;
+	p_proc->task.esp_save_int->fs = common_fs|rpl;
+	p_proc->task.esp_save_int->ss = common_ss|rpl;
+	p_proc->task.esp_save_int->gs = common_gs|rpl;
+	p_proc->task.esp_save_int->eflags = eflags;
 }
-
-PUBLIC int kthread_create(char *name, void *func, int is_rt, int priority);
-void init_all_PCB();
-
 #endif

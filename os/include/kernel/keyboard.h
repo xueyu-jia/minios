@@ -10,8 +10,6 @@
 #ifndef	_ORANGES_KEYBOARD_H_
 #define	_ORANGES_KEYBOARD_H_
 #include <kernel/type.h>
-#include <kernel/const.h>
-#include <kernel/console.h>
 
 /************************************************************************/
 /*                          Macros Declaration                          */
@@ -145,5 +143,4 @@ typedef struct mouse_inbuf{
 }MOUSE_INPUT;
 
 PUBLIC void keyboard_read(TTY* p_tty);
-PUBLIC void init_kb();
 #endif /* _ORANGES_KEYBOARD_H_ */

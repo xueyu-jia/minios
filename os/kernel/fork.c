@@ -108,7 +108,7 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child)
 	//暂存子进程的标识信息
 	pid = p_child->task.pid;
 	cr3_child = p_child->task.cr3;
-	esp_save_stackframe = p_child->task.context.esp_save_int;
+	esp_save_stackframe = p_child->task.esp_save_int;
 
 	// 复制父进程的PCB
 	disable_int();
@@ -122,7 +122,7 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child)
 	//恢复子进程PCB独有的信息
 	p_child->task.cpu_use = 0;
 	p_child->task.sum_cpu_use = 0;
-	p_child->task.context.esp_save_int = esp_save_stackframe;	//esp_save_int of child must be restored!!
+	p_child->task.esp_save_int = esp_save_stackframe;	//esp_save_int of child must be restored!!
 
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_proc_current), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	p_child->task.pid = pid;

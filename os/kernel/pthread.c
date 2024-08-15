@@ -172,8 +172,8 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	//esp_save_int and esp_save_context must be saved, because the child and the parent
 	//use different kernel stack! And these two are importent to the child's initial running.
 	//Added by xw, 18/4/21
-	esp_save_int = p_child->task.context.esp_save_int;
-	esp_save_context = p_child->task.context.esp_save_context;
+	esp_save_int = p_child->task.esp_save_int;
+	esp_save_context = p_child->task.esp_save_context;
 	disable_int();
 	p_child->task = p_parent->task;
 	//note that syscalls can be interrupted now! the state of child can only be setted
