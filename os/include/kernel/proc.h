@@ -281,42 +281,36 @@ PUBLIC int kern_get_pid_byname(char* name);
 PUBLIC void proc_backtrace();
 void restart_restore();
 
-static inline void proc_init_context(PROCESS *p_proc) {
-	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
-	p_proc->task.context.esp_save_context = (CONTEXT_FRAME*)((char*)context_base - PROC_CONTEXT);
-	// *(context_base-1) = (u32)(restart_restore);
-	// *(context_base-2) = 0x1202;
-	// disp_str("\neip1:");
-	// disp_int(*(context_base-1));
-	// disp_str("\neip2:");
-	// disp_int(p_proc->task.context.esp_save_context->eip);
-	// while(1){};
-	p_proc->task.context.esp_save_context->eip = (u32)(restart_restore);
-	p_proc->task.context.esp_save_context->eflags = (u32)0x1202;
+// static inline void proc_init_context(PROCESS *p_proc) {
+// 	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
+// 	p_proc->task.context.esp_save_context = (CONTEXT_FRAME*)((char*)context_base - PROC_CONTEXT);
+// 	p_proc->task.context.esp_save_context->eip = (u32)(restart_restore);
+// 	p_proc->task.context.esp_save_context->eflags = (u32)0x1202;
 
-}
+// }
 
-#include <kernel/string.h>
-static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
-	u16 ldt_sel = SELECTOR_LDT_FIRST + ((proc2pid(p_proc))*(1 << 3));
-	u8 privilege = rpl;
-	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
-	p_proc->task.context.ldt_sel = ldt_sel;
-	memcpy(&p_proc->task.context.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[0].attr1 = DA_C | privilege << 5;
-	memcpy(&p_proc->task.context.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[1].attr1 = DA_DRW | privilege << 5;
-	p_proc->task.context.esp_save_int = proc_kstacktop(p_proc);
-	p_proc->task.context.esp_save_int->cs = common_cs|rpl;
-	p_proc->task.context.esp_save_int->ds = common_ds|rpl;
-	p_proc->task.context.esp_save_int->es = common_es|rpl;
-	p_proc->task.context.esp_save_int->fs = common_fs|rpl;
-	p_proc->task.context.esp_save_int->ss = common_ss|rpl;
-	p_proc->task.context.esp_save_int->gs = common_gs|rpl;
-	p_proc->task.context.esp_save_int->eflags = eflags;
-}
+// #include <kernel/string.h>
+// static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
+// 	u16 ldt_sel = SELECTOR_LDT_FIRST + ((proc2pid(p_proc))*(1 << 3));
+// 	u8 privilege = rpl;
+// 	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
+// 	p_proc->task.context.ldt_sel = ldt_sel;
+// 	memcpy(&p_proc->task.context.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
+// 	p_proc->task.context.ldts[0].attr1 = DA_C | privilege << 5;
+// 	memcpy(&p_proc->task.context.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
+// 	p_proc->task.context.ldts[1].attr1 = DA_DRW | privilege << 5;
+// 	p_proc->task.context.esp_save_int = proc_kstacktop(p_proc);
+// 	p_proc->task.context.esp_save_int->cs = common_cs|rpl;
+// 	p_proc->task.context.esp_save_int->ds = common_ds|rpl;
+// 	p_proc->task.context.esp_save_int->es = common_es|rpl;
+// 	p_proc->task.context.esp_save_int->fs = common_fs|rpl;
+// 	p_proc->task.context.esp_save_int->ss = common_ss|rpl;
+// 	p_proc->task.context.esp_save_int->gs = common_gs|rpl;
+// 	p_proc->task.context.esp_save_int->eflags = eflags;
+// }
 
 PUBLIC void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice);
 void init_all_PCB();
 int kthread_create(char *name, void *func, int is_rt, int priority, int rtpriority_or_nice);
+void init_user_cpu_context(cpu_context *context, int pid);
 #endif

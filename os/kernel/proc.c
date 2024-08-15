@@ -16,6 +16,7 @@
 #include <kernel/buffer.h>
 #include <kernel/mmap.h>
 #include <kernel/pagetable.h>
+#include <kernel/x86.h>
 
 u32            cr3_ready;
 int            u_proc_sum;
@@ -342,20 +343,20 @@ void init_all_PCB()
 
 		memset(p, 0, sizeof(PROCESS));
 
-		p->task.stat = -1; 			//初始化状态 -1表示未初始化
-		p->task.ticks = -1;
-		p->task.priority = -1;
+		// p->task.stat = -1; 			//初始化状态 -1表示未初始化
+		// p->task.ticks = -1;
+		// p->task.priority = -1;
 		p->task.pid = i;
 		p->task.p_name[0] = (char)0;
 		p->task.stat = FREE;
-		// p->task.cwd[0] = (char)0;
-		p->task.suspended = -1;
-		p->task.exit_status = -1;
-		p->task.child_exit_status = -1;
-		p->task.sig_set = 0;
-		p->task._Hanlder = NULL;
-		p->task.retval = NULL;
-		p->task.who_wait_flag = 0;
+		// // p->task.cwd[0] = (char)0;
+		// p->task.suspended = -1;
+		// p->task.exit_status = -1;
+		// p->task.child_exit_status = -1;
+		// p->task.sig_set = 0;
+		// p->task._Hanlder = NULL;
+		// p->task.retval = NULL;
+		// p->task.who_wait_flag = 0;
 
 		// 开辟上下文帧的空间
 		char *frame = (char *)(p + 1);
@@ -365,11 +366,65 @@ void init_all_PCB()
 		frame -= sizeof(CONTEXT_FRAME);
 		p->task.context.esp_save_context = (CONTEXT_FRAME*)frame;
 
-		init_cpu_context(&p->task.context, i, NULL, StackLinBase, (u32)restart_restore, PRIVILEGE_USER);
+		// init_cpu_context(&p->task.context, i, NULL, StackLinBase, (u32)restart_restore, PRIVILEGE_USER);
+        init_user_cpu_context(&p->task.context, i);
 
 		for (int j = 0; j < NR_FILES; j++){
 			proc_table[i].task.filp[j] = 0;
 		}
 		// 暂时不需要初始化mmu
 	}
+}
+
+void init_a_PCB(PROCESS* pcb)
+{
+    pcb->task.stat = -1; 			//初始化状态 -1表示未初始化
+    pcb->task.ticks = -1;
+    pcb->task.priority = -1;
+    pcb->task.pid = pcb - proc_table;
+    pcb->task.p_name[0] = (char)0;
+    pcb->task.stat = FREE;
+    // p->task.cwd[0] = (char)0;
+    pcb->task.suspended = -1;
+    pcb->task.exit_status = -1;
+    pcb->task.child_exit_status = -1;
+    pcb->task.sig_set = 0;
+    pcb->task._Hanlder = NULL;
+    pcb->task.retval = NULL;
+    pcb->task.who_wait_flag = 0;
+
+    // 开辟上下文帧的空间
+    char *frame = (char *)(pcb + 1);
+    frame -= sizeof(STACK_FRAME);
+    pcb->task.context.esp_save_int = (STACK_FRAME*)frame;
+    // 开辟中断帧的空间
+    frame -= sizeof(CONTEXT_FRAME);
+    pcb->task.context.esp_save_context = (CONTEXT_FRAME*)frame;
+
+    for (int j = 0; j < NR_FILES; j++){
+        pcb->task.filp[j] = 0;
+    }
+}
+
+void set_rpl(cpu_context *context, int pid, int rpl)
+{
+    init_cpu_context(context, pid,
+    context->esp_save_int->eip,
+    context->esp_save_int->esp,
+    restart_restore,
+    rpl);
+}
+
+void init_user_cpu_context(cpu_context *context, int pid)
+{
+    // 开辟上下文帧的空间
+    PROCESS* pcb = pid2proc(pid);
+    char *frame = (char *)(pcb + 1);
+    frame -= sizeof(STACK_FRAME);
+    pcb->task.context.esp_save_int = (STACK_FRAME*)frame;
+    // 开辟中断帧的空间
+    frame -= sizeof(CONTEXT_FRAME);
+    pcb->task.context.esp_save_context = (CONTEXT_FRAME*)frame;
+
+    set_rpl(context, pid, RPL_USER);
 }

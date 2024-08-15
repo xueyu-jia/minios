@@ -71,13 +71,13 @@ PUBLIC int kern_wait(int* wstatus)
 
 		fa_pcb->task.child_exit_status = exit_pcb->task.exit_status;
         int child_pid = exit_pcb->task.pid;
-		disable_int();
+		// disable_int();
 		lock_or_yield(&exit_pcb->task.lock);
 		//释放子进程的进程表项
 		free_PCB(exit_pcb);	//modified by mingxuan 2021-8-21
         release(&exit_pcb->task.lock);
         release(&fa_pcb->task.lock);
-        enable_int();
+        // enable_int();
 		if (wstatus != NULL)	*wstatus = fa_pcb->task.child_exit_status;
         return child_pid;
     }

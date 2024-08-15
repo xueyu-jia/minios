@@ -54,15 +54,17 @@ PUBLIC void kern_exit(int exit_code)
         exit_handle_child_thread(exit_pcb->task.pid, true);
         lock_or_yield(&recy_pcb->task.lock);
         if (transfer_child_proc(exit_pcb->task.pid, NR_RECY_PROC) != 0) {
+            disable_int();
             recy_pcb->task.stat = READY;
+            enable_int();
         }
         release(&recy_pcb->task.lock);
     }
-
+    disable_int();
     exit_pcb->task.stat      	= ZOMBY;
     exit_pcb->task.exit_status 	= exit_code;
 	out_rq(exit_pcb);
-
+    enable_int();
     // assert(exit_pcb->task.lock);
     // assert(fa_pcb->task.lock);
 

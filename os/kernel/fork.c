@@ -31,10 +31,10 @@ PUBLIC int kern_fork()
 		goto alloc_PCB_failed;
 
 	// init proc page
-	disable_int();
+	// disable_int();
 	if(ch->task.cr3 == 0)	//如果没有页目录，就申请 //added by mingxuan 2021-1-11
 		retval = init_proc_page(ch->task.pid);
-	enable_int();
+	// enable_int();
 	if(retval != 0)
 		goto init_page_failed;
 
@@ -42,12 +42,12 @@ PUBLIC int kern_fork()
 	fork_pcb_info_cpy(ch);
 	release(&ch->task.lock);
 
-	disable_int();
+	// disable_int();
 	/**************复制线性内存，包括堆、栈、代码数据等等***********************/
 	// mmu change: jiangfeng 2024.05
 	memmap_copy(fa, ch);
 		// todo: error handler
-	enable_int();
+	// enable_int();
 
 	// update the proc tree
 	fork_update_proc_tree(ch);
@@ -59,11 +59,11 @@ PUBLIC int kern_fork()
 	u_proc_sum += 1;
 
 	//anything child need is prepared now, set its state to ready.
-	disable_int();
+	// disable_int();
 	ch->task.stat = READY;
 	release(&fa->task.lock);
 	in_rq(ch);
-	enable_int();
+	// enable_int();
 	return ch->task.pid;
 
 // handle error
@@ -127,8 +127,9 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child)
 	memcpy((char*) proc_kstacktop(p_child), proc_kstacktop(p_proc_current), P_STACKTOP);//changed by lcy 2023.10.26 19*4
 	p_child->task.pid = pid;
 
-	proc_init_ldt_kstack(p_child, RPL_USER); // 改为统一的宏函数初始化 jiangfeng 2024.05
-	proc_init_context(p_child);
+	init_user_cpu_context(&p_child->task.context, p_child->task.pid);
+	// proc_init_ldt_kstack(p_child, RPL_USER); // 改为统一的宏函数初始化 jiangfeng 2024.05
+	// proc_init_context(p_child);
 	p_child->task.cr3 = cr3_child;
 
 	atomic_inc(&p_child->task.cwd->d_count); // 子进程增加父进程打开文件的引用计数 jiangfeng 2024.02
