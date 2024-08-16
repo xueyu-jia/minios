@@ -13,6 +13,7 @@
 utils/orangefs_mount
 utils/orangefs_mkfs
 /root/*
+cas-test/
 
 # ignore *.bin
 *.bin

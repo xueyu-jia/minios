@@ -193,10 +193,6 @@ PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent)
 	// proc_init_context(p_child);
 	//恢复标识信息
 
-
-	//p_child->task.regs.eflags = eflags;
-	// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-	// *((u32*)(p_reg + EFLAGSREG - P_STACKTOP)) = eflags;	//added by xw, 17/12/11
 	return 0;
 }
 

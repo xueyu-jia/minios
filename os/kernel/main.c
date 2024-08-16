@@ -253,7 +253,7 @@ PRIVATE int initialize_cpus()
 PRIVATE int initialize_processes()
 {
 
-	init_all_PCB();
+	// init_all_PCB();
 	for (int i = 0; i < NR_TASKS; i++){
 		int pid = kthread_create(task_table[i].name, (void*)task_table[i].initial_eip, task_table[i].rt, task_table[i].rpl, task_table[i].priority_nice);
 		in_rq(&proc_table[pid]);

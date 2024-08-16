@@ -26,6 +26,7 @@ PRIVATE int exec_replace_argv_and_envp(
     char* const*    envp
 );
 PRIVATE void* exec_read_and_load(int fd);
+PRIVATE const char* extract_program_name(const char* __path);
 
 PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp)
 {
@@ -39,9 +40,10 @@ PUBLIC u32 kern_execve(const char* path, char* const* argv, char* const* envp)
 
     char* _path = (char*)kern_kmalloc(strlen(path) + 1);
     strcpy(_path, path);
+    const char* proc_name = extract_program_name(_path);
 
     // update argv and envp
-    err_temp = exec_replace_argv_and_envp(_path, argv, envp);
+    err_temp = exec_replace_argv_and_envp(proc_name, argv, envp);
 
     if (0 != err_temp) {
         disp_str("exec:replace argv and envp failed");
@@ -270,8 +272,6 @@ PRIVATE int exec_pcb_init(const char *proc_name) {
     strcpy(p_proc_current->task.p_name, proc_name); // 名称
 
     init_user_cpu_context(&p_proc_current->task.context, proc2pid((p_proc_current)));
-    // proc_init_ldt_kstack(p_proc_current, RPL_USER); //多个功能 都用到的就抽象出来吧，别造轮子了 modified 2024.05.06
-    // memcpy(p_regs, (char *)p_proc_current, 18 * 4);
 
     // 进程表线性地址布局部分，text、data已经在前面初始化了
     p_proc_current->task.memmap.vpage_lin_base = VpageLinBase; // 保留内存基址
@@ -348,4 +348,13 @@ PUBLIC u32 sys_execve()
 PUBLIC u32 do_execve(const char* path, char* const* argv, char* const* envp)
 {
     return kern_execve(path, argv, envp);
+}
+
+PRIVATE const char* extract_program_name(const char* __path)
+{
+    // 找到最后一个斜杠的位置
+    const char *last_slash = strrchr(__path, '/');
+    // 根据最后一个斜杠的位置来确定程序名的起始位置
+    const char *program_name = last_slash ? last_slash + 1 : __path;
+    return program_name;
 }

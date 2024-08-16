@@ -43,7 +43,8 @@
 #define EFLAGSREG 16 * 4
 #define ESPREG 17 * 4
 #define SSREG 18 * 4
-#define P_STACKTOP 19 * 4
+// #define P_STACKTOP 19 * 4
+#define P_STACKTOP sizeof(STACK_FRAME)
 
 /*总PCB表数和taskPCB表数*/
 //modified by xw, 18/8/27
@@ -237,6 +238,9 @@ extern 	int 	nice_to_weight[];
 #define proc2pid(x) (x - proc_table)
 #define pid2proc(pid) ((PROCESS*)&proc_table[(pid)])
 #define proc_kstacktop(proc) ((STACK_FRAME*)(((char*)((proc)+1) - P_STACKTOP)))
+#define proc_stack_frame(proc) ((STACK_FRAME*)(((char*)((proc)+1) - P_STACKTOP)))
+#define proc_context_frame(proc) (CONTEXT_FRAME*)((char*)proc_stack_frame(proc)-sizeof(CONTEXT_FRAME))
+
 
 #define PROC_CONTEXT	10 * 4
 //added by zq
@@ -280,34 +284,6 @@ PUBLIC int kern_get_pid_byname(char* name);
 
 PUBLIC void proc_backtrace();
 void restart_restore();
-
-static inline void proc_init_context(PROCESS *p_proc) {
-	u32 *context_base = (u32*)(proc_kstacktop(p_proc));
-	p_proc->task.context.esp_save_context = (CONTEXT_FRAME*)((char*)context_base - PROC_CONTEXT);
-	p_proc->task.context.esp_save_context->eip = (u32)(restart_restore);
-	p_proc->task.context.esp_save_context->eflags = (u32)0x1202;
-
-}
-
-#include <kernel/string.h>
-static inline void proc_init_ldt_kstack(PROCESS* p_proc,  u32 rpl) {
-	u16 ldt_sel = SELECTOR_LDT_FIRST + ((proc2pid(p_proc))*(1 << 3));
-	u8 privilege = rpl;
-	u32 eflags = (rpl != RPL_USER)? 0x1202 : 0x202;
-	p_proc->task.context.ldt_sel = ldt_sel;
-	memcpy(&p_proc->task.context.ldts[0], &gdt[SELECTOR_KERNEL_CS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[0].attr1 = DA_C | privilege << 5;
-	memcpy(&p_proc->task.context.ldts[1], &gdt[SELECTOR_KERNEL_DS >> 3], sizeof(DESCRIPTOR));
-	p_proc->task.context.ldts[1].attr1 = DA_DRW | privilege << 5;
-	p_proc->task.context.esp_save_int = proc_kstacktop(p_proc);
-	p_proc->task.context.esp_save_int->cs = common_cs|rpl;
-	p_proc->task.context.esp_save_int->ds = common_ds|rpl;
-	p_proc->task.context.esp_save_int->es = common_es|rpl;
-	p_proc->task.context.esp_save_int->fs = common_fs|rpl;
-	p_proc->task.context.esp_save_int->ss = common_ss|rpl;
-	p_proc->task.context.esp_save_int->gs = common_gs|rpl;
-	p_proc->task.context.esp_save_int->eflags = eflags;
-}
 
 PUBLIC void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice);
 void init_all_PCB();
