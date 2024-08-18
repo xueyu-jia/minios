@@ -40,9 +40,9 @@ PUBLIC void clock_handler(int irq)
 PUBLIC void init_clock(){
 	ticks = 0;
 	/* initialize 8253 PIT */
-	out_byte(TIMER_MODE, RATE_GENERATOR);
-	out_byte(TIMER0, (u8)(TIMER_FREQ / HZ));
-	out_byte(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
+	outb(TIMER_MODE, RATE_GENERATOR);
+	outb(TIMER0, (u8)(TIMER_FREQ / HZ));
+	outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
 	/* initialize clock-irq */
 	put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
 	current_timestamp = get_init_rtc_timestamp();

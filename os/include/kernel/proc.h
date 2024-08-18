@@ -273,7 +273,6 @@ PUBLIC void sched_yield();
 //PUBLIC void sys_sleep(int n); //deleted by mingxuan 2021-8-13
 PUBLIC void sys_sleep(); //modified by mingxuan 2021-8-13
 PUBLIC void wakeup(void *channel);
-PUBLIC int ldt_seg_linear(PROCESS *p, int idx);
 PUBLIC void* va2la(int pid, void* va);
 // PUBLIC void do_exit(int status);
 
@@ -283,10 +282,10 @@ PUBLIC void wait_event(void* event);
 PUBLIC int kern_get_pid_byname(char* name);
 
 PUBLIC void proc_backtrace();
-void restart_restore();
+// void restart_restore();
 
 PUBLIC void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int pid, int is_rt, int priority_or_nice);
-void init_all_PCB();
-int kthread_create(char *name, void *func, int is_rt, int priority, int rtpriority_or_nice);
-void init_user_cpu_context(cpu_context *context, int pid);
+PUBLIC void init_all_PCB();
+PUBLIC int kthread_create(char *name, void *func, int is_rt, int priority, int rtpriority_or_nice);
+PUBLIC void init_user_cpu_context(cpu_context *context, int pid);
 #endif

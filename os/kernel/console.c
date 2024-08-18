@@ -6,6 +6,7 @@
 #include <kernel/console.h>
 #include <kernel/clock.h>
 #include <kernel/spinlock.h>
+#include <kernel/vga.h>
 
 int		disp_pos;
 CONSOLE     console_table[NR_CONSOLES];
@@ -13,12 +14,12 @@ SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化
 #define __TTY_DEBUG__
 
 /* local routines */
-PRIVATE void	set_cursor(unsigned int position);
-PRIVATE void	set_video_start_addr(u32 addr);
+// PRIVATE void	vga_set_cursor(unsigned int position);
+// PRIVATE void	vga_set_video_start_addr(u32 addr);
 PRIVATE void	flush(CONSOLE* con);
 PRIVATE	void	w_copy(unsigned int dst, const unsigned int src, int size);
 PRIVATE void	clear_screen(int pos, int len);
-PUBLIC int _disp_color_str(char * info, int color, int pos);// return new pos
+// PUBLIC int _disp_color_str(char * info, int color, int pos);// return new pos
 /*****************************************************************************
  *                                init_screen
  *****************************************************************************/
@@ -59,7 +60,7 @@ PUBLIC void init_screen(TTY* tty)
 		out_char(tty->console, *p == '?' ? nr_tty + '0' : *p);
 	}
 
-	set_cursor(tty->console->cursor);
+	vga_set_cursor(tty->console->cursor);
 }
 
 
@@ -167,7 +168,6 @@ PRIVATE void clear_screen(int pos, int len)
 	}
 }
 
-
 /*****************************************************************************
  *                            is_current_console
  *****************************************************************************/
@@ -181,45 +181,6 @@ PRIVATE void clear_screen(int pos, int len)
 PUBLIC int is_current_console(CONSOLE* con)
 {
 	return (con == &console_table[current_console]);
-}
-
-
-/*****************************************************************************
- *                                set_cursor
- *****************************************************************************/
-/**
- * Display the cursor by setting CRTC (6845 compatible) registers.
- *
- * @param position  Position of the cursor based on the beginning of the video
- *                  memory. Note that it counts in WORDs, not in BYTEs.
- *****************************************************************************/
-PRIVATE void set_cursor(unsigned int position)
-{
-	disable_int();
-	out_byte(CRTC_ADDR_REG, CURSOR_H);
-	out_byte(CRTC_DATA_REG, (position >> 8) & 0xFF);
-	out_byte(CRTC_ADDR_REG, CURSOR_L);
-	out_byte(CRTC_DATA_REG, position & 0xFF);
-	enable_int();
-}
-
-
-/*****************************************************************************
- *                                set_video_start_addr
- *****************************************************************************/
-/**
- * Routine for hardware screen scrolling.
- *
- * @param addr  Offset in the video memory.
- *****************************************************************************/
-PRIVATE void set_video_start_addr(u32 addr)
-{
-	disable_int();
-	out_byte(CRTC_ADDR_REG, START_ADDR_H);
-	out_byte(CRTC_DATA_REG, (addr >> 8) & 0xFF);
-	out_byte(CRTC_ADDR_REG, START_ADDR_L);
-	out_byte(CRTC_DATA_REG, addr & 0xFF);
-	enable_int();
 }
 
 
@@ -328,8 +289,8 @@ PUBLIC void reset_screen(CONSOLE* con) {
 PRIVATE void flush(CONSOLE* con)
 {
 	if (is_current_console(con)) {
-		set_cursor(con->cursor);
-		set_video_start_addr(con->crtc_start);
+		vga_set_cursor(con->cursor);
+		vga_set_video_start_addr(con->crtc_start);
 	}
 /*
 #ifdef __TTY_DEBUG__
@@ -371,11 +332,13 @@ PRIVATE	void w_copy(unsigned int dst, const unsigned int src, int size)
 PUBLIC void disp_color_str(const char* info, int color){
 
 	if(kernel_initial == 1){
-		disp_pos = _disp_color_str(info, color, disp_pos);
+		// disp_pos = _disp_color_str(info, color, disp_pos);
+		disp_pos = vga_write_colored_str(info, color, disp_pos);
 	}else{
 		acquire(&video_mem_lock);
 		CONSOLE* con = &console_table[current_console];
-		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
+		con->cursor = vga_write_colored_str(info, color, con->cursor << 1) >> 1;
+		// con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
 		flush(con);
 	#ifdef OPT_DISP_SERIAL
 	#include <kernel/uart.h>
@@ -395,6 +358,34 @@ PUBLIC void disp_color_str(const char* info, int color){
 		release(&video_mem_lock);
 	}
 }
+
+// PUBLIC void disp_color_str(const char* info, int color){
+
+// 	if(kernel_initial == 1){
+// 		disp_pos = _disp_color_str(info, color, disp_pos);
+// 	}else{
+// 		acquire(&video_mem_lock);
+// 		CONSOLE* con = &console_table[current_console];
+// 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
+// 		flush(con);
+// 	#ifdef OPT_DISP_SERIAL
+// 	#include <kernel/uart.h>
+// 	for(char *p = info; p && *p; p++) {
+// 		write_serial(*p);
+// 		if(*p == '\n'){
+// 			char tick_str[8];
+// 			itoa(ticks, tick_str, 10);
+// 			write_serial('[');
+// 			for(char *s=tick_str; *s; s++){
+// 				write_serial(*s);
+// 			}
+// 			write_serial(']');
+// 		}
+// 	}
+// 	#endif
+// 		release(&video_mem_lock);
+// 	}
+// }
 
 PUBLIC void disp_str(const char* info){
 	disp_color_str(info, DEFAULT_CHAR_COLOR);

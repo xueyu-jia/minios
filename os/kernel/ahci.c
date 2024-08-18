@@ -32,17 +32,17 @@ PUBLIC int AHCI_init() // 遍历pci设备，找到AHCI  by qianglong	2022.5.17
     for (bus = 0; bus <= MAXBUS; bus++) {
         for (dev = 0; dev <= MAXDEV; dev++) {
             for (fun = 0; fun <= MAXFUN; fun++) {
-                out_dword(
+                outl(
                     PCI_CONFIG_ADD,
                     mk_pci_add(
                         bus, dev, fun, 0)); // 0号寄存器为device——id和vendor——id
-                if ((in_dword(PCI_CONFIG_DATA) & 0xffff)
+                if ((inl(PCI_CONFIG_DATA) & 0xffff)
                     != 0xffff) { // 如果vendorid合法,表示该位置存在设备
-                    out_dword(
+                    outl(
                         0xcf8,
                         mk_pci_add(
                             bus, dev, fun, 2)); // 2号寄存器为classcode,设备类别
-                    if ((in_dword(PCI_CONFIG_DATA) >> 16)
+                    if ((inl(PCI_CONFIG_DATA) >> 16)
                         == 0x0106) { // 判断是否为AHCI
                         // disp_str("  bus: ");
                         // disp_int(bus);
@@ -56,23 +56,23 @@ PUBLIC int AHCI_init() // 遍历pci设备，找到AHCI  by qianglong	2022.5.17
                         ahci_info[AHCI_cnt - 1].achi_pos_pci.bus = bus;
                         ahci_info[AHCI_cnt - 1].achi_pos_pci.dev = dev;
                         ahci_info[AHCI_cnt - 1].achi_pos_pci.fun = fun;
-                        out_dword(
+                        outl(
                             PCI_CONFIG_ADD,
                             mk_pci_add(bus, dev, fun, 9)); // 9号寄存器为ABAR
                         disp_str("  ABAR: ");
                         ahci_info[AHCI_cnt - 1].ABAR =
-                            in_dword(PCI_CONFIG_DATA);
+                            inl(PCI_CONFIG_DATA);
                         disp_int(ahci_info[AHCI_cnt - 1].ABAR);
 
-                        out_dword(
+                        outl(
                             PCI_CONFIG_ADD, mk_pci_add(bus, dev, fun, 15));
                         disp_str("  interrupt: ");
 
-                        disp_int(in_dword(PCI_CONFIG_DATA));
+                        disp_int(inl(PCI_CONFIG_DATA));
                         ahci_info[AHCI_cnt - 1].irq_info =
-                            in_dword(PCI_CONFIG_DATA) & 0xffff;
+                            inl(PCI_CONFIG_DATA) & 0xffff;
                     }
-                    // if ((in_dword(PCI_CONFIG_DATA)>>16)==0x0101)
+                    // if ((inl(PCI_CONFIG_DATA)>>16)==0x0101)
                     // {
                     // 	disp_str(" idecontorler ");
                     // }

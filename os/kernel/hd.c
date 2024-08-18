@@ -665,26 +665,26 @@ PRIVATE void hd_cmd_out(struct hd_cmd* cmd,int drive)
 		disp_str("hd error.");
 
 	/* Activate the Interrupt Enable (nIEN) bit */
-	out_byte(REG_DEV_CTRL, 0);
+	outb(REG_DEV_CTRL, 0);
 
 
 	if(hd_LBA48_sup[drive]==1){//若是大硬盘，则LBA48第一次写
-		out_byte(REG_FEATURES, cmd->features);
-		out_byte(REG_NSECTOR,  cmd->count_LBA48);
-		out_byte(REG_LBA_LOW,  cmd->lba_low_LBA48);
-		out_byte(REG_LBA_MID,  cmd->lba_mid_LBA48);
-		out_byte(REG_LBA_HIGH, cmd->lba_high_LBA48);
+		outb(REG_FEATURES, cmd->features);
+		outb(REG_NSECTOR,  cmd->count_LBA48);
+		outb(REG_LBA_LOW,  cmd->lba_low_LBA48);
+		outb(REG_LBA_MID,  cmd->lba_mid_LBA48);
+		outb(REG_LBA_HIGH, cmd->lba_high_LBA48);
 	}//by qianglong 2022.4.26
 
 	/* Load required parameters in the Command Block Registers */
-	out_byte(REG_FEATURES, cmd->features);
-	out_byte(REG_NSECTOR,  cmd->count);
-	out_byte(REG_LBA_LOW,  cmd->lba_low);
-	out_byte(REG_LBA_MID,  cmd->lba_mid);
-	out_byte(REG_LBA_HIGH, cmd->lba_high);
-	out_byte(REG_DEVICE,   cmd->device);
+	outb(REG_FEATURES, cmd->features);
+	outb(REG_NSECTOR,  cmd->count);
+	outb(REG_LBA_LOW,  cmd->lba_low);
+	outb(REG_LBA_MID,  cmd->lba_mid);
+	outb(REG_LBA_HIGH, cmd->lba_high);
+	outb(REG_DEVICE,   cmd->device);
 	/* Write the command code to the Command Register */
-	out_byte(REG_CMD,     cmd->command);
+	outb(REG_CMD,     cmd->command);
 }
 
 /*****************************************************************************
@@ -747,7 +747,7 @@ PRIVATE int waitfor(int mask, int val, int timeout)
 	int t = get_ticks();
 
 	while(((get_ticks() - t) * 1000 / HZ) < timeout)
-		if ((in_byte(REG_STATUS) & mask) == val)
+		if ((inb(REG_STATUS) & mask) == val)
 			return 1;
 	*/
 
@@ -756,7 +756,7 @@ PRIVATE int waitfor(int mask, int val, int timeout)
 
 	//while(((sys_get_ticks() - t) * 1000 / HZ) < timeout){
 	while(((kern_get_ticks() - t) * 1000 / HZ) < timeout){	//modified by mingxuan 2021-8-14
-		if ((in_byte(REG_STATUS) & mask) == val)
+		if ((inb(REG_STATUS) & mask) == val)
 			return 1;
 	}
 
@@ -779,7 +779,7 @@ PRIVATE void hd_handler(int irq)
 	 *   - issues a reset, or
 	 *   - writes to the Command Register.
 	 */
-	hd_status = in_byte(REG_STATUS);
+	hd_status = inb(REG_STATUS);
 	inform_int();
 
 	/* There is two stages - in kernel intializing or in process running.

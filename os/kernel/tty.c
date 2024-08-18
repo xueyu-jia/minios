@@ -5,6 +5,7 @@
 #include <kernel/console.h>
 #include <kernel/keyboard.h>
 #include <kernel/semaphore.h>
+#include <kernel/vga.h>
 
 
 TTY         tty_table[NR_CONSOLES];
@@ -18,10 +19,10 @@ PUBLIC void    wake_the_tty();
 
 PRIVATE void put_key(TTY* tty, u32 key)
 {
-	if (tty->ibuf_cnt < TTY_IN_BYTES) {
+	if (tty->ibuf_cnt < TTY_inbS) {
 		*(tty->ibuf_head) = key;
 		tty->ibuf_head++;
-		if (tty->ibuf_head == tty->ibuf + TTY_IN_BYTES)
+		if (tty->ibuf_head == tty->ibuf + TTY_inbS)
 			tty->ibuf_head = tty->ibuf;
 		tty->ibuf_cnt++;
         tty->ibuf_read_cnt++;
@@ -45,10 +46,10 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
 		/*
         disp_str(output);
         disable_int( );
-        out_byte(CRTC_ADDR_REG,CURSOR_H);
-        out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
-        out_byte(CRTC_ADDR_REG,CURSOR_L);
-        out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
+        outb(CRTC_ADDR_REG,CURSOR_H);
+        outb(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
+        outb(CRTC_ADDR_REG,CURSOR_L);
+        outb(CRTC_DATA_REG,(disp_pos/2)&0xFF);
         enable_int( );
         */
 	}else{
@@ -67,10 +68,10 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
                 // if(p_tty->console->current_line < 43){
                 //     disable_int( );
                 //     p_tty->console->current_line ++;
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_H);
-                //     out_byte(CRTC_DATA_REG, ( (80*(p_tty->console->current_line+real_line)) >> 8) & 0xFF);
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_L);
-                //     out_byte(CRTC_DATA_REG, (80*(p_tty->console->current_line+real_line))  & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_H);
+                //     outb(CRTC_DATA_REG, ( (80*(p_tty->console->current_line+real_line)) >> 8) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_L);
+                //     outb(CRTC_DATA_REG, (80*(p_tty->console->current_line+real_line))  & 0xFF);
                 //     enable_int( );
                 // }
 				scroll_screen(p_tty->console, SCR_UP);
@@ -79,10 +80,10 @@ PUBLIC void in_process(TTY* p_tty , u32 key){
                 // if(p_tty->console->current_line > 0){
                 //     disable_int( );
                 //     p_tty->console->current_line --;
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_H);
-                //     out_byte(CRTC_DATA_REG, ( (80*(p_tty->console->current_line+real_line)) >> 8) & 0xFF);
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_L);
-                //     out_byte(CRTC_DATA_REG, (80*(p_tty->console->current_line+real_line)) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_H);
+                //     outb(CRTC_DATA_REG, ( (80*(p_tty->console->current_line+real_line)) >> 8) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_L);
+                //     outb(CRTC_DATA_REG, (80*(p_tty->console->current_line+real_line)) & 0xFF);
                 //     enable_int( );
                 // }
 				scroll_screen(p_tty->console, SCR_DN);
@@ -136,10 +137,10 @@ PRIVATE void tty_mouse(TTY* tty){
                 // if(tty->console->current_line < 43){
                 //     disable_int( );
                 //     tty->console->current_line ++;
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_H);
-                //     out_byte(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_L);
-                //     out_byte(CRTC_DATA_REG, (80*(tty->console->current_line+real_line))  & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_H);
+                //     outb(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_L);
+                //     outb(CRTC_DATA_REG, (80*(tty->console->current_line+real_line))  & 0xFF);
                 //     enable_int( );
                 // }
                 scroll_screen(tty->console, SCR_UP);
@@ -149,10 +150,10 @@ PRIVATE void tty_mouse(TTY* tty){
                 // if(tty->console->current_line > 0){
                 //     disable_int( );
                 //     tty->console->current_line --;
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_H);
-                //     out_byte(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
-                //     out_byte(CRTC_ADDR_REG, START_ADDR_L);
-                //     out_byte(CRTC_DATA_REG, (80*(tty->console->current_line+real_line)) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_H);
+                //     outb(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
+                //     outb(CRTC_ADDR_REG, START_ADDR_L);
+                //     outb(CRTC_DATA_REG, (80*(tty->console->current_line+real_line)) & 0xFF);
                 //     enable_int( );
                 // }
 				scroll_screen(tty->console, SCR_DN);
@@ -163,10 +164,10 @@ PRIVATE void tty_mouse(TTY* tty){
         if(tty->mouse_mid_button){//点击中键复原
             // disable_int( );
             // tty->console->current_line = 0;
-            // out_byte(CRTC_ADDR_REG, START_ADDR_H);
-            // out_byte(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
-            // out_byte(CRTC_ADDR_REG, START_ADDR_L);
-            // out_byte(CRTC_DATA_REG, (80*(tty->console->current_line+real_line))  & 0xFF);
+            // outb(CRTC_ADDR_REG, START_ADDR_H);
+            // outb(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8) & 0xFF);
+            // outb(CRTC_ADDR_REG, START_ADDR_L);
+            // outb(CRTC_DATA_REG, (80*(tty->console->current_line+real_line))  & 0xFF);
             // enable_int( );
 			reset_screen(tty->console);
             tty->mouse_Y=0;
@@ -186,7 +187,7 @@ PRIVATE void tty_dev_write(TTY* tty){
     if(tty->ibuf_cnt){
         char ch = *(tty->ibuf_tail);
         tty->ibuf_tail++;
-        if(tty->ibuf_tail == tty->ibuf+TTY_IN_BYTES){
+        if(tty->ibuf_tail == tty->ibuf+TTY_inbS){
             tty->ibuf_tail = tty->ibuf;
         }
         tty->ibuf_cnt--;
@@ -228,10 +229,10 @@ PUBLIC void init_ttys() {
     select_console(0);
     //设置第一个tty光标位置，第一个tty需要特殊处理
     // disable_int( );
-    // out_byte(CRTC_ADDR_REG,CURSOR_H);
-    // out_byte(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
-    // out_byte(CRTC_ADDR_REG,CURSOR_L);
-    // out_byte(CRTC_DATA_REG,(disp_pos/2)&0xFF);
+    // outb(CRTC_ADDR_REG,CURSOR_H);
+    // outb(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
+    // outb(CRTC_ADDR_REG,CURSOR_L);
+    // outb(CRTC_DATA_REG,(disp_pos/2)&0xFF);
     // enable_int( );
     ksem_init(&tty_full, 0);
 }
@@ -290,13 +291,13 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len){
     // if((tty->ibuf_head-tty->ibuf) >= tty->ibuf_cnt ){
     //     start = tty->ibuf_head - tty->ibuf_cnt;
     // }else{
-    //     start = tty->ibuf_head + (TTY_IN_BYTES - tty->ibuf_cnt);
+    //     start = tty->ibuf_head + (TTY_inbS - tty->ibuf_cnt);
     // }
 
     while(tty->ibuf_read_cnt && i<len){
         buf[i] = *tty->ibuf_read;
         tty->ibuf_read++;
-        if(tty->ibuf_read == tty->ibuf + TTY_IN_BYTES){
+        if(tty->ibuf_read == tty->ibuf + TTY_inbS){
             tty->ibuf_read = tty->ibuf;
         }
         tty->ibuf_read_cnt --;

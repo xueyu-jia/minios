@@ -13,6 +13,7 @@
 #include <kernel/proc.h>
 #include <kernel/buddy.h>
 #include <kernel/uart.h>
+#include <kernel/vga.h>
 
 PUBLIC void init_descriptor(DESCRIPTOR *p_desc, u32 base, u32 limit, u16 attribute); //added by mingxuan 2021-8-25
 

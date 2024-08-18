@@ -5,7 +5,7 @@
 ;                                                       Forrest Yu, 2005
 ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-%include "os/include/sconst.inc"	
+%include "os/include/sconst.inc"
 
 ; 导入全局变量
 ; extern	disp_pos
@@ -15,7 +15,7 @@
 
 ; 导出函数
 ; global	disp_str
-global	_disp_color_str
+; global	_disp_color_str
 global	out_byte
 global	out_dword
 ; global	out_mem_32
@@ -78,54 +78,54 @@ global  write_char	; added by mingxuan 2019-5-19
 ; 	pop ebp
 ; 	ret
 
-; ========================================================================
-;                  int _disp_color_str(char * info, int color, int pos)=>new pos;
-; ========================================================================
-_disp_color_str:
-	push	ebp
-	mov	ebp, esp
-	push esi
-	push edi
-	push ebx
+; ; ========================================================================
+; ;                  int _disp_color_str(char * info, int color, int pos)=>new pos;
+; ; ========================================================================
+; _disp_color_str:
+; 	push	ebp
+; 	mov	ebp, esp
+; 	push esi
+; 	push edi
+; 	push ebx
 
-	mov	esi, [ebp + 8]	; pszInfo
-	mov	edi, [ebp + 16] ; pos
-	mov	ah, [ebp + 12]	; color
-.1:
-	lodsb
-	test	al, al
-	jz	.2
-	cmp	al, 0Ah	; 是回车吗?
-	jnz	.3
-	push	eax
-	mov	eax, edi
-	mov	bl, 160
-	div	bl
-	and	eax, 0FFh
-	inc	eax
-	mov	bl, 160
-	mul	bl
-	mov	edi, eax
-	pop	eax
-	jmp	.1
-.3:
-; ;added begin
-; 	cmp edi, 1F40h
-; 	jnz .4
-; 	mov edi, 0FA0h
-; .4:
-	mov	[gs:edi], ax
-	add	edi, 2
-	jmp	.1
+; 	mov	esi, [ebp + 8]	; pszInfo
+; 	mov	edi, [ebp + 16] ; pos
+; 	mov	ah, [ebp + 12]	; color
+; .1:
+; 	lodsb
+; 	test	al, al
+; 	jz	.2
+; 	cmp	al, 0Ah	; 是回车吗?
+; 	jnz	.3
+; 	push	eax
+; 	mov	eax, edi
+; 	mov	bl, 160
+; 	div	bl
+; 	and	eax, 0FFh
+; 	inc	eax
+; 	mov	bl, 160
+; 	mul	bl
+; 	mov	edi, eax
+; 	pop	eax
+; 	jmp	.1
+; .3:
+; ; ;added begin
+; ; 	cmp edi, 1F40h
+; ; 	jnz .4
+; ; 	mov edi, 0FA0h
+; ; .4:
+; 	mov	[gs:edi], ax
+; 	add	edi, 2
+; 	jmp	.1
 
-.2:
-	mov	eax, edi
+; .2:
+; 	mov	eax, edi
 
-	pop ebx
-	pop edi
-	pop esi
-	pop ebp
-	ret
+; 	pop ebx
+; 	pop edi
+; 	pop esi
+; 	pop ebp
+; 	ret
 
 ; ========================================================================
 ;                  void out_byte(u16 port, u8 value);
@@ -350,10 +350,10 @@ write_char:
 	push 	ebp
 	mov ebp,esp
 	pushad
-	
-	mov esi,[ebp+8] 
+
+	mov esi,[ebp+8]
 	mov edi,[ebp+12]
-	
+
 	mov eax,esi
 	mov	ah, 0Fh
 	mov	[gs:edi], ax

@@ -16,7 +16,7 @@
 #include <kernel/console.h>
 #include <kernel/vfs.h>
 
-#define TTY_IN_BYTES		256	/* tty input queue size */
+#define TTY_inbS		256	/* tty input queue size */
 #define TTY_OUT_BUF_LEN		2	/* tty output buffer size */
 
 /*  TTY state (3bit)
@@ -32,7 +32,7 @@
 /* TTY */
 typedef struct s_tty
 {
-	u32	ibuf[TTY_IN_BYTES];	/* TTY input buffer */
+	u32	ibuf[TTY_inbS];	/* TTY input buffer */
 	u32*	ibuf_head;		/* the next free slot */
 	u32*	ibuf_tail;		/* 缓冲区显示位置指针 */
 	u32*	ibuf_read;

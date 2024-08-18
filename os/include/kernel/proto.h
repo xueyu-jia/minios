@@ -20,10 +20,11 @@
 // split all unnecessary part, functions defined in .asm & klib
 
 /* klib.asm */
-PUBLIC void	out_byte(u16 port, u8 value);
-PUBLIC u8	in_byte(u16 port);
-PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
-PUBLIC void	out_dword(u16 port, u32 value);//write 32bit data to a port,qianglong
+#include <kernel/x86-asm.h>
+// PUBLIC void	out_byte(u16 port, u8 value);
+// PUBLIC u8	inb(u16 port);
+// PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
+// PUBLIC void	outl(u16 port, u32 value);//write 32bit data to a port,qianglong
 // PUBLIC u32	in_mem_32(u32 phy_addr);
 // PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
 

@@ -1,3 +1,13 @@
+/*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-14 13:24:41
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-18 16:27:48
+ * @FilePath: /minios/os/include/kernel/console.h
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
 /***************************************************************************
  *****************************************************************************
  * @file   console.h
@@ -30,12 +40,12 @@ typedef struct s_console
 #define SCR_UP	1	/* scroll upward */
 #define SCR_DN	-1	/* scroll downward */
 
-#define SCR_SIZE		(80 * 25)
-#define SCR_WIDTH		 80
+// #define SCR_SIZE		(80 * 25)
+// #define SCR_WIDTH		 80
 
-#define DEFAULT_CHAR_COLOR	(MAKE_COLOR(BLACK, WHITE) | BRIGHT)
-#define GRAY_CHAR		(MAKE_COLOR(BLACK, BLACK) | BRIGHT)
-#define RED_CHAR		(MAKE_COLOR(BLUE, RED) | BRIGHT)
+// #define DEFAULT_CHAR_COLOR	(MAKE_COLOR(BLACK, WHITE) | BRIGHT)
+// #define GRAY_CHAR		(MAKE_COLOR(BLACK, BLACK) | BRIGHT)
+// #define RED_CHAR		(MAKE_COLOR(BLUE, RED) | BRIGHT)
 extern	int		disp_pos;
 extern  CONSOLE     console_table[];
 extern SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效

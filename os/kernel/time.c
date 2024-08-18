@@ -10,8 +10,8 @@
 
 u8 readRTC(int addr){
 	//*** must disable int and ***
-	out_byte(RTC_ADDR, addr);
-	return in_byte(RTC_DATA);
+	outb(RTC_ADDR, addr);
+	return inb(RTC_DATA);
 }
 
 int bcd2byte(u8 x){

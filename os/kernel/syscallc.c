@@ -13,6 +13,7 @@
 #include <kernel/ksignal.h>
 #include <kernel/semaphore.h>
 #include <kernel/syscall.h>
+#include <kernel/proc.h>
 
 //modified by mingxuan 2021-8-14
 //PUBLIC u32 do_malloc_4k()
@@ -160,7 +161,29 @@ PUBLIC	system_call		sys_call_table[NR_SYS_CALL] = {
 	[_NR_set_rt]				=	sys_set_rt,
 	[_NR_rt_prio]				=	sys_rt_prio,
 	[_NR_get_proc_msg]			=	sys_get_proc_msg
-	};
+};
+
+PUBLIC int do_get_pid()
+{
+    return kern_get_pid();
+}
+
+PUBLIC int sys_get_pid()
+{
+    return do_get_pid();
+}
+
+PUBLIC int do_get_pid_byname(char* name)
+{
+    return kern_get_pid_byname(name);
+}
+
+PUBLIC int sys_get_pid_byname()
+{
+    return do_get_pid_byname((char*)get_arg(1));
+}
+
+
 
 // #define TEST_FOR_SEMAPHORE
 #ifdef TEST_FOR_SEMAPHORE

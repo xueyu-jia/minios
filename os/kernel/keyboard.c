@@ -31,11 +31,11 @@ PRIVATE void	kb_ack();
 
 void kb_handler(int irq){
 	//disp_str("kbkbkb");
-	u8 scan_code =  in_byte(0x60);
-	if(kb_in.count < KB_IN_BYTES){
+	u8 scan_code =  inb(0x60);
+	if(kb_in.count < KB_inbS){
 		*(kb_in.p_head) = scan_code;
 		kb_in.p_head++;
-		if(kb_in.p_head==kb_in.buf+KB_IN_BYTES){
+		if(kb_in.p_head==kb_in.buf+KB_inbS){
 			kb_in.p_head = kb_in.buf;
 		}
 		kb_in.count++;
@@ -48,7 +48,7 @@ void kb_handler(int irq){
 #define TTY_END (tty_table+NR_CONSOLES)
 
 void mouse_handler(int irq){
-	u8 scan_code =  in_byte(0x60);
+	u8 scan_code =  inb(0x60);
 	if(!mouse_init){
 		mouse_init = 1;
 		return;
@@ -365,7 +365,7 @@ PRIVATE u8 get_byte_from_kb_buf()
 	disable_int();		/* for synchronization */
 	scan_code = *(kb_in.p_tail);
 	kb_in.p_tail++;
-	if (kb_in.p_tail == kb_in.buf + KB_IN_BYTES) {
+	if (kb_in.p_tail == kb_in.buf + KB_inbS) {
 		kb_in.p_tail = kb_in.buf;
 	}
 	kb_in.count--;
@@ -387,7 +387,7 @@ PRIVATE void kb_wait()	/* 等待 8042 的输入缓冲区空 */
 	u8 kb_stat;
 
 	do {
-		kb_stat = in_byte(KB_CMD);
+		kb_stat = inb(KB_CMD);
 
 	} while (kb_stat & 0x02);
 }
@@ -405,7 +405,7 @@ PRIVATE void kb_ack()
 	u8 kb_read;
 
 	do {
-		kb_read = in_byte(KB_DATA);
+		kb_read = inb(KB_DATA);
 	} while (kb_read != KB_ACK);
 }
 
@@ -422,27 +422,27 @@ PRIVATE void set_leds()
 	// u8 leds = (caps_lock << 2) | (num_lock << 1) | scroll_lock;
 
 	// kb_wait();
-	// out_byte(KB_DATA, LED_CODE);
+	// outb(KB_DATA, LED_CODE);
 	// kb_ack();
 
 	// kb_wait();
-	// out_byte(KB_DATA, leds);
+	// outb(KB_DATA, leds);
 	// kb_ack();
 	kb_wait();
-	out_byte(KB_CMD, KEYCMD_WRITE_MODE);
+	outb(KB_CMD, KEYCMD_WRITE_MODE);
 	kb_wait();
-	out_byte(KB_DATA, KBC_MODE);
+	outb(KB_DATA, KBC_MODE);
 }
 
 PRIVATE void set_mouse_leds(){
 	kb_wait();
-	out_byte(KB_CMD,KBCMD_EN_MOUSE_INTFACE);
+	outb(KB_CMD,KBCMD_EN_MOUSE_INTFACE);
 	kb_wait();
-	out_byte(KB_CMD, KEYCMD_SENDTO_MOUSE);
+	outb(KB_CMD, KEYCMD_SENDTO_MOUSE);
 	kb_wait();
-	out_byte(KB_DATA, MOUSECMD_ENABLE);
+	outb(KB_DATA, MOUSECMD_ENABLE);
 	kb_wait();
-	out_byte(KB_CMD, KEYCMD_WRITE_MODE);
+	outb(KB_CMD, KEYCMD_WRITE_MODE);
 	kb_wait();
-	out_byte(KB_DATA, KBC_MODE);
+	outb(KB_DATA, KBC_MODE);
 }
