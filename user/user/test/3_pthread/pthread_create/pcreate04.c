@@ -5,7 +5,7 @@
  * 2. 每个线程调用 pthread_self 并将结果保存到一个全局数组 th_self_ids 中
  * 3. 检查 th_self_ids 和 th_create_ids，其中的每个值应都不相等，且与主线程 id
  * 也不相等
- *
+ * 过不了， 会导致系统跑飞
  */
 #include "usertest.h"
 

@@ -1,4 +1,14 @@
 # run qemu, without using gdb
+###
+ # @Author: lirong lirongleiyang@163.com
+ # @Date: 2024-08-11 11:22:53
+ # @LastEditors: lirong lirongleiyang@163.com
+ # @LastEditTime: 2024-08-18 22:59:20
+ # @FilePath: /minios/launch-qemu.sh
+ # @Description:
+ #
+ # Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+###
 # added by xw, 18/6
 
 # deleted by mingxuan 2019-5-17
@@ -22,7 +32,7 @@
 # -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=ahci.2 \
 # -hda a.img -hdb e.img
 #cp b.img c.img
-qemu-system-i386 \
+qemu-system-i386 -m 512M \
 -device ich9-ahci,id=xiaofeng \
 -device ide-hd,drive=disk,bus=xiaofeng.0 -drive id=disk,file=b.img,if=none,media=disk \
 -device ide-hd,drive=disk2,bus=xiaofeng.1 -drive id=disk2,file=test2.img,if=none,media=disk \

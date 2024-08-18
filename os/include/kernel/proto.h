@@ -21,37 +21,9 @@
 
 /* klib.asm */
 #include <kernel/x86-asm.h>
-// PUBLIC void	out_byte(u16 port, u8 value);
-// PUBLIC u8	inb(u16 port);
-// PUBLIC u32	in_dword(u16 port);             //read 32bit data from a port,qianglong
-// PUBLIC void	outl(u16 port, u32 value);//write 32bit data to a port,qianglong
-// PUBLIC u32	in_mem_32(u32 phy_addr);
-// PUBLIC u32	out_mem_32(u32 phy_addr,u32 value);
-
-// PUBLIC void	disp_str(char* info); // implement in tty
-// PUBLIC void	disp_color_str(char* info, int color);
-PUBLIC void write_char(char ch, int pos);    //added by mingxuan 2019-5-19
-
-//added by zcr
-PUBLIC void	disable_irq(int irq);
-PUBLIC void	enable_irq(int irq);
-// PUBLIC void	disable_int();
-// PUBLIC void	enable_int();
-PUBLIC void	port_read(u16 port, void* buf, int n);
-PUBLIC void	port_write(u16 port, void* buf, int n);
-//~zcr
-
-/* protect.c */
-// PUBLIC void	init_prot();
-
-
-/* klib.c */
-PUBLIC void disp_int(int input);
-PUBLIC void	delay(int time);
-PUBLIC u32 get_ring_level();
 
 /* kernel.asm */
-PUBLIC void  sys_call();    //int_handler
+// PUBLIC void  sys_call();    //int_handler
 u32  read_cr2();			//add by visual 2016.5.9
 u32  read_cr3();
 void refresh_page_cache();  //add by visual 2016.5.12
@@ -59,40 +31,14 @@ void refresh_gdt();//add by sundong 2023.3.8
 void restart_initial();		//added by xw, 18/4/18
 void restart_restore();		//added by xw, 18/4/20
 void sched();				//added by xw, 18/4/18
-// u32 get_arg(void *uesp, int order);	//added by xw, 18/6/18
 
-/* ktest.c */
-// void TestA();
-// void TestB();
-// void TestC();
 void initial();
 
-/* keyboard.c */
-//added by mingxuan 2019-5-19
-// PUBLIC void init_kb();
-// PUBLIC void keyboard_read();
-
-/* tty.c */
-//added by mingxuan 2019-5-19
-// PUBLIC void tty_write(TTY* tty, char* buf, int len);
-// PUBLIC int  tty_read(TTY* tty, char* buf, int len);
-
-/* shell.c */
-//added by mingxuan 2019-5-19
-// PUBLIC void shell(char* s);
-// PUBLIC void init_shell();
-
-/* printf.c */
-//added by mingxuan 2019-5-19
-PUBLIC  int     printf(const char *fmt, ...);
-
-/* vsprintf.c */
-//added by mingxuan 2019-5-19
-PUBLIC  int     vsprintf(char *buf, const char *fmt, va_list args);
 
 /* i8259.c */
-PUBLIC void put_irq_handler(int irq, irq_handler handler);
-PUBLIC void spurious_irq(int irq);
+#include <kernel/interrupt_x86.h>
+// PUBLIC void put_irq_handler(int irq, irq_handler handler);
+// PUBLIC void spurious_irq(int irq);
 
 /* clock.c */
 
@@ -220,8 +166,9 @@ PUBLIC int sys_pthread_cond_destroy();//added by ZengHao & MaLinhan 2021.12.23
 #include <kernel/wait.h>
 
 /*exit.c*/
-#include <kernel/exit.h>
+// #include <kernel/exit.h>
 
+#include <kernel/interrupt_x86.h>
 
 /* shm.c */
 PUBLIC int sys_shmget();              //added by xiaofeng 2021-9-8

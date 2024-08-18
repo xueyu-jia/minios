@@ -105,15 +105,16 @@ PUBLIC void out_char(CONSOLE* con, char ch)
 			//*(pch - 2) = ' ';
 			//*(pch - 1) = DEFAULT_CHAR_COLOR;
 			// disp_pos = con->cursor*2;
-			write_char(' ', con->cursor*2);
+			// write_char(' ', con->cursor*2);
+			vga_write_char(' ', WHITE_CHAR, con->cursor);
 		}
 		break;
 	default:
 		//*pch++ = ch;
 		//*pch++ = DEFAULT_CHAR_COLOR;
 		// disp_pos = con->cursor*2;
-		write_char(ch, con->cursor*2);
-		con->cursor++;
+		// write_char(ch, con->cursor*2);
+		con->cursor = vga_write_char(ch, WHITE_CHAR, con->cursor);
 
 		break;
 	}
@@ -389,4 +390,14 @@ PUBLIC void disp_color_str(const char* info, int color){
 
 PUBLIC void disp_str(const char* info){
 	disp_color_str(info, DEFAULT_CHAR_COLOR);
+}
+
+/*======================================================================*
+                               disp_int
+ *======================================================================*/
+PUBLIC void disp_int(int input)
+{
+	char output[16];
+	itoa(input, output, 16);
+	disp_str(output);
 }

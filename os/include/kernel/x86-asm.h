@@ -187,5 +187,9 @@ ASMCALL void enable_int() {
 ASMCALL void halt() {
     __asm__ volatile("hlt");
 }
+// PUBLIC void	port_read(u16 port, void* buf, int n);
+static void (*port_read)(int, void *, int) = insw;
+// PUBLIC void	port_write(u16 port, void* buf, int n);
+static void (*port_write)(int, const void *, int) = outsw;
 
 #undef ASMCALL

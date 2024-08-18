@@ -1,3 +1,13 @@
+/*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-15 14:41:49
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-18 22:18:52
+ * @FilePath: /minios/os/kernel/x86.c
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
 #include <kernel/const.h>
 #include <kernel/x86.h>
 #include <kernel/string.h>
@@ -65,4 +75,15 @@ void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u
 
 	init_context_frame(context->esp_save_context, context_eip, 0x1202);
 
+}
+
+/**
+ * @brief 获取当前进程的特权级
+ * added by zhenhao 2023.5.19
+ * @return void
+ */
+PUBLIC u32 get_ring_level() {
+	int ringLevel;
+	asm volatile ("mov %%cs, %0 \n\t and $0x3, %0" : "=a" (ringLevel));
+	return ringLevel;
 }

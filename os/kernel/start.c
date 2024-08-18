@@ -149,8 +149,9 @@ PUBLIC void cstart()
 	*/
 
 	//init_prot();
-	init_8259A();	//added by mingxuan 2021-8-29
-	init_idt();		//added by mingxuan 2021-8-29
+	// init_8259A();	//added by mingxuan 2021-8-29
+	init_interrupt_controller();
+	// init_idt();		//added by mingxuan 2021-8-29
 
 	disp_str("-----\"cstart\" finished-----\n");
 	// while(1);

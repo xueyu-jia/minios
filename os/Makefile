@@ -43,31 +43,14 @@ ORANGESBOOT	= os/boot/floppy/boot.bin os/boot/floppy/loader.bin \
 
 ORANGESKERNEL	= kernel.bin
 
-# OBJS		= os/kernel/kernel.o os/kernel/start.o os/kernel/main.o os/kernel/clock.o\
-# 			os/kernel/i8259.o os/kernel/global.o os/kernel/protect.o os/kernel/proc.o\
-# 			os/kernel/memman.o os/kernel/pagetbl.o	\
-# 			os/kernel/elf.o os/kernel/file.o os/kernel/exec.o os/kernel/fork.o os/kernel/pthread.o \
-# 			os/kernel/ktest.o os/kernel/testfunc.o os/kernel/fs.o os/kernel/hd.o \
-# 			os/kernel/spinlock.o os/kernel/fat32.o os/kernel/base.o os/kernel/assist.o os/kernel/vfs.o \
-# 			os/kernel/keyboard.o os/kernel/tty.o os/kernel/shell.o os/kernel/console.o \
-# 			os/kernel/wait.o os/kernel/exit.o \
-# 			os/kernel/signal.o \
-# 			os/kernel/buddy.o os/kernel/kmalloc.o \
-# 			os/kernel/syscallc.o \
-# 			os/kernel/pthread_mutex.o os/kernel/pthread_cond.o \
-# 			os/ipc/shm.o os/ipc/msg.o \
-# 			os/klib/klib.a os/kernel/semaphore.o os/kernel/ahci.o\
-# 			os/kernel/mount.o \
-# 			os/kernel/buffer.o os/kernel/slab.o \
-# 			os/gdbstub/gdbstub_x86_int.o
-
 OBJS =  os/kernel/kernel.o \
-	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c) $(wildcard os/fs/*.c)) \
-	os/klib/klib.a os/gdbstub/gdbstub_x86_int.o
+	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c) $(wildcard os/fs/*.c) \
+	$(wildcard os/klib/*.c)) $(subst .nasm,.o,$(wildcard os/gdbstub/*.nasm))
+
 
 #added by mingxuan 2021-2-28
 
-OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
+# OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
 
 GDBBIN = kernel.gdb.bin
 
@@ -82,22 +65,11 @@ clean_os :
 	rm -f $(OBJS) $(OBJSKLIB)
 
 realclean_os :
-	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS) os/klib/stringasm.o os/klib/stringc.o # modified by mingxuan 2021-2-7
+#	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS)
+	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(GDBBIN) $(MBR_LOADER_OBJS)
 
 disasm :
 	$(DASM) $(DASMFLAGS) $(ORANGESKERNEL) > $(DASMOUTPUT)
-
-# added by mingxuan 2019-5-17
-#os/boot/mbr/mbr.bin : os/boot/mbr/mbr.asm
-#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
-
-# added by mingxuan 2019-5-17
-#os/boot/mbr/boot.bin : os/boot/mbr/boot.asm
-#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
-
-# added by mingxuan 2019-5-17
-#os/boot/mbr/loader.bin : os/boot/mbr/loader.asm os/boot/mbr/include/loader.inc os/boot/mbr/include/fat32.inc os/boot/mbr/include/pm.inc
-#	$(ASM) $(ASMBFLAGS_mbr) -o $@ $<
 
 $(ORANGESKERNEL) : $(OBJS)
 	$(LD) $(LDFLAGS_kernel) -o $(ORANGESKERNEL) $(OBJS)
@@ -127,13 +99,6 @@ os/fs/%.o : os/fs/%.c
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 	$(ASM) -I os/gdbstub/ -f elf -o $@ $<
-
-# =================== klib ==========================
-os/klib/klib.a:  $(OBJSKLIB)
-	$(AR) $(ARFLAGS) -o $@  $(OBJSKLIB)
-
-os/klib/kliba.o : os/klib/kliba.asm
-	$(ASM) -I os/include/ $(ASMKFLAGS) -o $@ $<
 
 os/klib/%.o: os/klib/%.c
 	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<

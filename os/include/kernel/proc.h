@@ -288,4 +288,9 @@ PUBLIC void init_process(PROCESS *proc, char name[32], enum proc_stat stat, int 
 PUBLIC void init_all_PCB();
 PUBLIC int kthread_create(char *name, void *func, int is_rt, int priority, int rtpriority_or_nice);
 PUBLIC void init_user_cpu_context(cpu_context *context, int pid);
+
+PUBLIC void do_exit(int status);
+PUBLIC void sys_exit();
+PUBLIC void kern_exit(int exit_code);
+
 #endif

@@ -262,4 +262,5 @@ typedef struct cpu_context{
 
 } cpu_context;  // 加上关键字__attribute__((packed))反而报错了
 
-void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip, u32 rpl);
+PUBLIC void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip, u32 rpl);
+PUBLIC u32 get_ring_level();

@@ -1,34 +1,34 @@
 
-; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-;                              klib.asm
-; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-;                                                       Forrest Yu, 2005
-; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+; ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+; ;                              klib.asm
+; ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+; ;                                                       Forrest Yu, 2005
+; ; ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-%include "os/include/sconst.inc"
+; %include "os/include/sconst.inc"
 
-; 导入全局变量
-; extern	disp_pos
+; ; 导入全局变量
+; ; extern	disp_pos
 
 
-[SECTION .text]
+; [SECTION .text]
 
-; 导出函数
-; global	disp_str
-; global	_disp_color_str
-global	out_byte
-global	out_dword
-; global	out_mem_32
-global	in_byte
-global	in_dword
+; ; 导出函数
+; ; global	disp_str
+; ; global	_disp_color_str
+; global	out_byte
+; global	out_dword
+; ; global	out_mem_32
+; global	in_byte
+; global	in_dword
 ; global	in_mem_32
-global  enable_irq
-global  disable_irq
-global	port_read
-global	port_write
+; global  enable_irq
+; global  disable_irq
+; global	port_read
+; global	port_write
 ; global	enable_int
 ; global	disable_int
-global  write_char	; added by mingxuan 2019-5-19
+; global  write_char	; added by mingxuan 2019-5-19
 
 ; ========================================================================
 ;                  void disp_str(char * info);
@@ -127,68 +127,68 @@ global  write_char	; added by mingxuan 2019-5-19
 ; 	pop ebp
 ; 	ret
 
-; ========================================================================
-;                  void out_byte(u16 port, u8 value);
-; ========================================================================
-out_byte:
-	push ebp
-	mov ebp, esp
-	push edx
-	mov	edx, [ebp + 8]		; port
-	mov	al, [ebp + 12]		; value
-	out	dx, al
-	pop edx
-	pop ebp
-	ret
-
-
-out_dword:
-	push ebp
-	mov ebp, esp
-	push edx
-	mov	edx, [ebp + 8]		; port
-	mov	al, [ebp + 12]		; value
-	out	dx, eax
-	pop edx
-	pop ebp
-	ret
-
-
-; out_mem_32:
-; 	mov	edx, [esp + 4]		; port
-; 	mov	al, [esp + 4 + 4]	; value
-; 	mov	[edx], eax
-; 	nop	; 一点延迟
-; 	nop
+; ; ========================================================================
+; ;                  void out_byte(u16 port, u8 value);
+; ; ========================================================================
+; out_byte:
+; 	push ebp
+; 	mov ebp, esp
+; 	push edx
+; 	mov	edx, [ebp + 8]		; port
+; 	mov	al, [ebp + 12]		; value
+; 	out	dx, al
+; 	pop edx
+; 	pop ebp
 ; 	ret
 
-; ========================================================================
-;                  u8 in_byte(u16 port);
-; ========================================================================
-in_byte:
-	push ebp
-	mov ebp, esp
-	push edx
-	mov	edx, [ebp + 8]		; port
-	xor	eax, eax
-	in	al, dx
-	pop edx
-	pop ebp
-	ret
 
-; ========================================================================
-;                  u32 in_byte(u16 port);
-; ========================================================================
-in_dword:
-	push ebp
-	mov ebp, esp
-	push edx
-	mov	edx, [ebp + 8]		; port
-	xor	eax, eax
-	in	eax, dx
-	pop edx
-	pop ebp
-	ret
+; out_dword:
+; 	push ebp
+; 	mov ebp, esp
+; 	push edx
+; 	mov	edx, [ebp + 8]		; port
+; 	mov	al, [ebp + 12]		; value
+; 	out	dx, eax
+; 	pop edx
+; 	pop ebp
+; 	ret
+
+
+; ; out_mem_32:
+; ; 	mov	edx, [esp + 4]		; port
+; ; 	mov	al, [esp + 4 + 4]	; value
+; ; 	mov	[edx], eax
+; ; 	nop	; 一点延迟
+; ; 	nop
+; ; 	ret
+
+; ; ========================================================================
+; ;                  u8 in_byte(u16 port);
+; ; ========================================================================
+; in_byte:
+; 	push ebp
+; 	mov ebp, esp
+; 	push edx
+; 	mov	edx, [ebp + 8]		; port
+; 	xor	eax, eax
+; 	in	al, dx
+; 	pop edx
+; 	pop ebp
+; 	ret
+
+; ; ========================================================================
+; ;                  u32 in_byte(u16 port);
+; ; ========================================================================
+; in_dword:
+; 	push ebp
+; 	mov ebp, esp
+; 	push edx
+; 	mov	edx, [ebp + 8]		; port
+; 	xor	eax, eax
+; 	in	eax, dx
+; 	pop edx
+; 	pop ebp
+; 	ret
 
 ; ========================================================================
 ;                  u32 in_byte(u16 port);
@@ -202,131 +202,131 @@ in_dword:
 ; 	ret
 
 
-; ========================================================================
-;                  void disable_irq(int irq);
-; ========================================================================
-; Disable an interrupt request line by setting an 8259 bit.
-; Equivalent code:
-;	if(irq < 8){
-;		out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) | (1 << irq));
-;	}
-;	else{
-;		out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) | (1 << irq));
-;	}
-disable_irq:
-		push	ebp
-		mov		ebp, esp
-		pushad
-        mov     ecx, [ebp + 8]          ; irq
-        pushf
-        cli
-        mov     ah, 1
-        rol     ah, cl                  ; ah = (1 << (irq % 8))
-        cmp     cl, 8
-        jae     disable_8               ; disable irq >= 8 at the slave 8259
-disable_0:
-        in      al, INT_M_CTLMASK
-        test    al, ah
-        jnz     dis_already             ; already disabled?
-        or      al, ah
-        out     INT_M_CTLMASK, al       ; set bit at master 8259
-        popf
-        mov     eax, 1                  ; disabled by this function
-		popad
-		pop		ebp
-        ret
-disable_8:
-        in      al, INT_S_CTLMASK
-        test    al, ah
-        jnz     dis_already             ; already disabled?
-        or      al, ah
-        out     INT_S_CTLMASK, al       ; set bit at slave 8259
-        popf
-        mov     eax, 1                  ; disabled by this function
-		popad
-		pop		ebp
-        ret
-dis_already:
-        popf
-        xor     eax, eax                ; already disabled
-		popad
-		pop		ebp
-        ret
+; ; ========================================================================
+; ;                  void disable_irq(int irq);
+; ; ========================================================================
+; ; Disable an interrupt request line by setting an 8259 bit.
+; ; Equivalent code:
+; ;	if(irq < 8){
+; ;		out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) | (1 << irq));
+; ;	}
+; ;	else{
+; ;		out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) | (1 << irq));
+; ;	}
+; disable_irq:
+; 		push	ebp
+; 		mov		ebp, esp
+; 		pushad
+;         mov     ecx, [ebp + 8]          ; irq
+;         pushf
+;         cli
+;         mov     ah, 1
+;         rol     ah, cl                  ; ah = (1 << (irq % 8))
+;         cmp     cl, 8
+;         jae     disable_8               ; disable irq >= 8 at the slave 8259
+; disable_0:
+;         in      al, INT_M_CTLMASK
+;         test    al, ah
+;         jnz     dis_already             ; already disabled?
+;         or      al, ah
+;         out     INT_M_CTLMASK, al       ; set bit at master 8259
+;         popf
+;         mov     eax, 1                  ; disabled by this function
+; 		popad
+; 		pop		ebp
+;         ret
+; disable_8:
+;         in      al, INT_S_CTLMASK
+;         test    al, ah
+;         jnz     dis_already             ; already disabled?
+;         or      al, ah
+;         out     INT_S_CTLMASK, al       ; set bit at slave 8259
+;         popf
+;         mov     eax, 1                  ; disabled by this function
+; 		popad
+; 		pop		ebp
+;         ret
+; dis_already:
+;         popf
+;         xor     eax, eax                ; already disabled
+; 		popad
+; 		pop		ebp
+;         ret
 
-; ========================================================================
-;                  void enable_irq(int irq);
-; ========================================================================
-; Enable an interrupt request line by clearing an 8259 bit.
-; Equivalent code:
-;       if(irq < 8){
-;               out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) & ~(1 << irq));
-;       }
-;       else{
-;               out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) & ~(1 << irq));
-;       }
-;
-enable_irq:
-		push	ebp
-		mov		ebp, esp
-		pushad
-        mov     ecx, [ebp + 8]          ; irq
-        pushf
-        cli
-        mov     ah, ~1
-        rol     ah, cl                  ; ah = ~(1 << (irq % 8))
-        cmp     cl, 8
-        jae     enable_8                ; enable irq >= 8 at the slave 8259
-enable_0:
-        in      al, INT_M_CTLMASK
-        and     al, ah
-        out     INT_M_CTLMASK, al       ; clear bit at master 8259
-        popf
-		popad
-		pop		ebp
-        ret
-enable_8:
-        in      al, INT_S_CTLMASK
-        and     al, ah
-        out     INT_S_CTLMASK, al       ; clear bit at slave 8259
-        popf
-		popad
-		pop		ebp
-        ret
+; ; ========================================================================
+; ;                  void enable_irq(int irq);
+; ; ========================================================================
+; ; Enable an interrupt request line by clearing an 8259 bit.
+; ; Equivalent code:
+; ;       if(irq < 8){
+; ;               out_byte(INT_M_CTLMASK, in_byte(INT_M_CTLMASK) & ~(1 << irq));
+; ;       }
+; ;       else{
+; ;               out_byte(INT_S_CTLMASK, in_byte(INT_S_CTLMASK) & ~(1 << irq));
+; ;       }
+; ;
+; enable_irq:
+; 		push	ebp
+; 		mov		ebp, esp
+; 		pushad
+;         mov     ecx, [ebp + 8]          ; irq
+;         pushf
+;         cli
+;         mov     ah, ~1
+;         rol     ah, cl                  ; ah = ~(1 << (irq % 8))
+;         cmp     cl, 8
+;         jae     enable_8                ; enable irq >= 8 at the slave 8259
+; enable_0:
+;         in      al, INT_M_CTLMASK
+;         and     al, ah
+;         out     INT_M_CTLMASK, al       ; clear bit at master 8259
+;         popf
+; 		popad
+; 		pop		ebp
+;         ret
+; enable_8:
+;         in      al, INT_S_CTLMASK
+;         and     al, ah
+;         out     INT_S_CTLMASK, al       ; clear bit at slave 8259
+;         popf
+; 		popad
+; 		pop		ebp
+;         ret
 
-; added by zcr begin
-; ========================================================================
-;                  void port_read(u16 port, void* buf, int n);
-; ========================================================================
-port_read:
-	push ebp
-	mov	ebp, esp
-	pushad
-	mov	edx, [ebp + 8]		; port
-	mov	edi, [ebp + 12]		; buf
-	mov	ecx, [ebp + 16]		; n
-	shr	ecx, 1
-	cld
-	rep	insw
-	popad
-	pop ebp
-	ret
+; ; added by zcr begin
+; ; ========================================================================
+; ;                  void port_read(u16 port, void* buf, int n);
+; ; ========================================================================
+; port_read:
+; 	push ebp
+; 	mov	ebp, esp
+; 	pushad
+; 	mov	edx, [ebp + 8]		; port
+; 	mov	edi, [ebp + 12]		; buf
+; 	mov	ecx, [ebp + 16]		; n
+; 	shr	ecx, 1
+; 	cld
+; 	rep	insw
+; 	popad
+; 	pop ebp
+; 	ret
 
-; ========================================================================
-;                  void port_write(u16 port, void* buf, int n);
-; ========================================================================
-port_write:
-	push ebp
-	mov	ebp, esp
-	pushad
-	mov	edx, [ebp + 8]		; port
-	mov	esi, [ebp + 12]		; buf
-	mov	ecx, [ebp + 16]		; n
-	shr	ecx, 1
-	cld
-	rep	outsw
-	popad
-	pop ebp
-	ret
+; ; ========================================================================
+; ;                  void port_write(u16 port, void* buf, int n);
+; ; ========================================================================
+; port_write:
+; 	push ebp
+; 	mov	ebp, esp
+; 	pushad
+; 	mov	edx, [ebp + 8]		; port
+; 	mov	esi, [ebp + 12]		; buf
+; 	mov	ecx, [ebp + 16]		; n
+; 	shr	ecx, 1
+; 	cld
+; 	rep	outsw
+; 	popad
+; 	pop ebp
+; 	ret
 
 ; ========================================================================
 ;		   void disable_int();
@@ -343,20 +343,20 @@ port_write:
 ; 	ret
 ; added by zcr end
 
-; ========================================================================
-;		   void write_char(char ch, int pos);
-; ========================================================================
-write_char:
-	push 	ebp
-	mov ebp,esp
-	pushad
+; ; ========================================================================
+; ;		   void write_char(char ch, int pos);
+; ; ========================================================================
+; write_char:
+; 	push 	ebp
+; 	mov ebp,esp
+; 	pushad
 
-	mov esi,[ebp+8]
-	mov edi,[ebp+12]
+; 	mov esi,[ebp+8]
+; 	mov edi,[ebp+12]
 
-	mov eax,esi
-	mov	ah, 0Fh
-	mov	[gs:edi], ax
-	popad
-	pop ebp
-	ret
+; 	mov eax,esi
+; 	mov	ah, 0Fh
+; 	mov	[gs:edi], ax
+; 	popad
+; 	pop ebp
+; 	ret

@@ -7,7 +7,7 @@
 #include <kernel/memman.h>
 #include <kernel/proto.h>
 #include <kernel/assert.h>
-#include <kernel/exit.h>
+// #include <kernel/exit.h>
 
 PRIVATE void exit_file(PROCESS* p_proc);
 PRIVATE int transfer_child_proc(u32 src_pid, u32 dst_pid);
