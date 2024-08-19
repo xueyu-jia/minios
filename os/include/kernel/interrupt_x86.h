@@ -3,30 +3,30 @@
 #include <kernel/type.h>
 #include <kernel/console.h>
 
-//! 8259A interrupt controller ports
-//! <Master> I/O port for interrupt controller
+//: 8259A interrupt controller ports
+//: <Master> I/O port for interrupt controller
 #define INT_M_CTL 0x20
-//! <Master> setting bits in this port disables ints
+//: <Master> setting bits in this port disables ints
 #define INT_M_CTLMASK 0x21
-//! <Slave> I/O port for second interrupt controller
+//: <Slave> I/O port for second interrupt controller
 #define INT_S_CTL 0xA0
-//! <Slave> setting bits in this port disables ints
+//: <Slave> setting bits in this port disables ints
 #define INT_S_CTLMASK 0xA1
 
 
-//! 8253/8254 PIT (Programmable Interval Timer)
-//! I/O port for timer channel 0
+//: 8253/8254 PIT (Programmable Interval Timer)
+//: I/O port for timer channel 0
 #define TIMER0 0x40
-//! I/O port for timer mode control
+//: I/O port for timer mode control
 #define TIMER_MODE 0x43
-//! 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
+//: 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
 #define RATE_GENERATOR 0x34
-//! clock frequency for timer in PC and AT
+//: clock frequency for timer in PC and AT
 #define TIMER_FREQ 1193182L
-//! clock freq (software settable on IBM-PC)
+//: clock freq (software settable on IBM-PC)
 #define HZ 100
 
-//! hardware interrupts
+//: hardware interrupts
 #define NR_IRQ            16
 #define CLOCK_IRQ          0  //<! clock
 #define KEYBOARD_IRQ       1  //<! keyboard
@@ -74,7 +74,7 @@ void spurious_irq(int irq);
 void put_irq_handler(int irq, irq_handler handler);
 
 void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags);
-//! init 8259A interrupt controller
+//: init 8259A interrupt controller
 void init_interrupt_controller();
 
 void hwint00();

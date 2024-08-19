@@ -205,23 +205,6 @@ PUBLIC int init_kernel_page()
 	//第二步: 初始化3G~3G+kernel_size的内核映射
 	u32 AddrLin = 0, phy_addr = 0;
 
-	//delete by sundong 2023.3.8 kernel中低端页表没有发挥作用，因此此处删掉对低端页表的映射
-	/*
-	//建立对低端0~kernel_size内核的映射
-	for (AddrLin = 0, phy_addr = 0; AddrLin < 0 + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
-		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
-											 phy_addr, //物理地址
-											 kernel_pde_addr_phy,
-											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
-											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-		if (err_temp != 0)
-		{
-			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
-			return -1;
-		}
-	}
-	*/
 	// jiangfeng 20240328 给内核pde中需要的位置分配
 	for (AddrLin = KernelLinBase; AddrLin < KernelLinMapLimit; AddrLin += num_4M) {
 		phy_addr = (u32)phy_kmalloc_4k(); //为页表申请一页	//modified by mingxuan 2021-8-16
@@ -241,26 +224,22 @@ PUBLIC int init_kernel_page()
 	}
 
 	//建立3G~3G+kernel_size的内核映射
-	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K)
-	{												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
+	for (AddrLin = KernelLinBase, phy_addr = 0; AddrLin < KernelLinBase + kernel_size; AddrLin += num_4K, phy_addr += num_4K){												   //只初始化内核部分，3G后的线性地址映射到物理地址开始处
 		int err_temp = lin_mapping_phy_nopid(AddrLin,  //线性地址					//add by visual 2016.5.9
 											 phy_addr, //物理地址
 											 kernel_pde_addr_phy,
 											 PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual 2016.5.26
 											 PG_P | PG_USS | PG_RWW); //页表的属性位（系统权限）				//edit by visual 2016.5.17
-		if (err_temp != 0)
-		{
+		if (err_temp != 0){
 			disp_color_str("init kernel page Error:lin_mapping_phy", 0x74);
 			return -1;
 		}
 	}
 
 	//第三步：更换cr3
-	__asm__(
-		"mov %0, %%eax\n"
-		"mov %%eax, %%cr3\n"
-		:
-		: "m"(kernel_pde_addr_phy));
+	lcr3(kernel_pde_addr_phy);
+
+	return 0;
 }
 
 //modified by xw, 18/6/11; mingxuan 2021-1-11
@@ -276,7 +255,7 @@ PUBLIC void page_fault_handler(u32 vec_no,	 //异常编号，此时应该是14�
 	u32 cr2;
 	int fault_flag = 0;
 
-	cr2 = read_cr2();
+	cr2 = rcr2();
 
 	//if page fault happens in kernel, it's an error.
 	// if (kernel_initial == 1) // 事实上，内核线性地址造成的缺页中断都不正常吧

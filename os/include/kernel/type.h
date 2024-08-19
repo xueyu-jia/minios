@@ -13,6 +13,8 @@ typedef	unsigned int		u32;
 typedef	unsigned short		u16;
 typedef	unsigned char		u8;
 
+typedef unsigned int size_t;
+
 typedef unsigned char   BYTE;//字节
 typedef unsigned short  WORD;//双字节
 typedef unsigned long   DWORD;//四字节
@@ -86,7 +88,7 @@ typedef struct {
  * @brief MESSAGE types
  */
 enum msgtype {
-	/* 
+	/*
 	 * when hard interrupt occurs, a msg (with type==HARD_INT) will
 	 * be sent to some tasks
 	 */
@@ -98,7 +100,7 @@ enum msgtype {
 	/// zcr added from ch9/e/include/const.h
 	/* FS */
 	OPEN, CLOSE, READ, WRITE, LSEEK, STAT, UNLINK,CREATEDIR, OPENDIR, DELETEDIR, SHOWDIR,
-	
+
 	/* message type for drivers */
 	DEV_OPEN = 1001,
 	DEV_CLOSE,

@@ -21,8 +21,8 @@ ASMKFLAGS	= -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
-CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
-KFLAGS		= $(CFLAGS) $(DEF_FLAGS)
+OS_CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 -fdump-rtl-expand
+KFLAGS		= $(OS_CFLAGS) $(DEF_FLAGS)
 
 #modified by jiangfeng 2024-03-10 add definitions option for root
 
@@ -58,7 +58,7 @@ clean_os :
 
 realclean_os :
 #	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(OBJSKLIB) $(GDBBIN) $(MBR_LOADER_OBJS)
-	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(GDBBIN) $(MBR_LOADER_OBJS)
+	rm -f $(OBJS) $(ORANGESBOOT) $(ORANGESKERNEL) $(GDBBIN) $(MBR_LOADER_OBJS) *.expand
 
 disasm :
 	$(DASM) $(DASMFLAGS) $(ORANGESKERNEL) > $(DASMOUTPUT)
@@ -73,20 +73,22 @@ os/kernel/kernel.o : os/kernel/kernel.asm os/include/sconst.inc
 kernel.gdb.bin : $(OBJS)
 	$(LD) $(LDFLAGS_kernel_gdb) -o $@ $(OBJS)
 
-#user/init/init.gdb.bin : $(OBJSINIT)
-#	$(LD) $(LDFLAGS_init_gdb) -o $@ $(OBJSINIT)
-
 os/kernel/%.o : os/kernel/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	mkdir -p rtl && mv "os/kernel/$*.c.245r.expand" rtl/;
+# $(shell mkdir -p rtl && mv os/kernel/*.expand rtl/)
 
 os/ipc/%.o : os/ipc/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	mkdir -p rtl && mv "os/ipc/$*.c.245r.expand" rtl/;
 
 os/fs/%.o : os/fs/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	mkdir -p rtl && mv "os/fs/$*.c.245r.expand" rtl/;
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 	$(ASM) -I os/gdbstub/ -f elf -o $@ $<
 
 os/klib/%.o: os/klib/%.c
-	$(CC)  -I os/include/ $(CFLAGS) -o $@ $<
+	$(CC)  -I os/include/ $(OS_CFLAGS) -o $@ $<
+	mkdir -p rtl && mv "os/klib/$*.c.245r.expand" rtl/;

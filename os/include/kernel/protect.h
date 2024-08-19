@@ -166,6 +166,7 @@ extern	u8		gdt_ptr[6];	// 0~15:Limit  16~47:Base
 extern	DESCRIPTOR	gdt[GDT_SIZE];
 
 
-u32 seg2phys(u16 seg);
+PUBLIC u32 seg2phys(u16 seg);
+PUBLIC void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attribute);
 
 #endif /* _ORANGES_PROTECT_H_ */

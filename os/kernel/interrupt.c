@@ -35,7 +35,7 @@ static const char* err_description[64] = {
 PUBLIC void init_interrupt_controller()
 {
     init_8259A();
-    //! set default irq handler
+    //: set default irq handler
     for (int i = 0; i < NR_IRQ; i++) { irq_table[i] = spurious_irq; }
 
     init_idt();
@@ -48,31 +48,31 @@ PUBLIC void init_interrupt_controller()
 
 PRIVATE void init_8259A()
 {
-    //! NOTE: reference can be found at:
-    //! https://github.com/intel/CODK-A-X86/blob/master/external/zephyr/drivers/interrupt_controller/i8259.c
+    //: NOTE: reference can be found at:
+    //: https://github.com/intel/CODK-A-X86/blob/master/external/zephyr/drivers/interrupt_controller/i8259.c
 
-    //! ICW1: init
-    //! NOTE: require ICW4 & initiates initialization sequence
+    //: ICW1: init
+    //: NOTE: require ICW4 & initiates initialization sequence
     outb(INT_M_CTL, 0x11);
     outb(INT_S_CTL, 0x11);
 
-    //! ICW2: set int vector offset
-    //! NOTE: master begins at irq 0, slave begins at irq 8
+    //: ICW2: set int vector offset
+    //: NOTE: master begins at irq 0, slave begins at irq 8
     outb(INT_M_CTLMASK, INT_VECTOR_IRQ0);
     outb(INT_S_CTLMASK, INT_VECTOR_IRQ8);
 
-    //! ICW3: set cascade mode
-    //! NOTE: cascade at irq 4, slave connect to irq 2
+    //: ICW3: set cascade mode
+    //: NOTE: cascade at irq 4, slave connect to irq 2
     outb(INT_M_CTLMASK, 0x4);
     outb(INT_S_CTLMASK, 0x2);
 
-    //! ICW4: set ctrl word
-    //! NOTE: set mode 8086
+    //: ICW4: set ctrl word
+    //: NOTE: set mode 8086
     outb(INT_M_CTLMASK, 0x1);
     outb(INT_S_CTLMASK, 0x1);
 
-    //! OCW1: ints barrier
-    //! NOTE: barrier all interrupts
+    //: OCW1: ints barrier
+    //: NOTE: barrier all interrupts
     outb(INT_M_CTLMASK, 0xff);
     outb(INT_S_CTLMASK, 0xff);
 

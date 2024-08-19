@@ -12,7 +12,7 @@ AR		= ar
 ASMKFLAGS	= -f elf
 ARFLAGS		= rcs
 
-CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 
+USE_CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
 LDFLAGS		= -m elf_i386 -s -Tuser/user/lds
 
 LDFLAGS_user_gdb	= -m elf_i386					#added by mingxuan 2021-8-21
@@ -29,7 +29,7 @@ USER_EXECUTE = $(USER_BIN) $(filter %.sh,$(USER_FILES))
 #默认加入user/user下的所有.sh文件和.c编译得到的.bin文件(为了便于命令使用复制时其目标文件名略去.bin文件的后缀扩展名)
 #如需要添加.sh和elf文件之外的文件
 #此处USER_EXTEND_FILES中添加相对"user/user/"下的文件路径名即可
-USER_EXTEND_FILES = 
+USER_EXTEND_FILES =
 
 #最终的复制文件
 USER_IMG = $(USER_EXECUTE) $(addprefix $(USER_SRC_DIR)/,$(USER_EXTEND_FILES))
@@ -60,7 +60,7 @@ user/ulib/ulib.a:  $(OBJSULIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSULIB)
 
 user/ulib/%.o: user/ulib/%.c
-	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
+	$(CC) -I user/include/ $(USE_CFLAGS) -o $@ $<
 
 #--------------------------------------user-------------------------------------------------
 user/user/userstart.o: user/user/userstart.asm
@@ -68,7 +68,7 @@ user/user/userstart.o: user/user/userstart.asm
 
 # added by mingxuan 2021-2-7
 $(USER_SRC_DIR)/%.o: $(USER_SRC_DIR)/%.c
-	$(CC) -I user/include/ $(CFLAGS) -o $@ $<
+	$(CC) -I user/include/ $(USE_CFLAGS) -o $@ $<
 
 $(USER_SRC_DIR)/%.gdb.bin : $(USER_SRC_DIR)/%.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS_user_gdb) -o $@ $^

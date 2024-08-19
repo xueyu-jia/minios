@@ -1,10 +1,3 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            main.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
 #include <kernel/type.h>
 #include <kernel/const.h>
 #include <kernel/proc.h>
@@ -40,10 +33,8 @@ PUBLIC int kernel_main()
 	// moved to cstart begin
 	//zcr added(清屏)
 	disp_pos = 0;
-	for (int i = 0; i < 25; i++)
-	{
-		for (int j = 0; j < 80; j++)
-		{
+	for (int i = 0; i < 25; i++){
+		for (int j = 0; j < 80; j++){
 			disp_str(" ");
 		}
 	}

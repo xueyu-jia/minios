@@ -13,9 +13,6 @@ CONSOLE     console_table[NR_CONSOLES];
 SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 #define __TTY_DEBUG__
 
-/* local routines */
-// PRIVATE void	vga_set_cursor(unsigned int position);
-// PRIVATE void	vga_set_video_start_addr(u32 addr);
 PRIVATE void	flush(CONSOLE* con);
 PRIVATE	void	w_copy(unsigned int dst, const unsigned int src, int size);
 PRIVATE void	clear_screen(int pos, int len);
@@ -360,41 +357,10 @@ PUBLIC void disp_color_str(const char* info, int color){
 	}
 }
 
-// PUBLIC void disp_color_str(const char* info, int color){
-
-// 	if(kernel_initial == 1){
-// 		disp_pos = _disp_color_str(info, color, disp_pos);
-// 	}else{
-// 		acquire(&video_mem_lock);
-// 		CONSOLE* con = &console_table[current_console];
-// 		con->cursor = _disp_color_str(info, color, con->cursor << 1) >> 1;
-// 		flush(con);
-// 	#ifdef OPT_DISP_SERIAL
-// 	#include <kernel/uart.h>
-// 	for(char *p = info; p && *p; p++) {
-// 		write_serial(*p);
-// 		if(*p == '\n'){
-// 			char tick_str[8];
-// 			itoa(ticks, tick_str, 10);
-// 			write_serial('[');
-// 			for(char *s=tick_str; *s; s++){
-// 				write_serial(*s);
-// 			}
-// 			write_serial(']');
-// 		}
-// 	}
-// 	#endif
-// 		release(&video_mem_lock);
-// 	}
-// }
-
 PUBLIC void disp_str(const char* info){
 	disp_color_str(info, DEFAULT_CHAR_COLOR);
 }
 
-/*======================================================================*
-                               disp_int
- *======================================================================*/
 PUBLIC void disp_int(int input)
 {
 	char output[16];

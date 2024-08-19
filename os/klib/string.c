@@ -1,6 +1,6 @@
 #include <klib/string.h>
 
-void* memcpy(void* p_dst, const void* p_src, int size){
+void* memcpy(void* p_dst, const void* p_src, size_t size){
 	char* d = p_dst;
 	const char *s = p_src;
 	while(size > 0) {
@@ -10,7 +10,7 @@ void* memcpy(void* p_dst, const void* p_src, int size){
 	return p_dst;
 }
 
-void memset(void* p_dst, char ch, int size){
+void memset(void* p_dst, char ch, size_t size){
 	char* p = p_dst;
 	while(size > 0) {
 		*(p++) = ch;

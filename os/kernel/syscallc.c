@@ -15,30 +15,11 @@
 #include <kernel/syscall.h>
 #include <kernel/proc.h>
 
-//modified by mingxuan 2021-8-14
-//PUBLIC u32 do_malloc_4k()
-
-/*======================================================================*
-*                          sys_fork		add by visual 2016.4.8
-*sys_fork()放在了fork.c文件中
-*======================================================================*/
-
-/*======================================================================*
-                           sys_pthread		add by visual 2016.4.11
-*sys_pthread()放在了pthread.c文件中
- *======================================================================*/
 
 /*======================================================================*
                            sys_udisp_int		add by visual 2016.5.16
 用户用的打印函数
  *======================================================================*/
-
-//modified by mingxuan 2021-8-13
-PUBLIC void sys_udisp_int()
-{
-	do_udisp_int(get_arg(1));
-	return;
-}
 
 PUBLIC void do_udisp_int(int arg)
 {
@@ -46,17 +27,18 @@ PUBLIC void do_udisp_int(int arg)
 	return;
 }
 
+PUBLIC void sys_udisp_int()
+{
+	do_udisp_int(get_arg(1));
+	return;
+}
+
+
+
 /*======================================================================*
                            sys_udisp_str		add by visual 2016.5.16
 用户用的打印函数
  *======================================================================*/
-
-//modified by mingxuan 2021-8-13
-PUBLIC void sys_udisp_str()
-{
-	do_udisp_str(get_arg(1));
-	return;
-}
 
 PUBLIC void do_udisp_str(char *arg)
 {
@@ -64,12 +46,13 @@ PUBLIC void do_udisp_str(char *arg)
 	return;
 }
 
-/*======================================================================*
-*                          sys_exec		被放在exec.c文件中
-*======================================================================*/
-/*======================================================================*
-*                          sys_total_mem_size		added by wang 2021.8.21
-*======================================================================*/
+PUBLIC void sys_udisp_str()
+{
+	do_udisp_str(get_arg(1));
+	return;
+}
+
+
 PUBLIC u32 kern_total_mem_size()
 {
 	u32 total_mem_size = 0;

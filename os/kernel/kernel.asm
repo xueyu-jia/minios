@@ -61,8 +61,8 @@ global restart_restore	;Added by xw, 18/4/21
 ;global save_context
 global sched			;Added by xw, 18/4/21
 global sys_call
-global read_cr2   ;//add by visual 2016.5.9
-global read_cr3   ;//add by visual 2016.5.9
+; global read_cr2   ;//add by visual 2016.5.9
+; global read_cr3   ;//add by visual 2016.5.9
 
 global refresh_page_cache ; // add by visual 2016.5.12
 global refresh_gdt 		;add by sundong 2023.3.8
@@ -828,16 +828,16 @@ restart_initial:
 
 	;jmp 	restart_restore
 
-; ====================================================================================
-;				    read_cr2				//add by visual 2016.5.9
-; ====================================================================================
-read_cr2:
-	mov eax,cr2
-	ret
+; ; ====================================================================================
+; ;				    read_cr2				//add by visual 2016.5.9
+; ; ====================================================================================
+; read_cr2:
+; 	mov eax,cr2
+; 	ret
 
-read_cr3:
-	mov eax,cr3
-	ret
+; read_cr3:
+; 	mov eax,cr3
+; 	ret
 
 ; ====================================================================================
 ;				    refresh_page_cache		//add by visual 2016.5.12

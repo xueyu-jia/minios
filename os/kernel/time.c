@@ -9,7 +9,7 @@
 #define RTC_DATA	0x71
 
 u8 readRTC(int addr){
-	//*** must disable int and ***
+	//:** must disable int and ***
 	outb(RTC_ADDR, addr);
 	return inb(RTC_DATA);
 }

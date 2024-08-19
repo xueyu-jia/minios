@@ -83,7 +83,7 @@ ifeq ($(BOOT_PART_FS_TYPE),fat32)
 	BOOT_SEEK=90
 else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
 	BOOT_PART_FS_MAKER = $(ORANGE_MAKER)
-	BOOT_PART_FS_MAKE_FLAG = 
+	BOOT_PART_FS_MAKE_FLAG =
 	BOOT_MOUNT = $(ORANGE_MOUNT)
 	BOOT=orangefs_boot.bin
 	BOOT_SIZE =512
@@ -110,30 +110,30 @@ ROOT_MOUNTPOINT = root
 .PHONY : all clean install
 
 all : everything
-clean : realclean_os realclean_user clean_user
+clean : realclean_os realclean_user clean_user clean-rtl
 install : check_para build_img build_grub build_mbr build_fs
 
 include ./os/Makefile
 include	./user/Makefile
 check_para:
 #检查MACHINE_TYPE输入是否正确(仅支持real,virtual)
-ifeq ($(MACHINE_TYPE),real) 
+ifeq ($(MACHINE_TYPE),real)
 #检查在真机启动情况下是否输入了INS_DEV
 ifndef INS_DEV
 	$(error INS_DEV is null! The INS_DEV needs a vlaue when using real machine.)
-endif 
-else ifeq ($(MACHINE_TYPE),virtual) 
+endif
+else ifeq ($(MACHINE_TYPE),virtual)
 	$(info MACHINE_TYPE=$(MACHINE_TYPE))
 ifeq ($(BOOT_PART_NUM), $(ROOT_FS_PART_NUM))
 	$(info BOOT_PART_NUM= $(BOOT_PART_NUM))
 	$(info ROOT_FS_PART_NUM= $(ROOT_FS_PART_NUM))
-endif 
-else 
+endif
+else
 	$(error MACHINE_TYPE input error! Correct vlaue: virtual or real ,your input:$(MACHINE_TYPE) )
-endif 
+endif
 
 
-#检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs) 
+#检查BOOT_PART_FS_TYPE是否输入正确(仅支持fat32,orangefs)
 ifeq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
 ifneq ($(BOOT_PART_FS_TYPE),$(ROOT_PART_FS_TYPE))
 	$(error different fstype in same part)
@@ -149,9 +149,9 @@ endif
 # ifneq ($(BOOT_PART_NUM),$(ROOT_FS_PART_NUM))
 # 	$(error  BOOT_PART_NUM not equals ROOT_FS_PART_NUM! This is not allowed when using $(BOOT_PART_FS_TYPE) as boot part file system )
 # endif
-# else 
+# else
 # 	$(error BOOT_PART_FS_TYPE input error! Correct vlaue: fat32 or orangefs , your input: $(BOOT_PART_FS_TYPE) )
-# endif 
+# endif
 
 
 #检查USING_GRUB_CHAINLOADER是否输入正确(仅支持true,false)
@@ -162,7 +162,7 @@ endif
 else ifeq ($(USING_GRUB_CHAINLOADER),false)
 else
 	$(error USING_GRUB_CHAINLOADER input error! Correct vlaue: true or false ,your input:$(USING_GRUB_CHAINLOADER) )
-endif 
+endif
 #输出关键参数
 	$(info MACHINE_TYPE=$(MACHINE_TYPE))
 	$(info INS_DEV=$(INS_DEV))
@@ -182,7 +182,7 @@ ifneq ($(wildcard $(ORANGE_MAKER) $(ORANGE_MOUNT)), $(ORANGE_MAKER) $(ORANGE_MOU
 endif
 endif
 
-define copy_user 
+define copy_user
 	sudo mkdir -p $(ROOT_MOUNTPOINT)/$(dir $(2))
 	sudo cp $(1) $(ROOT_MOUNTPOINT)/$(2)
 	echo "$(1) => /$(2)"
@@ -200,7 +200,7 @@ build_grub:
 		sudo losetup -P $(INS_DEV) $(WRITE_DISK); \
 	fi
 	sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART)
-	
+
 	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
 		sudo mount  $(GRUB_INSTALL_PART) iso && \
 		sudo grub-install --target=i386-pc --boot-directory=./iso  --modules="part_msdos" $(INS_DEV) &&\
@@ -237,15 +237,15 @@ build_fs:
 	sudo umount $(BOOT_PART_MOUNTPOINT)
 #初始化根文件系统
 	sudo $(ROOT_FS_MAKER) $(ROOT_FS_MAKE_FLAG) $(ROOT_FS_PART)
-	
+
 	sudo $(ROOT_MOUNT) $(ROOT_FS_PART) $(ROOT_MOUNTPOINT)
-	
+
 	@echo "copy user files ..."
 # 在此处根据USER_TEST变量添加用户程序的文件 user/user/dir/file.bin ==> root/dir/file
 	@$(foreach FILE,$(USER_IMG),\
 	    $(call copy_user,$(FILE),$(subst $(USER_SRC_DIR)/,,$(subst .bin,,$(FILE))));\
 	)
-	
+
 
 	sudo umount $(ROOT_MOUNTPOINT)
 
@@ -269,3 +269,5 @@ tags :
 
 archive :
 	git archive --prefix=
+clean-rtl :
+	rm -rf rtl/*

@@ -7,8 +7,7 @@ int init_simple_serial() {
     outb(PORT_COM1 + 0, 0x03); // Set divisor to 3 (lo byte) 38400 baud
     outb(PORT_COM1 + 1, 0x00); //                  (hi byte)
     outb(PORT_COM1 + 3, 0x03); // 8 bits, no parity, one stop bit
-    outb(
-        PORT_COM1 + 2, 0xc7); // Enable FIFO, clear them, with 14-byte threshold
+    outb(PORT_COM1 + 2, 0xc7); // Enable FIFO, clear them, with 14-byte threshold
     outb(PORT_COM1 + 4, 0x0b); // IRQs enabled, RTS/DSR set
     outb(PORT_COM1 + 4, 0x1e); // Set in loopback mode, test the serial chip
     outb(PORT_COM1 + 0, 0xae); // Test serial chip (send byte 0xAE and check if

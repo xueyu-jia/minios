@@ -39,14 +39,14 @@ PUBLIC void kern_exit(int exit_code)
     free_all_pagetbl(exit_pcb->task.pid);
     free_pagedir(exit_pcb->task.pid);
 
-    //! NOTE: disable int to reduce op complexity
+    //: NOTE: disable int to reduce op complexity
     if (fa_pcb->task.pid == NR_RECY_PROC) {
-        //! case 0: father is recy and already locked
+        //: case 0: father is recy and already locked
         exit_handle_child_thread(exit_pcb->task.pid, false);
         transfer_child_proc(exit_pcb->task.pid, NR_RECY_PROC);
 
     } else {
-        //! case 1: father isn't recy so need to lock
+        //: case 1: father isn't recy so need to lock
         exit_handle_child_thread(exit_pcb->task.pid, true);
         lock_or_yield(&recy_pcb->task.lock);
         if (transfer_child_proc(exit_pcb->task.pid, NR_RECY_PROC) != 0) {
@@ -137,7 +137,7 @@ PRIVATE void exit_file(PROCESS* p_proc)
 
 PRIVATE void exit_handle_child_thread(u32 pid, bool lock_recy)
 {
-    //! NOTE:fixed, now recursive delete
+    //: NOTE:fixed, now recursive delete
     PROCESS* pcb      = (PROCESS*)pid2proc(pid);
     PROCESS* recy_pcb = (PROCESS*)pid2proc(NR_RECY_PROC);
     for (int i = 0; i < pcb->task.tree_info.child_t_num; ++i) {
