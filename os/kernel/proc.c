@@ -184,7 +184,7 @@ PUBLIC void proc_backtrace() {
             stack_backtrace(ebp);
         }
         ebp = *((u32*)ebp);
-        if(ebp >= KernelLinMapBase || ebp < ShareLinLimitMAX)break;
+        if(ebp >= KernelLinMapBase || ebp < ShareLinLimitMAX) break;
     }
     while (1)
         ;

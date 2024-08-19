@@ -3,7 +3,7 @@
  # @Author: lirong lirongleiyang@163.com
  # @Date: 2024-08-11 11:22:53
  # @LastEditors: lirong lirongleiyang@163.com
- # @LastEditTime: 2024-08-18 22:59:20
+ # @LastEditTime: 2024-08-20 00:09:42
  # @FilePath: /minios/launch-qemu.sh
  # @Description:
  #
@@ -32,7 +32,7 @@
 # -drive id=disk2,file=d.img,if=none -device ide-hd,drive=disk2,bus=ahci.2 \
 # -hda a.img -hdb e.img
 #cp b.img c.img
-qemu-system-i386 -m 512M \
+qemu-system-i386 -m 64M \
 -device ich9-ahci,id=xiaofeng \
 -device ide-hd,drive=disk,bus=xiaofeng.0 -drive id=disk,file=b.img,if=none,media=disk \
 -device ide-hd,drive=disk2,bus=xiaofeng.1 -drive id=disk2,file=test2.img,if=none,media=disk \

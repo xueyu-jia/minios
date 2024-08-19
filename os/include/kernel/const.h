@@ -39,66 +39,6 @@
 #define TRUE  1
 #define FALSE 0
 
-/* GDT 和 IDT 中描述符的个数 */
-// #define	GDT_SIZE	128
-// #define	IDT_SIZE	256
-
-// /* 权限 */ ==> protect.h
-// #define	PRIVILEGE_KRNL	0
-// #define	PRIVILEGE_TASK	1
-// #define	PRIVILEGE_USER	3
-// /* RPL */
-// #define	RPL_KRNL	SA_RPL0
-// #define	RPL_TASK	SA_RPL1
-// #define	RPL_USER	SA_RPL3
-
-/* 8259A interrupt controller ports. */
-// #define	INT_M_CTL	0x20	/* I/O port for interrupt controller         <Master>
-// */
-// #define	INT_M_CTLMASK	0x21	/* setting bits in this port disables ints
-// <Master> */ #define	INT_S_CTL	0xA0	/* I/O port for second interrupt
-// controller  <Slave>  */
-// #define	INT_S_CTLMASK	0xA1	/* setting bits in this port disables ints
-// <Slave>  */
-
-// /* 8253/8254 PIT (Programmable Interval Timer) */
-// #define TIMER0         0x40 /* I/O port for timer channel 0 */
-// #define TIMER_MODE     0x43 /* I/O port for timer mode control */
-// #define RATE_GENERATOR 0x34 /* 00-11-010-0 :
-// 			     * Counter0 - LSB then MSB - rate generator - binary
-// 			     */
-// #define TIMER_FREQ     1193182L/* clock frequency for timer in PC and AT */
-// #define HZ             100  /* clock freq (software settable on IBM-PC) */
-
-// /* Hardware interrupts */
-// #define	NR_IRQ		16	/* Number of IRQs */
-// #define	CLOCK_IRQ	0
-// #define	KEYBOARD_IRQ	1
-// #define	CASCADE_IRQ	2	/* cascade enable for 2nd AT controller */
-// #define	ETHER_IRQ	3	/* default ethernet interrupt vector */
-// #define	SECONDARY_IRQ	3	/* RS232 interrupt vector for port 2 */
-// #define	RS232_IRQ	4	/* RS232 interrupt vector for port 1 */
-// #define	XT_WINI_IRQ	5	/* xt winchester */
-// #define	FLOPPY_IRQ	6	/* floppy disk */
-// #define	PRINTER_IRQ	7
-// #define	AT_WINI_IRQ	14	/* at winchester */
-// #define	MOUSE_IRQ 12    //added by mingxuan 2019-5-19
-
-/* system call */
-//#define NR_SYS_CALL     23	//last modified by xw, 18/6/19
-//#define NR_SYS_CALL     28    //modified by mingxuan 2019-5-17
-//#define NR_SYS_CALL     30    //modified by mingxuan 2021-1-6
-//#define NR_SYS_CALL     32    //modified by ran
-//#define NR_SYS_CALL     33    //modified by mingxuan 2021-2-7
-//#define NR_SYS_CALL     36	//modified by mingxuan 2021-2-28
-// #define NR_SYS_CALL       31	//modified by mingxuan 2021-3-25	删除了4个系统调用接口：kmalloc、kmalloc_4k、malloc和free
-//#define NR_SYS_CALL       41	//modified by xiaofeng 2021-9-8		增加了5个关于共享内存的接口   //modified by yingchi 2022.01.06 5 message queue API
-//#define NR_SYS_CALL       42	//modified by xiaofeng 2022-1-10     增加了1个关于内核锁测试的接口
-// #define NR_SYS_CALL       44	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口
-//#define NR_SYS_CALL       60	//modified by xiaofeng 2022-1.18	增加了2个关于exec的接口
-//#define NR_SYS_CALL		  62	//modified by dongzhangqi 2023.5.17 增加两个关于pthread的接口
-// #define NR_SYS_CALL       63	//modified by sundong 2023.5.18 增加了初始化tty设备的系统调用
-// modified by jiangfeng 2024.5 增加重构后vfs文件系统调用
 // devfs支持以后，移除初始化设备的系统调用
 #define NR_SYS_CALL		  67
 /* TTY */
@@ -115,8 +55,18 @@
     0x100000 // 内核页表物理地址，必须与load.inc中一致			add by wang
              // 2021.4.22
 
-#define PHY_MEM_SIZE    0x04000000            //64M
-// page 维护的物理地址范围 2024.5 from memman.h
+// 物理内存长度
+//! 存在bug，当PHY_MEM_SIZE超过2G时，无论物理内存为多少，都会会闪退，推测是数据结构mem_map[ALL_PAGES]太大了，内核空间不够
+//! 当PHY_MEM_SIZE超过1G时，KernelLinLimitMAX和KernelLinMapBase会限制
+#define PHY_MEM_SIZE    0x04000000               //64M
+// #define PHY_MEM_SIZE    0x08000000               //128M
+// #define PHY_MEM_SIZE    (0x40000000-0x04000000)                  // 1G-64M
+// #define PHY_MEM_SIZE    0x40000000                  // 1G
+// #define PHY_MEM_SIZE    0xc0000000                  // 3G
+// #define PHY_MEM_SIZE    0x80000000                  // 2G
+// #define PHY_MEM_SIZE    0x100000000             // 4G
+// #define ALL_PAGES       (u32)((PHY_MEM_SIZE)/PAGE_SIZE) //: defined in memman.h, why?
+
 /*线性地址描述*/                 // edit by visual 2016.5.25
 #define SmallKernelSize 0x800000 // 小内核的大小8M//edited by wang 2021.8.27
 #define BigKernelSize   0x2000000 // 大内核的大小32M，edited by wang 2021.8.27

@@ -27,17 +27,8 @@ void memory_init()
     memcpy(MemInfo, (u32 *)FMIBuff, 1024); //复制内存
 
     test_phy_mem_size = MemInfo[MemInfo[0]];
-    // int t, i, j;
 	u32 i;
-    // disp_str("memtest got memory available:\n");
-    // disp_str("base_addr     end_addr\n");
-    // for (t = 1; t <= MemInfo[0]; t++)
-    // {
-    //     disp_int(MemInfo[t]);
-    //     disp_str("       ");
-    //     if (t % 2 == 0)
-    //         disp_str("\n");
-    // }
+
     disp_str("test_phy_mem_size: ");
     disp_int(test_phy_mem_size);
     disp_str("\n");
@@ -50,7 +41,7 @@ void memory_init()
 
     // TODO: ALL_PAGES 怎么确定
     u32 last_pfn = phy_to_pfn(test_phy_mem_size);
-    for (i = 0; i < last_pfn; i++) {
+    for (i = 0; i < last_pfn && i < ALL_PAGES; i++) {
         mem_map[i].inbuddy = TRUE;
     }
     for (; i < ALL_PAGES; i++) {

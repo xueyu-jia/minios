@@ -1,6 +1,6 @@
 /*
  * @Author: Rong.Ding
- * @Date: 2023-01-13 23:11:17 
+ * @Date: 2023-01-13 23:11:17
  * @Last Modified by: Yuanhong.Yu
  * @Last Modified time: 2023-01-13 23:12:49
  */
@@ -18,7 +18,6 @@
 #define START_ADDR 0x00000000
 #define END_ADDR 0x02000000
 
-void mem_check_32M();
-u32 mem_test(u32 startaddr,u32 endaddr);
+u32 get_mem_info(u32 MemChkBuf, u32 MCRNumber);
 
 #endif

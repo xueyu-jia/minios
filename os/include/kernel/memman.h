@@ -12,6 +12,7 @@
 #define FMIBuff		0x007ff000	//loader中getFreeMemInfo返回值存放起始地址(7M1020K)
 
 #define WALL            0x10000000            //256M
+// #define WALL            0x02000000            //32M
 
 #define KKWALL1		0x00400000            //4M
 #define KUWALL1		0x00800000            //8M
@@ -21,7 +22,7 @@
 
 #define TEST		0x11223344
 
-#define ALL_PAGES       ((PHY_MEM_SIZE)/PAGE_SIZE)
+#define ALL_PAGES       ((u32)(PHY_MEM_SIZE)/PAGE_SIZE)
 #define MAX_BUF_PAGE	(PAGE_SIZE/SECTOR_SIZE)
 
 #define PROT_NONE   0
