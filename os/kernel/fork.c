@@ -6,7 +6,7 @@
 #include <kernel/const.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/fs.h>
 #include <kernel/pagetable.h>
 #include <kernel/memman.h>

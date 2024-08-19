@@ -2,7 +2,7 @@
 #define DEV_H
 #include <kernel/type.h>
 #include <kernel/const.h>
-#include <kernel/list.h>
+#include <klib/list.h>
 
 /* major device numbers (corresponding to kernel/global.c::dd_map[]) */
 #define NO_DEV       0

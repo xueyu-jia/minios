@@ -1,5 +1,5 @@
 #include <kernel/const.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/vfs.h>
 #include <kernel/fs.h>
 #include <kernel/mount.h>

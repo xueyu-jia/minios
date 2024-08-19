@@ -10,7 +10,7 @@
  */
 #include <kernel/const.h>
 #include <kernel/x86.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 
 // 初始化中断帧
 void init_int_frame(

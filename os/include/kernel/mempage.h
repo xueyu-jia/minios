@@ -1,8 +1,8 @@
 #ifndef MEMPAGE_H
 #define MEMPAGE_H
 
-#include <kernel/list.h>
-#include <kernel/spinlock.h>
+#include <klib/list.h>
+#include <klib/spinlock.h>
 
 #define MEMPAGE_AUTO	0
 #define MEMPAGE_CACHED	1

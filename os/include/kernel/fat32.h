@@ -2,7 +2,7 @@
 #define FAT32_H
 
 #include <kernel/type.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 struct __attribute__((packed)) fat32_bpb {
     char jmp[3];

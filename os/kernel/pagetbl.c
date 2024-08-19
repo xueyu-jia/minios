@@ -5,13 +5,13 @@
 #include <kernel/type.h>
 #include <kernel/const.h>
 #include <kernel/protect.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
 #include <kernel/buddy.h>
 #include <kernel/memman.h>
 #include <kernel/pagetable.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 //to determine if a page fault is reparable. added by xw, 18/6/11
 u32 cr2_save;

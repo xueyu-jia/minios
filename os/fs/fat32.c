@@ -5,7 +5,7 @@
 #include <kernel/type.h>
 #include <kernel/const.h>
 #include <kernel/time.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/buffer.h>
 #include <kernel/vfs.h>
 #include <kernel/fat32.h>

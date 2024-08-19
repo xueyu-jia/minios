@@ -2,8 +2,8 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 #include <kernel/type.h>
-#include <kernel/spinlock.h>
-#include <kernel/list.h>
+#include <klib/spinlock.h>
+#include <klib/list.h>
 typedef struct buf_head
 {
     u32 count;                 // buffer使用计数

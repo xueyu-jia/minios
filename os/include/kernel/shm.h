@@ -2,7 +2,7 @@
 ********************** add by dingleilei*********************/
 #ifndef SHM_H
 #define SHM_H
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/type.h>
 #include <kernel/mempage.h>
 #define SHM_SIZE 10

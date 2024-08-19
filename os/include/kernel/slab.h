@@ -2,7 +2,7 @@
 #define KERNEL_SLAB_H_
 
 #include <kernel/type.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 typedef enum slab_type {EMPTY, PARTIAL, FULL} slab_type_t;  // slab的类型
 typedef struct kmem_cache kmem_cache_t;

@@ -1,8 +1,4 @@
-#########################
-# Makefile for Orange'S #
-#########################
-
-# Entry point of Orange'S
+# Entry point of kernel
 # It must have the same value with 'KernelEntryPointPhyAddr' in load.inc!
 #############edit by visual 2016.5.10####
 #ENTRYPOINT	= 0xC0030400
@@ -48,10 +44,6 @@ OBJS =  os/kernel/kernel.o \
 	$(wildcard os/klib/*.c)) $(subst .nasm,.o,$(wildcard os/gdbstub/*.nasm))
 
 
-#added by mingxuan 2021-2-28
-
-# OBJSKLIB 	= os/kernel/syscall.o os/klib/klib.o os/klib/kliba.o os/klib/string.o
-
 GDBBIN = kernel.gdb.bin
 
 include os/boot/floppy/Makefile
@@ -83,10 +75,6 @@ kernel.gdb.bin : $(OBJS)
 
 #user/init/init.gdb.bin : $(OBJSINIT)
 #	$(LD) $(LDFLAGS_init_gdb) -o $@ $(OBJSINIT)
-
-# spinlock.o	added by mingxuan 2019-1-5
-os/kernel/spinlock.o: os/kernel/spinlock.c
-	$(CC) -masm=intel  -I os/include/ $(KFLAGS) -o $@ $<
 
 os/kernel/%.o : os/kernel/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<

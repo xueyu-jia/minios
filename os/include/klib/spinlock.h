@@ -1,8 +1,18 @@
+/*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-14 13:24:41
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-19 10:13:42
+ * @FilePath: /minios/os/include/kernel/spinlock.h
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
 /**********************************************************
 *	spinlock.h       //added by mingxuan 2018-12-26
 ***********************************************************/
 #pragma once
-#include <kernel/list.h> // dbg
+#include <klib/list.h> // dbg
 // Mutual exclusion lock.
 #define uint unsigned
 

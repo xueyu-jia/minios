@@ -9,7 +9,7 @@
 #include <kernel/const.h>
 #include <kernel/clock.h>
 #include <kernel/proc.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proto.h>
 
 int		ticks;

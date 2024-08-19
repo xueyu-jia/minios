@@ -1,4 +1,4 @@
-#include <kernel/string.h>
+#include <klib/string.h>
 
 void* memcpy(void* p_dst, const void* p_src, int size){
 	char* d = p_dst;

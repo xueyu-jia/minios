@@ -1,9 +1,9 @@
 #include <kernel/devfs.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/memman.h>
 #include <kernel/hd.h>
 #include <kernel/fs.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/proto.h>
 
 PRIVATE list_head devices;

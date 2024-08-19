@@ -2,7 +2,7 @@
 * 内存管理-buddy系统相关代码     add by wang   2021.3.3
 **************************************************************/
 
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/console.h>
 #include <kernel/buddy.h>
 #include <kernel/kmalloc.h>

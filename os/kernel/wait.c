@@ -2,8 +2,8 @@
 #include <kernel/proc.h>
 #include <kernel/console.h>
 #include <kernel/proto.h>
-#include <kernel/spinlock.h>
-#include <kernel/assert.h>
+#include <klib/spinlock.h>
+#include <klib/assert.h>
 #include <kernel/wait.h>
 
 /*

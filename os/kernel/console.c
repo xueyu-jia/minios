@@ -1,11 +1,11 @@
 #include <kernel/type.h>
 #include <kernel/const.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proto.h>
 #include <kernel/tty.h>
 #include <kernel/console.h>
 #include <kernel/clock.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/vga.h>
 
 int		disp_pos;

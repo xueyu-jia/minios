@@ -13,7 +13,7 @@
 #include <kernel/type.h>
 #include <kernel/const.h>
 #include <kernel/protect.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
 #include <kernel/fs_const.h>

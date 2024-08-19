@@ -12,7 +12,7 @@
 // #include <unios/layout.h>
 #include <kernel/const.h>
 #include <kernel/x86.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 
 // extern int disp_pos;
 

@@ -4,7 +4,7 @@
 #include <kernel/const.h>
 #include <kernel/slab.h>
 #include <kernel/atomic.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/mempage.h>
 #include <kernel/buffer.h>
 #include <kernel/proc.h>

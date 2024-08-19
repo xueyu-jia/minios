@@ -4,14 +4,14 @@
 
 #include <kernel/type.h>
 #include <kernel/const.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/elf.h>
 #include <kernel/vfs.h>
 #include <kernel/memman.h>
 #include <kernel/pagetable.h>
 #include <kernel/mmap.h>
 #include <kernel/console.h>
-#include <kernel/assert.h>
+#include <klib/assert.h>
 #include <kernel/proto.h>
 #include <kernel/exec.h>
 

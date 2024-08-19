@@ -4,9 +4,9 @@
 // VFS   modified by jiangfeng 2024-03
 // finally edit 2024-05
 #include <kernel/const.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proto.h>
-#include <kernel/list.h>
+#include <klib/list.h>
 #include <kernel/fs.h>
 #include <kernel/tty.h>
 #include <kernel/buffer.h>

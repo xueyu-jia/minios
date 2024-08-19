@@ -1,5 +1,5 @@
 #include <kernel/proc.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 
 /*						added by ZengHao & MaLinhan 2021.12.23						*/

@@ -5,7 +5,7 @@
 #include <kernel/const.h>
 #include <kernel/console.h>
 #include <kernel/clock.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/proc.h>
 #include <kernel/memman.h>
 #include <kernel/pagetable.h>

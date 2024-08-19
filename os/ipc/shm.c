@@ -7,10 +7,10 @@
 #include <kernel/proto.h>
 #include <kernel/console.h>
 #include <kernel/clock.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/pagetable.h>
 #include <kernel/memman.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/syscall.h>
 #include <kernel/proc.h>
 #include <kernel/mmap.h>

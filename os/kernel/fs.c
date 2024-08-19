@@ -1,12 +1,12 @@
 #include <kernel/hd.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/vfs.h>
 #include <kernel/buffer.h>
 #include <kernel/tty.h>
 #include <kernel/hd.h>
 #include <kernel/memman.h>
 #include <kernel/mmap.h>
-#include <kernel/assert.h>
+#include <klib/assert.h>
 #include <kernel/devfs.h>
 
 PUBLIC struct super_block super_blocks[NR_SUPER_BLOCK]; //added by mingxuan 2020-10-30

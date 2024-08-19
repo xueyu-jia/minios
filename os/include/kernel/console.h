@@ -23,7 +23,7 @@
 
 #ifndef	_ORANGES_CONSOLE_H_
 #define	_ORANGES_CONSOLE_H_
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 /* CONSOLE */
 typedef struct s_console

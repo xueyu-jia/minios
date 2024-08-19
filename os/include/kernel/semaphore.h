@@ -7,7 +7,7 @@
 #define SEMA_H
 
 #include <kernel/proto.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 
 /*信号量*/
 volatile struct Semaphore

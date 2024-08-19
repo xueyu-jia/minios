@@ -9,14 +9,14 @@
 
 #include <kernel/type.h>
 #include <kernel/atomic.h>
-#include <kernel/list.h>
+#include <klib/list.h>
 // forward declarations
 struct inode;
 struct address_space;
 struct dentry;
 struct file_desc;
 struct super_block;
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/fs_const.h>
 #include <kernel/mempage.h>
 

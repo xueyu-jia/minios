@@ -8,7 +8,7 @@
 #include <kernel/mmap.h>
 #include <kernel/mempage.h>
 #include <kernel/kmalloc.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 
 int big_kernel = 0;        //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added by wang 2021.8.16
 u32 kernel_size = 0;       //表示内核大小的全局变量，added by wang 2021.8.27

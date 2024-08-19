@@ -6,7 +6,7 @@
 **********************************************************/
 
 #include <kernel/const.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/time.h>
 #include <kernel/buddy.h>
 #include <kernel/kmalloc.h>

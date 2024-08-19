@@ -1,12 +1,12 @@
 #include <kernel/console.h>
-#include <kernel/spinlock.h>
+#include <klib/spinlock.h>
 #include <kernel/type.h>
 #include <kernel/const.h>
 #include <kernel/proc.h>
 #include <kernel/pagetable.h>
 #include <kernel/memman.h>
 #include <kernel/proto.h>
-#include <kernel/assert.h>
+#include <klib/assert.h>
 // #include <kernel/exit.h>
 
 PRIVATE void exit_file(PROCESS* p_proc);

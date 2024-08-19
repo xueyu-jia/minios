@@ -3,7 +3,7 @@
 #include <kernel/buddy.h>
 #include <kernel/memman.h>
 #include <kernel/fs.h>
-#include <kernel/list.h>
+#include <klib/list.h>
 
 /// @brief 向address_space结构添加新的物理页
 // note: 此处不检查是否已经存在页面，caller应保证在调用此函数之前获得互斥锁之后检查find_cache_page

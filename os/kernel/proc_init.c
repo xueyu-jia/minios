@@ -15,7 +15,7 @@
 #include <kernel/proc.h>
 #include <kernel/proto.h>
 #include <kernel/hd.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/buffer.h>
 #include <kernel/mmap.h>
 #include <kernel/pagetable.h>

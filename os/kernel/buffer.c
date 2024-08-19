@@ -4,7 +4,7 @@
 #include <kernel/clock.h>
 #include <kernel/vfs.h>
 #include <kernel/hd.h>
-#include <kernel/string.h>
+#include <klib/string.h>
 #include <kernel/memman.h>
 #include <kernel/semaphore.h>
 #include <kernel/buffer.h>
