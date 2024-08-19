@@ -236,7 +236,7 @@ int get_pid_byname(char* name) {
 	return _syscall1(_NR_get_pid_byname, name);
 }
 
-int mount(const char *source, const char *target,const char *filesystemtype, 
+int mount(const char *source, const char *target,const char *filesystemtype,
 			unsigned long mountflags, const void *data) {
 	return _syscall5(_NR_mount, source, target, filesystemtype, mountflags, data);
 }
@@ -247,8 +247,8 @@ int umount(const char *target) {
 
 // pthread_exit pthread_join 参数名retval改为status,此名称与_syscall宏中的retval重名了
 // 故将此处改为更有意义的名字，syscall内部变量也改为_retval
-void pthread_exit(void *status){ 
-	return _syscall1(_NR_pthread_exit, status);
+void pthread_exit(void *status){
+	_syscall1(_NR_pthread_exit, status);
 }
 
 int pthread_join(pthread_t thread, void **status){
@@ -264,17 +264,17 @@ int stat(const char *pathname, struct stat* statbuf) {
 }
 
 void nice(int val) {
-	return _syscall1(_NR_nice, val);
+	_syscall1(_NR_nice, val);
 }
 
 void set_rt(int turn_rt) {
-	return _syscall1(_NR_set_rt, turn_rt);
+	_syscall1(_NR_set_rt, turn_rt);
 }
 
 void rt_prio(int prio) {
-	return _syscall1(_NR_rt_prio, prio);
+	_syscall1(_NR_rt_prio, prio);
 }
 
 void get_proc_msg(proc_msg* msg) {
-	return _syscall1(_NR_get_proc_msg, msg);
+	_syscall1(_NR_get_proc_msg, msg);
 }

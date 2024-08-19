@@ -26,9 +26,10 @@
 extern struct dentry *vfs_root;
 
 PUBLIC struct inode * vfs_new_inode(struct super_block* sb);
-PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino);
+PUBLIC struct inode * vfs_get_inode(struct super_block* sb, u32 ino);
 PUBLIC void vfs_sync_inode(struct inode * inode);
 PUBLIC struct dentry * vfs_new_dentry(const char* name, struct inode* inode);
+PUBLIC int get_fstype_by_name(const char* fstype_name);
 
 
 

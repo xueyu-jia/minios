@@ -226,14 +226,14 @@ PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg)
 
     // alignment(vir_addr);
     // lin_mapping_phy(vir_addr, phy_addr, p_proc_current->task.pid, PG_P | PG_USU | PG_RWW, PG_P | PG_USU | PG_RWW);
-    int vir_addr = kern_mmap(p_proc_current, NULL, shmaddr, PAGE_SIZE,
+    int vir_addr = kern_mmap(p_proc_current, NULL, (u32)shmaddr, PAGE_SIZE,
         PROT_READ|PROT_WRITE, MAP_SHARED, shmid);
 
     if(phy_addr == NULL)
     {
         lock_or_yield(&shm_pages.lock);
         page *shm_page = find_mem_page(&shm_pages, shmid);
-        ids.perms[shmid].phy_address = pfn_to_phy(page_to_pfn(shm_page));
+        ids.perms[shmid].phy_address = (void*)pfn_to_phy(page_to_pfn(shm_page));
         release(&shm_pages.lock);
     }
     return (void *)((vir_addr)&0xFFFFF000);
@@ -255,7 +255,7 @@ PUBLIC void *sys_shmat()
 PUBLIC void kern_shmdt(char *shmaddr)
 {
     // clear_pte(p_proc_current->task.pid, (u32)shmaddr); //并不释放物理页
-    kern_munmap(p_proc_current, shmaddr, PAGE_SIZE);
+    kern_munmap(p_proc_current, (u32)shmaddr, PAGE_SIZE);
     return;
 }
 

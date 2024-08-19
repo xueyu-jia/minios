@@ -1,6 +1,6 @@
 #include <kernel/proc.h>
 #include <kernel/clock.h>
-
+#include <kernel/proto.h>
 
 /*						added by ZengHao & MaLinhan 2021.12.23						*/
 
@@ -24,16 +24,6 @@ int suspend_with_cancellation(PROCESS *self, int timeout)
   return -1; //超时
 }
 
-int sys_pthread_cond_init()
-{
-  return do_pthread_cond_init(get_arg(1), get_arg(2));
-}
-
-int do_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr)
-{
-  return kern_pthread_cond_init(cond, cond_attr);
-}
-
 int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr)
 {
   cond->lock.locked=0;//自旋锁状态置0
@@ -46,14 +36,14 @@ int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_
   return 0;
 }
 
-int sys_pthread_cond_wait()
+int do_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr)
 {
-  return do_pthread_cond_wait(get_arg(1), get_arg(2));
+  return kern_pthread_cond_init(cond, cond_attr);
 }
 
-int do_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
+int sys_pthread_cond_init()
 {
-  return kern_pthread_cond_wait(cond, mutex);
+  return do_pthread_cond_init((pthread_cond_t*)get_arg(1), (pthread_condattr_t*)get_arg(2));
 }
 
 int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
@@ -114,15 +104,16 @@ int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
   return sign_timeout;
 }
 
-int sys_pthread_cond_timewait()
+int do_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex)
 {
-  return do_pthread_cond_timewait(get_arg(1), get_arg(2), get_arg(3));
+  return kern_pthread_cond_wait(cond, mutex);
+}
+int sys_pthread_cond_wait()
+{
+  return do_pthread_cond_wait((pthread_cond_t*)get_arg(1), (pthread_mutex_t*)get_arg(2));
 }
 
-int do_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout)
-{
-  return kern_pthread_cond_timewait(cond, mutex, timeout);
-}
+
 
 int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout)
 {
@@ -182,15 +173,16 @@ int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int
   return sign_timeout;
 }
 
-int sys_pthread_cond_signal()
+int do_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout)
 {
-  return do_pthread_cond_signal(get_arg(1));
+  return kern_pthread_cond_timewait(cond, mutex, timeout);
 }
 
-int do_pthread_cond_signal(pthread_cond_t* cond)
+int sys_pthread_cond_timewait()
 {
-  return kern_pthread_cond_signal(cond);
+  return do_pthread_cond_timewait((pthread_cond_t*)get_arg(1), (pthread_mutex_t*)get_arg(2), (int*)get_arg(3));
 }
+
 
 int kern_pthread_cond_signal(pthread_cond_t* cond)
 {
@@ -217,15 +209,15 @@ int kern_pthread_cond_signal(pthread_cond_t* cond)
   return 0;
 }
 
-int sys_pthread_cond_broadcast()
+int do_pthread_cond_signal(pthread_cond_t* cond)
 {
-  return do_pthread_cond_broadcast(get_arg(1));
+  return kern_pthread_cond_signal(cond);
+}
+int sys_pthread_cond_signal()
+{
+  return do_pthread_cond_signal((pthread_cond_t*)get_arg(1));
 }
 
-int do_pthread_cond_broadcast(pthread_cond_t* cond)
-{
-  return kern_pthread_cond_broadcast(cond);
-}
 
 int kern_pthread_cond_broadcast(pthread_cond_t* cond)
 {
@@ -250,15 +242,16 @@ int kern_pthread_cond_broadcast(pthread_cond_t* cond)
   return 0;
 }
 
-int sys_pthread_cond_destroy()
+int do_pthread_cond_broadcast(pthread_cond_t* cond)
 {
-  return do_pthread_cond_destroy(get_arg(1));
+  return kern_pthread_cond_broadcast(cond);
 }
 
-int do_pthread_cond_destroy(pthread_cond_t* cond)
+int sys_pthread_cond_broadcast()
 {
-  return kern_pthread_cond_destroy(cond);
+  return do_pthread_cond_broadcast((pthread_cond_t*)get_arg(1));
 }
+
 
 int kern_pthread_cond_destroy(pthread_cond_t* cond)
 {
@@ -276,4 +269,12 @@ int kern_pthread_cond_destroy(pthread_cond_t* cond)
   return 0;
 }
 
-/*							end added									*/
+int do_pthread_cond_destroy(pthread_cond_t* cond)
+{
+  return kern_pthread_cond_destroy(cond);
+}
+
+int sys_pthread_cond_destroy()
+{
+  return do_pthread_cond_destroy((pthread_cond_t*)get_arg(1));
+}

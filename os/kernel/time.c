@@ -40,7 +40,7 @@ u32 mktime(struct tm* time){
 
 PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time){
 	static int days_four_year = 1461;
-    const static unsigned char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    static const unsigned char Days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 	u32 localtime = timestamp + tm_time->__tm_gmtoff;
 	tm_time->tm_sec = localtime % 60;
 	localtime /= 60; // min
@@ -53,7 +53,7 @@ PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time){
 	int year = ((localtime/days_four_year) << 2);
     localtime %= days_four_year;
     localtime += ((year + 99) / 100) - ((year + 299)/400);// 修正置闰
-    int ydays = 365 + (int)(((year%4 == 0) && (year%100 != 0)) || ((year+300) % 400 == 0));
+    u32 ydays = 365 + (int)(((year%4 == 0) && (year%100 != 0)) || ((year+300) % 400 == 0));
     while(ydays <= localtime){
         localtime -= ydays;
         year++;
@@ -63,7 +63,7 @@ PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time){
     tm_time->tm_year = year;
     tm_time->tm_yday = localtime;
     int mon = 0;
-    int mdays = Days[mon] + (int)(leapyear&&mon==1);
+    u32 mdays = Days[mon] + (int)(leapyear&&mon==1);
     while (mdays <= localtime)
     {
         localtime -= mdays;

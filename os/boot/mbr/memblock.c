@@ -1,3 +1,13 @@
+/*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-11 11:22:53
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-19 22:37:28
+ * @FilePath: /minios/os/boot/mbr/memblock.c
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
 //ported by sundong 2023.3.26
 #include <mbr/loaderprint.h>
 #include <mbr/memblock.h>

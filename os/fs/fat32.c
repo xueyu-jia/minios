@@ -109,12 +109,12 @@ PRIVATE u32 fat_read_datetime(u16 date, u16 time, u8 centi_sec){
 	time_s.tm_mday = ((date) & 0x1F);
 	time_s.tm_hour = ((time >> 11) & 0x1F);
 	time_s.tm_min = ((time >> 5) & 0x2F);
-	time_s.tm_sec = (time & 0x1F) << 1 + (centi_sec)/100;
+	time_s.tm_sec = ((time & 0x1F) << 1) + (centi_sec)/100;
 	return mktime(&time_s);
 }
 
 PRIVATE inline struct fat_info* alloc_fat_info(int cluster_start){
-	struct fat_info* ent = kern_kmalloc(sizeof(struct fat_info));
+	struct fat_info* ent = (struct fat_info*)kern_kmalloc(sizeof(struct fat_info));
 	ent->cluster_start = cluster_start;
 	ent->length = 1;
 	ent->next = NULL;
@@ -129,9 +129,9 @@ PRIVATE inline void free_fat_info(struct fat_info *info) {
 // getblk by fat logic block(may 512 bytes...), return buf pointer and update bh
 PRIVATE char* fat_bread(struct super_block *sb, int block, buf_head** bh){
 	buf_head* b = NULL;
-	int dev = sb->sb_dev;
+	u32 dev = sb->sb_dev;
 	int block_per_4k = (BLOCK_SIZE/sb->sb_blocksize);
-	int block_4k = block/block_per_4k;
+	u32 block_4k = block/block_per_4k;
 	if((*bh) && (*bh)->block == block_4k && (*bh)->dev == dev) {
 		b = *bh; //避免没必要的bread
 	} else {
@@ -242,7 +242,7 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_
 
 PRIVATE int fat_get_cluster(struct inode* inode, int cluster, int new_space){
 	struct super_block* sb = inode->i_sb;
-	struct fat_sb_info *sbi = FAT_SB(sb);
+	struct fat_sb_info *sbi = (struct fat_sb_info *)FAT_SB(sb);
 	int clus_skip = cluster;
 	int clus, last = 0;
 	struct fat_info* info = inode->fat32_inode.fat_info;
@@ -353,7 +353,7 @@ PRIVATE struct fat_dir_entry* fat_get_entry(struct inode* dir, int* start, buf_h
 	int n_slot = 0, offset, is_long = 0;
 	u8  chksum;
 	u16 uni_name[256];
-	for(;(*start)*FAT_ENTRY_SIZE < dir->i_size; (*start)++){
+	for(;(u64)(*start)*FAT_ENTRY_SIZE < dir->i_size; (*start)++){
 		ds = fat_get_slot(dir, *start, bh, 0);
 		if(!ds)break;
 		if(ds->order == 0){
@@ -423,10 +423,10 @@ PRIVATE int fat_find_free(struct inode* dir, int num){
 	for(start = 0; ; start++){
 		ds = fat_get_slot(dir, start, &bh, 1);
 		if(end_flag || (ds->order == DIR_DELETE)
-		|| (ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size)) {
+		|| (ds->order == 0) || ((u64)start * FAT_ENTRY_SIZE >= dir->i_size)) {
 			// 如果为0应该已经不用找了(后面均为空闲)，但是要进行可能的FAT空间分配，所以不立即跳出
 			if(end_flag == 0 &&
-				((ds->order == 0) || (start * FAT_ENTRY_SIZE >= dir->i_size)))
+				((ds->order == 0) || ((u64)start * FAT_ENTRY_SIZE >= dir->i_size)))
 					end_flag = 1;
 			if(count == 0)res = start;
 			count++;
@@ -445,7 +445,7 @@ PRIVATE int fat_check_short(struct inode* dir, const char* name){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
-	for(start = 0; start * FAT_ENTRY_SIZE < dir->i_size; start++){
+	for(start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; start++){
 		ds = fat_get_slot(dir, start, &bh, 0);
 		if(ds->order == DIR_DELETE){
 			continue;
@@ -467,7 +467,7 @@ PRIVATE int fat_check_empty(struct inode* dir){
 	buf_head* bh = NULL;
 	struct fat_dir_slot* ds;
 	int start, res = 0;
-	for(start = 0; start * FAT_ENTRY_SIZE < dir->i_size; start++){
+	for(start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; start++){
 		ds = fat_get_slot(dir, start, &bh, 0);
 		if(ds->order == DIR_DELETE){
 			continue;
@@ -607,7 +607,7 @@ PRIVATE struct inode* fat_add_entry(struct inode* dir, const char* name, int is_
 	// fat_update_datetime(timestamp, &de.mdate, &de.mtime);
 	// fat_update_datetime(timestamp, &de.adate, NULL);
 	fat_write_shortname(dir, &de, free_slot_order + nslot);
-	if((free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
+	if((u64)(free_slot_order + nslot + 1)*FAT_ENTRY_SIZE > dir->i_size) {
 		dir->i_size = (free_slot_order + nslot + 1)*FAT_ENTRY_SIZE;
 		memset(&de, 0, sizeof(struct fat_dir_entry));
 		fat_write_shortname(dir, &de, free_slot_order + nslot + 1);
@@ -712,7 +712,7 @@ PUBLIC struct dentry* fat32_lookup(struct inode* dir, const char* filename){
 	struct fat_dir_entry* de = NULL;
 	buf_head* bh = NULL;
 	struct dentry* dentry = NULL;
-	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
+	for(; (u64)entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
 		if(!stricmp(filename, full_name)){
@@ -894,7 +894,7 @@ PUBLIC int fat32_readdir(struct file_desc* file, unsigned int count, struct dire
 		count -= dent->d_len;
 		dent = dirent_next(dent);
 	}
-	for(; entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
+	for(; (u64)entry* FAT_ENTRY_SIZE < dir->i_size; entry++){
 		de = fat_get_entry(dir, &entry, &bh, full_name);
 		if(!de)break;
 		if(count < dirent_len(strlen(full_name))) {

@@ -63,8 +63,7 @@ void memory_init()
         kernel_size = SmallKernelSize;
         buddy_init(kbud, KKWALL1, KUWALL1);
         buddy_init(ubud, KUWALL1, test_phy_mem_size);
-    }
-    else {
+    } else {
         big_kernel = 1;
         kernel_code_size = KKWALL2;
         kernel_size = BigKernelSize;

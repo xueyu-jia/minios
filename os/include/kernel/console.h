@@ -2,7 +2,7 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-14 13:24:41
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-18 22:21:05
+ * @LastEditTime: 2024-08-19 21:57:01
  * @FilePath: /minios/os/include/kernel/console.h
  * @Description:
  *
@@ -58,4 +58,6 @@ PUBLIC void out_char(CONSOLE* con, char ch);
 PUBLIC void select_console(int nr_console);
 PUBLIC void scroll_screen(CONSOLE* con, int dir);
 PUBLIC void disp_int(int input);
+PUBLIC int is_current_console(CONSOLE* con);
+PUBLIC void reset_screen(CONSOLE* con);
 #endif /* _ORANGES_CONSOLE_H_ */

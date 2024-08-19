@@ -2,8 +2,8 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-14 13:24:41
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-19 10:13:42
- * @FilePath: /minios/os/include/kernel/spinlock.h
+ * @LastEditTime: 2024-08-19 20:53:05
+ * @FilePath: /minios/os/include/klib/spinlock.h
  * @Description:
  *
  * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
@@ -30,24 +30,6 @@ typedef struct spinlock {
   uint pcs[5];  // The call stack (an array of program counters)
                  // that locked the lock.
 } SPIN_LOCK;
-
-typedef struct{
-  SPIN_LOCK lock;//自旋锁:在获取锁之前一直处于忙等(自旋)阻塞状态 值为1
-  uint nusers;//记录当前有多少线程需要这个互斥锁
-  uint owner;//用来记录持有当前mutex的线程id，如果没有线程持有，这个值为0
-  //等待该互斥变量的线程队列
-  int queue_wait[queue_size];
-  int head;
-  int tail;
-  // For debugging:
-  char *name;    // 锁的名称
-}pthread_mutex_t;
-
-typedef struct{
-  char *name;
-  // char size[256];
-//   long int align;
-}pthread_mutexattr_t;
 
 
 typedef struct{

@@ -2,7 +2,7 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-18 15:32:07
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-18 16:59:31
+ * @LastEditTime: 2024-08-19 22:08:23
  * @FilePath: /minios/os/kernel/vga.c
  * @Description:
  *
@@ -69,7 +69,7 @@ void vga_clear_screen() {
 
 void vga_flush_blankline(int line_no) {
     u32 *dst = (u32*)K_PHY2LIN(V_MEM_BASE + line_no * SCR_WIDTH * 2);
-    for (int i = 0; i < SCR_WIDTH * sizeof(u16) / sizeof(u32); ++i) {
+    for (u32 i = 0; i < SCR_WIDTH * sizeof(u16) / sizeof(u32); ++i) {
         *dst++ = (BLANK << 16) | BLANK;
     }
 }

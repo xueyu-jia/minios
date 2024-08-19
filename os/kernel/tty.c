@@ -265,7 +265,7 @@ PUBLIC void task_tty()
 
  *  当fd=STD_OUT时，write()系统调用转发到此函数 不走task_tty
  *****************************************************************************/
-PUBLIC void tty_write(TTY* tty, char* buf, int len)
+PUBLIC void tty_write(TTY* tty, const char* buf, int len)
 {
 	acquire(&video_mem_lock);
 	while (--len >= 0)
@@ -307,7 +307,7 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len){
     return i;
 }
 
-PUBLIC int tty_file_write(struct file_desc* file, unsigned int count, char* buf){
+PUBLIC int tty_file_write(struct file_desc* file, unsigned int count, const char* buf){
 	int dev = file->fd_dentry->d_inode->i_b_cdev;
 	int nr_tty = MINOR(dev);
 	if (MAJOR(dev) != DEV_CHAR_TTY){
@@ -327,6 +327,6 @@ PUBLIC int tty_file_read(struct file_desc* file, unsigned int count, char* buf){
 }
 
 struct file_operations tty_file_ops = {
-.read = tty_file_read,
-.write = tty_file_write,
+    .read = tty_file_read,
+    .write = tty_file_write,
 };

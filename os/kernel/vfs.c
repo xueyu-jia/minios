@@ -24,7 +24,7 @@ PUBLIC struct dentry *vfs_root;
 
 // 实例文件系统调用：
 PUBLIC struct inode * vfs_new_inode(struct super_block* sb);// inode create
-PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino); //inode lookup
+PUBLIC struct inode * vfs_get_inode(struct super_block* sb, u32 ino); //inode lookup
 PUBLIC struct dentry * vfs_new_dentry(const char* name, struct inode* inode); //inode lookup
 
 // 此锁维护inode内存申请释放以及超级块(super_block)中使用中inode链表的一致性
@@ -42,9 +42,8 @@ PRIVATE void init_file_desc_table(){
 
 PRIVATE struct file_desc * alloc_file(){
 	struct file_desc * file = NULL;
-	int i;
 	// lock_or_yield(&file_desc_lock);
-	file = kern_kmalloc(sizeof(struct file_desc));
+	file = (struct file_desc*)kern_kmalloc(sizeof(struct file_desc));
 	atomic_set(&file->fd_count, 1);
 	// release(&file_desc_lock);
 	return file;
@@ -54,7 +53,7 @@ PRIVATE void free_file(struct file_desc * file) {
 	// lock_or_yield(&file_desc_lock); // file动态分配不再需要锁
 	vfs_put_dentry(file->fd_dentry);
 	file->fd_dentry = 0;
-	kern_kfree(file);
+	kern_kfree((u32)file);
 	// release(&file_desc_lock);
 }
 
@@ -98,7 +97,7 @@ PRIVATE void free_inode(struct inode* inode) {
 // VFS api
 // get an inode by ino, if not exist in mem, alloc one and read from disk
 // 调用此函数获取inode
-PUBLIC struct inode * vfs_get_inode(struct super_block* sb, int ino){
+PUBLIC struct inode * vfs_get_inode(struct super_block* sb, u32 ino){
 	struct inode *res = 0, *inode;
 	lock_or_yield(&inode_lock);
 	list_for_each(&sb->sb_inode_list, inode, i_list)
@@ -301,12 +300,12 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
 }
 
 // 文件名拆分：同时删除末尾多余的"/"
-PRIVATE char* strip_dir_path(char *path, char* dir){
+PRIVATE const char* strip_dir_path(const char *path, char* dir){
 	int len = strlen(path), flag = 0;
-	char *p = path + len - 1, *file_name = path, *file_end = path + len - 1;
+	const char *p = path + len - 1, *file_name = path, *file_end = path + len - 1;
 	while(p != path && (*p) == '/')p--;
 	file_end = p;
-	file_end[1] = '\0';
+	// file_end[1] = '\0';
 	while(p >= path && (*p)){
 		if(*(p) == '/'){
 			file_name = p + 1;
@@ -332,7 +331,7 @@ PUBLIC int vfs_check_exec_permission(struct inode* inode){
 // dir lock must held, return dentry with lock
 // 参数dir dentry带锁,返回有效dentry也带锁
 // 如果dir和dentry目录项的关系满足dentry在dir之下，且release_base为1,则此函数释放dir的目录项
-PRIVATE struct dentry * _do_lookup(struct dentry *dir, char *name, int release_base){
+PRIVATE struct dentry * _do_lookup(struct dentry *dir, const char *name, int release_base){
 	// lock_or_yield(&dir->lock);
 	struct dentry* dentry = NULL;
 	// root 特判
@@ -439,7 +438,8 @@ PUBLIC struct dentry *vfs_lookup(const char *path){
 		return NULL;
 	}
 	char d_name[MAX_PATH];
-	char *p = path, *p_name = NULL;
+	const char *p_name = NULL;
+	const char *p = path;
 	int flag_name = 0;
 	struct dentry *dir = vfs_root;
 	if(path[0] != '/'){
@@ -584,7 +584,7 @@ out_inode:
 		disp_str("error: superblock busy\n");
 		return -1;
 	}
-	while(dentry = list_front(&dentry_list, struct dentry, d_alias)){
+	while((dentry = list_front(&dentry_list, struct dentry, d_alias))){
 		lock_or_yield(&dentry->d_inode->lock);
 		vfs_put_inode(dentry->d_inode);
 		list_remove(&dentry->d_alias);
@@ -767,12 +767,11 @@ PUBLIC int kern_vfs_umount(const char *target){
 }
 
 PRIVATE struct file_desc * vfs_file_open(const char* path, int flags, int mode){
-	int i;
 	char dir_path[MAX_PATH] = {0};
 	if((!path) || strlen(path) == 0) {
 		return NULL;
 	}
-	char* file_name = strip_dir_path(path, dir_path);
+	const char* file_name = strip_dir_path(path, dir_path);
 	struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct inode *inode = NULL;
 	struct file_desc *file = NULL;
@@ -922,7 +921,7 @@ PUBLIC int kern_vfs_lseek(int fd, int offset, int whence){
 		default:
 			break;
 	}
-	if(_offset >= 0){
+	if((int)_offset >= 0){
 		file->fd_pos = _offset;
 		return _offset;
 	}
@@ -984,7 +983,7 @@ PUBLIC int kern_vfs_unlink(const char *path){
 	if((!path) || strlen(path) == 0) {
 		return -1;
 	}
-	char* file_name = strip_dir_path(path, dir_path);
+	const char* file_name = strip_dir_path(path, dir_path);
 	struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	if(!dir){
 		return -1;
@@ -1025,7 +1024,7 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev){
 	if((!path) || strlen(path) == 0) {
 		return -1;
 	}
-	char* file_name = strip_dir_path(path, dir_path);
+	const char* file_name = strip_dir_path(path, dir_path);
 	struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct inode *inode = NULL;
 	if(!dir){
@@ -1053,7 +1052,7 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode){
 	if((!path) || strlen(path) == 0) {
 		return -1;
 	}
-	char* file_name = strip_dir_path(path, dir_path);
+	const char* file_name = strip_dir_path(path, dir_path);
 	struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
 	struct inode *inode = NULL;
 	if(!dir){
@@ -1086,7 +1085,7 @@ PUBLIC int kern_vfs_rmdir(const char* path){
 		disp_str("rm root dir will damage system\n");
 		return -1;
 	}
-	char* file_name = strip_dir_path(path, dir_path);
+	const char* file_name = strip_dir_path(path, dir_path);
 	if((strcmp(file_name, ".") == 0)||(strcmp(file_name, "..") == 0)) {
 		disp_str("path ended with . or .. is invalid\n");
 		return -1;
@@ -1209,7 +1208,7 @@ PUBLIC int kern_vfs_chdir(const char* path){
 
 
 PUBLIC char* kern_vfs_getcwd(char *buf, int size) {
-	if(NULL == buf || (-1 == buf)) {
+	if(NULL == buf || (-1 == (int)buf)) {
 		return NULL;
 	}
 	PROCESS* p_proc = proc_real(p_proc_current);

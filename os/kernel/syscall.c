@@ -23,6 +23,8 @@ PUBLIC u32 get_arg(int order)
 			return syscall_esp->edi;
 		default:
 			disp_str("invalid order!");
+			while(1){};
+			return -1;
 	}
 }
 
@@ -34,7 +36,7 @@ int get_pid() {
 	return _syscall0(_NR_get_pid);
 }
 void* malloc_4k() {
-	return _syscall0(_NR_malloc_4k);
+	return (void*)_syscall0(_NR_malloc_4k);
 }
 
 int free_4k(void* AdddrLin) {
@@ -107,7 +109,7 @@ int closedir(DIR* dirp) {
 }
 
 DIR* opendir(const char* dirname) {
-	return _syscall1(_NR_opendir, dirname);
+	return (DIR*)_syscall1(_NR_opendir, dirname);
 }
 
 int mkdir(const char* dirname, int mode) {
@@ -119,7 +121,7 @@ int rmdir(const char* dirname) {
 }
 
 struct dirent* readdir(DIR* dirp) {
-	return _syscall1(_NR_readdir, dirp);
+	return (struct dirent*)_syscall1(_NR_readdir, dirp);
 }
 
 int chdir(const char* path) {
@@ -127,7 +129,7 @@ int chdir(const char* path) {
 }
 
 char* getcwd(char* buf, int size) {
-	return _syscall2(_NR_getcwd, buf, size);
+	return (char*)_syscall2(_NR_getcwd, buf, size);
 }
 
 int wait() {
@@ -161,7 +163,7 @@ int shmget(int key, int size, int shmflg) {
 
 // "user/ulib/ushm.c" 中提供了上层封装
 void* _shmat(int shmid, char* shmaddr, int shmflg) {
-	return _syscall3(_NR_shmat, shmid, shmaddr, shmflg);
+	return (void*)_syscall3(_NR_shmat, shmid, shmaddr, shmflg);
 }
 
 // "user/ulib/ushm.c" 中提供了上层封装
@@ -170,11 +172,11 @@ void _shmdt(char* shmaddr) {
 }
 
 struct ipc_shm* shmctl(int shmid, int cmd, struct ipc_shm* buf) {
-	return _syscall3(_NR_shmctl, shmid, cmd, buf);
+	return (struct ipc_shm*)_syscall3(_NR_shmctl, shmid, cmd, buf);
 }
 
 void* shmmemcpy(void* dst, const void* src, long unsigned int len) {
-	return _syscall3(_NR_shmmemcpy, dst, src, len);
+	return (void*)_syscall3(_NR_shmmemcpy, dst, src, len);
 }
 
 int ftok(char* f,int key) {
@@ -275,7 +277,7 @@ int umount(const char *target) {
 // }
 
 void pthread_exit(void *retval){
-	return _syscall1(_NR_pthread_exit, retval);
+	_syscall1(_NR_pthread_exit, retval);
 }
 
 int pthread_join(pthread_t thread, void **retval){
@@ -288,7 +290,7 @@ int pthread_join(pthread_t thread, void **retval){
 // }
 
 void get_time(struct tm* time){
-	return _syscall1(_NR_get_time, time);
+	_syscall1(_NR_get_time, time);
 }
 
 int stat(const char *pathname, struct stat* statbuf) {
@@ -296,17 +298,17 @@ int stat(const char *pathname, struct stat* statbuf) {
 }
 
 void nice(int val) {
-	return _syscall1(_NR_nice, val);
+	_syscall1(_NR_nice, val);
 }
 
 void set_rt(int turn_rt) {
-	return _syscall1(_NR_set_rt, turn_rt);
+	_syscall1(_NR_set_rt, turn_rt);
 }
 
 void rt_prio(int prio) {
-	return _syscall1(_NR_rt_prio, prio);
+	_syscall1(_NR_rt_prio, prio);
 }
 
 void get_proc_msg(proc_msg* msg) {
-	return _syscall1(_NR_get_proc_msg, msg);
+	_syscall1(_NR_get_proc_msg, msg);
 }

@@ -63,7 +63,7 @@ void *kmalloc(u32 size) {
 	void *buff = NULL;
 	kmem_cache_t *cache = selectCache(size);
 	buff = kmem_cache_alloc_obj(cache);
-	return K_LIN2PHY(buff);
+	return (void*)K_LIN2PHY(buff);
 }
 
 /*
@@ -164,7 +164,6 @@ PRIVATE void *slab_alloc_object(kmem_slab_t *slab) {
 * @details	给cache创建新的page。在page中初始化slab、位图、对象。
 */
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
-	int i;
 	kmem_slab_t *slab;
 
 	page *page = alloc_pages(kbud, 0);
@@ -175,12 +174,12 @@ kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
 	slab->next = NULL;
 	slab->used_obj= 0;
 	slab->bitmap = (bitmap_entry_t*)ptr_offset(slab,sizeof(kmem_slab_t));
-	slab->objects = ptr_offset(slab->bitmap, (cache->bitmap_length)*sizeof(bitmap_entry_t));
+	slab->objects = (u32)ptr_offset(slab->bitmap, (cache->bitmap_length)*sizeof(bitmap_entry_t));
 	slab->objects = ROUNDUP(slab->objects, cache->objorder);		//按照size对齐	lirong
 	slab->type = EMPTY;
 
 	/* 初始化位图 */
-	i=0;
+	u32 i=0;
 	while(i<cache->bitmap_length)
 		slab->bitmap[i++] = BITMAP_EMPTY;
 
@@ -213,7 +212,11 @@ PRIVATE void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder
 
 	// 给cache命名
 	char *temp = cache->name;
-	while(*temp++ = *name++);
+	while((*temp++ = *name++));
+	//: 等价于
+	//: for (; *temp != '\0'; temp++, name++) {
+    //: *temp = *name;
+	//:} // 师兄的写法有些难懂
 
 	cache->objsize = obj_size;
 	cache->bitmap_length = bitmap_size / sizeof(bitmap_entry_t); // 位图块数

@@ -1,6 +1,7 @@
 #include <kernel/proc.h>
 #include <klib/spinlock.h>
-
+#include <kernel/pthread.h>
+#include <kernel/proto.h>
 
 /*						added by ZengHao & MaLinhan 2021.12.23						*/
 
@@ -24,15 +25,6 @@ int mutex_suspend_with_cancellation(PROCESS *self, pthread_mutex_t *mutex)
 //   return 0;
 // }
 
-PUBLIC int sys_pthread_mutex_init()
-{
-  return do_pthread_mutex_init(get_arg(1), get_arg(2));
-}
-
-PUBLIC int do_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr)
-{
-  return kern_pthread_mutex_init(mutex, mutexattr);
-}
 
 PUBLIC int kern_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr)
 {
@@ -49,16 +41,16 @@ PUBLIC int kern_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* 
 
   return 0;
 }
-
-int sys_pthread_mutex_lock() //阻塞式获取互斥变量
+PUBLIC int sys_pthread_mutex_init()
 {
-  return do_pthread_mutex_lock(get_arg(1));
+  return do_pthread_mutex_init((pthread_mutex_t*)get_arg(1), (pthread_mutexattr_t*)get_arg(2));
 }
 
-int do_pthread_mutex_lock(pthread_mutex_t* mutex)
+PUBLIC int do_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr)
 {
-  return kern_pthread_mutex_lock(mutex);
+  return kern_pthread_mutex_init(mutex, mutexattr);
 }
+
 
 int kern_pthread_mutex_lock(pthread_mutex_t* mutex)
 {
@@ -100,15 +92,16 @@ int kern_pthread_mutex_lock(pthread_mutex_t* mutex)
   return 0;
 }
 
-int sys_pthread_mutex_trylock() //非阻塞式获取互斥变量
+int sys_pthread_mutex_lock() //阻塞式获取互斥变量
 {
-  return do_pthread_mutex_trylock(get_arg(1));
+  return do_pthread_mutex_lock((pthread_mutex_t*)get_arg(1));
 }
 
-int do_pthread_mutex_trylock(pthread_mutex_t *mutex)
+int do_pthread_mutex_lock(pthread_mutex_t* mutex)
 {
-  return kern_pthread_mutex_trylock(mutex);
+  return kern_pthread_mutex_lock(mutex);
 }
+
 
 int kern_pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
@@ -128,15 +121,17 @@ int kern_pthread_mutex_trylock(pthread_mutex_t *mutex)
   return -1; //失败返回-1
 }
 
-int sys_pthread_mutex_unlock()
+int sys_pthread_mutex_trylock() //非阻塞式获取互斥变量
 {
-  return do_pthread_mutex_unlock(get_arg(1));
+  return do_pthread_mutex_trylock((pthread_mutex_t*)get_arg(1));
 }
 
-int do_pthread_mutex_unlock(pthread_mutex_t *mutex)
+int do_pthread_mutex_trylock(pthread_mutex_t *mutex)
 {
-  return kern_pthread_mutex_unlock(mutex);
+  return kern_pthread_mutex_trylock(mutex);
 }
+
+
 
 int kern_pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
@@ -164,15 +159,14 @@ int kern_pthread_mutex_unlock(pthread_mutex_t *mutex)
   release(&mutex->lock);
   return 0;
 }
-
-int sys_pthread_mutex_destroy()
+int sys_pthread_mutex_unlock()
 {
-  return do_pthread_mutex_destroy(get_arg(1));
+  return do_pthread_mutex_unlock((pthread_mutex_t*)get_arg(1));
 }
 
-int do_pthread_mutex_destroy(pthread_mutex_t* mutex)
+int do_pthread_mutex_unlock(pthread_mutex_t *mutex)
 {
-  return kern_pthread_mutex_destroy(mutex);
+  return kern_pthread_mutex_unlock(mutex);
 }
 
 int kern_pthread_mutex_destroy(pthread_mutex_t* mutex)
@@ -190,6 +184,15 @@ int kern_pthread_mutex_destroy(pthread_mutex_t* mutex)
   }
   // kern_free_4k(mutex);   // deleted by zhenhao 2023.3.5
   return 0;
+}
+int sys_pthread_mutex_destroy()
+{
+  return do_pthread_mutex_destroy((pthread_mutex_t*)get_arg(1));
+}
+
+int do_pthread_mutex_destroy(pthread_mutex_t* mutex)
+{
+  return kern_pthread_mutex_destroy(mutex);
 }
 
 /*							end added									*/

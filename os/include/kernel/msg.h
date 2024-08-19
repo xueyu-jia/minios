@@ -3,7 +3,7 @@
 *************************************************************/
 #ifndef MSG
 #define MSG
-
+#include <kernel/stdint.h>
 //msgget使用
 #define IPC_CREAT   00001000
 #define IPC_EXCL    00002000
@@ -42,7 +42,7 @@ typedef struct msqid_ds {
                                      queue (nonstandard) */
     int             msg_qnum;     /* Current number of messages
                                      in queue */
-    int             msg_qbytes;   /* Maximum number of bytes
+    u32             msg_qbytes;   /* Maximum number of bytes
                                      allowed in queue */
     int             msg_lspid;    /* PID of last msgsnd(2) */
     int             msg_lrpid;    /* PID of last msgrcv(2) */
@@ -71,7 +71,7 @@ typedef struct list_item{
         struct list_item* full_list_pre;
         struct list_item* head_pre;
     }pre;
-    
+
     /**
      * 这两个指针是结点在自己类型队列中使用的，标记在类型队列中的前后结点
      */
@@ -96,7 +96,7 @@ typedef struct msg_queue{
     int num;//队列中消息数量
     msqid_ds info; //队列信息
     //block queue
-    
+
     //end
 }msg_queue;
 

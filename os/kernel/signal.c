@@ -4,6 +4,7 @@
 #include <kernel/type.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
+#include <klib/string.h>
 
 /*  //deleted by mingxuan 2021-8-20
 int do_signal(int sig, void *handler, void* _Handler) {
@@ -27,7 +28,7 @@ int kern_signal(int sig, void *handler, void* _Handler) {
 }
 //modified by mingxuan 2021-8-20
 int do_signal(int sig, void *handler, void* _Handler) {
-    kern_signal(sig, handler, _Handler);
+    return kern_signal(sig, handler, _Handler);
 }
 
 /*
@@ -66,50 +67,9 @@ int kern_sigsend(int pid, Sigaction* sigaction_p)
 //modified by mingxuan 2021-8-20
 int do_sigsend(int pid, Sigaction* sigaction_p)
 {
-    kern_sigsend(pid, sigaction_p);
+    return kern_sigsend(pid, sigaction_p);
 }
 
-/* //deleted by mingxuan 2021-8-20
-void do_sigreturn(int ebp)
-{
-    STACK_FRAME regs;
-
-    // copy saved regs from stack to  this regs
-    // to some operation to compute true address
-    // int ebp = msg->data[1];
-    int esp_syscall = p_proc_current->task.esp_save_syscall;
-    int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
-
-    u16 user_ss = p_proc_current->task.regs.ss;
-    u16 kernel_es ;
-
-    // change es to B_ss
-    __asm__  (
-    "mov %%es, %%ax\n"
-    "mov %%ebx, %%es\n"
-    : "=a"(kernel_es)
-    : "b"(user_ss)
-    :
-    );
-
-    for(u32* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(u32);i++, p++, q++)
-    {
-        __asm__ (
-        "mov %%eax, %%es:(%%edi)"
-        :
-        : "a"(*q), "D"(p)
-        :
-        );
-    }
-
-    __asm__ (
-            "mov %%eax, %%es\n"
-            :
-            : "a"(kernel_es)
-    );
-    memcpy(esp_syscall, &regs, sizeof(STACK_FRAME));
-}
-*/
 //modified by mingxuan 2021-8-20
 void kern_sigreturn(int ebp)
 {
@@ -118,8 +78,8 @@ void kern_sigreturn(int ebp)
     // copy saved regs from stack to  this regs
     // to some operation to compute true address
     // int ebp = msg->data[1];
-    u32 *esp_syscall = p_proc_current->task.context.esp_save_int;
-    int last_esp = ebp + sizeof(Sigaction) + 8;    //int save esp
+    STACK_FRAME* esp_syscall = p_proc_current->task.context.esp_save_int;
+    u32 last_esp = (ebp + sizeof(Sigaction) + 8);    //int save esp
 
    // u16 user_ss = p_proc_current->task.regs.ss;
     u16 user_ss = p_proc_current->task.context.esp_save_int->ss;
@@ -134,15 +94,17 @@ void kern_sigreturn(int ebp)
     :
     );
 
-    for(u32* p = &regs, *q = last_esp, i = 0; i < sizeof(regs) / sizeof(u32);i++, p++, q++)
-    {
-        __asm__ (
-        "mov %%eax, %%es:(%%edi)"
-        :
-        : "a"(*q), "D"(p)
-        :
-        );
-    }
+    //! signal02和signal02能通过，signal01仍然不能通过
+    regs = *(STACK_FRAME*)last_esp;
+    // for(u32 *p = (u32*)&regs, *q = (u32*)last_esp, i = 0; i < sizeof(regs)/sizeof(u32);i++, p++, q++)
+    // {
+    //     __asm__ (
+    //     "mov %%eax, %%es:(%%edi)"
+    //     :
+    //     : "a"(*q), "D"(p)
+    //     :
+    //     );
+    // }
 
     __asm__ (
             "mov %%eax, %%es\n"
@@ -159,11 +121,11 @@ void do_sigreturn(int ebp)
 }
 
 int sys_signal() {
-    return do_signal(get_arg(1), get_arg(2), get_arg(3));
+    return do_signal(get_arg(1), (void*)get_arg(2), (void*)get_arg(3));
 }
 
 int sys_sigsend(){
-    return do_sigsend(get_arg(1), get_arg(2));
+    return do_sigsend(get_arg(1), (Sigaction*)get_arg(2));
 }
 
 void sys_sigreturn() {
@@ -233,34 +195,42 @@ void process_signal() {
         :
     );
 
+    //! 在消除WARNING时，以下代码逻辑比较混乱，重构前测试signal01无法通过，重构后也无法通过
+    //! signal部分代码可能有较大问题
     /* save context */
-    int start = proc->task.context.esp_save_int->esp - sizeof(regs);
-    for(u32 *p = start, *sf = proc->task.context.esp_save_int, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
-        __asm__ (
-            "mov %%eax, %%es:(%%edi)"
-            :
-            : "a"(*sf), "D"(p)
-            :
-        );
-    }
+    u32 start = proc->task.context.esp_save_int->esp - sizeof(regs);
+    STACK_FRAME* esp_save_int_copy = (STACK_FRAME*)(proc->task.context.esp_save_int->esp - sizeof(regs)); //: = (STACK_FRAME*)start
+    *esp_save_int_copy = *proc->task.context.esp_save_int;
+
+    // for(u32 *p = start, *sf = proc->task.context.esp_save_int, i=0; i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
+    //     __asm__ (
+    //         "mov %%eax, %%es:(%%edi)"
+    //         :
+    //         : "a"(*sf), "D"(p)
+    //         :
+    //     );
+    // }
 
     /* push para */
     start -= sizeof(Sigaction);
-    for(u32 *p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(u32) ;i++, p++, sf++) {
-        __asm__ (
-            "mov %%eax, %%es:(%%edi)"
-            :
-            : "a"(*sf), "D"(p)
-            :
-        );
-    }
+    Sigaction* sigaction_copy = (Sigaction*) start;
+    *sigaction_copy = sigaction;
+
+    // for(u32 *p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) / sizeof(u32) ;i++, p++, sf++) {
+    //     __asm__ (
+    //         "mov %%eax, %%es:(%%edi)"
+    //         :
+    //         : "a"(*sf), "D"(p)
+    //         :
+    //     );
+    // }
 
     /* Handler return address */
     start -= sizeof(u32);
 
     /* switch to Handler */
     //u32 *context_p = proc->task.esp_save_int;
-    proc->task.context.esp_save_int->eip = proc->task._Hanlder;
+    proc->task.context.esp_save_int->eip = (u32)proc->task._Hanlder;
     proc->task.context.esp_save_int->esp = start;
     //*(context_p + 14) =  proc->task._Hanlder; /* eip */
     //*(context_p + 17) = start;                /* esp */

@@ -45,7 +45,7 @@ struct kmem_list{
 */
 struct kmem_slab
 {
-	int used_obj;			  // slab中已经使用的对象个数
+	u32 used_obj;			  // slab中已经使用的对象个数
 	slab_type_t type;		  // slab在cache中的类型
 	bitmap_entry_t *bitmap;   // 记录位图的首地址
 	u32 objects;			  // 记录object的首地址

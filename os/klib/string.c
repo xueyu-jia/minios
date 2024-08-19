@@ -142,36 +142,58 @@ int stricmp(const char *s1, const char *s2)
 	return (int)c1 - (int)c2;
 }
 
+// char *strchr(const char *s, char c) {
+// 	if (!s)
+//     {
+//         return 0;
+//     }
+// 	const char *p;
+// 	for(p = s; *p; p++) {
+// 		if(*p == c) {
+// 			break;
+// 		}
+// 	}
+// 	return (*p == c)? p: 0;
+// }
 char *strchr(const char *s, char c) {
-	if (!s)
-    {
-        return 0;
+    char ch = (char)c;
+    while (*s != '\0') {
+        if (*s == ch) {
+            return (char *)s;
+        }
+        s++;
     }
-	char *p;
-	for(p = s; *p; p++) {
-		if(*p == c) {
-			break;
-		}
-	}
-	return (*p == c)? p: 0;
+    return NULL;
 }
 
-char* strrchr(const char *s, char c)
-{
-    if (!s)
-    {
-        return 0;
+// char* strrchr(const char *s, char c)
+// {
+//     if (!s)
+//     {
+//         return 0;
+//     }
+// 	char *r = 0;
+// 	while (*s)
+// 	{
+// 		if (*s == c)
+// 		{
+// 			r = s;
+// 		}
+// 		++s;
+// 	}
+// 	return r;
+// }
+char *strrchr(const char *s, char c) {
+    char ch = (char)c;
+    char *last_occurrence = NULL;
+
+    for (const char *p = s + strlen(s) - 1; p >= s; p--) {
+        if (*p == ch) {
+            last_occurrence = (char *)p;
+        }
     }
-	char *r = 0;
-	while (*s)
-	{
-		if (*s == c)
-		{
-			r = s;
-		}
-		++s;
-	}
-	return r;
+
+    return last_occurrence;
 }
 
 PUBLIC char *itoa(int num, char *str, int radix)

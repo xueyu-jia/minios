@@ -10,6 +10,8 @@
 #include <kernel/pthread.h>
 #include <kernel/memman.h>
 #include <kernel/proto.h>
+#include <klib/string.h>
+#include <kernel/mmap.h>
 
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child,PROCESS *p_parent);
 PRIVATE int pthread_update_info(PROCESS *p_child,PROCESS *p_parent);
@@ -56,7 +58,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		true_attr.scope			= PTHREAD_SCOPE_PROCESS;
 		true_attr.guardsize		= 0;
 		true_attr.stackaddr_set		= 0;
-		true_attr.stackaddr		= p_parent->task.memmap.stack_child_limit + 0x4000;
+		true_attr.stackaddr		= (void*)(p_parent->task.memmap.stack_child_limit + 0x4000);
 		true_attr.stacksize		= 0x4000;
 	}
 	else
@@ -93,7 +95,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		// p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
 		//*((u32*)(p_reg + EIPREG - P_STACKTOP)) = p_child->task.regs.eip;	//added by xw, 17/12/11
 		// *((u32*)(p_reg + EIPREG - P_STACKTOP)) = (u32)entry;
-		p_reg->eip = entry;
+		p_reg->eip = (u32)entry;
 		p_reg->esp = p_child->task.memmap.stack_lin_base;
 
 		/**************修改子线程的线程属性************************/
@@ -119,7 +121,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *en
 		// u32 reg_esp= *((u32*)(p_reg + ESPREG - P_STACKTOP));
 		u32 reg_esp = p_reg->esp;
 		reg_esp -= num_4B;
-		*((u32 *)reg_esp) = (u32*)arg;
+		*((u32 *)reg_esp) = (u32)arg;
 		// *((u32*)(p_reg + ESPREG - P_STACKTOP)) -= num_4B*2;
 		p_reg->esp -= num_4B*2;
 
@@ -151,7 +153,7 @@ PUBLIC int do_pthread_create(int *thread, void *attr, void *entry, void *arg)
 //added by mingxuan 2021-8-11
 PUBLIC int sys_pthread_create()
 {
-    return do_pthread_create(get_arg(1), get_arg(2), get_arg(3), get_arg(4));
+    return do_pthread_create((int*)get_arg(1), (void*)get_arg(2), (void*)get_arg(3), (void*)get_arg(4));
 }
 
 /**********************************************************
@@ -244,9 +246,9 @@ PRIVATE int pthread_stack_init(PROCESS* p_child,PROCESS *p_parent, pthread_attr_
 	int addr_lin;
 	char* p_reg;	//point to a register in the new kernel stack, added by xw, 17/12/11
 
-	p_child->task.memmap.stack_lin_limit = attr->stackaddr - attr->stacksize;//子线程的栈界
+	p_child->task.memmap.stack_lin_limit = (u32)(attr->stackaddr - attr->stacksize);//子线程的栈界
 	p_parent->task.memmap.stack_child_limit += attr->stacksize; //分配16K
-	p_child->task.memmap.stack_lin_base = attr->stackaddr;	//子线程的基址
+	p_child->task.memmap.stack_lin_base = (u32)attr->stackaddr;	//子线程的基址
 
 	// for( addr_lin=p_child->task.memmap.stack_lin_base ; addr_lin>p_child->task.memmap.stack_lin_limit ; addr_lin-=num_4K)//申请物理地址
 	// {
@@ -283,20 +285,19 @@ PRIVATE int pthread_heap_init(PROCESS* p_child,PROCESS *p_parent)
 }
 
 /* added by ZengHao & MaLinhan 2021.12.23  */
+PUBLIC pthread_t  kern_pthread_self()
+{
+	return p_proc_current->task.pthread_id;
+}
+PUBLIC pthread_t  do_pthread_self()
+{
+	return kern_pthread_self();
+}
 PUBLIC pthread_t  sys_pthread_self()
 {
 	return do_pthread_self();
 }
 
-PUBLIC pthread_t  do_pthread_self()
-{
-	return kern_pthread_self();
-}
-
-PUBLIC pthread_t  kern_pthread_self()
-{
-	return p_proc_current->task.pthread_id;
-}
 /* 				end added  				   */
 
 
@@ -313,9 +314,9 @@ PUBLIC void kern_pthread_exit(void *retval)
     PROCESS *p_proc = p_proc_current;
 
 
-	if(p_proc->task.who_wait_flag != -1){ //有进程正在等待自己
+	if(p_proc->task.who_wait_flag != (u32)(-1)){ //有进程正在等待自己
 		PROCESS *p_father = pid2proc(p_proc->task.who_wait_flag);
-		p_proc->task.who_wait_flag = -1;
+		p_proc->task.who_wait_flag = (u32)-1;
 		wakeup(p_father);
 	}
 
@@ -335,7 +336,7 @@ PUBLIC void do_pthread_exit(void *retval)
 
 PUBLIC void sys_pthread_exit()
 {
-    return do_pthread_exit(get_arg(1));
+    return do_pthread_exit((void*)get_arg(1));
 }
 
 
@@ -408,5 +409,5 @@ PUBLIC int do_pthread_join(pthread_t thread, void **retval)
 
 PUBLIC int sys_pthread_join()
 {
-    return do_pthread_join(get_arg(1), get_arg(2));
+    return do_pthread_join(get_arg(1), (void**)get_arg(2));
 }

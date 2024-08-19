@@ -3,6 +3,7 @@
 
 #include <kernel/type.h>
 #include <klib/spinlock.h>
+#include <kernel/fs.h>
 
 struct __attribute__((packed)) fat32_bpb {
     char jmp[3];
@@ -125,5 +126,7 @@ extern struct superblock_operations fat32_sb_ops;
 extern struct inode_operations      fat32_inode_ops;
 extern struct dentry_operations     fat32_dentry_ops;
 extern struct file_operations       fat32_file_ops;
+
+PUBLIC int fat32_sync_inode(struct inode* inode);
 
 #endif

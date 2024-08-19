@@ -48,7 +48,7 @@ PUBLIC void do_udisp_str(char *arg)
 
 PUBLIC void sys_udisp_str()
 {
-	do_udisp_str(get_arg(1));
+	do_udisp_str((char*)get_arg(1));
 	return;
 }
 
