@@ -11,6 +11,9 @@
 #include <kernel/mmap.h>
 #include <kernel/pagetable.h>
 #include <kernel/shm.h>
+#include <kernel/keyboard.h>
+#include <kernel/hd.h>
+#include <kernel/devfs.h>
 #ifndef OPT_DISP_SERIAL
 // #define GDBSTUB
 #endif
@@ -82,20 +85,7 @@ PUBLIC int kernel_main()
 	 * interrupt. added by xw
 	 */
 	enable_int();
-
-	/***********************************************************************
-	open hard disk and initialize file system
-	coded by zcr on 2017.6.10. added by xw, 18/5/31
-	************************************************************************/
-	// init_fileop_table(); //delete by xiaofeng 2022-8-17
-
-	// hd_open(0);
-	// hd_open(1); //modified by mingxuan 2020-10-27
 	init_open_hd();
-	//modified by mingxuan 2020-10-27
-	// hd_open(PRIMARY_SLAVE);
-	// hd_open(SECONDARY_MASTER);
-	// hd_open(SECONDARY_SLAVE);
 
 	init_buffer(64);
 	init_fs(SATA_BASE);
@@ -123,18 +113,12 @@ PUBLIC int kernel_main()
 	init_ttys();
 	initlock(&video_mem_lock, "vmem");
 	kernel_initial = 0;
-	//kernel initialization is done. added by xw, 18/5/31
-
-	//test_kbud_mem_size();
-	//test_kfree();
 
 	#ifdef BLAME_STAT
 		stat_init();// stat performance
 	#endif
 	restart_initial(); //modified by xw, 18/4/19
-	while (1)
-	{
-	}
+	while (1){};
 }
 
 /*************************************************************************
@@ -149,90 +133,6 @@ PRIVATE int initialize_cpus()
 	return 0;
 }
 
-
-// /*************************************************************************
-// 进程初始化部分
-// return 0 if there is no error, or return -1.
-// moved from kernel_main() by xw, 18/5/26
-// ***************************************************************************/
-// PRIVATE int initialize_processes()
-// {
-// 	TASK *p_task = task_table;
-// 	PROCESS *p_proc = proc_table;
-// 	// char *p_regs;		//point to registers in the new kernel stack, added by xw, 17/12/11
-// 	// task_f eip_context; //a funtion pointer, added by xw, 18/4/18
-// 	/*************************************************************************
-// 	*进程初始化部分 	edit by visual 2016.5.4
-// 	***************************************************************************/
-// 	int pid;
-// 	// u32 AddrLin, pte_addr_phy_temp, addr_phy_temp, err_temp; //edit by visual 2016.5.9
-
-// 	/* set common fields in PCB. added by xw, 18/5/25 */
-// 	p_proc = proc_table;
-// 	for (pid = 0; pid < NR_PCBS; pid++)
-// 	{
-// 		// get entry, name, privilege;
-// 		u32 entry = NULL;
-// 		char* name;
-// 		int ready = 0;
-// 		int rpl = RPL_USER;
-// 		int is_rt = false;
-// 		int rtpriority_or_nice = 0;
-// 		if(pid < NR_TASKS){
-// 			entry = (u32)p_task->initial_eip;
-// 			name = p_task->name;
-// 			ready = p_task->ready;
-// 			rpl = p_task->rpl;
-// 			is_rt = p_task->rt;
-// 			rtpriority_or_nice = p_task->priority_nice;
-// 			p_task++;
-// 		}else if(pid == PID_INIT){
-// 			entry = (u32)initial;
-// 			name = "initial";
-// 			rpl = RPL_TASK;
-// 			ready = 1;
-// 		}else if(pid < NR_K_PCBS){
-// 			name = "TASK";
-// 		}else{
-// 			name = "USER";
-// 		}
-// 		//init operations
-// 		memset(p_proc,0,sizeof(PROCESS));//by qianglong
-// 		if(entry){
-// 			init_process(p_proc, name, (ready ? READY: SLEEPING), pid, is_rt, rtpriority_or_nice);
-// 			init_proc_pages(p_proc);
-// 			init_proc_ldt_regs(p_proc, rpl, entry);
-// 		}else{
-// 			init_process(p_proc, name, FREE, pid, 0, 0);
-// 		}
-// 		if(ready) {
-// 			in_rq(p_proc);
-// 		}
-// 		for (int j = 0; j < NR_FILES; j++)
-// 		{
-// 			p_proc->task.filp[j] = 0;
-// 		}
-// 		p_proc++;
-// 	}
-// 	p_proc = &proc_table[PID_INIT];
-// 	/*************************进程树信息初始化***************************************/
-// 	p_proc->task.tree_info.type = TYPE_PROCESS; //当前是进程还是线程
-// 	p_proc->task.tree_info.real_ppid = -1;	   //亲父进程，创建它的那个进程
-// 	p_proc->task.tree_info.ppid = -1;		   //当前父进程
-// 	p_proc->task.tree_info.child_p_num = 0;	   //子进程数量
-// 	// p_proc->task.tree_info.child_process[NR_CHILD_MAX];//子进程列表
-// 	p_proc->task.tree_info.child_t_num = 0; //子线程数量
-// 	// p_proc->task.tree_info.child_thread[NR_CHILD_MAX];//子线程列表
-// 	// p_proc->task.memmap.text_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在中赋新值
-// 	// p_proc->task.memmap.text_lin_limit = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
-// 	// p_proc->task.memmap.data_lin_base = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
-// 	// p_proc->task.memmap.data_lin_limit = 0;								 //initial这些段的数据并不清楚，在变身init的时候才在exec中赋新值
-// 	p_proc->task.memmap.vpage_lin_base = VpageLinBase;					 //保留内存基址
-// 	p_proc->task.memmap.vpage_lin_limit = VpageLinBase;					 //保留内存界限
-
-// 	return 0;
-
-// }
 
 /*
  * @brief 初始化所有起始进程

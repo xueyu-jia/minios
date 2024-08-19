@@ -2,7 +2,7 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-16 14:30:31
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-16 21:06:49
+ * @LastEditTime: 2024-08-19 18:32:29
  * @FilePath: /minios/os/kernel/proc_init.c
  * @Description:
  *
@@ -170,7 +170,7 @@ PUBLIC int kthread_create(char *name, void *func, int is_rt, int priority, int r
 	init_cpu_context(
         &p_proc->task.context,
         p_proc->task.pid,
-        func,
+        (u32)func,
         StackLinBase,
         (u32)restart_restore,
         priority);

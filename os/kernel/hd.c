@@ -1,4 +1,3 @@
-/// zcr copy whole file from Orange's and the file was modified.
 
 /*************************************************************************//**
  *****************************************************************************
@@ -23,6 +22,7 @@
 #include <kernel/semaphore.h>
 #include <kernel/memman.h>
 #include <kernel/blame.h>
+#include <klib/assert.h>
 
 //added by xw, 18/8/28
 PRIVATE HDQueue hdque;
@@ -38,7 +38,7 @@ PRIVATE struct Semaphore hdque_full;
 
 PRIVATE void init_hd_queue(HDQueue *hdq);
 PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p);
-PRIVATE int  out_hd_queue(HDQueue *hdq, RWInfo **p);
+PRIVATE void out_hd_queue(HDQueue *hdq, RWInfo **p);
 PRIVATE void hd_rdwt_real(RWInfo *p);
 
 PRIVATE void read_part_table_sector(int drive, int sect_nr, void* sector_buf);
@@ -52,6 +52,10 @@ PRIVATE void inform_int();
 PRIVATE void interrupt_wait();
 PRIVATE void hd_handler(int irq);
 PRIVATE int  waitfor(int mask, int val, int timeout);
+
+PRIVATE	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf);
+PRIVATE	void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf);
+PRIVATE	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count);
 //~xw
 
 #define	DRV_OF_DEV(dev) (((dev>>20)&0x0FFF) - DEV_HD_BASE)
@@ -65,13 +69,11 @@ PRIVATE int  waitfor(int mask, int val, int timeout);
  *****************************************************************************/
 PUBLIC void init_hd()
 {
-	int i;
-
 	put_irq_handler(AT_WINI_IRQ, hd_handler);
 	enable_irq(CASCADE_IRQ);
 	enable_irq(AT_WINI_IRQ);
 
-	for (i = 0; i < (sizeof(hd_infos) / sizeof(hd_infos[0])); i++)
+	for (size_t i = 0; i < (sizeof(hd_infos) / sizeof(hd_infos[0])); i++)
 		memset(&hd_infos[i], 0, sizeof(hd_infos[0]));
 	hd_infos[0].open_cnt = 0;
 
@@ -146,7 +148,7 @@ PUBLIC void hd_close(int device)
 }
 
 PUBLIC void init_open_hd() {
-	for(int dev_index = 0; dev_index<ahci_info[0].satadrv_num;dev_index++)
+	for(u32 dev_index = 0; dev_index < ahci_info[0].satadrv_num; dev_index++)
 	{
 		hd_open(SATA_BASE+dev_index);
 	}
@@ -167,6 +169,8 @@ int get_hd_dev(int drive, u32 fs_type)
 		if (hd_infos[drive].part[i].fs_type == fs_type)
 			return MAKE_DEV(DEV_HD_BASE + drive, i);
 	}
+	assert(0);
+	return -1;
 }
 
 int get_hd_part_dev(int drive, int part, u32 fs_type){
@@ -303,7 +307,7 @@ PRIVATE void in_hd_queue(HDQueue *hdq, RWInfo *p)
 	ksem_post(&hdque_full, 1);
 }
 
-PRIVATE int out_hd_queue(HDQueue *hdq, RWInfo **p)
+PRIVATE void out_hd_queue(HDQueue *hdq, RWInfo **p)
 {
 	ksem_wait(&hdque_full, 1);
 	ksem_wait(&hdque_mutex, 1);
@@ -589,6 +593,7 @@ PRIVATE void hd_identify(int drive)
 	hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
 }
 
+//! defined but not used
 /*****************************************************************************
  *                            print_identify_info
  *****************************************************************************/
@@ -599,7 +604,7 @@ PRIVATE void hd_identify(int drive)
  *****************************************************************************/
 PRIVATE void print_identify_info(u16* hdinfo)
 {
-	int i, k;
+	int i;
 	char s[64];
 
 	struct iden_info_ascii {
@@ -609,7 +614,7 @@ PRIVATE void print_identify_info(u16* hdinfo)
 	} iinfo[] = {{10, 20, "HD SN"}, /* Serial number in ASCII */
 		     {27, 40, "HD Model"} /* Model number in ASCII */ };
 
-	for (k = 0; k < sizeof(iinfo)/sizeof(iinfo[0]); k++) {
+	for (size_t k = 0; k < sizeof(iinfo)/sizeof(iinfo[0]); k++) {
 		char * p = (char*)&hdinfo[iinfo[k].idx];
 		for (i = 0; i < iinfo[k].len/2; i++) {
 			s[i*2+1] = *p++;
@@ -807,7 +812,7 @@ PRIVATE void inform_int()
 /*
  * 读写IDE
 */
-PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
+PRIVATE	void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
 	struct hd_cmd cmd;
 	u32 n=(count + SECTOR_SIZE - 1) / SECTOR_SIZE;
 	cmd.features	= 0;
@@ -854,7 +859,7 @@ PUBLIC	int IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
 	}
 }
 
-PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
+PRIVATE	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
 {
 
 	// int drive = DRV_OF_DEV(p->DEVICE);
@@ -892,7 +897,7 @@ PUBLIC	int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf)
  * @retval			0: error  ;  1:sucess
  * @note			还没实现出错重发的功能;"satabuf += 8*1024;"这行存在bug;
 */
-PUBLIC	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
+PRIVATE	int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count)
 {
 	if(drive < SATA_BASE || drive >= SATA_LIMIT){
 		disp_str("ERROR:SATA_rdwt_sects");

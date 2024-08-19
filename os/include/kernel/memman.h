@@ -96,4 +96,5 @@ void memmap_clear(PROCESS* p_proc);
 void prepare_vma(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *vma);
 void free_vmas(PROCESS* p_proc, LIN_MEMMAP* mmap, struct vmem_area *start, struct vmem_area *last);
 int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag);
+PUBLIC u32 kern_total_mem_size();
 #endif

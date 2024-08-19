@@ -73,7 +73,7 @@ void disable_irq(int irq);
 void spurious_irq(int irq);
 void put_irq_handler(int irq, irq_handler handler);
 
-void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags);
+void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
 //: init 8259A interrupt controller
 void init_interrupt_controller();
 

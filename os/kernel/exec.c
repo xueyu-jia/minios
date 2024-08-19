@@ -18,7 +18,7 @@
 
 PRIVATE int exec_load(u32 fd, const Elf32_Ehdr *Echo_Ehdr, const Elf32_Phdr *Echo_Phdr);
 PRIVATE int exec_pcb_init(const char *path);
-PRIVATE int exec_count_args(char* const* pstr, int *count);
+PRIVATE int exec_count_args(char* const* pstr, u32 *count);
 PRIVATE int exec_copy_args(char* const* pstr, char** parr, char *dst, u32 offset);
 PRIVATE int exec_replace_argv_and_envp(
     const char*     path,
@@ -93,6 +93,8 @@ close_on_error:
 fatal_error:
     kern_kfree((u32)_path);
     do_exit(-1);
+    //: can't reach
+    return -1;
 
 }
 
@@ -111,7 +113,7 @@ PRIVATE int exec_replace_argv_and_envp(
     //            user main stack  |        argc             | argv | envp | argv[0]... argv[argc-1]| 0 |... argv raw data | env data | |
     // main esp  |  call main rt   | StackLinBase/ArgLinBase |
 
-    int argc, env_space, count = 0, space = 0;
+    u32 argc, env_space, count = 0, space = 0;
     space     += exec_count_args(argv, &count);
     argc       = count;
     env_space  = space;
@@ -194,7 +196,7 @@ PRIVATE int exec_load(
     }
     u32 text_lin_base = 0, text_lin_limit = 0, data_lin_base = 0,
         data_lin_limit = 0;
-    Elf32_Phdr *phdr;
+    const Elf32_Phdr *phdr;
     for (ph_num = 0, phdr = Echo_Phdr; ph_num < Echo_Ehdr->e_phnum;
          ph_num++, phdr++) {
         if (phdr->p_type == ELF_LOAD) {
@@ -302,7 +304,7 @@ PRIVATE int exec_pcb_init(const char *proc_name) {
     return 0;
 }
 
-PRIVATE int exec_count_args(char* const* pstr, int *count) {
+PRIVATE int exec_count_args(char* const* pstr, u32 *count) {
     char *p     = NULL;
     int   space = 0;
     while (pstr && (p = *pstr++, p)) {

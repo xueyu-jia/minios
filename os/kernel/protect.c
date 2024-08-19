@@ -2,7 +2,7 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-14 13:24:41
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-19 16:43:03
+ * @LastEditTime: 2024-08-19 18:32:56
  * @FilePath: /minios/os/kernel/protect.c
  * @Description:
  *
@@ -45,6 +45,6 @@ PUBLIC void init_descriptor(DESCRIPTOR * p_desc, u32 base, u32 limit, u16 attrib
 	p_desc->base_mid		= (base >> 16) & 0x0FF;		// 段基址 2		(1 字节)
 	p_desc->attr1			= attribute & 0xFF;		// 属性 1
 	p_desc->limit_high_attr2	= ((limit >> 16) & 0x0F) |
-						(attribute >> 8) & 0xF0;// 段界限 2 + 属性 2
+						((attribute >> 8) & 0xF0);// 段界限 2 + 属性 2
 	p_desc->base_high		= (base >> 24) & 0x0FF;		// 段基址 3		(1 字节)
 }

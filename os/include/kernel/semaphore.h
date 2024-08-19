@@ -1,4 +1,14 @@
 /*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-14 13:24:41
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-19 17:37:34
+ * @FilePath: /minios/os/include/kernel/semaphore.h
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
+/*
    By cjj and jjx    2021-12-22
    信号量实现的头文件。有函数声明与信号量结构定义。
 */
@@ -10,7 +20,7 @@
 #include <klib/spinlock.h>
 
 /*信号量*/
-volatile struct Semaphore
+struct Semaphore
 {
    int value;
    int maxValue;

@@ -5,6 +5,7 @@
 #include <kernel/mmap.h>
 #include <kernel/pagetable.h>
 
+PRIVATE void split_vma(LIN_MEMMAP* mmap, struct vmem_area * vma, u32 addr, int new_below);
 
 /**
  * kmap: 将page对应的物理页映射到内核，返回可访问的线性地址
@@ -15,7 +16,7 @@ PUBLIC void * kmap(page *_page) {
     u32 phy = pfn_to_phy(page_to_pfn(_page));
     // disp_str("\nkmap:");
     // disp_int(phy);
-    return kmapping_phy(phy);
+    return (void*)kmapping_phy(phy);
 }
 
 /**
@@ -88,7 +89,7 @@ PUBLIC int kern_mmap(PROCESS* p_proc, struct file_desc *file, u32 addr, u32 len,
     if(addr + len > KernelLinBase) {
         return -1;
     }
-    if((!(flag & MAP_SHARED))^(!(flag & MAP_PRIVATE)) != 1){// MAP_SHARED MAP_PRIVATE必须二选一
+    if(((!(flag & MAP_SHARED))^(!(flag & MAP_PRIVATE))) != 1){// MAP_SHARED MAP_PRIVATE必须二选一
         return -1;
     }
     if((flag & MAP_SHARED) && file){
@@ -178,7 +179,7 @@ PUBLIC int do_mmap(u32 addr, u32 len,
     return kern_mmap(p_proc_current, file, addr, len, prot, flag, offset >> PAGE_SHIFT);
 }
 
-PRIVATE int split_vma(LIN_MEMMAP* mmap, struct vmem_area * vma, u32 addr, int new_below) {
+PRIVATE void split_vma(LIN_MEMMAP* mmap, struct vmem_area * vma, u32 addr, int new_below) {
     // copy
     struct vmem_area * new = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
     *new = *vma;

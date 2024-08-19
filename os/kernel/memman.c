@@ -93,7 +93,7 @@ PUBLIC u32 phy_kmalloc(u32 size) //有int型参数size，从内核线性地址�
 //added by mingxuan 2021-8-16
 PUBLIC u32 kern_kmalloc(u32 size)
 {
-	void *p = (void*)K_PHY2LIN(phy_kmalloc(size));
+	u32 p = K_PHY2LIN(phy_kmalloc(size));
 	// disp_str("\na:");
 	// disp_int(p);
 	// disp_str(" ");
@@ -492,7 +492,7 @@ PUBLIC int kern_free_4k(void *AddrLin) //modified by mingxuan 2021-8-19
 	update_heap_limit(p_proc_current->task.pid, -1); //update heap limit edited by wang 2021.8.26
 
 	// return phy_free_4k(phy_addr);
-	return do_munmap(AddrLin, PAGE_SIZE);
+	return do_munmap((u32)AddrLin, PAGE_SIZE);
 }
 
 PUBLIC int do_free_4k(void *AddrLin)
@@ -618,7 +618,7 @@ PRIVATE void copy_page(page *dst, page *src) {
 	u32 src_vaddr = kpage_lin(src);
 	// dst_vaddr = kmap(dst);
 	// src_vaddr = kmap(src);
-	memcpy(dst_vaddr, src_vaddr, PAGE_SIZE);
+	memcpy((void*)dst_vaddr, (void*)src_vaddr, PAGE_SIZE);
 	// kunmap(dst);
 	// kunmap(src);
 	// disp_str(" cp:");
@@ -634,7 +634,7 @@ PRIVATE void copy_page(page *dst, page *src) {
 PUBLIC void zero_page(page *_page) {
 	u32 dst_vaddr = kpage_lin(_page);
 	// dst_vaddr = kmap(_page);
-	memset(dst_vaddr, 0, PAGE_SIZE);
+	memset((void*)dst_vaddr, 0, PAGE_SIZE);
 	// kunmap(_page);
 	// disp_str(" zp:");
 	// disp_int(_page->pg_off);
@@ -643,14 +643,14 @@ PUBLIC void zero_page(page *_page) {
 PUBLIC void copy_from_page(page *_page, void* buf, u32 len, u32 offset) {
 	// u32 vaddr = kmap(_page);
 	u32 vaddr = kpage_lin(_page);
-	memcpy(buf, vaddr + offset, len);
+	memcpy(buf, (void*)(vaddr + offset), len);
 	// kunmap(_page);
 }
 
 PUBLIC void copy_to_page(page *_page, const void* buf, u32 len, u32 offset) {
 	// u32 vaddr = kmap(_page);
 	u32 vaddr = kpage_lin(_page);
-	memcpy(vaddr + offset, buf, len);
+	memcpy((void*)vaddr + offset, buf, len);
 	// kunmap(_page);
 }
 
@@ -872,4 +872,11 @@ int handle_mm_fault(LIN_MEMMAP* mmap, u32 vaddr, int flag) {
 		}
 	}
 	return -1; // invalid addr;
+}
+
+PUBLIC u32 kern_total_mem_size()
+{
+	u32 total_mem_size = 0;
+	total_mem_size = kbud->current_mem_size + ubud->current_mem_size + kmem.current_mem_size;
+	return total_mem_size;
 }

@@ -179,7 +179,7 @@ PUBLIC int init_proc_page(u32 pid)
 
 	memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0, num_4K); //add by visual 2016.5.26
 
-	if (pde_addr_phy_temp < 0 || (pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
+	if ((pde_addr_phy_temp & 0x3FF) != 0) //add by visual 2016.5.9
 	{
 		disp_color_str("init_proc_page Error:pde_addr_phy_temp", 0x74);
 		return -1;
@@ -211,7 +211,7 @@ PUBLIC int init_kernel_page()
 
 		memset((void *)K_PHY2LIN(phy_addr), 0, num_4K); //add by visual 2016.5.26
 
-		if (phy_addr < 0 || (phy_addr & 0x3FF) != 0) //add by visual 2016.5.9
+		if ((phy_addr & 0x3FF) != 0) //add by visual 2016.5.9
 		{
 			disp_color_str("lin_mapping_phy Error:pte_addr_phy", 0x74);
 			return -1;
@@ -366,7 +366,7 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 
 		memset((void *)K_PHY2LIN(pte_addr_phy), 0, num_4K); //add by visual 2016.5.26
 
-		if (pte_addr_phy < 0 || (pte_addr_phy & 0x3FF) != 0) //add by visual 2016.5.9
+		if ((pte_addr_phy & 0x3FF) != 0) //add by visual 2016.5.9
 		{
 			disp_color_str("lin_mapping_phy Error:pte_addr_phy", 0x74);
 			return -1;
@@ -410,7 +410,7 @@ PUBLIC int lin_mapping_phy_nopid(u32 AddrLin,  //线性地址
 		//不用修改phy_addr
 	}
 
-	if (phy_addr < 0 || (phy_addr & 0x3FF) != 0)
+	if ((phy_addr & 0x3FF) != 0)
 	{
 		disp_color_str("lin_mapping_phy:phy_addr ERROR", 0x74);
 		return -1;

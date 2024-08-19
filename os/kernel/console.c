@@ -222,9 +222,9 @@ PUBLIC void scroll_screen(CONSOLE* con, int dir)
 	/*
 	 * variables below are all in-console-offsets (based on con->orig)
 	 */
-	int oldest; /* addr of the oldest available line in the console */
-	int newest; /* .... .. ... latest ......... .... .. ... ....... */
-	int scr_top;/* position of the top of current screen */
+	u32 oldest; /* addr of the oldest available line in the console */
+	u32 newest; /* .... .. ... latest ......... .... .. ... ....... */
+	u32 scr_top;/* position of the top of current screen */
 
 	newest = (con->cursor - con->orig) / SCR_WIDTH * SCR_WIDTH;
 	oldest = con->is_full ? (newest + SCR_WIDTH) % con->con_size : 0;
@@ -340,7 +340,7 @@ PUBLIC void disp_color_str(const char* info, int color){
 		flush(con);
 	#ifdef OPT_DISP_SERIAL
 	#include <kernel/uart.h>
-	for(char *p = info; p && *p; p++) {
+	for(const char *p = info; p && *p; p++) {
 		write_serial(*p);
 		if(*p == '\n'){
 			char tick_str[8];

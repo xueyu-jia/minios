@@ -1,3 +1,13 @@
+/*
+ * @Author: lirong lirongleiyang@163.com
+ * @Date: 2024-08-14 13:24:41
+ * @LastEditors: lirong lirongleiyang@163.com
+ * @LastEditTime: 2024-08-19 17:45:50
+ * @FilePath: /minios/os/include/kernel/buffer.h
+ * @Description:
+ *
+ * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
+ */
 // 缓冲块头部，记录了缓冲块的信息
 #ifndef BUFFER_H
 #define BUFFER_H
@@ -31,7 +41,7 @@ void init_buffer(int num_block);
 #define BUF_WR_BLOCK(dev,block_nr,fsbuf) buf_write_block(dev,block_nr,proc2pid(p_proc_current),fsbuf); */
 extern int buffer_debug;
 /********buffer向文件系统提供的API********/
-PUBLIC buf_head *bread(int dev, int block);
+PUBLIC buf_head *bread(u32 dev, u32 block);
 PUBLIC void mark_buff_dirty(buf_head *bh);
 PUBLIC void brelse(buf_head *bh);
 PUBLIC void sync_buffers(int flush_delay);

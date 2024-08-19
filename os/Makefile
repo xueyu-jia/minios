@@ -21,7 +21,8 @@ ASMKFLAGS	= -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
-OS_CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 -fdump-rtl-expand
+OS_CFLAGS	= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 -fdump-rtl-expand
+# OS_CFLAGS	+=	-Werror -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=unused-label -Wno-error=unused-but-set-variable -Wno-error=unused-function
 KFLAGS		= $(OS_CFLAGS) $(DEF_FLAGS)
 
 #modified by jiangfeng 2024-03-10 add definitions option for root

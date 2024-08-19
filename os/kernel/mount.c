@@ -3,6 +3,7 @@
 #include <kernel/vfs.h>
 #include <kernel/fs.h>
 #include <kernel/mount.h>
+#include <kernel/proto.h>
 
 // PRIVATE void update_mnttable();
 // PUBLIC mount_table mnt_table[MAX_mnt_table_length];
@@ -270,10 +271,14 @@ PUBLIC int do_umount(const char *target)
 
 PUBLIC int sys_mount()
 {
-    return do_mount(get_arg(1), get_arg(2), get_arg(3), get_arg(4), get_arg(5));
+    return do_mount((const char *)get_arg(1),
+            (const char *)get_arg(2),
+    (const char *)get_arg(3),
+        get_arg(4), (const void *)
+                get_arg(5));
 }
 
 PUBLIC int sys_umount()
 {
-    return do_umount(get_arg(1));
+    return do_umount((const char *)get_arg(1));
 }

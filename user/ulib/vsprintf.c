@@ -6,20 +6,7 @@
  * @date   2005
  *****************************************************************************
  *****************************************************************************/
-/*
-#include "type.h"
-#include "stdio.h"
-#include "const.h"
-#include "protect.h"
-#include "string.h"
-#include "fs.h"
-#include "proc.h"
-#include "tty.h"
-#include "console.h"
-#include "global.h"
-#include "keyboard.h"
-#include "proto.h"
-*/
+
 #include "type.h"
 #include "const.h"
 #include "stdio.h"
@@ -144,8 +131,8 @@ PUBLIC int vsprintf(char *buf, const char *fmt, va_list args)
 // added by ran
 PUBLIC int sprintf(char *buf, const char *fmt, ...)
 {
-    va_list arg = (va_list)((char*)(&fmt) + 4); 
-    
+    va_list arg = (va_list)((char*)(&fmt) + 4);
+
 	return vsprintf(buf, fmt, arg);
 }
 

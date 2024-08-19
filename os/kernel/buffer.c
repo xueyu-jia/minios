@@ -232,7 +232,7 @@ PUBLIC void map_bh(buf_head *bh, struct super_block *sb, u32 block)
  * @return  Ptr to buf_head if founding in hash table, NULL if not founding in hash table.
  *
  *****************************************************************************/
-static struct buf_head *find_buffer_hash(int dev, int block)
+static struct buf_head *find_buffer_hash(u32 dev, u32 block)
 {
     int ihash = HASH_CODE(dev, block);
     // buf_head *tmp = buf_hash_table[ihash];
@@ -319,7 +319,7 @@ PRIVATE void try_sync_buffers(int background) {
  * @return         Ptr to buf_head.
  *
  *****************************************************************************/
-buf_head *getblk(int dev, int block)
+buf_head *getblk(u32 dev, u32 block)
 {
     lock_or_yield(&buf_lock);
     buf_head *bh = find_buffer_hash(dev, block);
@@ -404,7 +404,7 @@ buf_head *getblk(int dev, int block)
     return 0;
 } */
 
-buf_head *bread(int dev, int block)
+buf_head *bread(u32 dev, u32 block)
 {
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了

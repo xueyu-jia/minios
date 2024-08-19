@@ -89,7 +89,7 @@ PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int c
 		disp_str("error: no get_block op\n");
 		return -1;
 	}
-	void *page_data = kpage_lin(target);
+	void *page_data = (void*)kpage_lin(target);
 	int phy, last_phy, last;
 	for(int i = 0; i < nr; i++) {
 		if(target->pg_buffer[i] == NULL){
@@ -118,7 +118,7 @@ PRIVATE int page_filemap(page* target, struct address_space* file_mapping, int c
 PRIVATE void page_unmap_buffer(page* target){
 	for(int i = 0; i < MAX_BUF_PAGE; i++) {
 		if(target->pg_buffer[i] != NULL){
-			kern_kfree(target->pg_buffer[i]);
+			kern_kfree((u32)target->pg_buffer[i]);
 		}
 	}
 	memset(target->pg_buffer, 0, sizeof(target->pg_buffer));
@@ -213,7 +213,8 @@ int generic_file_write(struct file_desc* file, unsigned int count, const char* b
 	u32 pgoff_file_end = UPPER_BOUND_4K(file->fd_dentry->d_inode->i_size) >> PAGE_SHIFT;
 	u32 pgoff_end = UPPER_BOUND_4K(end) >> PAGE_SHIFT;
 	u32 page_offset = pos % PAGE_SIZE;
-	int cnt = 0, len, total = end - LOWER_BOUND_4K(pos);
+	u32 cnt = 0, len;
+	u64 total = end - LOWER_BOUND_4K(pos);
 	page *_page = NULL;
 	lock_or_yield(&mapping->lock);
 	for(u32 pgoff = pgoff_start; pgoff < pgoff_end; pgoff++)

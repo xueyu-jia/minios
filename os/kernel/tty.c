@@ -6,7 +6,7 @@
 #include <kernel/keyboard.h>
 #include <kernel/semaphore.h>
 #include <kernel/vga.h>
-
+#include <kernel/keymap.h>
 
 TTY         tty_table[NR_CONSOLES];
 

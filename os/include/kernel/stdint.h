@@ -2,15 +2,14 @@
  * @Author: lirong lirongleiyang@163.com
  * @Date: 2024-08-14 13:09:35
  * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-18 14:31:59
+ * @LastEditTime: 2024-08-19 17:41:59
  * @FilePath: /minios/os/include/kernel/stdint.h
  * @Description:
  *
  * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
  */
-// #pragma once
-#ifndef MY_CUSTOM_TYPE_H
-#define MY_CUSTOM_TYPE_H
+#pragma once
+
 
 typedef signed char      int8_t;
 typedef short     int16_t;
@@ -33,5 +32,3 @@ typedef unsigned long long uint64_t;
 #define u64 uint64_t
 
 typedef uint32_t size_t;
-
-#endif // MY_CUSTOM_TYPE_H

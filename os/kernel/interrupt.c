@@ -121,14 +121,14 @@ void put_irq_handler(int irq, irq_handler handler) {
 //     p_proc_current->task.stat = KILLED;
 // }
 
-PUBLIC void exception_handler(int vec_no, int err_code, int eip, int cs, int eflags)
+PUBLIC void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags)
 {
 	int i;
 	int text_color = 0x74; /* 灰底红字 */
 
 	/* 通过打印空格的方式清空屏幕的前五行，并把 disp_pos 清零 */
 	disp_pos = 0;
-	for(i=0;i<80*5;i++){
+	for(i=0; i<80*5; i++){
 		disp_str(" ");
 	}
 	disp_pos = 0;

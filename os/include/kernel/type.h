@@ -8,12 +8,7 @@
 #ifndef	_ORANGES_TYPE_H_
 #define	_ORANGES_TYPE_H_
 
-typedef	unsigned long long	u64;
-typedef	unsigned int		u32;
-typedef	unsigned short		u16;
-typedef	unsigned char		u8;
-
-typedef unsigned int size_t;
+#include <kernel/stdint.h>
 
 typedef unsigned char   BYTE;//字节
 typedef unsigned short  WORD;//双字节
