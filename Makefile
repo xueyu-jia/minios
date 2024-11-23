@@ -53,6 +53,8 @@ GRUB_CONFIG=boot_from_part1.cfg
 BOOT_IMG=fat32_boot.img
 ###################################################################
 
+# 生成的内核文件
+ORANGESKERNEL = kernel.bin
 
 #added by sundong 写镜像用,用losetup -f查看
 ifeq ($(MACHINE_TYPE), virtual)
@@ -265,9 +267,14 @@ build_fs:
 
 # generate tags file. added by xw, 19/1/2
 tags :
-	# ctags -R
+	ctags -R
 
 archive :
 	git archive --prefix=
-clean-rtl :
-	rm -rf rtl/*
+
+collect-rtl: $(ORANGESKERNEL)
+	@mkdir -p rtl
+	@find . -path ./rtl -prune -o -regex '.*\.[0-9]+r\.expand$$' -exec mv -f {} rtl \;
+
+clean-rtl:
+	@rm -rf rtl

@@ -21,7 +21,8 @@ ASMKFLAGS	= -f elf
 DASMFLAGS	= -u -o $(ENTRYPOINT) -e $(ENTRYOFFSET)
 ARFLAGS		= rcs
 DEF_FLAGS 	= -DROOT_FSTYPE=\"$(ROOT_PART_FS_TYPE)\" -DROOT_PART=$(ROOT_FS_PART_NUM) # 指定根文件系统的分区和类型
-OS_CFLAGS	= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99 -fdump-rtl-expand
+OS_CFLAGS	= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
+OS_CFLAGS   += -fdump-rtl-expand
 OS_CFLAGS	+=	-Werror -Wno-error=unused-parameter -Wno-error=unused-variable -Wno-error=unused-label -Wno-error=unused-but-set-variable -Wno-error=unused-function
 KFLAGS		= $(OS_CFLAGS) $(DEF_FLAGS)
 
@@ -37,13 +38,9 @@ LDFLAGS_kernel_gdb	= -m elf_i386 -Ttext $(ENTRYPOINT)
 ORANGESBOOT	= os/boot/floppy/boot.bin os/boot/floppy/loader.bin \
 			  os/boot/mbr/mbr.bin os/boot/mbr/boot.bin os/boot/mbr/orangefs_boot.bin os/boot/mbr/loader.bin #modified by mingxuan 2019-5-17
 
-
-ORANGESKERNEL	= kernel.bin
-
 OBJS =  os/kernel/kernel.o \
 	$(subst .c,.o,$(wildcard os/kernel/*.c) $(wildcard os/ipc/*.c) $(wildcard os/fs/*.c) \
 	$(wildcard os/klib/*.c)) $(subst .nasm,.o,$(wildcard os/gdbstub/*.nasm))
-
 
 GDBBIN = kernel.gdb.bin
 
@@ -76,20 +73,15 @@ kernel.gdb.bin : $(OBJS)
 
 os/kernel/%.o : os/kernel/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
-	mkdir -p rtl && mv "os/kernel/$*.c.245r.expand" rtl/;
-# $(shell mkdir -p rtl && mv os/kernel/*.expand rtl/)
 
 os/ipc/%.o : os/ipc/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
-	mkdir -p rtl && mv "os/ipc/$*.c.245r.expand" rtl/;
 
 os/fs/%.o : os/fs/%.c
 	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
-	mkdir -p rtl && mv "os/fs/$*.c.245r.expand" rtl/;
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 	$(ASM) -I os/gdbstub/ -f elf -o $@ $<
 
 os/klib/%.o: os/klib/%.c
 	$(CC)  -I os/include/ $(OS_CFLAGS) -o $@ $<
-	mkdir -p rtl && mv "os/klib/$*.c.245r.expand" rtl/;
