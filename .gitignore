@@ -36,3 +36,5 @@ grub/*
 .gdb_history
 *.mod
 *.lst
+rtl/
+*.*r.expand

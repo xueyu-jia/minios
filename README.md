@@ -61,12 +61,16 @@ make clean && make
 ```
 ## 安装MiniOS
 ### 制作启动镜像文件（真机启动无需此步骤）
+
 ```bash
 #新建一个文件夹 hd，用于存放镜像
 mkdir hd
 #使用dd创建一个镜像,例如：
 dd if=/dev/zero of=hd/virtual_disk.img bs=512 count=204800
 ```
+
+其中 hd/virtual_disk.img 与 Makefile 中提供的 BOOT_IMG 对应，如果你没有手动创建该镜像，则将由 Makefile 自动创建，包括下一节的分区表创建。
+
 ### 使用fdisk对硬盘/镜像进行分区
 ```bash
 #若使用虚拟机，则对镜像文件进行分区,例如：
@@ -128,11 +132,15 @@ BOOT_IMG=virtual_disk.img
 4. 若使用grub做为引导程序，则grub安装的分区不得与根文件系统所在的分区一致。
 5. 当更改启动分区时，除了变量`BOOT_PART_NUM`需要修改之外，若使用grub做引导程序则还需要修改/新生成一个grub配置文件。当前的默认配置文件为`os/boot/mbr/grub/boot_from_part1.cfg`和`os/boot/mbr/grub/boot_from_part1.cfg`，这两个配置文件分别对应着启动分区为分区1和分区2。在配置文件中`hd0`表示要引导的os所在的硬盘为第一块硬盘，`msdos1`表示要引导的分区为分区1,可以通过修改这两个字段来配置grub引导程序。
 ## 运行MiniOS
+
 ```bash
 #在虚拟机运行请使用
-./launch-qemu.sh 
+./launch-qemu.sh
 #在真机运行请在真机BIOS中选择对应的硬盘启动
 ```
+
+> 如果从 QEMU 启动，可能会出现不存在 test2.img 等错误，由于目前只使用了 hd0（大概），故直接删除该硬盘挂载即可。
+
 如下图所示：启动完成后，在MiniOS shell中直接输入测试程序文件名即可执行测试程序
 
 ![Alt text](doc/image.png)

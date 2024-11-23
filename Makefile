@@ -49,8 +49,8 @@ BOOT_PART_FS_TYPE=orangefs
 ROOT_PART_FS_TYPE=fat32
 #grub的配置文件,提供了一个默认的grub配置文件，配置为从第1块硬盘分区1引导
 GRUB_CONFIG=boot_from_part1.cfg
-#使用虚拟机时虚拟镜像的名称，该虚拟镜像应该放在hd/文件夹下
-BOOT_IMG=fat32_boot.img
+#从虚拟机机启动时使用的虚拟镜像，一般由由 makefile 生成
+BOOT_IMG=hd/fat32_boot.img
 ###################################################################
 
 # 生成的内核文件
@@ -92,7 +92,6 @@ else ifeq ($(BOOT_PART_FS_TYPE),orangefs)
 # orangefs boot直接放在分区的0号扇区
 	BOOT_SEEK=0
 endif
-BOOT_PART_MOUNTPOINT = iso
 
 # config root fs param
 ifeq ($(ROOT_PART_FS_TYPE),fat32)
@@ -184,77 +183,75 @@ ifneq ($(wildcard $(ORANGE_MAKER) $(ORANGE_MOUNT)), $(ORANGE_MAKER) $(ORANGE_MOU
 endif
 endif
 
+# copy_user <mount_point> <src> <dst>
 define copy_user
-	sudo mkdir -p $(ROOT_MOUNTPOINT)/$(dir $(2))
-	sudo cp $(1) $(ROOT_MOUNTPOINT)/$(2)
-	echo "$(1) => /$(2)"
+	sudo mkdir -p $(1)/$(dir $(3)); \
+	sudo cp -f $(2) $(1)/$(3);      \
+	echo "$(2) => /$(3)"
 endef
 
 build_img:
-	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		rm -f $(WRITE_DISK) && \
-		cp ./hd/$(BOOT_IMG) ./$(WRITE_DISK); \
+ifeq ($(MACHINE_TYPE),virtual)
+	@mkdir -p $(dir $(BOOT_IMG))
+	@\
+	if [ ! -e "$(BOOT_IMG)" ]; then                         \
+		dd if=/dev/zero of=$(BOOT_IMG) bs=512 count=204800; \
+		sfdisk $(BOOT_IMG) < part.sfdisk;                   \
 	fi
+	@cp -f $(BOOT_IMG) $(WRITE_DISK)
+endif
 
 # added by mingxuan 2020-10-22
 build_grub:
-	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		sudo losetup -P $(INS_DEV) $(WRITE_DISK); \
-	fi
+ifeq ($(MACHINE_TYPE),virtual)
+	sudo losetup -P $(INS_DEV) $(WRITE_DISK)
+endif
 	sudo mkfs.vfat -F 32 $(GRUB_INSTALL_PART)
-
-	@if [[ "$(USING_GRUB_CHAINLOADER)" == "true" ]]; then \
-		sudo mount  $(GRUB_INSTALL_PART) iso && \
-		sudo grub-install --target=i386-pc --boot-directory=./iso  --modules="part_msdos" $(INS_DEV) &&\
-		sudo cp os/boot/mbr/grub/$(GRUB_CONFIG) iso/grub/grub.cfg &&\
-		sudo umount iso ;\
-	fi
-
-	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		sudo losetup -d $(INS_DEV); \
-	fi
+ifeq ($(USING_GRUB_CHAINLOADER),true)
+	@\
+	mount_point=$$(mktemp -d); \
+	sudo mount $(GRUB_INSTALL_PART) $$mount_point && \
+	sudo grub-install --target=i386-pc --boot-directory=./iso  --modules="part_msdos" $(INS_DEV) && \
+	sudo cp os/boot/mbr/grub/$(GRUB_CONFIG) iso/grub/grub.cfg && \
+	sudo umount $$mount_point
+endif
+ifeq ($(MACHINE_TYPE),virtual)
+	sudo losetup -d $(INS_DEV)
+endif
 
 # added by mingxuan 2019-5-17
 build_mbr:
-	@if [[ "$(USING_GRUB_CHAINLOADER)" != "true" ]]; then \
-		sudo dd if=os/boot/mbr/mbr.bin of=$(WRITE_DISK) bs=1 count=446 conv=notrunc ; \
-	fi
+ifneq ($(USING_GRUB_CHAINLOADER),true)
+	sudo dd if=os/boot/mbr/mbr.bin of=$(WRITE_DISK) bs=1 count=446 conv=notrunc
+endif
 
 build_fs:
-	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		sudo losetup -D $(INS_DEV); \
-		sudo losetup -P $(INS_DEV) $(WRITE_DISK); \
-	fi
+ifeq ($(MACHINE_TYPE),virtual)
+	sudo losetup -D $(INS_DEV)
+	sudo losetup -P $(INS_DEV) $(WRITE_DISK)
+endif
 
 	sudo $(BOOT_PART_FS_MAKER) $(BOOT_PART_FS_MAKE_FLAG) $(BOOT_PART)
-
-# FAT322规范规定第90~512个字节(共423个字节)是引导程序 # added by mingxuan 2020-10-5
 	sudo dd if=os/boot/mbr/$(BOOT) of=$(BOOT_PART) bs=1 count=$(BOOT_SIZE) seek=$(BOOT_SEEK) conv=notrunc
 
-	sudo $(BOOT_MOUNT) $(BOOT_PART) $(BOOT_PART_MOUNTPOINT)
+	@\
+	mount_point=$$(mktemp -d);                                 \
+	sudo $(BOOT_MOUNT) $(BOOT_PART) $$mount_point;             \
+	sudo cp os/boot/mbr/loader.bin $${mount_point}/loader.bin; \
+	sudo cp $(ORANGESKERNEL) $$mount_point/kernel.bin;         \
+	sudo umount $$mount_point
 
-	sudo cp os/boot/mbr/loader.bin $(BOOT_PART_MOUNTPOINT)/loader.bin
-	sudo cp kernel.bin $(BOOT_PART_MOUNTPOINT)/kernel.bin
-
-	sudo umount $(BOOT_PART_MOUNTPOINT)
-#初始化根文件系统
 	sudo $(ROOT_FS_MAKER) $(ROOT_FS_MAKE_FLAG) $(ROOT_FS_PART)
 
-	sudo $(ROOT_MOUNT) $(ROOT_FS_PART) $(ROOT_MOUNTPOINT)
+	@\
+	mount_point=$$(mktemp -d);                        \
+	sudo $(ROOT_MOUNT) $(ROOT_FS_PART) $$mount_point; \
+	$(foreach FILE,$(USER_IMG),$(call copy_user,$$mount_point,$(FILE),$(subst $(USER_SRC_DIR)/,,$(subst .bin,,$(FILE))));) \
+	sudo umount $$mount_point
 
-	@echo "copy user files ..."
-# 在此处根据USER_TEST变量添加用户程序的文件 user/user/dir/file.bin ==> root/dir/file
-	@$(foreach FILE,$(USER_IMG),\
-	    $(call copy_user,$(FILE),$(subst $(USER_SRC_DIR)/,,$(subst .bin,,$(FILE))));\
-	)
-
-
-	sudo umount $(ROOT_MOUNTPOINT)
-
-
-	@if [[ "$(MACHINE_TYPE)" == "virtual" ]]; then \
-		sudo losetup -d $(INS_DEV); \
-	fi
+ifeq ($(MACHINE_TYPE),virtual)
+	sudo losetup -d $(INS_DEV)
+endif
 
 
 # buildimg :
