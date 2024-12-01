@@ -15,7 +15,7 @@ const char *syscall_name = "open";
 
 logging logger;
 
-#define NUM 10 // ?
+#define NUM 10  // ?
 
 char fname[12];
 int fd[NUM];

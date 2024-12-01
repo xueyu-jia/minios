@@ -19,7 +19,7 @@ logging logger;
 #define LOOP_N 30
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static int value = 0; // 由 mutex 保护
+static int value = 0;  // 由 mutex 保护
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 

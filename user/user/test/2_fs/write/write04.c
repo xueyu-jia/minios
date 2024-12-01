@@ -36,7 +36,7 @@ void run() {
   int n;
 
   info(&logger, "test invalid fd\n");
-  n = write(-1, write_buf, BUF_SIZE); // invalid fd
+  n = write(-1, write_buf, BUF_SIZE);  // invalid fd
   info(&logger, "write return %d, expected %d\n", n, -1);
   if (n != -1) {
     error(&logger, "FAILED\n");

@@ -7,7 +7,7 @@ const char *syscall_name = "get_pid_byname";
 
 logging logger;
 
-const char *process_name = "pidbyname01"; // 当前程序的名字
+const char *process_name = "pidbyname01";  // 当前程序的名字
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 

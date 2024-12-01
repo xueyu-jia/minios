@@ -45,7 +45,7 @@ void run() {
   // msgtype 为 0, 取出队列中的第一个消息
   // msgq 为 NULL
   int read_len = msgrcv(mq_id, NULL, MSG_SIZE, 0,
-                        IPC_NOWAIT); // 取出队列的第一个消息
+                        IPC_NOWAIT);  // 取出队列的第一个消息
   info(&logger, "msgrcv return %d, expected -1\n", read_len);
   if (read_len != -1) {
     cleanup();

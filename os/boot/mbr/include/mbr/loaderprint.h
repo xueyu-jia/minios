@@ -9,11 +9,11 @@
 #ifndef _LOADERPRINT_H_
 #define _LOADERPRINT_H_
 
-#include "type.h"
-#include "paging.h"
 #include "elf.h"
+#include "paging.h"
+#include "type.h"
 #define TERMINAL_COLUMN 80
-#define TERMINAL_ROW    25
+#define TERMINAL_ROW 25
 #define VIDEO_MEM_START 0xB8000
 
 #define TERMINAL_POS(row, column) ((u16)(row)*TERMINAL_COLUMN + (column))
@@ -40,7 +40,7 @@ typedef __builtin_va_list va_list;
  */
 extern int video_row;
 extern int video_col;
-void       clear_screen();
+void clear_screen();
 // 简单的print
 void lprintf(char *s, ...);
 // 打印内存信息

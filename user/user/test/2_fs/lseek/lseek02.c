@@ -15,7 +15,6 @@ const char *write_str = "0123456789";
 int fd;
 char read_buf[BUF_SIZE];
 
-
 void setup() {
   logger_init(&logger, log_filename, test_name, LOG_INFO);
 
@@ -41,7 +40,7 @@ void run() {
   memset(read_buf, 0, BUF_SIZE);
   int off = lseek(fd, -3, SEEK_END);
   info(&logger, "lseek return %d, expected: %d\n", off, exp_off);
-  if (off == -1) { // lseek error
+  if (off == -1) {  // lseek error
     cleanup();
     exit(TC_FAIL);
   }

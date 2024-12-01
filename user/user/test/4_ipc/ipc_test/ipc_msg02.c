@@ -14,10 +14,11 @@ const char *syscall_name = "ipc_msg";
 
 #define SENDER_NUM 2
 #define RECEIVER_NUM 3
-const char *send_text = "line 1\nline 2\nline 3\nline 4\nline 5\n"
-                        "line 6\nline 7\nline 8\nline 9\nline 10\n"
-                        "line 11\nline 12\nline 13\nline 14\nline 15\n"
-                        "line 16\nline 17\nline 18\nline 19\nline 20\n";
+const char *send_text =
+    "line 1\nline 2\nline 3\nline 4\nline 5\n"
+    "line 6\nline 7\nline 8\nline 9\nline 10\n"
+    "line 11\nline 12\nline 13\nline 14\nline 15\n"
+    "line 16\nline 17\nline 18\nline 19\nline 20\n";
 const char *send_filename = "send02.txt";
 const char *recv_filename = "recv02.txt";
 int send_fd;
@@ -27,8 +28,8 @@ pthread_mutex_t read_lock;
 pthread_mutex_t write_lock;
 
 key_t key;
-int mq_id;               // 消息队列 id
-const long MSG_TYPE = 1; // 消息类型
+int mq_id;                // 消息队列 id
+const long MSG_TYPE = 1;  // 消息类型
 
 void setup() {
   int rval;
@@ -45,7 +46,7 @@ void setup() {
     printf("failed to create %s\n", send_filename);
     // error(&logger, "failed to create send.txt\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   int n = write(fd, send_text, strlen(send_text));
   if (n != strlen(send_text)) {
@@ -60,14 +61,14 @@ exit(TC_UNRESOLVED);
     printf("failed to initialize read_lock\n");
     // error(&logger, "failed to initialize read_lock\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   rval = pthread_mutex_init(&write_lock, NULL);
   if (rval != 0) {
     // error(&logger, "failed to initialize write_lock\n");
     printf("failed to initialize write_lock\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   printf("setup done\n");
@@ -139,7 +140,7 @@ void *sender_func() {
       pthread_mutex_unlock(&read_lock);
       printf("sender[%d]: release lock\n", tid);
       // info("sender[%d]: release lock\n", pthread_self());
-      if (rc == 0) { // 文件已读完
+      if (rc == 0) {  // 文件已读完
         break;
       }
       sent = 0;
@@ -212,7 +213,7 @@ void run() {
     printf("failed to create message queue\n");
     // error(&logger, "failed to create message queue\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   send_fd = open(send_filename, O_RDWR);
@@ -220,7 +221,7 @@ exit(TC_UNRESOLVED);
     printf("failed to open %s\n", send_filename);
     // error(&logger, "failed to open %s\n", send_filename);
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   // create senders
@@ -236,7 +237,7 @@ exit(TC_UNRESOLVED);
     printf("failed to open %s\n", recv_filename);
     // error(&logger, "failed to open %s\n", recv_filename);
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   printf("creating receivers...\n");

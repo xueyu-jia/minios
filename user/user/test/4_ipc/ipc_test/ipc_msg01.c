@@ -14,18 +14,19 @@ logging logger;
 
 #define SENDER_NUM 4
 #define RECEIVER_NUM 4
-const char *send_text = "line 1\nline 2\nline 3\nline 4\nline 5\n"
-                        "line 6\nline 7\nline 8\nline 9\nline 10\n"
-                        "line 11\nline 12\nline 13\nline 14\nline 15\n"
-                        "line 16\nline 17\nline 18\nline 19\nline 20\n";
+const char *send_text =
+    "line 1\nline 2\nline 3\nline 4\nline 5\n"
+    "line 6\nline 7\nline 8\nline 9\nline 10\n"
+    "line 11\nline 12\nline 13\nline 14\nline 15\n"
+    "line 16\nline 17\nline 18\nline 19\nline 20\n";
 const char *send_file = "send.txt";
 const char *recv_file = "recv.txt";
 int send_fd;
 int recv_fd;
 
 key_t key;
-int mq_id;               // 消息队列 id
-const long MSG_TYPE = 1; // 消息类型
+int mq_id;                // 消息队列 id
+const long MSG_TYPE = 1;  // 消息类型
 
 void setup() {
   logger_init(&logger, log_filename, test_name, LOG_INFO);
@@ -37,7 +38,7 @@ void setup() {
   if (fd < 0) {
     error(&logger, "failed to create send.txt\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   int text_len = strlen(send_text);
   write(fd, send_text, text_len);
@@ -98,7 +99,7 @@ void sender_func() {
     if (sent) {
       // 读取一行
       rc = readline(send_fd, line, MSG_SIZE);
-      if (rc == 0) { // 文件已读完
+      if (rc == 0) {  // 文件已读完
         break;
       }
       sent = 0;
@@ -159,14 +160,14 @@ void run() {
   if (mq_id < 0) {
     error(&logger, "failed to create message queue\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   send_fd = open(send_file, O_RDWR);
   if (send_fd < 0) {
     error(&logger, "failed to open %s\n", send_file);
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   // create senders
   info(&logger, "creating senders...\n");
@@ -183,7 +184,7 @@ exit(TC_UNRESOLVED);
   if (recv_fd < 0) {
     error(&logger, "failed to open %s\n", recv_file);
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   info(&logger, "creating receivers...\n");
   for (int i = 0; i < RECEIVER_NUM; i++) {

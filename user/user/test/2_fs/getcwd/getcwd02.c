@@ -16,7 +16,7 @@ const char *syscall_name = "getcwd";
 
 logging logger;
 
-#define BUF_SIZE 200 // BUF_SIZE must >= MAX_PATH (ie. 128)
+#define BUF_SIZE 200  // BUF_SIZE must >= MAX_PATH (ie. 128)
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 
@@ -28,7 +28,7 @@ void test_1() {
   if (p != NULL) {
     error(&logger, "getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_1 passed\n");
 }
@@ -41,7 +41,7 @@ void test_2() {
   if (p != NULL) {
     error(&logger, "getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_2 passed\n");
 }
@@ -54,13 +54,13 @@ void test_3() {
   if (p != NULL) {
     error(&logger, "getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   p = getcwd(read_buf, 1);
   if (p != NULL) {
     error(&logger, "getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_3 passed\n");
 }
@@ -71,7 +71,7 @@ void test_4() {
   if (p != NULL) {
     error(&logger, "getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_4 passed\n");
 }

@@ -26,8 +26,8 @@ void run() {
     if (pid < 0) {
       error(&logger, "fork failed\n");
       cleanup();
-exit(TC_FAIL);
-    } else if (pid == 0) { //  child  process
+      exit(TC_FAIL);
+    } else if (pid == 0) {  //  child  process
       exit(i);
     }
 
@@ -39,7 +39,7 @@ exit(TC_FAIL);
     if (child_pid != pid || status != i) {
       warning(&logger, "FAILED\n");
       cleanup();
-exit(TC_FAIL); // 测试失败
+      exit(TC_FAIL);  // 测试失败
     }
     info(&logger, "PASSED\n");
   }

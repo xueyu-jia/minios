@@ -36,7 +36,7 @@ void run() {
   int pid = SAFE_FORK();
   if (pid == 0) {
     // child process
-    sleep(100); // wait for parent process register signal
+    sleep(100);  // wait for parent process register signal
     // send signal to parent process
     for (int sig = 0; sig < 32; sig++) {
       int rval = kill(parent_pid, sig, sig);

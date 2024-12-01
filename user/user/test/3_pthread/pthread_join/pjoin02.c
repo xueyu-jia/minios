@@ -45,7 +45,7 @@ void run() {
   rval = pthread_join(thread_id, NULL);
   info(&logger, "pthread_join again return %d, expected 3\n", rval);
   // 目前 MiniOS 的实现为返回 -1
-  if (rval != 3) { // 3 or -1
+  if (rval != 3) {  // 3 or -1
     cleanup();
     exit(TC_FAIL);
   }

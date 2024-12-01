@@ -21,7 +21,7 @@ void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 void cleanup() { logger_close(&logger); }
 
 void run() {
-  int ret = execve(child_name, NULL, NULL); // should not return
+  int ret = execve(child_name, NULL, NULL);  // should not return
   error(&logger, "execve return %d\n", ret);
 }
 

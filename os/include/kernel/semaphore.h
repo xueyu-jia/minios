@@ -20,20 +20,19 @@
 #include <klib/spinlock.h>
 
 /*信号量*/
-struct Semaphore
-{
-   int value;
-   int maxValue;
-   int active;
-   struct spinlock lock;
+struct Semaphore {
+  int value;
+  int maxValue;
+  int active;
+  struct spinlock lock;
 };
 
 int ksem_init(struct Semaphore *sem, int max);
 int ksem_destroy(struct Semaphore *sem);
 int ksem_wait(struct Semaphore *sem, int count);
 int ksem_post(struct Semaphore *sem, int count);
-int ksem_trywait(struct Semaphore *sem,int count);
+int ksem_trywait(struct Semaphore *sem, int count);
 int ksem_getvalue(struct Semaphore *sem);
 
-extern struct 	Semaphore	proc_table_sem;
-#endif  /* SEMAPHORE_H */
+extern struct Semaphore proc_table_sem;
+#endif /* SEMAPHORE_H */

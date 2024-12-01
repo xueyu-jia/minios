@@ -20,7 +20,7 @@ void cleanup() { logger_close(&logger); }
 void run() {
   // msgtype 为 0, 取出队列中的第一个消息
   int read_len = msgrcv(bad_mq_id, &recv_buf, MSG_SIZE, 0,
-                        IPC_NOWAIT); // 取出队列的第一个消息
+                        IPC_NOWAIT);  // 取出队列的第一个消息
   info(&logger, "msgrcv return %d, expected -1\n", read_len);
   if (read_len != -1) {
     cleanup();

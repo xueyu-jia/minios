@@ -13,12 +13,11 @@ const char *syscall_name = "getcwd";
 
 logging logger;
 
-#define BUF_SIZE 200 // BUF_SIZE must >= MAX_PATH (ie. 128)
+#define BUF_SIZE 200  // BUF_SIZE must >= MAX_PATH (ie. 128)
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 
 void cleanup() { logger_close(&logger); }
-
 
 // buf 和 size 有效
 void test_1() {
@@ -28,14 +27,14 @@ void test_1() {
   if (p == NULL) {
     error(&logger, "test_1: getcwd return NULL, expected a valid pointer\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_1: getcwd return value: %s\n", p);
   info(&logger, "test_1: getcwd buf value: %s\n", buf);
   if (strcmp(p, buf) != 0 || strcmp(p, "/") != 0) {
     error(&logger, "test_1: failed\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_1: passed\n");
 }
@@ -46,13 +45,13 @@ void test_2() {
   if (p == NULL) {
     error(&logger, "test_2: getcwd return NULL\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_2: getcwd return value: %s\n", p);
   if (strcmp(p, "/") != 0) {
     error(&logger, "test_2: failed\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_2: passed\n");
 }
@@ -63,12 +62,12 @@ void test_3() {
   if (p != NULL) {
     error(&logger, "test_3: getcwd return %d, expected NULL\n", p);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   if (strcmp(p, "/") != 0) {
     error(&logger, "test_3: failed\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "test_3: passed\n");
 }

@@ -7,7 +7,7 @@ const char *test_name = "opendir01";
 const char *syscall_name = "opendir";
 
 const char *pathname = ".";
-DIR* dirp;
+DIR *dirp;
 void run() {
   int rval;
   dirp = opendir(pathname);

@@ -41,7 +41,7 @@ void run() {
   memset(read_buf, 0, BUF_SIZE);
   int off = lseek(fd, 4, SEEK_SET);
   info(&logger, "lseek return %d, expected: %d\n", off, exp_off);
-  if (off == -1) { // lseek error
+  if (off == -1) {  // lseek error
     cleanup();
     exit(TC_FAIL);
   }

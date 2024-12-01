@@ -36,7 +36,7 @@ int run() {
   if (elapsed_time > 2000) {
     error(&logger, "FAILED\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

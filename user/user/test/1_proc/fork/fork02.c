@@ -25,7 +25,7 @@ void run() {
     if (pid < 0) {
       info(&logger, "fork failed\n");
       cleanup();
-exit(TC_FAIL);
+      exit(TC_FAIL);
     } else if (pid == 0) {
       info(&logger, "child pid: %d\n", get_pid());
       exit(0);
@@ -39,7 +39,7 @@ exit(TC_FAIL);
     if (status != 0) {
       info(&logger, "child process not exit 0\n");
       cleanup();
-exit(TC_FAIL);
+      exit(TC_FAIL);
     }
   }
 

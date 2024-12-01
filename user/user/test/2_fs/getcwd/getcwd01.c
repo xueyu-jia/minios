@@ -13,12 +13,11 @@ const char *syscall_name = "getcwd";
 
 logging logger;
 
-#define BUF_SIZE 200 // BUF_SIZE must >= MAX_PATH (ie. 128)
+#define BUF_SIZE 200  // BUF_SIZE must >= MAX_PATH (ie. 128)
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 
 void cleanup() { logger_close(&logger); }
-
 
 void run() {
   char buf[BUF_SIZE];
@@ -29,7 +28,7 @@ void run() {
   info(&logger, "getcwd return %d, expected %d\n", p, buf);
   if (p != buf) {
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   /*

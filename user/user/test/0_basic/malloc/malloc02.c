@@ -23,11 +23,11 @@ int check_unique(void *addrs[], int size) {
       if (addrs[i] == addrs[j]) {
         error(&logger, "addrs[%d] = %d, addrs[%d] = %d\n", i, addrs[i], j,
               addrs[j]);
-        return 0; // return false
+        return 0;  // return false
       }
     }
   }
-  return 1; // return true
+  return 1;  // return true
 }
 
 void setup() {
@@ -56,13 +56,13 @@ void run() {
   if (mem_after > mem_before - NUM_4K * NUM) {
     error(&logger, "not enough memory!\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   if (!check_unique(addrs, NUM)) {
     error(&logger, "FAILED\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

@@ -1,4 +1,4 @@
-//ported by sundong 2023.3.26
+// ported by sundong 2023.3.26
 #include <mbr/loaderprint.h>
 #include <mbr/string.h>
 int video_row = 0;
@@ -6,7 +6,7 @@ int video_col = 0;
 // 清除屏幕
 void clear_screen() {
   char *video_memory = (char *)(VIDEO_MEM_START);
-  for (int i = 0; i < TERMINAL_ROW; i++){
+  for (int i = 0; i < TERMINAL_ROW; i++) {
     for (int j = 0; j < TERMINAL_COLUMN; j++) {
       // 设置颜色,在清理屏幕的时候使用
       *video_memory = 0x0;
@@ -19,7 +19,9 @@ void clear_screen() {
   video_row = 0;
 }
 
-void lprintf(char *s, ...)  // 传入输出的行与列,然后输入需要输出的字符串,根据字符串输出后面的信息
+void lprintf(
+    char *s,
+    ...)  // 传入输出的行与列,然后输入需要输出的字符串,根据字符串输出后面的信息
 {
   if (video_row >= TERMINAL_ROW) {
     video_row = video_row % TERMINAL_ROW;
@@ -27,7 +29,9 @@ void lprintf(char *s, ...)  // 传入输出的行与列,然后输入需要输出
   if (video_col > TERMINAL_COLUMN) {
     video_col = video_col % TERMINAL_COLUMN;
   }
-  char *video_memory = (char *)(VIDEO_MEM_START + video_row * TERMINAL_COLUMN * 2 + video_col * 2);
+  char *video_memory =
+      (char *)(VIDEO_MEM_START + video_row * TERMINAL_COLUMN * 2 +
+               video_col * 2);
   va_list ap;
   va_start(ap, s);
   while (*s != 0) {
@@ -55,7 +59,7 @@ void lprintf(char *s, ...)  // 传入输出的行与列,然后输入需要输出
           *video_memory = s3 + '0';
           video_memory = video_memory + 2;
         }
-        video_col+=8;
+        video_col += 8;
       } else if (*s == 'c') {
         u8 content;
         content = va_arg(ap, int);
@@ -68,12 +72,13 @@ void lprintf(char *s, ...)  // 传入输出的行与列,然后输入需要输出
         video_memory = video_memory + 2;
         *video_memory = *s;
         video_memory = video_memory + 2;
-        video_col+=2;
+        video_col += 2;
       }
     } else if (*s == '\n') {
-      video_row+=1;
-      video_col=0;
-      video_memory = (char *)(VIDEO_MEM_START + video_row * TERMINAL_COLUMN * 2+video_col * 2);
+      video_row += 1;
+      video_col = 0;
+      video_memory = (char *)(VIDEO_MEM_START +
+                              video_row * TERMINAL_COLUMN * 2 + video_col * 2);
     } else {
       *video_memory = *s;
       video_memory = video_memory + 2;
@@ -89,8 +94,6 @@ void print_mem(struct ARDStruct *adr) {
   lprintf("%d %d %d %d %d\n", (*adr).dwBaseAddrLow, (*adr).dwBaseAddrHigh,
           (*adr).dwLengthLow, (*adr).dwLengthHigh, (*adr).dwType);
 }
-void print_elf(struct Proghdr *ph ) {
-  lprintf("%d %d %d %d\n", ph->p_type, ph->p_va, ph->p_filesz,
-          ph->p_offset);
-
+void print_elf(struct Proghdr *ph) {
+  lprintf("%d %d %d %d\n", ph->p_type, ph->p_va, ph->p_filesz, ph->p_offset);
 }

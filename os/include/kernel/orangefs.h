@@ -5,45 +5,45 @@
  * This file is added by xw. 18/6/17
  */
 
-#ifndef	FS_ORANGE_H
-#define	FS_ORANGE_H
-#include <kernel/type.h>
+#ifndef FS_ORANGE_H
+#define FS_ORANGE_H
+
 #include <kernel/const.h>
-#include <kernel/fs.h>
+#include <kernel/type.h>
+
 /**
  * @def   MAGIC_V1
  * @brief Magic number of FS v1.0
  */
-#define	MAGIC_V1	0x111
+#define MAGIC_V1 0x111
 // #define	NR_DEFAULT_FILE_SECTS	2048 /* 2048 * 512 = 1MB */
-//add by sundong 2023.5.26
-#define NR_DEFAULT_FILE_BLOCKS	1024
+// add by sundong 2023.5.26
+#define NR_DEFAULT_FILE_BLOCKS 1024
 
 // mark 路径最大长度
 // #define	MAX_PATH	128 common macro in fs_const.h
-#define	MAX_FILENAME_LEN	12
-
+#define MAX_FILENAME_LEN 12
 
 /* Error types of dir option*/
 #define DIR_PATH_INEXISTE -1
 #define DIR_PATH_REPEATED -2
 #define DIR_FILE_OCCUPIYED -3
 
-struct orange_sb_info{
-	u32	magic;		  /**< Magic number */
-	u32	nr_inodes;	  /**< How many inodes */
-	u32	nr_blocks;	  /**< How many blocks */
-	u32	nr_imap_blocks;	  /**< How many inode-map blocks */
-	u32	nr_smap_blocks;	  /**< How many sector-map blocks */
-	u32	n_1st_block;	  /**< Number of the 1st data block */
-	u32	nr_inode_blocks;   /**< How many inode blocks */
-	u32	root_inode;       /**< Inode nr of root directory */
-	u32	inode_size;       /**< INODE_SIZE */
-	u32	inode_isize_off;  /**< Offset of `struct inode::i_size' */
-	u32	inode_start_off;  /**< Offset of `struct inode::i_start_sect' */
-	u32	dir_ent_size;     /**< DIR_ENTRY_SIZE */
-	u32	dir_ent_inode_off;/**< Offset of `struct dir_entry::inode_nr' */
-	u32	dir_ent_fname_off;/**< Offset of `struct dir_entry::name' */
+struct orange_sb_info {
+  u32 magic;             /**< Magic number */
+  u32 nr_inodes;         /**< How many inodes */
+  u32 nr_blocks;         /**< How many blocks */
+  u32 nr_imap_blocks;    /**< How many inode-map blocks */
+  u32 nr_smap_blocks;    /**< How many sector-map blocks */
+  u32 n_1st_block;       /**< Number of the 1st data block */
+  u32 nr_inode_blocks;   /**< How many inode blocks */
+  u32 root_inode;        /**< Inode nr of root directory */
+  u32 inode_size;        /**< INODE_SIZE */
+  u32 inode_isize_off;   /**< Offset of `struct inode::i_size' */
+  u32 inode_start_off;   /**< Offset of `struct inode::i_start_sect' */
+  u32 dir_ent_size;      /**< DIR_ENTRY_SIZE */
+  u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr' */
+  u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
 };
 #define ORANGE_SB(sb) (&((sb)->orange_sb))
 /**
@@ -53,10 +53,10 @@ struct orange_sb_info{
  * Note that this is the size of the struct in the device, \b NOT in memory.
  * The size in memory is larger because of some more members.
  */
-#define	SUPER_BLOCK_SIZE	64		//modified by mingxuan 2020-10-30
-#define	INVALID_INODE		0
-#define	ROOT_INODE			1
-#define	NR_ORANGE_INODE	64	/* FIXME */
+#define SUPER_BLOCK_SIZE 64  // modified by mingxuan 2020-10-30
+#define INVALID_INODE 0
+#define ROOT_INODE 1
+#define NR_ORANGE_INODE 64 /* FIXME */
 /**
  * @struct inode
  * @brief  i-node
@@ -69,24 +69,24 @@ struct orange_sb_info{
  * \b NOTE: Remember to change INODE_SIZE if the members are changed
  */
 struct orange_inode {
-	u32	i_mode;		/**< Accsess mode */
-	u32	i_size;		/**< File size */
-	u32	i_start_block;	/**< The first block of the data */
-	u32	i_nr_blocks;	/**< How many blocks the file occupies */
-	u8	_unused[15];	/**< Stuff for alignment */
-	u8 i_mnt_index; /**the index in mnt_table when the inode is mountpoint*/
-	/* the following items are only present in memory */
-	int	i_dev;
-	int	i_cnt;		/**< How many procs share this inode  */
-	int	i_num;		/**< inode nr.  */
+  u32 i_mode;        /**< Accsess mode */
+  u32 i_size;        /**< File size */
+  u32 i_start_block; /**< The first block of the data */
+  u32 i_nr_blocks;   /**< How many blocks the file occupies */
+  u8 _unused[15];    /**< Stuff for alignment */
+  u8 i_mnt_index;    /**the index in mnt_table when the inode is mountpoint*/
+  /* the following items are only present in memory */
+  int i_dev;
+  int i_cnt; /**< How many procs share this inode  */
+  int i_num; /**< inode nr.  */
 };
 extern struct superblock_operations orange_sb_ops;
 extern struct inode_operations orange_inode_ops;
 extern struct file_operations orange_file_ops;
 
-struct orange_inode_info{
-	u32	i_start_block;	/**< The first block of the data */
-	u32	i_nr_blocks;	/**< How many blocks the file occupies */
+struct orange_inode_info {
+  u32 i_start_block; /**< The first block of the data */
+  u32 i_nr_blocks;   /**< How many blocks the file occupies */
 };
 /**
  * @def   INODE_SIZE
@@ -95,15 +95,15 @@ struct orange_inode_info{
  * Note that this is the size of the struct in the device, \b NOT in memory.
  * The size in memory is larger because of some more members.
  */
-#define	INODE_SIZE	32
+#define INODE_SIZE 32
 
 /**
  * @struct dir_entry
  * @brief  Directory Entry
  */
 struct dir_entry {
-	int	inode_nr;		/**< inode nr. */
-	char name[MAX_FILENAME_LEN];	/**< Filename */
+  int inode_nr;                /**< inode nr. */
+  char name[MAX_FILENAME_LEN]; /**< Filename */
 };
 
 /**
@@ -112,7 +112,7 @@ struct dir_entry {
  *
  * It is as same as the size in memory.
  */
-#define	DIR_ENTRY_SIZE	sizeof(struct dir_entry)
+#define DIR_ENTRY_SIZE sizeof(struct dir_entry)
 /* //deleted by mingxuan 2019-5-17
 PUBLIC int open(const char *pathname, int flags);
 PUBLIC int close(int fd);
@@ -122,7 +122,7 @@ PUBLIC int lseek(int fd, int offset, int whence);
 PUBLIC int unlink(const char *pathname);
 */
 
-//added by xw, 18/6/18
+// added by xw, 18/6/18
 /* //deleted by mingxuan 2019-5-17
 PUBLIC int sys_open(void *uesp);
 PUBLIC int sys_close(void *uesp);

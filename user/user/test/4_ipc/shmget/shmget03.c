@@ -16,7 +16,7 @@ logging logger;
 int shm_id;
 const key_t KEY = 12;
 const int SHM_SIZE = 64;
-#define NR_SHM 10 // 10 or 256
+#define NR_SHM 10  // 10 or 256
 char *shm_addr;
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }

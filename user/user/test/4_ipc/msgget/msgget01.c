@@ -36,7 +36,7 @@ void recv() {
   int mtext_len = strlen(send_buf.mtext) + 1;
   // msgtype 为 0, 取出队列中的第一个消息
   int read_len = msgrcv(mq_id, &recv_buf, MSG_SIZE, 0,
-                        IPC_NOWAIT); // 取出队列的第一个消息
+                        IPC_NOWAIT);  // 取出队列的第一个消息
   info(&logger, "msgrcv return %d\n", read_len);
   if (read_len == -1) {
     error(&logger, "msgrcv return %d, read error\n", read_len);

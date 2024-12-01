@@ -25,7 +25,6 @@ const char *filename = "lseek08.txt";
 char read_buf[BUF_SIZE];
 int fd;
 
-
 void setup() {
   logger_init(&logger, log_filename, test_name, LOG_INFO);
 

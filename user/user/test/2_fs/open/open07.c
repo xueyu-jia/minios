@@ -51,7 +51,7 @@ void run() {
   if (n > 0) {
     error(&logger, "should not write to file\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

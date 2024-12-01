@@ -28,11 +28,11 @@ int check_unique(int pids[], int size) {
       if (pids[i] == pids[j]) {
         error(&logger, "pids[%d] = %d, pids[%d] = %d\n", i, pids[i], j,
               pids[j]);
-        return 0; // return false
+        return 0;  // return false
       }
     }
   }
-  return 1; // return true
+  return 1;  // return true
 }
 
 void run() {
@@ -41,13 +41,13 @@ void run() {
   info(&logger, "fork...\n");
   for (int i = 0; i < N_FORKS; i++) {
     int pid = SAFE_FORK();
-    if (pid == 0) {    // child process
-      exit(get_pid()); // 返回 pid
+    if (pid == 0) {     // child process
+      exit(get_pid());  // 返回 pid
     }
   }
 
   // father process
-  pids[N_FORKS] = get_pid(); // 父进程自己的 pid
+  pids[N_FORKS] = get_pid();  // 父进程自己的 pid
   info(&logger, "waiting children exiting...\n");
   for (int i = 0; i < N_FORKS; i++) {
     int status = -1;
@@ -58,7 +58,7 @@ void run() {
   if (!check_unique(pids, N_FORKS + 1)) {
     error(&logger, "FAILED\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "all pids are unique\n");

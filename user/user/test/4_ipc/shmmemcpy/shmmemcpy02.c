@@ -12,7 +12,6 @@ logging logger;
 #define SHM_SIZE 4096
 #define SHM_ADDR ShareLinBase
 
-
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 
 void cleanup() { logger_close(&logger); }

@@ -43,7 +43,7 @@ void run() {
   if (n != 1) {
     error(&logger, "can not write to file\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

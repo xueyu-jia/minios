@@ -20,7 +20,7 @@ void run() {
   if (pid < 0 || pid >= 64) {
     info(&logger, "pid not in range [0, 64)\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   info(&logger, "PASSED\n");
 }

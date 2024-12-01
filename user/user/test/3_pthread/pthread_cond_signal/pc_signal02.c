@@ -33,14 +33,14 @@ void cleanup() {
   if (rval != 0) {
     error(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   rval = pthread_cond_destroy(&cond);
   if (rval != 0) {
     error(&logger, "pthread_cond_destroy cond return %d, expected 0\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   logger_close(&logger);
@@ -57,7 +57,7 @@ void *thread_func(void *arg) {
     error(&logger, "thread[%d]: failed to acquire mutex, return %d\n", tid,
           rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   while (!flag) {
@@ -66,7 +66,7 @@ exit(TC_FAIL);
     if (rval != 0) {
       error(&logger, "thread[%d]: pthread_cond_wait return %d\n", tid, rval);
       cleanup();
-exit(TC_FAIL);
+      exit(TC_FAIL);
     }
   }
 
@@ -75,7 +75,7 @@ exit(TC_FAIL);
     error(&logger, "thread[%d]: failed to release mutex, return %d\n", tid,
           rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   pthread_exit(NULL);
@@ -90,7 +90,7 @@ void run() {
   if (rval != 0) {
     error(&logger, "failed to create thread, return %d\n", rval);
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   // sleep 等待线程开始
@@ -100,7 +100,7 @@ exit(TC_UNRESOLVED);
   if (rval != 0) {
     error(&logger, "main thread: pthread_mutex_lock failed, return %d\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   flag = 1;
@@ -109,7 +109,7 @@ exit(TC_FAIL);
   if (rval != 0) {
     error(&logger, "main thread: failed to sinal condition, return %d\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   rval = pthread_mutex_unlock(&mutex);
@@ -117,7 +117,7 @@ exit(TC_FAIL);
     error(&logger, "main thread: pthread_mutex_unlock failed, return %d\n",
           rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   // 等待所有线程结束
@@ -125,7 +125,7 @@ exit(TC_FAIL);
   if (rval != 0) {
     error(&logger, "failed to join thread, return %d\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

@@ -24,11 +24,11 @@
 #define ENOMEM -7
 #define ENOSPC -8
 
-#define MSG_SIZE 1024 // 暂时先用 1024......
+#define MSG_SIZE 1024  // 暂时先用 1024......
 
-#define TC_FAIL -1      // 测试失败
-#define TC_PASS 0       // 测试成功
-#define TC_UNRESOLVED 1 // 未处理
+#define TC_FAIL -1       // 测试失败
+#define TC_PASS 0        // 测试成功
+#define TC_UNRESOLVED 1  // 未处理
 
 extern const char *LOG_LEVEL_LITERAL[];
 extern const char *log_filename;
@@ -59,15 +59,15 @@ struct msgbuf {
 
 #define SAFE_FORK() safe_fork(__FILE__, __LINE__, NULL)
 
-#define SAFE_OPEN(filename, oflags)                                            \
+#define SAFE_OPEN(filename, oflags) \
   safe_open(__FILE__, __LINE__, NULL, (filename), (oflags))
 
 #define SAFE_CLOSE(fd) safe_close(__FILE__, __LINE__, fd)
 
-#define SAFE_WRITE(fd, buf, nbytes)                                            \
+#define SAFE_WRITE(fd, buf, nbytes) \
   safe_write(__FILE__, __LINE__, fd, buf, nbytes)
 
-#define SAFE_READ(fd, buf, nbytes)                                             \
+#define SAFE_READ(fd, buf, nbytes) \
   safe_read(__FILE__, __LINE__, fd, buf, nbytes)
 
 int safe_fork(const char *file, const int lineno, void (*cleanup_fn)(void));

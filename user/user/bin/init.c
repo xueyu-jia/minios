@@ -1,11 +1,10 @@
 //#include "stdio.h"
-#include "../include/stdio.h"	//modified by mingxuan 2021-4-5
-#include "../include/malloc.h"	//added by mingxuan 2021-4-5
+#include "../include/malloc.h"  //added by mingxuan 2021-4-5
+#include "../include/stdio.h"   //modified by mingxuan 2021-4-5
 
 // int global=0;
 
 // char *str2,*str3;
-
 
 // void pthread_test3()
 // {
@@ -14,7 +13,7 @@
 // 	*(str2+0) = 'M';
 // 	*(str2+1) = 'a';
 // 	*(str2+2) = '\0';
-	
+
 // 	while(1)
 // 	{
 // 		if(str3!=0)
@@ -23,12 +22,11 @@
 // 			(*(str2+1)) += 1;
 // 			udisp_str(str3);
 // 			udisp_str(" ");
-// 		}		
+// 		}
 // 		i=10000;
 // 		while(--i){}
 // 	}
 // }
-
 
 // void pthread_test2()
 // {
@@ -37,8 +35,8 @@
 // 	*(str3+0) = 'M';
 // 	*(str3+1) = 'z';
 // 	*(str3+2) = '\0';
-	
-// 	// pthread_create(pthread_test3);	
+
+// 	// pthread_create(pthread_test3);
 // 	while(1)
 // 	{
 // 		if(str2!=0)
@@ -48,7 +46,7 @@
 // 			udisp_str(str2);
 // 			udisp_str(" ");
 // 		}
-		
+
 // 		i=10000;
 // 		while(--i){}
 // 	}
@@ -76,18 +74,18 @@ added by xw, 18/4/27
 int main(int arg,char *argv[])
 {
 
-	int i=0;
-	
-	pthread(pthread_test1);
-	while(1)
-	{
-		udisp_str("init");
-		udisp_int(++global);
-		udisp_str(" ");
-		i=10000;
-		while(--i){}
-	}
-	return 0;
+        int i=0;
+
+        pthread(pthread_test1);
+        while(1)
+        {
+                udisp_str("init");
+                udisp_int(++global);
+                udisp_str(" ");
+                i=10000;
+                while(--i){}
+        }
+        return 0;
 }
 */
 
@@ -95,21 +93,21 @@ int main(int arg,char *argv[])
                           Syscall Fork Test
 added by xw, 18/4/27
  *======================================================================*/
-	/*
+/*
 void main(int arg,char *argv[])
 {
-	int i=0;
-	
-	fork();
-	while(1)
-	{
-		udisp_str("init");
-		udisp_int(++global);
-		udisp_str(" ");
-		i=10000;
-		while(--i){}
-	}
-	return ;
+int i=0;
+
+fork();
+while(1)
+{
+        udisp_str("init");
+        udisp_int(++global);
+        udisp_str(" ");
+        i=10000;
+        while(--i){}
+}
+return ;
 }
 //	*/
 
@@ -117,20 +115,20 @@ void main(int arg,char *argv[])
                            Syscall Exec Test
 added by xw, 18/4/27
  *======================================================================*/
-	/*
+/*
 void main(int arg,char *argv[])
 {
-	int i=0;
-	
-	while(1)
-	{
-		udisp_str("init");
-		udisp_int(++global);
-		udisp_str(" ");
-		i=10000;
-		while(--i){}
-	}
-	return ;
+int i=0;
+
+while(1)
+{
+        udisp_str("init");
+        udisp_int(++global);
+        udisp_str(" ");
+        i=10000;
+        while(--i){}
+}
+return ;
 }
 //	*/
 
@@ -138,20 +136,20 @@ void main(int arg,char *argv[])
                            Syscall Yield Test
 added by xw, 18/8/16
  *======================================================================*/
-	/*
+/*
 void main(int arg,char *argv[])
 {
-	int i=0;
-	
-	while(1)
-	{
-		udisp_str("U( ");
-		yield();
-		udisp_str(") ");
-		i=10000;
-		while(--i){}
-	}
-	return ;
+int i=0;
+
+while(1)
+{
+        udisp_str("U( ");
+        yield();
+        udisp_str(") ");
+        i=10000;
+        while(--i){}
+}
+return ;
 }
 //	*/
 
@@ -159,26 +157,26 @@ void main(int arg,char *argv[])
                            Syscall Sleep Test
 added by xw, 18/8/16
  *======================================================================*/
-	/*
+/*
 void main(int arg,char *argv[])
 {
-	int i=0;
-	
-	while(1)
-	{
-		udisp_str("U( ");
-		udisp_str("[");
-		udisp_int(get_ticks());
-		udisp_str("] ");
-		sleep(5);
-		udisp_str("[");
-		udisp_int(get_ticks());
-		udisp_str("] ");
-		udisp_str(") ");
-		i=10000;
-		while(--i){}
-	}
-	return ;
+int i=0;
+
+while(1)
+{
+        udisp_str("U( ");
+        udisp_str("[");
+        udisp_int(get_ticks());
+        udisp_str("] ");
+        sleep(5);
+        udisp_str("[");
+        udisp_int(get_ticks());
+        udisp_str("] ");
+        udisp_str(") ");
+        i=10000;
+        while(--i){}
+}
+return ;
 }
 //	*/
 
@@ -190,63 +188,63 @@ added by xw, 18/6/19
 void main(int arg,char *argv[])
 {
 
-	int fd;
-	int i, n;
-	const int rd_bytes = 4;
-	//char filename[MAX_FILENAME_LEN+1] = "blah";
-	char filename[MAX_FILENAME_LEN+1] = "orange/blah";
-	char bufr[5];
-	const char bufw[] = "abcde";
+        int fd;
+        int i, n;
+        const int rd_bytes = 4;
+        //char filename[MAX_FILENAME_LEN+1] = "blah";
+        char filename[MAX_FILENAME_LEN+1] = "orange/blah";
+        char bufr[5];
+        const char bufw[] = "abcde";
 
-	udisp_str("\n(U)");
+        udisp_str("\n(U)");
 
-	fd = open(filename, O_CREAT | O_RDWR);	
-	
-	if(fd != -1) {
-		udisp_str("File created: ");
-		udisp_str(filename);
-		udisp_str(" (fd ");
-		udisp_int(fd);
-		udisp_str(")\n");	
-		
-		n = write(fd, bufw, strlen(bufw));
-		if(n != strlen(bufw)) {
-			udisp_str("Write error\n");
-		}
-		
-		close(fd);
-	}
-	
-	udisp_str("(U)");
-	fd = open(filename, O_RDWR);
-	udisp_str("   ");
-	udisp_str("File opened. fd: ");
-	udisp_int(fd);
-	udisp_str("\n");
+        fd = open(filename, O_CREAT | O_RDWR);
 
-	udisp_str("(U)");
-	int lseek_status = lseek(fd, 1, SEEK_SET);
-	udisp_str("Return value of lseek is: ");
-	udisp_int(lseek_status);
-	udisp_str("  \n");
+        if(fd != -1) {
+                udisp_str("File created: ");
+                udisp_str(filename);
+                udisp_str(" (fd ");
+                udisp_int(fd);
+                udisp_str(")\n");
 
-	udisp_str("(U)");
-	n = read(fd, bufr, rd_bytes);
-	if(n != rd_bytes) {
-		udisp_str("Read error\n");
-	}
-	bufr[n] = 0;
-	udisp_str("Bytes read: ");
-	udisp_str(bufr);
-	udisp_str("\n");
+                n = write(fd, bufw, strlen(bufw));
+                if(n != strlen(bufw)) {
+                        udisp_str("Write error\n");
+                }
 
-	close(fd);
-	
+                close(fd);
+        }
 
-	while (1) {
-	}
-	
-	return;
+        udisp_str("(U)");
+        fd = open(filename, O_RDWR);
+        udisp_str("   ");
+        udisp_str("File opened. fd: ");
+        udisp_int(fd);
+        udisp_str("\n");
+
+        udisp_str("(U)");
+        int lseek_status = lseek(fd, 1, SEEK_SET);
+        udisp_str("Return value of lseek is: ");
+        udisp_int(lseek_status);
+        udisp_str("  \n");
+
+        udisp_str("(U)");
+        n = read(fd, bufr, rd_bytes);
+        if(n != rd_bytes) {
+                udisp_str("Read error\n");
+        }
+        bufr[n] = 0;
+        udisp_str("Bytes read: ");
+        udisp_str(bufr);
+        udisp_str("\n");
+
+        close(fd);
+
+
+        while (1) {
+        }
+
+        return;
 }
 */
 
@@ -257,56 +255,56 @@ added by mingxuan 2019-5-18
 /*
 void main(int arg,char *argv[])
 {
-	
-	int fd;
-	char filename[] = "fat0/test33.txt";
-	//char filename[] = "orange/test34.txt";
-	//char bufw[] = "abcd23";
-	
-	char bufw[10];
-	//char bufw[2048]; //4个扇区
-	//char bufw[512];
-	char bufr[256];
 
-	int i=0;
-	for(i=0;i<9;i++)
-	{
-		bufw[i]='a';
-	}
-	//bufw[2045]='q';
-	//bufw[2046]='l';
-	bufw[9]='\0';
+        int fd;
+        char filename[] = "fat0/test33.txt";
+        //char filename[] = "orange/test34.txt";
+        //char bufw[] = "abcd23";
 
-	//create(filename);
-	fd = open(filename, O_CREAT | O_RDWR);
-	//fd = open(filename, O_RDWR);
-	if(fd != -1) 
-	{
-		write(fd, bufw, strlen(bufw));
-		close(fd);
-	}
+        char bufw[10];
+        //char bufw[2048]; //4个扇区
+        //char bufw[512];
+        char bufr[256];
 
-	fd = open(filename, O_RDWR);
-	if(fd != -1)
-	{
-		read(fd, bufr, 256);
-		udisp_str(bufr);
-		close(fd);
-	}
+        int i=0;
+        for(i=0;i<9;i++)
+        {
+                bufw[i]='a';
+        }
+        //bufw[2045]='q';
+        //bufw[2046]='l';
+        bufw[9]='\0';
 
-	
-	while (1) {
-	}
-	
-	
-	return;
+        //create(filename);
+        fd = open(filename, O_CREAT | O_RDWR);
+        //fd = open(filename, O_RDWR);
+        if(fd != -1)
+        {
+                write(fd, bufw, strlen(bufw));
+                close(fd);
+        }
+
+        fd = open(filename, O_RDWR);
+        if(fd != -1)
+        {
+                read(fd, bufr, 256);
+                udisp_str(bufr);
+                close(fd);
+        }
+
+
+        while (1) {
+        }
+
+
+        return;
 }
 */
 
 // added by rzr, pgw, 2020
 
-#include "time.h"
 #include "syscall.h"
+#include "time.h"
 // #define O_CREAT 1
 // #define O_RDWR 2
 // #define PATH_DEL '\\'
@@ -314,7 +312,7 @@ void main(int arg,char *argv[])
 // char workdev[16];
 // char workdir[256];
 
-//deleted by mingxuan 2021-8-7
+// deleted by mingxuan 2021-8-7
 
 // int argc;
 // char argv[8][256];
@@ -340,7 +338,6 @@ void main(int arg,char *argv[])
 // 	*optr = 0;
 // 	++argc;
 // }
-
 
 // char* strchrs(char *s1, char *s2)
 // {
@@ -677,131 +674,115 @@ void main(int arg,char *argv[])
 // 	close(fd);
 // }
 
-
 /*======================================================================*
-                    		验证多个FAT32
-											added by mingxuan 2021-2-7
+                                验证多个FAT32
+                                                                                        added by mingxuan 2021-2-7
  *======================================================================*/
 //验证多个FAT32
 /*
 void main()
 {
-	tty = open("dev_tty0", O_RDWR);
-	char rbuf[256];
-	strcpy(workdir, "\\");
-	strcpy(workdev, "fat0/");
-	//进程工作目录初始化
-	fat_chdir("V:\\");
-	while (1)
-	{
-		fprintf(tty, "miniOS:%sV:%s $ ", workdev, workdir);
-		int len = read(tty, rbuf, 255);
-		rbuf[len] = 0;
-		parse_args(rbuf);
-		if (!strcmp(argv[0], "cat"))
-		{
-			builtin_cat();
-		}
-		if (!strcmp(argv[0], "cd"))
-		{
-			builtin_chdir();
-		}
-		if (!strcmp(argv[0], "chdev"))
-		{
-			buildin_chdev();
-		}
-		if (!strcmp(argv[0], "ls"))
-		{
-			builtin_lsdir();
-		}
-		if (!strcmp(argv[0], "mkdir"))
-		{
-			builtin_mkdir();
-		}
-		if (!strcmp(argv[0], "pwd"))
-		{
-			builtin_pwd();
-		}
-		if (!strcmp(argv[0], "rm"))
-		{
-			builtin_rm();
-		}
-		if (!strcmp(argv[0], "rmdir"))
-		{
-			builtin_rmdir();
-		}
-		if (!strcmp(argv[0], "find"))
+        tty = open("dev_tty0", O_RDWR);
+        char rbuf[256];
+        strcpy(workdir, "\\");
+        strcpy(workdev, "fat0/");
+        //进程工作目录初始化
+        fat_chdir("V:\\");
+        while (1)
         {
-		    builtin_find();
+                fprintf(tty, "miniOS:%sV:%s $ ", workdev, workdir);
+                int len = read(tty, rbuf, 255);
+                rbuf[len] = 0;
+                parse_args(rbuf);
+                if (!strcmp(argv[0], "cat"))
+                {
+                        builtin_cat();
+                }
+                if (!strcmp(argv[0], "cd"))
+                {
+                        builtin_chdir();
+                }
+                if (!strcmp(argv[0], "chdev"))
+                {
+                        buildin_chdev();
+                }
+                if (!strcmp(argv[0], "ls"))
+                {
+                        builtin_lsdir();
+                }
+                if (!strcmp(argv[0], "mkdir"))
+                {
+                        builtin_mkdir();
+                }
+                if (!strcmp(argv[0], "pwd"))
+                {
+                        builtin_pwd();
+                }
+                if (!strcmp(argv[0], "rm"))
+                {
+                        builtin_rm();
+                }
+                if (!strcmp(argv[0], "rmdir"))
+                {
+                        builtin_rmdir();
+                }
+                if (!strcmp(argv[0], "find"))
+        {
+                    builtin_find();
         }
-		if (!strcmp(argv[0], "tee"))
-		{
-			builtin_tee();
-		}
-		if (!strcmp(argv[0], "fat32_test"))
-		{
-			fat32_test();
-		}
-		if (!strcmp(argv[0], "write_test"))
-		{
-			write_test();
-		}
-	}
+                if (!strcmp(argv[0], "tee"))
+                {
+                        builtin_tee();
+                }
+                if (!strcmp(argv[0], "fat32_test"))
+                {
+                        fat32_test();
+                }
+                if (!strcmp(argv[0], "write_test"))
+                {
+                        write_test();
+                }
+        }
 }
 */
 
 /*======================================================================*
-                    		启动shell_0
-											added by mingxuan 2021-2-7
+                                启动shell_0
+                                                                                        added by mingxuan 2021-2-7
  *======================================================================*/
 //启动shell_0
 
-int main(int arg,char *argv[])
-{
-	int stdin = open("/dev/tty0",O_RDWR);
-	int stdout= open("/dev/tty0",O_RDWR);
-	int stderr= open("/dev/tty0",O_RDWR);
+int main(int arg, char *argv[]) {
+  int stdin = open("/dev/tty0", O_RDWR);
+  int stdout = open("/dev/tty0", O_RDWR);
+  int stderr = open("/dev/tty0", O_RDWR);
 
-	printf("init:toatal_mem_size=%x\n",total_mem_size());
-	struct tm time;
-	get_time(&time);
-	// time.tm_hour = (time.tm_hour + 8)%24;
-	printf("time:%d-%02d-%02d %02d:%02d:%02d\n", 
-	time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
-	//char filename[30] = "fat0/shell_0.bin";
-	//printf("hello world!\n");
-	if(0!=fork())
-	{//father
-		while(1){
-			wait(NULL);
-		}
-	}
-	else
-	{//child
-		// execve("fat0/shell_0.bin");
-// #ifdef FAT32_BOOT
-// 	execve("fat0/shell_0.bin",NULL,NULL);
-// #endif
-// #ifdef ORANGE_BOOT
-		char *arg[2] = {
-			"/bin/shell",
-			NULL
-		};
-		char *env[2] = {
-			"PATH=/bin;.",
-			NULL
-		};
-		execve(arg[0],arg,env);
-// #endif
-		//execve("fat0/shell_0.bin",NULL,NULL);
+  printf("init:toatal_mem_size=%x\n", total_mem_size());
+  struct tm time;
+  get_time(&time);
+  // time.tm_hour = (time.tm_hour + 8)%24;
+  printf("time:%d-%02d-%02d %02d:%02d:%02d\n", time.tm_year + 1900,
+         time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
+  // char filename[30] = "fat0/shell_0.bin";
+  // printf("hello world!\n");
+  if (0 != fork()) {  // father
+    while (1) {
+      wait(NULL);
+    }
+  } else {  // child
+    // execve("fat0/shell_0.bin");
+    // #ifdef FAT32_BOOT
+    // 	execve("fat0/shell_0.bin",NULL,NULL);
+    // #endif
+    // #ifdef ORANGE_BOOT
+    char *arg[2] = {"/bin/shell", NULL};
+    char *env[2] = {"PATH=/bin;.", NULL};
+    execve(arg[0], arg, env);
+    // #endif
+    // execve("fat0/shell_0.bin",NULL,NULL);
 
-		//execve(filename);
-	}
-	
-	return 0;
+    // execve(filename);
+  }
+
+  return 0;
 }
-
-
-
-
-

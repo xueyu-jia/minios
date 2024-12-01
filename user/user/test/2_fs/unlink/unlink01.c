@@ -35,7 +35,7 @@ void run() {
   info(&logger, "expected an invalid fd, fd: %d\n", fd);
   if (fd >= 0) {
     close(fd);
-    unlink(filename); // try to unlink again
+    unlink(filename);  // try to unlink again
     cleanup();
     exit(-1);
   }

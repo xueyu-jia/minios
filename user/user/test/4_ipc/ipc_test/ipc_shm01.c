@@ -17,10 +17,11 @@ logging logger;
 
 #define SENDER_NUM 2
 #define RECEIVER_NUM 2
-const char *send_text = "line 1\nline 2\nline 3\nline 4\nline 5\n"
-                        "line 6\nline 7\nline 8\nline 9\nline 10\n"
-                        "line 11\nline 12\nline 13\nline 14\nline 15\n"
-                        "line 16\nline 17\nline 18\nline 19\nline 20\n";
+const char *send_text =
+    "line 1\nline 2\nline 3\nline 4\nline 5\n"
+    "line 6\nline 7\nline 8\nline 9\nline 10\n"
+    "line 11\nline 12\nline 13\nline 14\nline 15\n"
+    "line 16\nline 17\nline 18\nline 19\nline 20\n";
 const char *send_file = "sendshm.txt";
 const char *recv_file = "recvshm.txt";
 int send_fd;
@@ -49,7 +50,7 @@ void setup() {
   if (fd < 0) {
     error(&logger, "failed to create send.txt\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   int n = write(fd, send_text, strlen(send_text));
   if (n != strlen(send_text)) {
@@ -237,7 +238,7 @@ void run() {
   if (shm_id < 0) {
     error(&logger, "failed to create share memory\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
 
   info(&logger, "attach share memory...\n");
@@ -245,7 +246,7 @@ exit(TC_UNRESOLVED);
   if (shm_addr == (void *)-1) {
     error(&logger, "failed to attach share memory\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   msg_p = (struct share_msg *)shm_addr;
   printf("msg_p: %d\n", msg_p);
@@ -257,7 +258,7 @@ exit(TC_FAIL);
   if (rval != 0) {
     error(&logger, "failed to initialize mutex, return %d\n", rval);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   msg_p->filled = 0;
   msg_p->finished = 0;

@@ -20,7 +20,7 @@ void run() {
   info(&logger, "fork\n");
   int pid = SAFE_FORK();
 
-  if (pid == 0) { // child process
+  if (pid == 0) {  // child process
     info(&logger, "child exiting...\n");
     exit(child_status);
   }
@@ -28,14 +28,14 @@ void run() {
   // parent process
   int status;
   int child_pid = wait(&status);
-  if (status != child_status) { // 接收到的状态不一致
+  if (status != child_status) {  // 接收到的状态不一致
     info(&logger, "child return status: %d, expected: %d\n", status,
          child_status);
     cleanup();
     exit(TC_FAIL);
   }
 
-  if (pid != child_pid) { // 返回的 pid 值不正确
+  if (pid != child_pid) {  // 返回的 pid 值不正确
     info(&logger, "wait return pid: %d, expected: %d\n", child_pid, pid);
     info(&logger, "failed\n");
     cleanup();

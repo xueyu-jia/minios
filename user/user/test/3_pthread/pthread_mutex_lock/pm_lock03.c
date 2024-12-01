@@ -30,10 +30,10 @@ const char *syscall_name = "pthread_mutex_lock";
 logging logger;
 
 const int sig = 10;
-int thread_pid; // 新线程 pid
+int thread_pid;  // 新线程 pid
 static volatile pthread_mutex_t mutex;
-static volatile int handler_run = 0; // 新线程的 handler 是否已经运行过
-static volatile int mutex_accessed = 0; // 新线程是否已获取到 mutex
+static volatile int handler_run = 0;  // 新线程的 handler 是否已经运行过
+static volatile int mutex_accessed = 0;  // 新线程是否已获取到 mutex
 
 void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 

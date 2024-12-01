@@ -37,11 +37,11 @@ int check_unique(const char *s, pthread_t ids[]) {
       if (ids[i] == ids[j]) {
         info(&logger, "%s error: ids[%d] = %d, ids[%d] = %d\n", s, i, ids[i], j,
              ids[j]);
-        return 0; // return false
+        return 0;  // return false
       }
     }
   }
-  return 1; // return true
+  return 1;  // return true
 }
 
 // 线程函数

@@ -19,7 +19,7 @@ void run() {
   if (key == -1) {
     warning(&logger, "failed to ftok! return %d\n", key);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

@@ -28,8 +28,7 @@ int mq_id;
 int before_msgrcv, after_msgrcv;
 
 long abs(long num) {
-  if (num >= 0)
-    return num;
+  if (num >= 0) return num;
 
   return 0 - num;
 }

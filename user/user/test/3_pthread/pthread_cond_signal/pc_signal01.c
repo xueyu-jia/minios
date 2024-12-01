@@ -128,7 +128,6 @@ void run() {
     exit(TC_FAIL);
   }
   while (wakeup_count < THREAD_NUM) {
-
     info(&logger, "main thread: signal a condition\n");
     rval = pthread_cond_signal(&cond);
     if (rval != 0) {

@@ -28,7 +28,7 @@ void run() {
       if (status != exit_status || pid != ret_pid) {
         warning(&logger, "FAILED\n");
         cleanup();
-exit(TC_FAIL);
+        exit(TC_FAIL);
       }
     }
   }

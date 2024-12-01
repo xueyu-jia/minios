@@ -2,8 +2,8 @@
 #define CLOCK_H
 #include <kernel/const.h>
 
-extern int	ticks;
-extern u32 	current_timestamp;
+extern int ticks;
+extern u32 current_timestamp;
 
 PUBLIC void clock_handler(int irq);
 PUBLIC void init_clock();

@@ -43,7 +43,7 @@ void run() {
   for (int i = 0; i < N_FORKS; i++) {
     int status;
     wait(&status);
-    if (status == -1) { // execve error
+    if (status == -1) {  // execve error
       error(&logger, "execve error\n");
       cleanup();
       exit(TC_FAIL);

@@ -14,7 +14,6 @@ struct msgbuf recv_buf, send_buf = {MSG_TYPE, "msgrcv01-test-str"};
 int mq_id;
 int before_msgrcv, after_msgrcv;
 
-
 void setup() {
   logger_init(&logger, log_filename, test_name, LOG_INFO);
 
@@ -49,7 +48,7 @@ void recv() {
   before_msgrcv = get_ticks();
   // msgtype 为 0, 取出队列中的第一个消息
   int read_len = msgrcv(mq_id, &recv_buf, MSG_SIZE, 0,
-                        IPC_NOWAIT); // 取出队列的第一个消息
+                        IPC_NOWAIT);  // 取出队列的第一个消息
   after_msgrcv = get_ticks();
   if (read_len == -1) {
     info(&logger, "msgrcv return %d, read error\n", read_len);
@@ -84,7 +83,7 @@ void check() {
 
   // 检查队列中的消息数量
   info(&logger, "mq_info.msg_qnum: %d, expected 0\n", mq_info.msg_qnum);
-  if (mq_info.msg_qnum != 0) { // 消息队列中已无消息
+  if (mq_info.msg_qnum != 0) {  // 消息队列中已无消息
     cleanup();
     exit(-1);
   }

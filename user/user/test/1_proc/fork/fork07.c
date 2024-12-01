@@ -36,7 +36,7 @@ int run() {
   if (malloced == NULL) {
     error(&logger, "malloc_4k error\n");
     cleanup();
-exit(TC_UNRESOLVED);
+    exit(TC_UNRESOLVED);
   }
   info(&logger, "prepare done....\n");
   info(&logger, "fork...\n");
@@ -59,12 +59,12 @@ exit(TC_UNRESOLVED);
   if (pid != wait(&status)) {
     error(&logger, "wait return wrong PID\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   if (status != TC_PASS) {
     error(&logger, "FAILED\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

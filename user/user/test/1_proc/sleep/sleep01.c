@@ -22,7 +22,7 @@ void run() {
     sleep(i);
     int end = get_ticks();
     int ticks = end - start;
-    if (ticks < i) { // 经过的 ticks 应该不小于设定的 ticks
+    if (ticks < i) {  // 经过的 ticks 应该不小于设定的 ticks
       info(&logger, "end - start = %d, expected >= %d\n", ticks, i);
       exit(-1);
     }

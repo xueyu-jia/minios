@@ -35,7 +35,7 @@ void setup() {
 void fork_child1() {
   info(&logger, "parent: fork chilren1...\n");
   // 创建子进程并关闭 fd
-  if (SAFE_FORK() == 0) { // child process
+  if (SAFE_FORK() == 0) {  // child process
     close(fd);
     exit(0);
   }
@@ -47,7 +47,7 @@ void fork_child1() {
   if (status != 0) {
     error(&logger, "parent: receive %d from child\n", test_name, status);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 }
 
@@ -55,7 +55,7 @@ void fork_child2() {
   info(&logger, "parent: fork chilren2...\n");
 
   // 创建子进程并读取一个字符
-  if (SAFE_FORK() == 0) { // child process
+  if (SAFE_FORK() == 0) {  // child process
     char c;
     int n = read(fd, &c, 1);
     if (c != 'a') {
@@ -72,7 +72,7 @@ void fork_child2() {
   if (status != 0) {
     error(&logger, "parent: receive %d from child\n", test_name, status);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 }
 
@@ -89,7 +89,7 @@ int run() {
   if (c != '\0') {
     error(&logger, "file not reach EOF\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   // reach EOF

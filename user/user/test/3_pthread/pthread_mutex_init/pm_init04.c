@@ -22,7 +22,6 @@ void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 
 void cleanup() { logger_close(&logger); }
 
-
 void run() {
   pthread_mutexattr_t mta = {
       .name = mta_name,

@@ -108,7 +108,7 @@ void run() {
   info(&logger, "creating processes...\n");
   for (int i = 0; i < WRITE_NUM; i++) {
     int pid = fork();
-    if (pid == 0) { // child process
+    if (pid == 0) {  // child process
       write_func();
     }
   }

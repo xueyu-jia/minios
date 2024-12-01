@@ -51,14 +51,14 @@ void run() {
   }
 
   info(&logger, "mq_info.msg_qnum: %d, expected 1\n", mq_info.msg_qnum);
-  if (mq_info.msg_qnum != 1) { // 消息队列中只有一个消息
+  if (mq_info.msg_qnum != 1) {  // 消息队列中只有一个消息
     cleanup();
     exit(-1);
   }
 
   info(&logger, "mq_info.__msg_cbytes: %d, expected %d\n", mq_info.__msg_cbytes,
        strlen(send_buf.mtext) + 1);
-  if (mq_info.__msg_cbytes != strlen(send_buf.mtext) + 1) { // 检查数据长度
+  if (mq_info.__msg_cbytes != strlen(send_buf.mtext) + 1) {  // 检查数据长度
     cleanup();
     exit(-1);
   }

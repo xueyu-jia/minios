@@ -17,7 +17,6 @@ logging logger;
 
 static pthread_mutex_t mutex;
 
-
 void setup() {
   int rval;
 

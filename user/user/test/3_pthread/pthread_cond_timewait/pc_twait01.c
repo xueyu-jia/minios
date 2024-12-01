@@ -68,7 +68,7 @@ void *thread_func(void *arg) {
   info(&logger, "thread[%d]: wait for condition signal\n");
   rval = pthread_cond_timewait(&cond, &mutex, &timeout);
   if (rval != 0) {
-    if (rval == -1) { // 超时
+    if (rval == -1) {  // 超时
       warning(&logger, "thread[%d]: timeout!\n", tid);
       cleanup();
       exit(TC_UNRESOLVED);

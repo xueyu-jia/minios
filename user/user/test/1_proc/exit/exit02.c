@@ -32,7 +32,7 @@ void cleanup() {
 
 void run() {
   int pid = SAFE_FORK();
-  if (pid == 0) { // child process
+  if (pid == 0) {  // child process
     write(fd, wdata, len);
     exit(0);
   }
@@ -44,7 +44,7 @@ void run() {
   wait(&status);
   lseek(fd, 0, SEEK_SET);
   int n = read(fd, rdata, len);
-  rdata[n] = 0; // add '\0'
+  rdata[n] = 0;  // add '\0'
   info(&logger, "expected read: %d, actual read: %d\n", len, n);
   info(&logger, "expected data: %s, actual data: %s\n", wdata, (char *)rdata);
   if (n != len || strncmp(rdata, wdata, len) != 0) {

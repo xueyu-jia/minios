@@ -66,8 +66,8 @@ int check() {
 int run() {
   info(&logger, "fork...\n");
   int pid = SAFE_FORK();
-  if (pid == 0) { // child process
-    sleep(1000);  // 等待父进程先写入
+  if (pid == 0) {  // child process
+    sleep(1000);   // 等待父进程先写入
     info(&logger, "child: write %s\n", child_write_str);
     int n = write(fd, child_write_str, strlen(child_write_str));
     if (n == -1) {

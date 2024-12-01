@@ -5,16 +5,17 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include "type.h"
 #include <stdbool.h>
 
-typedef struct Sigaction
-{
-	int sig;	   // 信号的编号
-	void *handler; // 该类型信号对应的handler函数指针
-				   // 每种类型的信号都会对应一个handler函数, 最多只有32个handler函数, mingxuan 2021-2-27
+#include "type.h"
 
-	u32 arg; // 传给handler的参数
+typedef struct Sigaction {
+  int sig;        // 信号的编号
+  void *handler;  // 该类型信号对应的handler函数指针
+                  // 每种类型的信号都会对应一个handler函数,
+                  // 最多只有32个handler函数, mingxuan 2021-2-27
+
+  u32 arg;  // 传给handler的参数
 } Sigaction;
 
 void Handler(Sigaction sigaction);

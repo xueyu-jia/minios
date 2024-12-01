@@ -14,7 +14,6 @@ void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
 void cleanup() { logger_close(&logger); }
 
 void run() {
-
   unsigned int sz1 = total_mem_size();
   void *p = malloc_4k();
   unsigned int sz2 = total_mem_size();

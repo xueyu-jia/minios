@@ -4,13 +4,13 @@
  * added by xw, 18/4/27
  */
 
-#include <kernel/type.h>
 #include <kernel/const.h>
-#include <kernel/proto.h>
 #include <kernel/fs.h>
 #include <kernel/ksignal.h>
+#include <kernel/proto.h>
+#include <kernel/type.h>
 
-//modified by mingxuan 2021-4-2
+// modified by mingxuan 2021-4-2
 
 /*======================================================================*
                          Interrupt Handling Test
@@ -19,62 +19,62 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("A ");
+        int i, j;
+        while (1)
+        {
+                disp_str("A ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
  }
 //	*/
 
@@ -85,81 +85,84 @@ added by xw, 18/12/19
 /*
 void TestA()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("A ");
+        int i, j;
+        while (1)
+        {
+                disp_str("A ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
 
-		//generates an Undefined opcode(#UD) exception, without error code
-		//UD2 is provided by Intel to explicitly generate an invalid opcode exception.
+                //generates an Undefined opcode(#UD) exception, without error
+code
+                //UD2 is provided by Intel to explicitly generate an invalid
+opcode exception.
 //		asm volatile ("ud2");
 
-		//generates a General Protection(#GP) exception, with error code
-		//the privilege level of a procedure must be 0 to execute the HLT instruction
+                //generates a General Protection(#GP) exception, with error code
+                //the privilege level of a procedure must be 0 to execute the
+HLT instruction
 //		asm volatile ("hlt");
 
-		//generates a Divide Error(#DE) exception, without error code
-		//calculate a / b
-		int a, b;
-		a = 10, b = 0;
-		asm volatile ("mov %0, %%eax\n\t"
-					  "div %1\n\t"
-					  :
-					  : "r"(a), "r"(b)
-					  : "eax");
+                //generates a Divide Error(#DE) exception, without error code
+                //calculate a / b
+                int a, b;
+                a = 10, b = 0;
+                asm volatile ("mov %0, %%eax\n\t"
+                                          "div %1\n\t"
+                                          :
+                                          : "r"(a), "r"(b)
+                                          : "eax");
 
-	}
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
 
-		i = 100;
-		while(--i){
-			j = 1000;
-			while(--j){}
-		}
-	}
+                i = 100;
+                while(--i){
+                        j = 1000;
+                        while(--j){}
+                }
+        }
  }
 //	*/
 
@@ -170,42 +173,42 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("A ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("A ");
+                milli_delay(100);
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
+                milli_delay(100);
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
+                milli_delay(100);
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
+                milli_delay(100);
+        }
  }
 //	*/
 
@@ -216,44 +219,44 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("A ");
-		print_E();
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("A ");
+                print_E();
+                milli_delay(100);
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
-		print_F();
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
+                print_F();
+                milli_delay(100);
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
+                milli_delay(100);
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
+                milli_delay(100);
+        }
  }
 //	*/
 
@@ -264,44 +267,44 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i;
-	while (1)
-	{
-		disp_str("A( ");
-		yield();
-		disp_str(") ");
-		milli_delay(100);
-	}
+        int i;
+        while (1)
+        {
+                disp_str("A( ");
+                yield();
+                disp_str(") ");
+                milli_delay(100);
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
+                milli_delay(100);
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
+                milli_delay(100);
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
+                milli_delay(100);
+        }
  }
 //	*/
 
@@ -312,50 +315,50 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i;
-	while (1)
-	{
-		disp_str("A( ");
-		disp_str("[");
-		disp_int(ticks);
-		disp_str("] ");
-		sleep(5);
-		disp_str("[");
-		disp_int(ticks);
-		disp_str("] ");
-		disp_str(") ");
-		milli_delay(100);
-	}
+        int i;
+        while (1)
+        {
+                disp_str("A( ");
+                disp_str("[");
+                disp_int(ticks);
+                disp_str("] ");
+                sleep(5);
+                disp_str("[");
+                disp_int(ticks);
+                disp_str("] ");
+                disp_str(") ");
+                milli_delay(100);
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
+                milli_delay(100);
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
+                milli_delay(100);
+        }
 }
 
 void initial()
  {
-	int i, j;
-	while (1)
-	{
-		disp_str("I ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("I ");
+                milli_delay(100);
+        }
  }
 //	*/
 
@@ -367,32 +370,32 @@ added by xw, 18/4/27
 /*
 void TestA()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("A ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("A ");
+                milli_delay(100);
+        }
 }
 
 void TestB()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("B ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("B ");
+                milli_delay(100);
+        }
 }
 
 void TestC()
 {
-	int i, j;
-	while (1)
-	{
-		disp_str("C ");
-		milli_delay(100);
-	}
+        int i, j;
+        while (1)
+        {
+                disp_str("C ");
+                milli_delay(100);
+        }
 }
 */
 
@@ -400,7 +403,7 @@ void TestC()
  * @struct posix_tar_header
  * Borrowed from GNU `tar'
  */
-//added by mingxuan 2019-5-18
+// added by mingxuan 2019-5-18
 // struct posix_tar_header
 // {						/* byte offset */
 // 	char name[100];		/*   0 */
@@ -453,16 +456,17 @@ void TestC()
 // 	while (1)
 // 	{
 // 		//bytes = read(fd, buf, 512);	//deleted by mingxuan 2019-5-21
-// 		//bytes = do_vread(fd, buf, 512); //modified by mingxuan 2019-5-21
-// 		bytes = kern_vread(fd, buf, 512); //modified by mingxuan 2021-8-20
+// 		//bytes = do_vread(fd, buf, 512); //modified by mingxuan
+// 2019-5-21 		bytes = kern_vread(fd, buf, 512); //modified by mingxuan
+// 2021-8-20
 
-// 		// assert(bytes == 512); /* size of a TAR file must be multiple of 512 */
-// 		if (buf[0] == 0)
+// 		// assert(bytes == 512); /* size of a TAR file must be multiple
+// of 512 */ 		if (buf[0] == 0)
 // 		{
 // 			if (i == 0)
 // 				//printf("    need not unpack the file.\n");
-// 				disp_str("    need not unpack the file.\n"); //modified by mingxuan 2021-4-3
-// 			break;
+// 				disp_str("    need not unpack the file.\n");
+// //modified by mingxuan 2021-4-3 			break;
 // 		}
 // 		i++;
 
@@ -477,15 +481,19 @@ void TestC()
 // 		int bytes_left = f_len;
 // 		char full_name[30] = "orange/";
 // 		strcat(full_name, phdr->name);
-// 		//int fdout = open(full_name, O_CREAT | O_RDWR );	//deleted by mingxuan 2019-5-20
-// 		//int fdout = do_vopen(full_name, O_CREAT | O_RDWR );	//modified by mingxuan 2019-5-20
-// 		int fdout = kern_vopen(full_name, O_CREAT | O_RDWR); //modified by mingxuan 2021-8-20
+// 		//int fdout = open(full_name, O_CREAT | O_RDWR );
+// //deleted by mingxuan 2019-5-20
+// 		//int fdout = do_vopen(full_name, O_CREAT | O_RDWR );
+// //modified by mingxuan 2019-5-20 		int fdout =
+// kern_vopen(full_name, O_CREAT | O_RDWR); //modified by mingxuan 2021-8-20
 
 // 		if (fdout == -1)
 // 		{
-// 			//printf("    failed to extract file: %s\n", phdr->name);
+// 			//printf("    failed to extract file: %s\n",
+// phdr->name);
 // 			//printf(" aborted]\n");
-// 			disp_str("    failed to extract file. \n"); //modified by mingxuan 2021-4-3
+// 			disp_str("    failed to extract file. \n"); //modified
+// by mingxuan 2021-4-3
 
 // 			//close(fd);	//deleted by mingxuan 2019-5-20
 // 			//do_vclose(fd);	//modified by mingxuan 2019-5-20
@@ -493,22 +501,27 @@ void TestC()
 
 // 			return;
 // 		}
-// 		//printf("    %s \n", phdr->name);	//deleted by mingxuan 2019-5-22
-// 		disp_str("    ");
-// 		disp_str(phdr->name);
-// 		disp_str("\n");
+// 		//printf("    %s \n", phdr->name);	//deleted by mingxuan
+// 2019-5-22 		disp_str("    "); 		disp_str(phdr->name);
+// disp_str("\n");
 
 // 		while (bytes_left)
 // 		{
 // 			int iobytes = min(chunk, bytes_left);
 
-// 			//read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//deleted by mingxuan 2019-5-21
-// 			//do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);	//modified by mingxuan 2019-5-21
-// 			kern_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512); //modified by mingxuan 2021-8-20
+// 			//read(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
+// //deleted by mingxuan 2019-5-21
+// 			//do_vread(fd, buf, ((iobytes - 1) / 512 + 1) * 512);
+// //modified by mingxuan 2019-5-21 			kern_vread(fd, buf,
+// ((iobytes
+// - 1) / 512 + 1) * 512); //modified by mingxuan 2021-8-20
 
-// 			//bytes = write(fdout, buf, iobytes);	//deleted by mingxuan 2019-5-21
-// 			//bytes = do_vwrite(fdout, buf, iobytes); //modified by mingxuan 2019-5-21
-// 			bytes = kern_vwrite(fdout, buf, iobytes); //modified by mingxuan 2021-8-20
+// 			//bytes = write(fdout, buf, iobytes);	//deleted by
+// mingxuan 2019-5-21
+// 			//bytes = do_vwrite(fdout, buf, iobytes); //modified by
+// mingxuan 2019-5-21 			bytes = kern_vwrite(fdout, buf,
+// iobytes);
+// //modified by mingxuan 2021-8-20
 // 			//bytes = real_write(fdout, buf, iobytes);
 
 // 			//测试
@@ -532,8 +545,9 @@ void TestC()
 
 // 		buf[0] = 0;
 // 		//bytes = write(fd, buf, 1);//deleted by mingxuan 2019-5-20
-// 		//bytes = do_vwrite(fd, buf, 1);	//modified by mingxuan 2019-5-20
-// 		bytes = kern_vwrite(fd, buf, 1); //modified by mingxuan 2021-8-20
+// 		//bytes = do_vwrite(fd, buf, 1);	//modified by mingxuan
+// 2019-5-20 		bytes = kern_vwrite(fd, buf, 1); //modified by mingxuan
+// 2021-8-20
 // 	}
 
 // 	//close(fd);	//deleted by mingxuan 2019-5-21
@@ -549,117 +563,113 @@ void TestC()
 
 // int do_init_block_dev(int drive);
 // int do_init_char_dev(int drive);
-void initial()
-{
+void initial() {
+  /***************************************
+   * exec直接加载init.bin
+   ****************************************/
+  /* //deleted by mingxuan 2021-4-5
+  int stdin = do_vopen("dev_tty0",O_RDWR);
+  int stdout= do_vopen("dev_tty0",O_RDWR);
+  int stderr= do_vopen("dev_tty0",O_RDWR);
+  */
 
-	/***************************************
-	 * exec直接加载init.bin
-	****************************************/
-	/* //deleted by mingxuan 2021-4-5
-	int stdin = do_vopen("dev_tty0",O_RDWR);
-	int stdout= do_vopen("dev_tty0",O_RDWR);
-	int stderr= do_vopen("dev_tty0",O_RDWR);
-	*/
+  /*	//deleted by mingxuan 2021-4-5
+  #ifdef INSTALL_TAR
+          char full_name[30]="orange/";;
+          //printf("untar:%s\n",full_name);
 
-	/*	//deleted by mingxuan 2021-4-5
-	#ifdef INSTALL_TAR
-		char full_name[30]="orange/";;
-		//printf("untar:%s\n",full_name);
+          //modified by mingxuan 2021-4-3
+          disp_str("untar:");
+          disp_str(full_name);
+          disp_str("\n");
 
-		//modified by mingxuan 2021-4-3
-		disp_str("untar:");
-		disp_str(full_name);
-		disp_str("\n");
+          strcat(full_name,INSTALL_FILENAME);
+          untar(full_name);
+  #endif
+  */
 
-		strcat(full_name,INSTALL_FILENAME);
-		untar(full_name);
-	#endif
-	*/
+  /* //deleted by mingxuan 2021-4-5
+  close(stdin);
+  close(stdout);
+  close(stderr);
+  */
 
-	/* //deleted by mingxuan 2021-4-5
-	close(stdin);
-	close(stdout);
-	close(stderr);
-	*/
+  /*	//deleted by mingxuan 2021-4-5
+  #ifdef INSTALL_FAT
+          execve("fat0/init.bin");
+  #else
+          execve("orange/init.bin");
+  #endif
+  */
 
-	/*	//deleted by mingxuan 2021-4-5
-	#ifdef INSTALL_FAT
-		execve("fat0/init.bin");
-	#else
-		execve("orange/init.bin");
-	#endif
-	*/
+  // disp_int(sys_get_pid());	//deleted by mingxuan 2021-8-14
 
-	//disp_int(sys_get_pid());	//deleted by mingxuan 2021-8-14
+  // disp_str("initial:total_mem_size=");
+  // disp_int(sys_total_mem_size());
+  // disp_str("\n");
 
+  // if(0!=fork())
+  // {//非实时队列中至少存在一个进程
+  // 	while(1);
+  // }
+  // else {
 
+  // }
 
-	//disp_str("initial:total_mem_size=");
-	//disp_int(sys_total_mem_size());
-	//disp_str("\n");
+  // get_pid();
+  // do_vmkdir("/dev", I_RWX);
+  // do_init_block_dev(SATA_BASE);		//added by xiaofeng
+  // do_init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
+  // get_datetime();
+  // mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
+  /* 	mkdir("test");
+          mkdir("test/dir");
+          int fd = open("test/dir/file",O_CREAT|O_RDWR);
+          //orangefs_dir_test();
+          char * buff = kern_kzalloc(4096*2);
+          buff[4097] = '2';
+          buff[4098] = '5';
+          buff[4099] = '8';
+          if(fd>=0){
+                  write(fd,buff,4096*2);
+                  close(fd);
+          }
+          fd = open("test/dir/file",O_RDWR);
+          //int ret = rmdir("test");
+          memset(buff,0,8);
+          lseek(fd,4097,SEEK_SET);
+          read(fd,buff,4);
+          disp_str("file content:\n");
+          disp_str(buff);
+          disp_str("\n");
+          unlink("test/dir/file");
+          close(fd);
+          int ret = rmdir("test/dir");
+          unlink("test/dir/file");
+          fd = open("test/dir/file",O_RDWR);
+          ret = rmdir("test/dir"); */
 
-	// if(0!=fork())
-	// {//非实时队列中至少存在一个进程
-	// 	while(1);
-	// }
-	// else {
+  // orangefs_dir_test();
+  // orangefs_dir_test();
 
-	// }
+  // while (1);
 
-	//get_pid();
-	// do_vmkdir("/dev", I_RWX);
-	// do_init_block_dev(SATA_BASE);		//added by xiaofeng
-	// do_init_char_dev(SATA_BASE);		//added by sundong 2023.5.18
-	// get_datetime();
-	//mount("/dev/sda1", "fat0", NULL, NULL, NULL);	//added by xiaofeng
-/* 	mkdir("test");
-	mkdir("test/dir");
-	int fd = open("test/dir/file",O_CREAT|O_RDWR);
-	//orangefs_dir_test();
-	char * buff = kern_kzalloc(4096*2);
-	buff[4097] = '2';
-	buff[4098] = '5';
-	buff[4099] = '8';
-	if(fd>=0){
-		write(fd,buff,4096*2);
-		close(fd);
-	}
-	fd = open("test/dir/file",O_RDWR);
-	//int ret = rmdir("test");
-	memset(buff,0,8);
-	lseek(fd,4097,SEEK_SET);
-	read(fd,buff,4);
-	disp_str("file content:\n");
-	disp_str(buff);
-	disp_str("\n");
-	unlink("test/dir/file");
-	close(fd);
-	int ret = rmdir("test/dir");
-	unlink("test/dir/file");
-	fd = open("test/dir/file",O_RDWR);
-	ret = rmdir("test/dir"); */
+  // int fd = open("fat0/init.bin",O_RDWR);
+  // open("fat0/init.bin",O_RDWR);
+  // unlink("fat0/f1");
+  // orangefs_dir_test();
+  // orangefs_test();
+  // while (1);
 
-	//orangefs_dir_test();
-	//orangefs_dir_test();
+  // #ifdef FAT32_BOOT
+  // 	execve("fat0/init.bin",NULL,NULL);
+  // #endif
+  // #ifdef ORANGE_BOOT
+  execve("/bin/init", NULL, NULL);
+  // #endif
+  // execve("fat0/test_0.bin");
+  // sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
 
-	//while (1);
-
-	//int fd = open("fat0/init.bin",O_RDWR);
-	//open("fat0/init.bin",O_RDWR);
-	//unlink("fat0/f1");
-	//orangefs_dir_test();
-	//orangefs_test();
-	//while (1);
-
-// #ifdef FAT32_BOOT
-// 	execve("fat0/init.bin",NULL,NULL);
-// #endif
-// #ifdef ORANGE_BOOT
-	execve("/bin/init",NULL,NULL);
-// #endif
-	//execve("fat0/test_0.bin");
-	//sys_execve("fat0/init.bin");	//modified by mingxuan 2021-4-6
-
-	while (1)
-		;
+  while (1)
+    ;
 }

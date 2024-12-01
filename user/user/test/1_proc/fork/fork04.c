@@ -39,7 +39,7 @@ int run() {
   info(&logger, "parent: fork chilren...\n");
   for (int i = 0; i < NFORKS; i++) {
     int pid = SAFE_FORK();
-    if (pid == 0) { // child process
+    if (pid == 0) {  // child process
       char c;
       int n = read(fd, &c, 1);
       if (c != 'a') {
@@ -59,7 +59,7 @@ int run() {
     if (status != 0) {
       error(&logger, "parent: receive %d from child\n", test_name, status);
       cleanup();
-exit(TC_FAIL);
+      exit(TC_FAIL);
     }
   }
 
@@ -69,7 +69,7 @@ exit(TC_FAIL);
   if (rval != NFORKS) {
     error(&logger, "lseek CUR return %d, expected %d\n", rval, NFORKS);
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   // 检查是否读取到 EOF
@@ -80,7 +80,7 @@ exit(TC_FAIL);
   if (c != '\0') {
     error(&logger, "file not reach EOF\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   // reach EOF

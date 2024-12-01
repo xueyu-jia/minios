@@ -43,13 +43,13 @@ void run() {
   info(&logger, "read() return %d, expected %d\n", n, BUF_SIZE);
   if (n != BUF_SIZE) {
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
   for (int i = 0; i < BUF_SIZE; i++) {
     if (read_buf[i] != 'a') {
       error(&logger, "read %c, expected %c\n", read_buf[i], 'a');
       cleanup();
-exit(TC_FAIL);
+      exit(TC_FAIL);
     }
   }
   info(&logger, "PASSED\n");

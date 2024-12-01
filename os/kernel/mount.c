@@ -1,9 +1,9 @@
 #include <kernel/const.h>
-#include <klib/string.h>
-#include <kernel/vfs.h>
 #include <kernel/fs.h>
 #include <kernel/mount.h>
 #include <kernel/proto.h>
+#include <kernel/vfs.h>
+#include <klib/string.h>
 
 // PRIVATE void update_mnttable();
 // PUBLIC mount_table mnt_table[MAX_mnt_table_length];
@@ -12,17 +12,17 @@ SPIN_LOCK mnt_table_lock;
 // extern struct vfs vfs_table[NR_FS];
 
 // PUBLIC int kern_mount(const char *source, const char *target,
-//                       const char *filesystemtype, unsigned long mountflags, const void *data);
+//                       const char *filesystemtype, unsigned long mountflags,
+//                       const void *data);
 
-PUBLIC int do_umount(const char *target);
+PUBLIC int do_umount(const char* target);
 
 // oprate
-//PUBLIC int mount_open(char *pathname, int flags);
+// PUBLIC int mount_open(char *pathname, int flags);
 
 // PRIVATE int alloc_mnttable();
 
 // PRIVATE void free_mnttable(char *target);
-
 
 // PRIVATE void update_mnttable()
 // {
@@ -135,7 +135,8 @@ PUBLIC int do_umount(const char *target);
 //     return mnt_table[index_mnt_table].vfs_index;
 
 // }
-//deleted by sundong 2023.5.19 mount open 不再发挥作用，vfs中已经能够区分开路径属于哪个文件系统了
+// deleted by sundong 2023.5.19 mount open
+// 不再发挥作用，vfs中已经能够区分开路径属于哪个文件系统了
 /* PUBLIC int mount_open(char *pathname, int flags)
 {
     char orange_pathname[20];
@@ -178,7 +179,8 @@ PUBLIC int do_umount(const char *target);
     int fd;
     if (vfs_table[index].op->open == real_open) // orange
     {
-        fd = vfs_table[index].op->open(vfs_table[index].sb,mount_pathname, flags);
+        fd = vfs_table[index].op->open(vfs_table[index].sb,mount_pathname,
+flags);
     }
     else // fat32
     {
@@ -189,66 +191,65 @@ PUBLIC int do_umount(const char *target);
     return fd;
 } */
 
-PRIVATE struct vfs_mount* get_free_vfsmount()
-{
-    int i;
-    for (i = 0; i < NR_MNT; i++)
-    {
-        if (vfs_mnt_table[i].used == 0)
-        {
-            return &vfs_mnt_table[i];
-        }
+PRIVATE struct vfs_mount* get_free_vfsmount() {
+  int i;
+  for (i = 0; i < NR_MNT; i++) {
+    if (vfs_mnt_table[i].used == 0) {
+      return &vfs_mnt_table[i];
     }
-    return NULL;
+  }
+  return NULL;
 }
 
-PUBLIC struct vfs_mount* add_vfsmount(const char *dev_path,
-	struct dentry * mnt_mountpoint, struct dentry* mnt_root, struct super_block* sb){
-	acquire(&mnt_table_lock);
-	struct vfs_mount* mnt = get_free_vfsmount();
-	strcpy(mnt->mnt_devname, dev_path);
-	mnt->mnt_sb = sb;
-	mnt->mnt_mountpoint = mnt_mountpoint;
-	mnt->mnt_root = mnt_root;
-	mnt->used = 1;
-	release(&mnt_table_lock);
-	return mnt;
+PUBLIC struct vfs_mount* add_vfsmount(const char* dev_path,
+                                      struct dentry* mnt_mountpoint,
+                                      struct dentry* mnt_root,
+                                      struct super_block* sb) {
+  acquire(&mnt_table_lock);
+  struct vfs_mount* mnt = get_free_vfsmount();
+  strcpy(mnt->mnt_devname, dev_path);
+  mnt->mnt_sb = sb;
+  mnt->mnt_mountpoint = mnt_mountpoint;
+  mnt->mnt_root = mnt_root;
+  mnt->used = 1;
+  release(&mnt_table_lock);
+  return mnt;
 }
 
-PUBLIC struct vfs_mount* lookup_vfsmnt(struct dentry* mountpoint){
-	struct vfs_mount* mnt = vfs_mnt_table;
-	acquire(&mnt_table_lock);
-	while(mnt < vfs_mnt_table + NR_MNT){
-		if(mnt->mnt_mountpoint == mountpoint && mnt->used == 1){
-			break;
-		}
-		mnt++;
-	}
-	release(&mnt_table_lock);
-	return mnt;
+PUBLIC struct vfs_mount* lookup_vfsmnt(struct dentry* mountpoint) {
+  struct vfs_mount* mnt = vfs_mnt_table;
+  acquire(&mnt_table_lock);
+  while (mnt < vfs_mnt_table + NR_MNT) {
+    if (mnt->mnt_mountpoint == mountpoint && mnt->used == 1) {
+      break;
+    }
+    mnt++;
+  }
+  release(&mnt_table_lock);
+  return mnt;
 }
 
-PUBLIC struct dentry* remove_vfsmnt(struct dentry* entry){
-	struct vfs_mount* mnt = vfs_mnt_table;
-	struct dentry* mountpoint = NULL;
-	acquire(&mnt_table_lock);
-	while(mnt < vfs_mnt_table + NR_MNT){
-		if(mnt->mnt_root == entry && mnt->used == 1){
-			mnt->used = 0;
-			mountpoint = mnt->mnt_mountpoint;
-			break;
-		}
-		mnt++;
-	}
-	mnt->mnt_sb->sb_vfsmount = NULL;
-	release(&mnt_table_lock);
-	return mountpoint;
+PUBLIC struct dentry* remove_vfsmnt(struct dentry* entry) {
+  struct vfs_mount* mnt = vfs_mnt_table;
+  struct dentry* mountpoint = NULL;
+  acquire(&mnt_table_lock);
+  while (mnt < vfs_mnt_table + NR_MNT) {
+    if (mnt->mnt_root == entry && mnt->used == 1) {
+      mnt->used = 0;
+      mountpoint = mnt->mnt_mountpoint;
+      break;
+    }
+    mnt++;
+  }
+  mnt->mnt_sb->sb_vfsmount = NULL;
+  release(&mnt_table_lock);
+  return mountpoint;
 }
 
-PUBLIC int do_mount(const char *source, const char *target,
-                    const char *filesystemtype, unsigned long mountflags, const void *data)
-{
-	return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
+PUBLIC int do_mount(const char* source, const char* target,
+                    const char* filesystemtype, unsigned long mountflags,
+                    const void* data) {
+  return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
 }
 
 // PUBLIC int kern_umount(const char *target)
@@ -259,26 +260,18 @@ PUBLIC int do_mount(const char *source, const char *target,
 //     return 0;
 // }
 
-PUBLIC int do_umount(const char *target)
-{
-    // kern_umount(target);
-	return kern_vfs_umount(target);
+PUBLIC int do_umount(const char* target) {
+  // kern_umount(target);
+  return kern_vfs_umount(target);
 }
 
 /*======================================================================*
                               sys_* 系列函数
  *======================================================================*/
 
-PUBLIC int sys_mount()
-{
-    return do_mount((const char *)get_arg(1),
-            (const char *)get_arg(2),
-    (const char *)get_arg(3),
-        get_arg(4), (const void *)
-                get_arg(5));
+PUBLIC int sys_mount() {
+  return do_mount((const char*)get_arg(1), (const char*)get_arg(2),
+                  (const char*)get_arg(3), get_arg(4), (const void*)get_arg(5));
 }
 
-PUBLIC int sys_umount()
-{
-    return do_umount((const char *)get_arg(1));
-}
+PUBLIC int sys_umount() { return do_umount((const char*)get_arg(1)); }

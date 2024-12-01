@@ -19,8 +19,8 @@ void cleanup() { logger_close(&logger); }
 
 void run() {
   int pid = SAFE_FORK();
-  if (pid == 0) {    // child process
-    exit(get_pid()); // 返回 pid
+  if (pid == 0) {     // child process
+    exit(get_pid());  // 返回 pid
   }
 
   // father process
@@ -30,7 +30,7 @@ void run() {
   if (status != pid) {
     warning(&logger, "FAILED\n");
     cleanup();
-exit(TC_FAIL);
+    exit(TC_FAIL);
   }
 
   info(&logger, "PASSED\n");

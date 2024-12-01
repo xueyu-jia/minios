@@ -25,7 +25,7 @@ void cleanup() { logger_close(&logger); }
 
 // 线程函数
 void *thread_func(void *arg) {
-  thread_pid = get_pid(); // 获取线程的 pid
+  thread_pid = get_pid();  // 获取线程的 pid
   pthread_exit(NULL);
 }
 

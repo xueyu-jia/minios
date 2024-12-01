@@ -13,8 +13,7 @@ int safe_fork(const char *file, const int lineno, void (*cleanup_fn)(void)) {
   int pid = fork();
   if (pid < 0) {
     printf("%s:%d: fork() failed, return value %d\n", file, lineno, pid);
-    if (cleanup_fn)
-      (*cleanup_fn)();
+    if (cleanup_fn) (*cleanup_fn)();
     exit(-1);
   }
   return pid;
@@ -35,8 +34,7 @@ int safe_open(const char *file, const int lineno, void (*cleanup_fn)(void),
 }
 
 int safe_close(const char *file, const int lineno, int fd) {
-  if (fd < 0)
-    return 0;
+  if (fd < 0) return 0;
 
   int rval = close(fd);
 
@@ -167,7 +165,7 @@ int logger_write(logger_level current_level, logging *logger, const char *fmt,
 
   nbytes = vsprintf(write_buf, real_fmt, args);
 
-  printf("%s", write_buf); // write to stdout
+  printf("%s", write_buf);  // write to stdout
 
   // 这里分别使用 lseek 和 write 并不能保证原子性
   // 要保证原子地追加数据到文件末尾，需在 open 时使用 O_APPEND 模式。
@@ -179,13 +177,12 @@ int logger_write(logger_level current_level, logging *logger, const char *fmt,
   //       SEEK_END, rval);
   // return -1;
   //}
-  write(logger->logfd, write_buf, nbytes); // write to log file
+  write(logger->logfd, write_buf, nbytes);  // write to log file
   return nbytes;
 }
 
 int logger_print(logger_level current_level, logging *logger, const char *fmt,
                  va_list args) {
-
   // printf("logging: pid: %d, tid: %d, logger: %d\n", get_pid(),
   // pthread_self(), logger);
   if (!check_logger(logger)) {

@@ -50,7 +50,7 @@ void run() {
 
   // 检查队列中的消息数量
   info(&logger, "mq_info.msg_qnum: %d, expected 0\n", mq_info.msg_qnum);
-  if (mq_info.msg_qnum != 0) { // 消息队列中无消息
+  if (mq_info.msg_qnum != 0) {  // 消息队列中无消息
     cleanup();
     exit(-1);
   }
