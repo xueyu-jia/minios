@@ -26,4 +26,14 @@
         ;                                               \
     } while (0);
 
+//! TODO: impl gsl
+#define unreachable(...)     \
+  do {                       \
+    while (1)                \
+      ;                      \
+    __builtin_unreachable(); \
+  } while (0)
+#define todo(...) unreachable()
+#define unimplemented()
+
 #endif
