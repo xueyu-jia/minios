@@ -5,7 +5,6 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include <stdbool.h>
 #include <type.h>
 
 typedef struct Sigaction {

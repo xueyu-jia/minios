@@ -18,6 +18,7 @@ void loader_cstart(u32 MemChkBuf, u32 MCRNumber) {
   load_kernel();
 }
 
+#if 0
 static bool mem_check_IsZero(int addr, int size) {
   char *p = (char *)addr;
   for (int i = 0; i < size; i++) {
@@ -29,6 +30,8 @@ static bool mem_check_IsZero(int addr, int size) {
   }
   return TRUE;
 }
+#endif
+
 /*
  * 加载kernel.bin的elf文件并跳过去。
  */

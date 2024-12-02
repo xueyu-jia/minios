@@ -227,8 +227,7 @@ void rq_resort(sched_entity* changed_entity)  // only for rq
 
 PRIVATE sched_entity* find_new_sched_entity(sched_entity* array) {
   int i = 0;
-  for (; i < PROC_READY_MAX && array[i].pid < NR_PCBS; i++)
-    ;
+  for (; i < PROC_READY_MAX && array[i].pid < NR_PCBS; i++);
   if (i < PROC_READY_MAX) {
     return &array[i];
   }

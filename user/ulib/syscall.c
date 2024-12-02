@@ -36,7 +36,7 @@ u32 execve(char* path, char* argv[], char* envp[]) {
 
 void yield() { _syscall0(_NR_yield); }
 
-void sleep(int n) { return _syscall1(_NR_sleep, n); }
+void sleep(int n) { _syscall1(_NR_sleep, n); }
 
 int open(const char* pathname, int flags, ...) {
   if (flags & O_CREAT) {
