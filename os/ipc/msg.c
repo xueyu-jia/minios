@@ -1,6 +1,7 @@
 /*************************************************************
  *        msg.c by Li Yingchi Jiao Yuanxiang 2021.12.20
  *************************************************************/
+#include <errno.h>
 #include <kernel/clock.h>
 #include <kernel/console.h>
 #include <kernel/const.h>
@@ -103,21 +104,21 @@ int kern_msgget(key_t key, int msgflg) {
   int id = ipc_findkey(key);
   if (id < 0) {  // key不存在
     if (msgflg & IPC_CREAT) {
-      for (i = 0; i < MAX_MSQ_NUM; i++)  //寻找空闲队列
+      for (i = 0; i < MAX_MSQ_NUM; i++)  // 寻找空闲队列
       {
         if (!q_list[i].used) {
           newque(i, key);
           return i;
         }
       }
-      return ENOSPC;  //-ENOSPC
+      return -ENOSPC;
     } else
-      return ENOENT;  //-ENOENT
+      return -ENOENT;
   } else {
     if (msgflg & IPC_CREAT && msgflg & IPC_EXCL)
-      return EEXIST;  //-EEXIST
+      return -EEXIST;
     else {
-      //检查权限、PV操作等……
+      // 检查权限、PV操作等……
       return id;
     }
   }
@@ -137,24 +138,24 @@ int kern_msgget(key_t key, int msgflg) {
  * @return int 		成功返回0，否则返回-1
  */
 int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg) {
-  if (msqid >= MAX_MSQ_NUM)  //检查长度
+  if (msqid >= MAX_MSQ_NUM)  // 检查长度
     return -1;
-  if (q_list[msqid].used == 0)  //队列不存在，返回-1
+  if (q_list[msqid].used == 0)  // 队列不存在，返回-1
     return -1;
   if (q_list[msqid].info.__msg_cbytes + msgsz >
-      q_list[msqid].info.msg_qbytes)  //当前队列已满
+      q_list[msqid].info.msg_qbytes)  // 当前队列已满
   {
     if (msgflg & IPC_NOWAIT)
       return -1;
     else {
-      //阻塞当前进程
+      // 阻塞当前进程
       return -1;
     }
   }
-  if (msgp == NULL)  //检查缓冲区指针合法性
+  if (msgp == NULL)  // 检查缓冲区指针合法性
     return -1;
 
-  long type_new = *(long *)msgp;  //新消息类型
+  long type_new = *(long *)msgp;  // 新消息类型
   list_item *new_msg = (list_item *)kern_kmalloc(sizeof(list_item));
   write_msg_node(msqid, new_msg, msgsz, (char *)msgp, type_new);
   insert_head_node(msqid, type_new);
@@ -187,12 +188,12 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg) {
  */
 int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
   int i, get_length = 0;
-  //检查id
-  if (q_list[msqid].used == 0) return -1;  //队列不存在，返回-1
-  //检查type
+  // 检查id
+  if (q_list[msqid].used == 0) return -1;  // 队列不存在，返回-1
+  // 检查type
   if (msgtyp == 0) {
-    //判断队列是否为空
-    list_item *ph = q_list[msqid].head->type_list_nxt;  //第一个消息结点
+    // 判断队列是否为空
+    list_item *ph = q_list[msqid].head->type_list_nxt;  // 第一个消息结点
     if (ph == NULL || q_list[msqid].num == 0) {
       if (msgflg & IPC_NOWAIT)
         return -1;
@@ -201,9 +202,9 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
         return -1;
       }
     }
-    //写目标消息
+    // 写目标消息
     *(long *)msgp = ph->msg.type;
-    //首先判断flag中是否包含MSG_NOERROR
+    // 首先判断flag中是否包含MSG_NOERROR
     if (msgflg & MSG_NOERROR) {
       for (i = 0; i < ph->msgsz && i < msgsz;
            i++, get_length++)  // i既要小于消息的实际长度，也要小于规定的长度
@@ -214,29 +215,29 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
              i++, get_length++)  // i既要小于消息的实际长度，也要小于规定的长度
           ((char *)msgp + sizeof(long))[i] = ph->msg.buf[i];
       else
-        return -1;  //未指定MSG_NOERROR，不截断，返回错误码
+        return -1;  // 未指定MSG_NOERROR，不截断，返回错误码
     }
 
-    //删除取出的节点
+    // 删除取出的节点
     rm_msg_node(msqid, q_list[msqid].head->type_list_nxt->type_list_pre);
-    //更新消息数量
+    // 更新消息数量
     q_list[msqid].num--;
     return get_length;
   }
 
   if (msgtyp > 0) {
-    //根据指定的type找到目标头结点
+    // 根据指定的type找到目标头结点
     list_item *head_find = q_list[msqid].head;
     while (head_find && head_find->msg.type != msgtyp)
       head_find = head_find->nxt.head_nxt;
-    if (head_find)  //存在指定type的头结点
+    if (head_find)  // 存在指定type的头结点
     {
-      //拷贝目标消息内容
-      list_item *tar = head_find->type_list_nxt;  //目标子队列第一个消息结点
+      // 拷贝目标消息内容
+      list_item *tar = head_find->type_list_nxt;  // 目标子队列第一个消息结点
       if (tar) {
-        //写目标消息
+        // 写目标消息
         *(long *)msgp = tar->msg.type;
-        //首先判断flag中是否包含MSG_NOERROR
+        // 首先判断flag中是否包含MSG_NOERROR
         if (msgflg & MSG_NOERROR) {
           for (i = 0; i < tar->msgsz && i < msgsz; i++,
               get_length++)  // i既要小于消息的实际长度，也要小于规定的长度
@@ -247,9 +248,9 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
                 get_length++)  // i既要小于消息的实际长度，也要小于规定的长度
               ((char *)msgp + sizeof(long))[i] = tar->msg.buf[i];
           else
-            return -1;  //未指定MSG_NOERROR，不截断，返回错误码
+            return -1;  // 未指定MSG_NOERROR，不截断，返回错误码
         }
-        //删除目标消息结点
+        // 删除目标消息结点
         rm_msg_node(msqid, head_find);
         return get_length;
       }
@@ -257,7 +258,7 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
     if (msgflg & IPC_NOWAIT)
       return -1;
     else {
-      //阻塞当前进程
+      // 阻塞当前进程
       return -1;
     }
   }
@@ -283,7 +284,7 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
 int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
   int ret = -1;
   if (msqid < 0 || msqid > MAX_MSQ_NUM ||
-      !q_list[msqid].used)  //检查队列是否存在
+      !q_list[msqid].used)  // 检查队列是否存在
     return ret;
   switch (cmd) {
     case IPC_RMID: {
@@ -306,12 +307,12 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
       break;
     }
     case IPC_STAT: {
-      *(msqid_ds *)buf = q_list[msqid].info;  //复制信息
+      *(msqid_ds *)buf = q_list[msqid].info;  // 复制信息
       ret = 0;
       break;
     }
     case IPC_SET:
-      //复制信息
+      // 复制信息
       q_list[msqid].info.msg_qbytes = (*(msqid_ds *)buf).msg_qbytes;
       q_list[msqid].info.msg_ctime = sys_get_ticks();
       ret = 0;
@@ -331,12 +332,12 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
  * @param head 		头结点指针
  */
 void rm_msg_node(int msqid, list_item *head) {
-  if (!head)  //输入指针为NULL，直接返回
+  if (!head)  // 输入指针为NULL，直接返回
     return;
   list_item *target = head->type_list_nxt;
   if (!target)  // haed后面没有任何消息结点
     return;
-  int size = target->msgsz;  //要删除的消息的长度
+  int size = target->msgsz;  // 要删除的消息的长度
   list_item *f_nxt = target->nxt.full_list_nxt;
   list_item *f_pre = target->pre.full_list_pre;
   list_item *t_nxt = target->type_list_nxt;
@@ -347,10 +348,10 @@ void rm_msg_node(int msqid, list_item *head) {
     q_list[msqid].head->type_list_nxt = f_nxt;
   else
     f_pre->nxt.full_list_nxt = f_nxt;
-  //释放target内存
+  // 释放target内存
   kern_kfree((u32)target->msg.buf);
   kern_kfree((u32)target);
-  //修改队列信息
+  // 修改队列信息
   q_list[msqid].info.msg_lrpid = kern_get_pid();
   q_list[msqid].info.msg_qnum--;
   q_list[msqid].info.__msg_cbytes -= size;
@@ -426,11 +427,11 @@ int ipc_findkey(key_t key) {
  * @return list_item* 	返回新插入的头结点指针，如果该类型头结点已存在，返回NULL
  */
 list_item *insert_head_node(int msqid, long type_new) {
-  //创建新的空头结点
+  // 创建新的空头结点
   list_item *new_head = (list_item *)kern_kmalloc(sizeof(list_item));
   memset(new_head, 0, sizeof(list_item));
   new_head->msg.type = type_new;
-  //检查该类型是否存在
+  // 检查该类型是否存在
   list_item *i = NULL;
   for (i = q_list[msqid].head; i && i->msg.type <= type_new;
        i = i->nxt.head_nxt) {

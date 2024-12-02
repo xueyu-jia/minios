@@ -19,12 +19,6 @@
 // #define MAX_MSQ_NUM     4
 // #define MAX_MSG_IN_Q    1024
 // #define MAX_MSGBYTES    (1<<14)
-
-// #define ENOENT  (-6)
-// #define EEXIST  (-5)
-// #define ENOMEM  (-7)
-// #define ENOSPC  (-8)
-
 typedef int key_t;
 
 // message queue types

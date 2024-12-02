@@ -65,23 +65,23 @@ $(ORANGESKERNEL) : $(OBJS)
 	$(LD) $(LDFLAGS_kernel) -o $(ORANGESKERNEL) $(OBJS)
 
 os/kernel/kernel.o : os/kernel/kernel.asm os/include/sconst.inc
-	$(ASM) -I os/include/ $(ASMKFLAGS) -o $@ $<
+	$(ASM) -Iinclude -I os/include/ $(ASMKFLAGS) -o $@ $<
 
 
 kernel.gdb.bin : $(OBJS)
 	$(LD) $(LDFLAGS_kernel_gdb) -o $@ $(OBJS)
 
 os/kernel/%.o : os/kernel/%.c
-	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	$(CC)  -Iinclude -I os/include/ $(KFLAGS) -o $@ $<
 
 os/ipc/%.o : os/ipc/%.c
-	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	$(CC)  -Iinclude -I os/include/ $(KFLAGS) -o $@ $<
 
 os/fs/%.o : os/fs/%.c
-	$(CC)  -I os/include/ $(KFLAGS) -o $@ $<
+	$(CC)  -Iinclude -I os/include/ $(KFLAGS) -o $@ $<
 
 os/gdbstub/gdbstub_x86_int.o: os/gdbstub/gdbstub_x86_int.nasm
 	$(ASM) -I os/gdbstub/ -f elf -o $@ $<
 
 os/klib/%.o: os/klib/%.c
-	$(CC)  -I os/include/ $(OS_CFLAGS) -o $@ $<
+	$(CC)  -Iinclude -I os/include/ $(OS_CFLAGS) -o $@ $<

@@ -60,7 +60,7 @@ user/ulib/ulib.a:  $(OBJSULIB)
 	$(AR) $(ARFLAGS) -o $@  $(OBJSULIB)
 
 user/ulib/%.o: user/ulib/%.c
-	$(CC) -I user/include/ $(USE_CFLAGS) -o $@ $<
+	$(CC) -Iinclude -I user/include/ $(USE_CFLAGS) -o $@ $<
 
 #--------------------------------------user-------------------------------------------------
 user/user/userstart.o: user/user/userstart.asm
@@ -68,7 +68,7 @@ user/user/userstart.o: user/user/userstart.asm
 
 # added by mingxuan 2021-2-7
 $(USER_SRC_DIR)/%.o: $(USER_SRC_DIR)/%.c
-	$(CC) -I user/include/ $(USE_CFLAGS) -o $@ $<
+	$(CC) -Iinclude -I user/include/ $(USE_CFLAGS) -o $@ $<
 
 $(USER_SRC_DIR)/%.gdb.bin : $(USER_SRC_DIR)/%.o user/user/userstart.o $(OBJSULIB)
 	$(LD) $(LDFLAGS_user_gdb) -o $@ $^

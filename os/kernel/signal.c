@@ -1,9 +1,11 @@
 // added by mingxuan 2021-2-28
 
+#include <errno.h>
 #include <kernel/ksignal.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
 #include <kernel/type.h>
+#include <klib/assert.h>
 #include <klib/string.h>
 
 /*  //deleted by mingxuan 2021-8-20
@@ -50,6 +52,10 @@ int do_sigsend(int pid, Sigaction* sigaction_p)
 */
 // modified by mingxuan 2021-8-20
 int kern_sigsend(int pid, Sigaction* sigaction_p) {
+  if (!(pid >= 0 && pid < NR_PCBS)) {
+    return -1;
+  }
+  //! TODO: support kill process group
   PROCESS* proc = &proc_table[pid];
 
   if (proc->task.sig_handler[sigaction_p->sig] == NULL ||

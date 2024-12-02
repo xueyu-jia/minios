@@ -1,15 +1,17 @@
 #ifndef __TEST_COMMON__
 #define __TEST_COMMON__
 
-#include "const.h"
-#include "malloc.h"
-#include "msg.h"
-#include "pthread.h"
-#include "signal.h"
-#include "stdio.h"
-#include "syscall.h"
-#include "type.h"
-#include "ushm.h"
+#include <const.h>
+#include <errno.h>
+#include <malloc.h>
+#include <msg.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <syscall.h>
+#include <type.h>
+#include <ushm.h>
 
 #define DIR_PATH_INEXISTE -1
 #define DIR_PATH_REPEATED -2
@@ -18,11 +20,6 @@
 #define MAX_MSQ_NUM 4
 #define MAX_MSG_IN_Q 1024
 #define MAX_MSGBYTES (1 << 14)
-
-#define ENOENT -6
-#define EEXIST -5
-#define ENOMEM -7
-#define ENOSPC -8
 
 #define MSG_SIZE 1024  // 暂时先用 1024......
 
@@ -87,5 +84,7 @@ int info(logging *logger, const char *fmt, ...);
 int warning(logging *logger, const char *fmt, ...);
 int error(logging *logger, const char *fmt, ...);
 int fatal(logging *logger, const char *fmt, ...);
+
+void cleanup();
 
 #endif

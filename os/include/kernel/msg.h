@@ -20,11 +20,6 @@
 #define MAX_MSG_IN_Q 1024
 #define MAX_MSGBYTES (1 << 14)
 
-#define ENOENT (-6)
-#define EEXIST (-5)
-#define ENOMEM (-7)
-#define ENOSPC (-8)
-
 // block type
 #define SND_TO_FULL 0x1
 #define RCV_FROM_NULL 0x2
