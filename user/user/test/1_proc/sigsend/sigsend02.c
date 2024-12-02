@@ -3,7 +3,7 @@
  * - signal 无效时应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "sigsend02";
 const char *syscall_name = "sigsend";

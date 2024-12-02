@@ -3,7 +3,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "wait01";
 const char *syscall_name = "wait";

@@ -1,8 +1,8 @@
 /*
- * msgget 在消息队列已满（4, MAX_MSQ_NUM）时，应返回 -8(ENOSPC)
+ * msgget 在消息队列已满（4, MAX_MSQ_NUM）时，应返回 -ENOSPC
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgget03";
 const char *syscall_name = "msgget";
@@ -38,8 +38,8 @@ void cleanup() {
 void run() {
   key_t key = ftok("msgget03_key", 23);
   int mq_id = msgget(key, IPC_CREAT);
-  if (mq_id != ENOSPC) {
-    error(&logger, "msgget return %d, expected %d\n", mq_id, ENOSPC);
+  if (mq_id != -ENOSPC) {
+    error(&logger, "msgget return %d, expected %d\n", mq_id, -ENOSPC);
     cleanup();
     exit(-1);
   }

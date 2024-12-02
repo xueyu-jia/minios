@@ -1,6 +1,6 @@
-//#include "stdio.h"
-#include "../include/malloc.h"  //added by mingxuan 2021-4-5
-#include "../include/stdio.h"   //modified by mingxuan 2021-4-5
+//#include <stdio.h>
+#include <malloc.h>  //added by mingxuan 2021-4-5
+#include <stdio.h>   //modified by mingxuan 2021-4-5
 
 // int global=0;
 
@@ -303,8 +303,8 @@ void main(int arg,char *argv[])
 
 // added by rzr, pgw, 2020
 
-#include "syscall.h"
-#include "time.h"
+#include <syscall.h>
+#include <time.h>
 // #define O_CREAT 1
 // #define O_RDWR 2
 // #define PATH_DEL '\\'

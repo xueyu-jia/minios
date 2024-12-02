@@ -1,4 +1,4 @@
-#include "../include/stdio.h"
+#include <stdio.h>
 
 #define BUF_SIZE 4096  // 4KB
 //#define BUF_SIZE 8196		//8KB

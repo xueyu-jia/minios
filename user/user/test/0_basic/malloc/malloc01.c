@@ -4,7 +4,7 @@
  * 1. 使用 malloc_4k 申请一块内存
  * 2. 对该内存写入数据，如果所有字节都能写入，则成功。否则会报 page fault
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "malloc01";
 const char *syscall_name = "malloc";

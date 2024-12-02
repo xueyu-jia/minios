@@ -2,7 +2,7 @@
  * 测试 lseek 能否正常的处理 SEEK_END 模式下偏移量为负的情况
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "lseek02";
 const char *syscall_name = "lseek";

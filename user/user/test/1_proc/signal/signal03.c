@@ -2,7 +2,7 @@
  * 自己给自己发信号
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "signal03";
 const char *syscall_name = "signal";

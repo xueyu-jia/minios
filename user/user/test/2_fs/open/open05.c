@@ -2,7 +2,7 @@
  * 测试 open 传入的文件名参数过长的情况
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "open05";
 const char *syscall_name = "open";

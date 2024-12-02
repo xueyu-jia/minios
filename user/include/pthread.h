@@ -1,7 +1,7 @@
 #ifndef USER_PTHREAD_H
 #define USER_PTHREAD_H
 
-#include "type.h"
+#include <type.h>
 
 #define uint unsigned
 #define PTHREAD_MUTEX_INITIALIZER \

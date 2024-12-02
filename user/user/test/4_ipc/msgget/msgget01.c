@@ -2,7 +2,7 @@
  *  创建一个消息队列，写入一个消息，然后读取该消息
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgget01";
 const char *syscall_name = "msgget";

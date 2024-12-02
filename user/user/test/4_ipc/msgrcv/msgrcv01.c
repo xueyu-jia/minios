@@ -2,7 +2,7 @@
  * 测试 msgrcv 能否读取到预期的消息
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv01";
 const char *syscall_name = "msgrcv";

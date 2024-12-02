@@ -2,12 +2,11 @@
  * 用户态下小内存管理malloc相关代码    add by wang  2021.3.3
  **************************************************************/
 
-#include "malloc.h"
+#include <malloc.h>
+#include <type.h>
 
-#include "type.h"
-
-// #include "../include/malloc.h"
-// #include "../include/type.h"
+// #include <malloc.h>
+// #include <type.h>
 
 //核心函数
 static u32 vmalloc(u32 size);           //分配逻辑内存块

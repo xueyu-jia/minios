@@ -6,7 +6,7 @@
  *
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_memory_sharing";
 

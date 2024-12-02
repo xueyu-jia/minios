@@ -7,7 +7,7 @@
  * 4. 检查线程此时是否还持有 mutex
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_timewait03";
 const char *syscall_name = "pthread_cond_timewait";

@@ -1,8 +1,7 @@
-#include "time.h"
-
-#include "const.h"
-#include "stdio.h"
-#include "type.h"
+#include <const.h>
+#include <stdio.h>
+#include <time.h>
+#include <type.h>
 PRIVATE struct tm* _gmtime(u32 timestamp, struct tm* tm_time) {
   static int days_four_year = 1461;
   const static unsigned char Days[12] = {31, 28, 31, 30, 31, 30,

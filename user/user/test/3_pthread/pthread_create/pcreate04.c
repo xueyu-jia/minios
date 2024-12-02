@@ -7,7 +7,7 @@
  * 也不相等
  * 过不了， 会导致系统跑飞
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_create04";
 const char *syscall_name = "pthread_create";

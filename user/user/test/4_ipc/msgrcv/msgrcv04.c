@@ -2,7 +2,7 @@
  *   msgrcv 在队列 id 无效时，应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv04";
 const char *syscall_name = "msgrcv";

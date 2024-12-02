@@ -1,8 +1,8 @@
-// #include "../include/malloc.h"
-#include "../include/ushm.h"
-// #include "../include/type.h"
-// #include "../include/const.h"
-#include "../include/syscall.h"
+// #include <malloc.h>
+#include <ushm.h>
+// #include <type.h>
+// #include <const.h>
+#include <syscall.h>
 
 int totalShmPage;
 struct shm_mem shmmen[260];

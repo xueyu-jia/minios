@@ -1,6 +1,6 @@
 // 测试 get_pid_byname 能否正确返回当前进程的 pid
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pidbyname01";
 const char *syscall_name = "get_pid_byname";

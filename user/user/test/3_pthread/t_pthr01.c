@@ -13,7 +13,7 @@
 
 */
 
-#include "../include/stdio.h"
+#include <stdio.h>
 
 void thread_fun(void *arg) {
   printf("pth1 print : I'm thread1, arg = %d. \n", *(int *)arg);

@@ -3,7 +3,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "signal01";
 const char *syscall_name = "signal";
@@ -15,7 +15,7 @@ static volatile uint32_t recv_sig = 0;
 
 void handler(int sig, uint32_t arg) {
   recv_sig |= 1 << sig;
-  if (sig != arg) {
+  if ((uint32_t)sig != arg) {
     info(&logger, "sig: %d != arg: %d\n", sig, arg);
   }
 }

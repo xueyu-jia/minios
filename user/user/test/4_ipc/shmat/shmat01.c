@@ -7,7 +7,7 @@
  * 4. 这两个地址都指向同一块物理内存
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmat01";
 const char *syscall_name = "shmat";

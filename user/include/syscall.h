@@ -1,15 +1,15 @@
 #ifndef USER_SYSCALL_H
 #define USER_SYSCALL_H
 
-#include "../include/msg.h"
-#include "../include/pthread.h"
-#include "../include/signal.h"
-#include "../include/ushm.h"
-#include "const.h"
-#include "fcntl.h"
-#include "stat.h"
-#include "time.h"
-#include "type.h"
+#include <const.h>
+#include <fcntl.h>
+#include <msg.h>
+#include <pthread.h>
+#include <signal.h>
+#include <stat.h>
+#include <time.h>
+#include <type.h>
+#include <ushm.h>
 
 #define _NR_get_ticks 0
 #define _NR_get_pid 1

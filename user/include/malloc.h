@@ -1,7 +1,7 @@
 #pragma once
 
-#include "const.h"
-#include "type.h"
+#include <const.h>
+#include <type.h>
 
 #define MAX_FREE 1024    // 空闲分区表分区数量上限
 #define MAX_MBLOCK 1024  // 已分配记录表记录数量上限

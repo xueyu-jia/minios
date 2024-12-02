@@ -8,7 +8,7 @@
  *
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "open03";
 const char *syscall_name = "open";

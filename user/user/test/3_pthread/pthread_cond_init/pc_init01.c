@@ -7,7 +7,7 @@
  * 2. 测试 condattr 为 NULL 的情况
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_init01";
 const char *syscall_name = "pthread_cond_init";

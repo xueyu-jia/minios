@@ -13,10 +13,10 @@
                                                                              *****************************************************************************
                                                                              *****************************************************************************/
 
-#include "const.h"
-#include "stdio.h"
-#include "string.h"
-#include "type.h"
+#include <const.h>
+#include <stdio.h>
+#include <string.h>
+#include <type.h>
 
 PUBLIC char getchar();
 PUBLIC char *gets(char *str);

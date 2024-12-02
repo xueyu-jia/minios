@@ -2,7 +2,7 @@
  * 不带 O_CREAT 打开一个不存在的文件，返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "open01";
 const char *syscall_name = "open";

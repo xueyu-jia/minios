@@ -10,7 +10,7 @@
  *
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_wait01";
 const char *syscall_name = "pthread_cond_wait";

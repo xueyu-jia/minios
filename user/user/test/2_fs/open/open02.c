@@ -2,7 +2,7 @@
  * 测试 open 能否正常创建文件
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "open02";
 const char *syscall_name = "open";

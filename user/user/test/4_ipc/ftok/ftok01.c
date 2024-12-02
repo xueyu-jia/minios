@@ -2,7 +2,7 @@
  * 检查 ftok  的返回值。 ftok 成功时应返回 key 值，失败时应返回 -1.
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "ftok01";
 const char *syscall_name = "ftok";

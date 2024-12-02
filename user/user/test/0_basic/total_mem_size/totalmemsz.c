@@ -2,7 +2,7 @@
  * 应返回大于 0 的整数
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "totalmemsz";
 const char *syscall_name = "total_mem_size";

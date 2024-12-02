@@ -5,7 +5,7 @@
  * 2. 使用 pthread_cond_destroy 销毁这 3 个条件变量，检查返回值是否为 0
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_destroy01";
 const char *syscall_name = "pthread_cond_destroy";

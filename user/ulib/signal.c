@@ -3,8 +3,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 */
-#include "signal.h"
-#include "syscall.h"
+#include <signal.h>
+#include <syscall.h>
 
 void Handler(Sigaction sigaction) {
   void (*_fun)(int, int);

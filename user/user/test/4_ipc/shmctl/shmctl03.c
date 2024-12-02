@@ -3,7 +3,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmctl03";
 const char *syscall_name = "shmctl";

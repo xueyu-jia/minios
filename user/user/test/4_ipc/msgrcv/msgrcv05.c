@@ -2,7 +2,7 @@
  *   msgrcv 在 msgsz 为小于 0 时，应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv05";
 const char *syscall_name = "msgrcv";

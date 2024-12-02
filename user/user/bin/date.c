@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "time.h"
+#include <stdio.h>
+#include <time.h>
 
 int main(int argc, char** argv) {
   struct tm time = {0};

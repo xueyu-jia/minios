@@ -1,6 +1,6 @@
-#include "fcntl.h"
-#include "string.h"
-#include "type.h"
+#include <fcntl.h>
+#include <string.h>
+#include <type.h>
 
 int nproc = 20;
 void sharedfd(void) {

@@ -5,7 +5,7 @@
  * 2. 使用 total_mem_size 来检查系统可用内存是否减少
  * 3. 检查申请返回的地址是否存在重复的现象
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "malloc02";
 const char *syscall_name = "malloc";

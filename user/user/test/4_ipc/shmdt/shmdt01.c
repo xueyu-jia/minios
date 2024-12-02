@@ -5,7 +5,7 @@
  *  值的。因此，程序能正常结束就算测试通过。
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmdt01";
 const char *syscall_name = "shmdt";

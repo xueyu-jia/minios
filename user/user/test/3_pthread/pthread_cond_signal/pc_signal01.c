@@ -11,7 +11,7 @@
  *
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_signal01";
 const char *syscall_name = "pthread_cond_signal";

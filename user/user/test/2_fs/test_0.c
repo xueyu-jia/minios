@@ -1,4 +1,4 @@
-#include "stdio.h"
+#include <stdio.h>
 /*
  * 父进程第一次fork，子进程1执行fstest（该进程还会再fork一次）
  * 第二次fork， 父进程等待，子进程调用test_1

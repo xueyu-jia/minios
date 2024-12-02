@@ -21,7 +21,7 @@
  * DIR_FILE_OCCUPIYED   -3
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "rmdir03";
 const char *syscall_name = "rmdir";

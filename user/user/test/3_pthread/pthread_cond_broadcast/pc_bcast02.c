@@ -5,7 +5,7 @@
  * 3. 没有线程阻塞在杀件变量时，调用 pthread_cond_broadcast
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_broadcast01";
 const char *syscall_name = "pthread_cond_broadcast";

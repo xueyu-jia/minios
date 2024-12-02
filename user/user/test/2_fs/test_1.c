@@ -1,5 +1,5 @@
-#include "stdio.h"  //modified by mingxuan 2021-8-29
-#include "string.h"
+#include <stdio.h>  //modified by mingxuan 2021-8-29
+#include <string.h>
 
 int user_test(int order, int val, int is_true, char *test_messege) {
   printf("test %d: %s ", order, test_messege);

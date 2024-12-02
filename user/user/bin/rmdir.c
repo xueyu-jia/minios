@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "syscall.h"
+#include <stdio.h>
+#include <syscall.h>
 
 int main(int argc, char** argv) {
   if (argc != 2) {

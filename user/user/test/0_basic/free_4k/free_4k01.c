@@ -5,7 +5,7 @@
  * 2. 使用 free_4k 回收一块内存
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "malloc01";
 const char *syscall_name = "malloc";

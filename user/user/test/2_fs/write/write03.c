@@ -8,7 +8,7 @@
  *  // use `(void *) -1` will make minios restart
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "write03";
 const char *syscall_name = "write";

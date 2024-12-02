@@ -1,5 +1,5 @@
-#include "../include/pthread.h"
-#include "../include/stdio.h"
+#include <pthread.h>
+#include <stdio.h>
 int global = 0;
 
 pthread_t ntid;

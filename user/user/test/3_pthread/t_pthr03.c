@@ -9,7 +9,7 @@
 
 */
 
-#include "../include/stdio.h"
+#include <stdio.h>
 
 int pid1, pid2, pid3;
 

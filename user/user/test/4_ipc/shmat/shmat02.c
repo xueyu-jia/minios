@@ -2,7 +2,7 @@
  *  shmat 一个不存在的 shmid 时，应失败返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmat02";
 const char *syscall_name = "shmat";

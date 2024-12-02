@@ -2,7 +2,7 @@
  * 测试 msgctl IPC_STAT 能否读取到正确信息
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgctl01";
 const char *syscall_name = "msgctl";

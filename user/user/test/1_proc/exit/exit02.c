@@ -4,7 +4,7 @@
  * 父进程此时读取方文件，如果能读取到子进程写入的数据，则通过测试。
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "exit02";
 const char *syscall_name = "exit";

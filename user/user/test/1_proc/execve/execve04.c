@@ -5,7 +5,7 @@
  * execve 的返回值应该是一个 int 类型的值。然而 minios 的返回值是 u32 类型
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "execve04";
 const char *syscall_name = "execve";

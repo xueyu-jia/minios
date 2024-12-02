@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "syscall.h"
+#include <stdio.h>
+#include <syscall.h>
 
 #define assert(x)                                                      \
   if (!(x)) {                                                          \

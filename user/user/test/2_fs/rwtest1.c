@@ -1,5 +1,7 @@
-#include "../include/stdio.h"
-#include "../include/syscall.h"
+#include <stdio.h>
+#include <string.h>
+#include <syscall.h>
+
 #define BUF_SIZE 1024
 char read_buf[BUF_SIZE];
 int main(int arg, char *argv[]) {
@@ -11,7 +13,7 @@ int main(int arg, char *argv[]) {
     exit(-1);
   }
   char w_buf[] = "abc ";
-  int ret = 1;
+  __attribute__((unused)) int ret = 1;
   for (int i = 0; i < 100; i++) {
     ret &= write(fd, w_buf, 3);
   }

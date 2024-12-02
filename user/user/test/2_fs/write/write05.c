@@ -6,7 +6,7 @@
  *  3. 所有进程结束后，检查每个 write 写入的内容是否是连续的
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "write05";
 const char *syscall_name = "write";

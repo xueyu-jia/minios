@@ -1,11 +1,11 @@
 /*
  * msgget 指定了 IPC_CREAT 和 IPC_EXCL 创建消息队列时，若该 key 对应的
- * 消息队列已存在，则应返回 EEXIST
+ * 消息队列已存在，则应返回 -EEXIST
  *
  * EXCL means exclusive
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgget04";
 const char *syscall_name = "msgget";
@@ -37,8 +37,8 @@ void cleanup() {
 
 void run() {
   int id = msgget(key, IPC_CREAT | IPC_EXCL);
-  if (id != EEXIST) {
-    info(&logger, "msgget return %d, expected %d\n", mq_id, EEXIST);
+  if (id != -EEXIST) {
+    info(&logger, "msgget return %d, expected %d\n", mq_id, -EEXIST);
     cleanup();
     exit(-1);
   }

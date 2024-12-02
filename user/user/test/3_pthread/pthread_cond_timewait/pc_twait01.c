@@ -9,7 +9,7 @@
  * 5. 程序正常结束并返回 TC_PASS 说明测试成功
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_timewait01";
 const char *syscall_name = "pthread_cond_timewait";

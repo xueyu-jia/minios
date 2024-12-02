@@ -2,7 +2,7 @@
  * 未指定 IPC_CREAT 且 key 对应的共享内存不存在时，shmget 应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmget06";
 const char *syscall_name = "shmget";

@@ -1,11 +1,11 @@
 
-#include "const.h"
-#include "stdio.h"
-#include "type.h"
+#include <const.h>
+#include <stdio.h>
+#include <type.h>
 
-// #include "../include/type.h"
-// #include "../include/stdio.h"
-// #include "../include/const.h"
+// #include <type.h>
+// #include <stdio.h>
+// #include <const.h>
 
 PUBLIC int scanf(char *str, ...) {
   va_list vl;

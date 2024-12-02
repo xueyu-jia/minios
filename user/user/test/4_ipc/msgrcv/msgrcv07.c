@@ -12,7 +12,7 @@
  *   IPC_NOWAIT，则会返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv07";
 const char *syscall_name = "msgrcv";

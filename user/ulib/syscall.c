@@ -1,4 +1,4 @@
-#include "../include/syscall.h"
+#include <syscall.h>
 
 #define syscall_log(name) \
   {                       \
@@ -84,7 +84,7 @@ char* getcwd(char* buf, int size) { return _syscall2(_NR_getcwd, buf, size); }
 
 int wait(int* status) { return _syscall1(_NR_wait, status); }
 
-void exit(int status) { _syscall1(_NR_exit, status); }
+__attribute__((noreturn)) void exit(int status) { _syscall1(_NR_exit, status); }
 
 // "user/ulib/signal.c" 中提供了上层封装
 int _signal(int sig, void* handler, void* _Handler) {
@@ -203,7 +203,9 @@ int umount(const char* target) { return _syscall1(_NR_umount, target); }
 // pthread_exit pthread_join
 // 参数名retval改为status,此名称与_syscall宏中的retval重名了
 // 故将此处改为更有意义的名字，syscall内部变量也改为_retval
-void pthread_exit(void* status) { _syscall1(_NR_pthread_exit, status); }
+__attribute__((noreturn)) void pthread_exit(void* status) {
+  _syscall1(_NR_pthread_exit, status);
+}
 
 int pthread_join(pthread_t thread, void** status) {
   return _syscall2(_NR_pthread_join, thread, status);

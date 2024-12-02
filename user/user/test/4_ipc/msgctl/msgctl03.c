@@ -2,7 +2,7 @@
  * 测试 msgctl IPC_RMID 能否删除队列
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgctl03";
 const char *syscall_name = "msgctl";

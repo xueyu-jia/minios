@@ -1,6 +1,6 @@
-#include "../include/pthread.h"
-#include "../include/stdio.h"
-#include "../include/syscall.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <syscall.h>
 
 #define BUF_SIZE 1024
 

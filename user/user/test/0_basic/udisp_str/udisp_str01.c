@@ -3,7 +3,7 @@
  * how to determine the string pass to udisp_int show in terminal correctly?
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "udisp_str01";
 const char *syscall_name = "udisp_str";

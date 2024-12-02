@@ -2,7 +2,7 @@
  * buff 无效时，msgsnd 应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgsnd02";
 const char *syscall_name = "msgsnd";

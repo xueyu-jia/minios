@@ -11,7 +11,7 @@
 
 */
 
-#include "../include/stdio.h"
+#include <stdio.h>
 
 void thread_fun2(void *arg) {
   printf("pth2 print : I'm thread2, arg = %d. \n", *(int *)arg);

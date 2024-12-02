@@ -4,7 +4,7 @@
  *  // 在 POSIX 标准中，这是一个未定义行为
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_init03";
 const char *syscall_name = "pthread_cond_init";

@@ -22,7 +22,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_mutex_lock03";
 const char *syscall_name = "pthread_mutex_lock";

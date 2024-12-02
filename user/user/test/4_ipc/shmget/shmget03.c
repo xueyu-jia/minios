@@ -6,7 +6,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmget03";
 const char *syscall_name = "shmget";

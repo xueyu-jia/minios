@@ -9,7 +9,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "fork04";
 const char *syscall_name = "fork";

@@ -7,7 +7,7 @@
  *  4. 检查 write 是否能写入该文件，如能，则失败
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "open07";
 const char *syscall_name = "open";

@@ -2,7 +2,7 @@
  * 测试 get_ticks 系统调用。
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "getticks01";
 const char *syscall_name = "get_ticks";

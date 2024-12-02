@@ -8,7 +8,7 @@
 
 */
 
-#include "../include/stdio.h"
+#include <stdio.h>
 
 #define KIDEXIT 42  //这个数字目前无特殊含义
 

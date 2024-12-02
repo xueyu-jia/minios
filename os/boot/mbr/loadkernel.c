@@ -10,13 +10,14 @@
 void loader_cstart(u32 MemChkBuf, u32 MCRNumber) {
   clear_screen();
   lprintf("MemChkBuf: %d MCRNumber %d \n", MemChkBuf, MCRNumber);
-  //启动分页
+  // 启动分页
   paging(MemChkBuf, MCRNumber);
-  //初始化AHCI
+  // 初始化AHCI
   AHCI_init();
-  //加载kernel并执行kernel
+  // 加载kernel并执行kernel
   load_kernel();
 }
+
 static bool mem_check_IsZero(int addr, int size) {
   char *p = (char *)addr;
   for (int i = 0; i < size; i++) {
@@ -90,7 +91,6 @@ void load_kernel() {
   lprintf("----finish loading kernel elf----\n");
   lprintf("%d", eh.e_entry);
   ((void (*)(void))(eh.e_entry))();
-test:
   while (1)
     ;
 bad:

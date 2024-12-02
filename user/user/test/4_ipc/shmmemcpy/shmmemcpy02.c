@@ -2,7 +2,7 @@
  * 测试 shmmemcpy 能否正确处理源地址和目的地址存在交叠的情况。
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmmemcpy02";
 const char *syscall_name = "shmmemcpy";

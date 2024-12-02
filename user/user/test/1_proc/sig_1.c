@@ -1,7 +1,7 @@
-//#include "stdio.h"
+//#include <stdio.h>
 //#include <signal/signal.h>
-#include "signal.h"
-#include "stdio.h"
+#include <signal.h>
+#include <stdio.h>
 
 void handler(int sig, u32 arg) {
   printf("hanlder %d %d", sig, arg);

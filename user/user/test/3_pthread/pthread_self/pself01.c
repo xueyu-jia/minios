@@ -7,7 +7,7 @@
  * 4. 比较主线程 id 和 th_id1 的值，应不相等
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_self01";
 const char *syscall_name = "pthread_self";

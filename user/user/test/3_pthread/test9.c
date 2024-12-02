@@ -1,13 +1,13 @@
-#include "../include/pthread.h"
-#include "../include/stdio.h"
-// #include "type.h"
-// #include "const.h"
-// #include "protect.h"
-// #include "string.h"
-// #include "proc.h"
-// #include "global.h"
-// #include "proto.h"
-// #include "spinlock.h"
+#include <pthread.h>
+#include <stdio.h>
+// #include <type.h>
+// #include <const.h>
+// #include <protect.h>
+// #include <string.h>
+// #include <proc.h>
+// #include <global.h>
+// #include <proto.h>
+// #include <spinlock.h>
 pthread_mutex_t mutex;
 pthread_mutexattr_t attr;
 pthread_cond_t cond;

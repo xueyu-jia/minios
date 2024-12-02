@@ -6,7 +6,7 @@
  * 3. 用 read 读取数据，检查读出和写入的数据是否相同
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "write01";
 const char *syscall_name = "write";

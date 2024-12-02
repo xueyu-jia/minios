@@ -5,7 +5,7 @@
  * 使用 chdir 测试是否创建成功
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "mkdir04";
 const char *syscall_name = "mkdir";

@@ -2,7 +2,7 @@
  * 测试 shmmemcpy 能否复制数据到指定的位置
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmmemcpy01";
 const char *syscall_name = "shmmemcpy";

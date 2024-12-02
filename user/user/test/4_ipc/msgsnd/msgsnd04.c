@@ -2,7 +2,7 @@
  * posix 标准中，msgbuf 中 mtype 必须为非 0 的正数。如果不是，msgsnd 应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgsnd04";
 const char *syscall_name = "msgsnd";

@@ -1,8 +1,8 @@
 /*
- * msgget 在不指定 IPC_CREAT 且消息队列不存在时，应返回 -6(ENOENT)
+ * msgget 在不指定 IPC_CREAT 且消息队列不存在时，应返回 -ENOENT
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgget02";
 const char *syscall_name = "msgget";
@@ -18,8 +18,8 @@ void cleanup() { logger_close(&logger); }
 void run() {
   key_t key = ftok("msgget02_key", 23);
   mq_id = msgget(key, 0);
-  if (mq_id != ENOENT) {
-    info(&logger, "msgget return %d, expected %d\n", mq_id, ENOENT);
+  if (mq_id != -ENOENT) {
+    info(&logger, "msgget return %d, expected %d\n", mq_id, -ENOENT);
     cleanup();
     exit(TC_FAIL);
   }

@@ -8,7 +8,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "sigreturn01";
 const char *syscall_name = "sigreturn";

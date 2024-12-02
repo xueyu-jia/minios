@@ -3,7 +3,7 @@
  * get_ticks 应是递增的
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "getticks02";
 const char *syscall_name = "get_ticks";

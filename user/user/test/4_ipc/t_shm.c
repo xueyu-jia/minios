@@ -1,5 +1,5 @@
-#include "../include/stdio.h"
-#include "../include/ushm.h"
+#include <stdio.h>
+#include <ushm.h>
 
 #define key 123456
 void main(int arg, char *argv[]) {

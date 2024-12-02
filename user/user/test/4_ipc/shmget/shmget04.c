@@ -6,7 +6,7 @@
  * 3. 使用不同的 key，并设置 IPC_FIND flag，shmget 应返回 -1 表示失败
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmget04";
 const char *syscall_name = "shmget";

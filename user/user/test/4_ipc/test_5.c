@@ -1,5 +1,5 @@
-// #include "../include/stdio.h"
-// #include "../include/msg.h"
+// #include <stdio.h>
+// #include <msg.h>
 
 // typedef struct my_msg{
 // 	long t;
@@ -66,8 +66,8 @@
 // 	return 0;
 // }
 
-#include "../include/msg.h"
-#include "../include/stdio.h"
+#include <msg.h>
+#include <stdio.h>
 
 typedef struct my_msg {
   long t;

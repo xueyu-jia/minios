@@ -6,7 +6,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "get_pid02";
 const char *syscall_name = "get_pid";

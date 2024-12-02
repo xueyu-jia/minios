@@ -5,7 +5,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "close01";
 const char *syscall_name = "close";

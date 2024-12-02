@@ -3,7 +3,7 @@
  *   msgrcv 在消息内容大于 msgsz 时且指定了 MSG_NOERROR 时，应返回截断的消息内容
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv02";
 const char *syscall_name = "msgrcv";

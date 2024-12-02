@@ -3,7 +3,7 @@
  * （由 proc.h 中的 NR_PCBS 限制）。
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "get_pid01";
 const char *syscall_name = "get_pid";

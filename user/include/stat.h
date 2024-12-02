@@ -1,6 +1,6 @@
 #ifndef STAT_H
 #define STAT_H
-#include "type.h"
+#include <type.h>
 struct stat {
   u32 st_dev;   /* ID of device containing file */
   u32 st_ino;   /* Inode number */

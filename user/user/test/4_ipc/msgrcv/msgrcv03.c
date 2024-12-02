@@ -2,7 +2,7 @@
  *   msgrcv 在 buffer 为空时，应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv03";
 const char *syscall_name = "msgrcv";

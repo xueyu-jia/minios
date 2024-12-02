@@ -10,7 +10,7 @@
  *      相等。
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_create02";
 const char *syscall_name = "pthread_create";

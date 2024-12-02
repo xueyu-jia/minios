@@ -1,6 +1,6 @@
-#include "stdio.h"
-#include "string.h"
-#include "syscall.h"
+#include <stdio.h>
+#include <string.h>
+#include <syscall.h>
 
 #define TEST_INFO(cond, testinfo)     \
   if (!(cond)) {                      \

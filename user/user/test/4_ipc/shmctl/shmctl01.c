@@ -1,7 +1,7 @@
 /*
  * 测试 shmctl 能否正确获取共享内存信息
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmctl01";
 const char *syscall_name = "shmctl";

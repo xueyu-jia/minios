@@ -4,7 +4,7 @@
  * fat32 中 opendir 已弃用
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "opendir02";
 const char *syscall_name = "opendir";

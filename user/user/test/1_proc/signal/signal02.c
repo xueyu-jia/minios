@@ -2,7 +2,7 @@
  *  设置一个无效的信号（sig >= NR_SIGNALS）应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "signal02";
 const char *syscall_name = "signal";

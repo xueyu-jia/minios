@@ -7,7 +7,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 const char *test_name = "pthread_fd_sharing";
 
 logging logger;

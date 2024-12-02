@@ -3,7 +3,7 @@
  *
  *  PTHREAD_COND_INITIALIZER 只用于初始化静态变量
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_init02";
 const char *syscall_name = "pthread_cond_init";

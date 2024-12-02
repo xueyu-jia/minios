@@ -2,7 +2,7 @@
  * 测试 msgctl IPC_SET 能否能修改信息。目前只支持修改 msg_qbytes
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgctl02";
 const char *syscall_name = "msgctl";

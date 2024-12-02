@@ -1,5 +1,5 @@
-#include "stdio.h"
-#include "syscall.h"
+#include <stdio.h>
+#include <syscall.h>
 
 int main() {
   int pid = fork();

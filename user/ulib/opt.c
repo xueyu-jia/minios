@@ -1,8 +1,7 @@
-#include "opt.h"
-
-#include "malloc.h"
-#include "stdio.h"
-#include "string.h"
+#include <malloc.h>
+#include <opt.h>
+#include <stdio.h>
+#include <string.h>
 
 // borrowed from glibc
 /* For communication from 'getopt' to the caller.

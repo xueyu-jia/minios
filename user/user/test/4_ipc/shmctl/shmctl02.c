@@ -2,7 +2,7 @@
  * 删除一个不存在的共享内存应返回 1
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmctl02";
 const char *syscall_name = "shmctl";

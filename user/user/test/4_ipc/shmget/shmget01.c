@@ -2,7 +2,7 @@
  *  测试 shmget 是否能正确获取一块共享内存
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "shmget01";
 const char *syscall_name = "shmget";

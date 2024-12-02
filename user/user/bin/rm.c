@@ -1,8 +1,8 @@
-#include "malloc.h"
-#include "opt.h"
-#include "stdio.h"
-#include "string.h"
-#include "syscall.h"
+#include <malloc.h>
+#include <opt.h>
+#include <stdio.h>
+#include <string.h>
+#include <syscall.h>
 
 struct stat statbuf;
 int remove(const char* path, int rec) {

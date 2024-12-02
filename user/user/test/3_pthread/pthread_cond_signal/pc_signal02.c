@@ -10,7 +10,7 @@
  * 7. 程序正常结束说明测试成功
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_signal02";
 const char *syscall_name = "pthread_cond_signal";

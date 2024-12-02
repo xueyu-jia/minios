@@ -5,7 +5,7 @@
  *  B：接收
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "ipc_msg02";
 const char *syscall_name = "ipc_msg";

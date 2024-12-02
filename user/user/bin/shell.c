@@ -1,7 +1,7 @@
-#include "env.h"
-#include "malloc.h"
-#include "stdio.h"
-#include "string.h"
+#include <env.h>
+#include <malloc.h>
+#include <stdio.h>
+#include <string.h>
 #define MAX_ARGC 8
 #define NUM_BUILTIN_CMD 3
 #define CMD_LEN 8

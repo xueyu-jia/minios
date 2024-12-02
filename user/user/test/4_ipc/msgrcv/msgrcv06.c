@@ -2,7 +2,7 @@
  *   msgrcv 在队列中无消息且指定了 IPC_NOWAIT 时，应返回 -1
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgrcv06";
 const char *syscall_name = "msgrcv";

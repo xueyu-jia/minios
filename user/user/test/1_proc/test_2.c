@@ -1,4 +1,4 @@
-#include "../include/stdio.h"
+#include <stdio.h>
 
 // int global = 1;
 // char str[12];

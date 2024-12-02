@@ -2,7 +2,7 @@
  * 测试 msgsnd 是否能正常发送消息。使用 msgctl 获取相关信息来验证。
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "msgsnd01";
 const char *syscall_name = "msgsnd";

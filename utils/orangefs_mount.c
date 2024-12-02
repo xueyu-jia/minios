@@ -51,7 +51,7 @@ void orangefs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name) {
     orangefs_stat(e.ino, &e.attr);
     fuse_reply_entry(req, &e);
   } else {
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   }
 }
 
@@ -60,7 +60,7 @@ void orangefs_getattr(fuse_req_t req, fuse_ino_t ino,
   struct stat stbuf;
   memset(&stbuf, 0, sizeof(stbuf));
   if (orangefs_stat(ino, &stbuf) == -1)
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   else
     fuse_reply_attr(req, &stbuf, 1.0);
 }
@@ -77,7 +77,7 @@ void orangefs_unlink(fuse_req_t req, fuse_ino_t parent, const char *name) {
     orangefs_write_direntry(dir, pos, "", 0);
     fuse_reply_err(req, 0);
   } else {
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   }
 }
 
@@ -97,7 +97,7 @@ void orangefs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name) {
       fuse_reply_err(req, ENOTEMPTY);
     }
   } else {
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   }
 }
 
@@ -108,7 +108,7 @@ void orangefs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
   old_ino = orangefs_find(parent, name, &old_pos);
   new_ino = orangefs_find(newparent, newname, &new_pos);
   if (old_ino == 0 || name[0] == '\0' || newname[0] == '\0') {
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   }
   if (old_ino == new_ino) {
     fuse_reply_err(req, 0);
@@ -116,7 +116,7 @@ void orangefs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
   switch (flags) {
     case RENAME_NOREPLACE:
       if (new_ino != 0) {
-        fuse_reply_err(req, EEXIST);
+        fuse_reply_err(req, -EEXIST);
       } else {
         // fuse_log(FUSE_LOG_DEBUG, "add dirent(%d, %s, %d)\n", newparent,
         // newname, old_ino);
@@ -134,7 +134,7 @@ void orangefs_rename(fuse_req_t req, fuse_ino_t parent, const char *name,
         struct orange_inode *dir = orangefs_iget(parent);
         orangefs_write_direntry(dir, old_pos, name, new_ino);
       } else {
-        fuse_reply_err(req, ENOENT);
+        fuse_reply_err(req, -ENOENT);
       }
       break;
     default:
@@ -167,9 +167,9 @@ void orangefs_forget(fuse_req_t req, fuse_ino_t ino, uint64_t nlookup) {
 }
 
 void orangefs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi) {
-  if (ino <= 0) fuse_reply_err(req, ENOENT);
+  if (ino <= 0) fuse_reply_err(req, -ENOENT);
   struct orange_inode *pin = orangefs_iget(ino);
-  if (pin == 0) fuse_reply_err(req, ENOENT);
+  if (pin == 0) fuse_reply_err(req, -ENOENT);
   if ((pin->i_mode & I_TYPE_MASK) == I_DIRECTORY)
     fuse_reply_err(req, EISDIR);
   else {
@@ -189,7 +189,7 @@ static int reply_buf_limited(fuse_req_t req, const char *buf, size_t bufsize,
 void orangefs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
                    struct fuse_file_info *fi) {
   struct orange_inode *pin = orangefs_iget(ino);
-  if (pin == 0) fuse_reply_err(req, ENOENT);
+  if (pin == 0) fuse_reply_err(req, -ENOENT);
   if ((pin->i_mode & I_TYPE_MASK) == I_DIRECTORY) fuse_reply_err(req, EISDIR);
   if (off >= 0) {
     off_t end = min(off + size, pin->i_size);
@@ -221,11 +221,11 @@ static void dirbuf_add(fuse_req_t req, struct dirbuf *b, const char *name,
 void orangefs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
                       struct fuse_file_info *fi) {
   if (ino <= 0)
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   else {
     struct orange_inode *dir = orangefs_iget(ino);
     if (dir == NULL) {
-      fuse_reply_err(req, ENOENT);
+      fuse_reply_err(req, -ENOENT);
     }
     if ((dir->i_mode & I_TYPE_MASK) != I_DIRECTORY) {
       fuse_reply_err(req, ENOTDIR);
@@ -256,7 +256,7 @@ void orangefs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 
 void orangefs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size) {
   if (ino <= 0)
-    fuse_reply_err(req, ENOENT);
+    fuse_reply_err(req, -ENOENT);
   else {
     if (size == 0) {
       fuse_reply_xattr(req, 0);
@@ -269,7 +269,7 @@ void orangefs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size) {
 void orangefs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
                     size_t size, off_t off, struct fuse_file_info *fi) {
   struct orange_inode *pin = orangefs_iget(ino);
-  if (pin == 0) fuse_reply_err(req, ENOENT);
+  if (pin == 0) fuse_reply_err(req, -ENOENT);
   if ((pin->i_mode & I_TYPE_MASK) == I_DIRECTORY) fuse_reply_err(req, EISDIR);
   if (pin->i_nr_blocks == 0) {
     orangefs_allocsector(pin);
@@ -286,7 +286,7 @@ void orangefs_write(fuse_req_t req, fuse_ino_t ino, const char *buf,
     // fuse_log(FUSE_LOG_DEBUG, "sync:%ld (size %d)\n", ino, pin->i_size);
     fuse_reply_write(req, end - off);
   } else {
-    fuse_reply_err(req, ENOSPC);
+    fuse_reply_err(req, -ENOSPC);
   }
 }
 
@@ -294,7 +294,7 @@ void orangefs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
                      mode_t mode, struct fuse_file_info *fi) {
   int ino = orangefs_find(parent, name, NULL);
   if (ino != 0) {
-    fuse_reply_err(req, EEXIST);
+    fuse_reply_err(req, -EEXIST);
   }
   ino = orangefs_allocinode();
   struct orange_inode *pin = orangefs_iget(ino);
@@ -312,7 +312,7 @@ void orangefs_create(fuse_req_t req, fuse_ino_t parent, const char *name,
     fi->direct_io = 1;
     fuse_reply_create(req, &e, fi);
   } else {
-    fuse_reply_err(req, ENOSPC);
+    fuse_reply_err(req, -ENOSPC);
   }
 }
 
@@ -320,7 +320,7 @@ void orangefs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
                     mode_t mode) {
   int ino = orangefs_find(parent, name, NULL);
   if (ino != 0) {
-    fuse_reply_err(req, EEXIST);
+    fuse_reply_err(req, -EEXIST);
   }
   ino = orangefs_allocinode();
   struct orange_inode *pin = orangefs_iget(ino);
@@ -339,7 +339,7 @@ void orangefs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name,
     orangefs_stat(e.ino, &e.attr);
     fuse_reply_entry(req, &e);
   } else {
-    fuse_reply_err(req, ENOSPC);
+    fuse_reply_err(req, -ENOSPC);
   }
 }
 

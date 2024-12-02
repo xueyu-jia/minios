@@ -6,7 +6,7 @@
  *  2. 新线程检查传入的参数是否正确。如正确则说明线程创建成功
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_create01";
 const char *syscall_name = "pthread_create";

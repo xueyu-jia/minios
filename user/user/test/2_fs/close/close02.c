@@ -2,7 +2,7 @@
  * close 关闭一个非法的 fd 时，应返回 -1.
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "close02";
 const char *syscall_name = "close";

@@ -1,8 +1,7 @@
-#include "stat.h"
-
-#include "malloc.h"
-#include "stdio.h"
-#include "time.h"
+#include <malloc.h>
+#include <stat.h>
+#include <stdio.h>
+#include <time.h>
 
 void print_time(u32 timestamp) {
   char buf[32] = {0};

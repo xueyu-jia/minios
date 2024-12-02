@@ -5,7 +5,7 @@
  *  暂定为 end_time - start_time <= 2
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_timewait04";
 const char *syscall_name = "pthread_cond_timewait";

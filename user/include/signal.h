@@ -6,8 +6,7 @@
 #define SIGNAL_H
 
 #include <stdbool.h>
-
-#include "type.h"
+#include <type.h>
 
 typedef struct Sigaction {
   int sig;        // 信号的编号

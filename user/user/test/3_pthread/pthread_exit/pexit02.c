@@ -7,7 +7,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_exit01";
 const char *syscall_name = "pthread_exit";

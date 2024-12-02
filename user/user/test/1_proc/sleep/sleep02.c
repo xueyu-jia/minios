@@ -4,7 +4,7 @@
  *
  */
 
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "sleep02";
 const char *syscall_name = "sleep";

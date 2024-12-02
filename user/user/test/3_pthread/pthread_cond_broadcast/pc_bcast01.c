@@ -9,7 +9,7 @@
  * 4. 所有线程都应被唤醒。每个线程检查是否获取到了 mutex
  *
  */
-#include "usertest.h"
+#include <usertest.h>
 
 const char *test_name = "pthread_cond_broadcast01";
 const char *syscall_name = "pthread_cond_broadcast";
