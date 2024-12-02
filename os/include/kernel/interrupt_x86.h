@@ -1,7 +1,9 @@
 #pragma once
 
 #include <kernel/console.h>
+#include <kernel/regs.h>
 #include <kernel/type.h>
+#include <kernel/x86-asm.h>
 
 //: 8259A interrupt controller ports
 //: <Master> I/O port for interrupt controller
@@ -65,6 +67,19 @@
 
 /* 系统调用 */
 #define INT_VECTOR_SYS_CALL 0x90
+
+#define disable_int_begin()                                  \
+  {                                                          \
+    int __scoped_interrupt_flag = read_eflags() & EFLAGS_IF; \
+    if (__scoped_interrupt_flag) {                           \
+      disable_int();                                         \
+    }
+
+#define disable_int_end()        \
+  if (__scoped_interrupt_flag) { \
+    enable_int();                \
+  }                              \
+  }
 
 void enable_irq(int irq);
 void disable_irq(int irq);

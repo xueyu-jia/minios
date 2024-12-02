@@ -120,8 +120,12 @@ enum msgtype {
 #define NULL 0
 
 #define bool _Bool
-#define true 1
-#define false 0
+
+enum {
+  false,
+  true,
+};
+
 #if defined __GNUC__ && __GNUC__ >= 14
 #pragma GCC diagnostic warning "-Wimplicit-function-declaration"
 #pragma GCC diagnostic warning "-Wincompatible-pointer-types"

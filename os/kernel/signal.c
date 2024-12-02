@@ -1,11 +1,13 @@
 // added by mingxuan 2021-2-28
 
-#include <errno.h>
+#include <errno.h>  // IWYU pragma: keep
+#include <kernel/interrupt_x86.h>
 #include <kernel/ksignal.h>
 #include <kernel/proc.h>
 #include <kernel/proto.h>
 #include <kernel/type.h>
 #include <klib/assert.h>
+#include <klib/compiler.h>
 #include <klib/string.h>
 
 /*  //deleted by mingxuan 2021-8-20
@@ -28,45 +30,30 @@ int kern_signal(int sig, void* handler, void* _Handler) {
   p_proc_current->task._Hanlder = _Handler;
   return 0;
 }
+
 // modified by mingxuan 2021-8-20
 int do_signal(int sig, void* handler, void* _Handler) {
   return kern_signal(sig, handler, _Handler);
 }
 
-/*
-int do_sigsend(int pid, Sigaction* sigaction_p)
-{
-
-    PROCESS* proc = &proc_table[pid];
-
-    if(proc->task.sig_handler[sigaction_p->sig] == NULL ||
-        (proc->task.sig_set & (1 << sigaction_p->sig)))
-    {
-        return -1;
-    }
-    proc->task.sig_set |= (1 << sigaction_p->sig);
-    proc->task.sig_arg[sigaction_p->sig] = sigaction_p->arg;
-
-    return 0;
-}
-*/
 // modified by mingxuan 2021-8-20
-int kern_sigsend(int pid, Sigaction* sigaction_p) {
+int kern_sigsend(int pid, Sigaction* action) {
+  //! TODO: support kill process group
   if (!(pid >= 0 && pid < NR_PCBS)) {
     return -1;
   }
-  //! TODO: support kill process group
-  PROCESS* proc = &proc_table[pid];
 
-  if (proc->task.sig_handler[sigaction_p->sig] == NULL ||
-      (proc->task.sig_set & (1 << sigaction_p->sig))) {
+  const int sig_bit = 1 << action->sig;
+  auto task = &proc_table[pid].task;
+  if (task->sig_handler[action->sig] == SIG_IGN || (task->sig_set & sig_bit)) {
     return -1;
   }
-  proc->task.sig_set |= (1 << sigaction_p->sig);
-  proc->task.sig_arg[sigaction_p->sig] = sigaction_p->arg;
 
+  task->sig_set |= sig_bit;
+  task->sig_arg[action->sig] = action->arg;
   return 0;
 }
+
 // modified by mingxuan 2021-8-20
 int do_sigsend(int pid, Sigaction* sigaction_p) {
   return kern_sigsend(pid, sigaction_p);
@@ -123,33 +110,48 @@ int sys_sigsend() { return do_sigsend(get_arg(1), (Sigaction*)get_arg(2)); }
 void sys_sigreturn() { do_sigreturn(get_arg(1)); }
 
 void process_signal() {
-  /* speed up */
-  if (!p_proc_current->task.sig_set) {
+  auto task = &p_proc_current->task;
+
+  //! get next signal nr
+  int sig_nr = -1;
+  if (task->sig_set == 0) {
     return;
   }
 
-  int sig = -1, arg;
-  for (int i = 0; i < 32; i++) {
-    if (p_proc_current->task.sig_set & (1 << i) &&
-        p_proc_current->task.sig_handler[i] /* for stable */) {
-      p_proc_current->task.sig_set ^= (1 << i);
-      sig = i, arg = p_proc_current->task.sig_arg[i];
+  while (++sig_nr < NR_SIGNALS) {
+    const int mask = 1 << sig_nr;
+    //! FIXME: some signals cannot be ignored
+    const bool ignored = task->sig_handler[sig_nr] == SIG_IGN;
+    if (task->sig_set & mask && !ignored) {
       break;
     }
   }
-  if (sig == -1) {
+  if (sig_nr == NR_SIGNALS) {
     return;
   }
-  // add default signal
-  void* handler = p_proc_current->task.sig_handler[sig];
-  if (handler == SIG_DFL) {
-    switch (sig) {
-      case SIGINT:
-        do_exit(sig);
-        break;
-      default:
-        break;
+
+  task->sig_set ^= 1 << sig_nr;
+
+  void* handler = task->sig_handler[sig_nr];
+  bool has_custom_handler = false;
+  if (false) {
+  } else if (handler == SIG_DFL) {
+    //! TODO: more default handler
+    switch (sig_nr) {
+      case SIGINT: {
+        do_exit(sig_nr);
+      } break;
+      default: {
+      } break;
     }
+  } else if (handler == SIG_IGN) {
+    unreachable();
+  } else {
+    has_custom_handler = true;
+  }
+
+  if (!has_custom_handler) {
+    return;
   }
 
   //  change this proc(B)'s eip to warper function
@@ -162,11 +164,13 @@ void process_signal() {
   PROCESS* proc = p_proc_current;
   // memcpy(&regs, &proc->task.regs, sizeof(STACK_FRAME));
   regs1 = p_proc_current->task.context.esp_save_int;
-  Sigaction sigaction = {.sig = sig,
-                         .handler = proc->task.sig_handler[sig],
-                         .arg = proc->task.sig_arg[sig]};
+  Sigaction sigaction = {
+      .sig = sig_nr,
+      .handler = proc->task.sig_handler[sig_nr],
+      .arg = proc->task.sig_arg[sig_nr],
+  };
 
-  disable_int();
+  disable_int_begin();
 
   // u16 B_ss = regs.ss & 0xfffc;
   u16 B_ss = regs1->ss & 0xfffc;
@@ -226,5 +230,6 @@ void process_signal() {
 
   /*  reverse  */
   __asm__ __volatile__("mov %0, %%es\n" : : "r"(A_es) :);
-  enable_int();
+
+  disable_int_end();
 }
