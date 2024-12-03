@@ -378,27 +378,36 @@ PUBLIC void do_sleep(int n) { return kern_sleep(n); }
 
 PUBLIC void sys_sleep() { return do_sleep(get_arg(1)); }
 
-/*invoked by clock-interrupt handler to wakeup
- *processes sleeping on ticks.
- */
 PUBLIC void wakeup(void* channel) {
-  PROCESS *p, *target_p;
-  target_p = NULL;
+  disable_int_begin();
 
-  for (p = proc_table; p < proc_table + NR_PCBS; p++) {
-    if (p->task.stat == SLEEPING && p->task.channel == channel) {
-      p->task.stat = READY;
-      target_p = p;
-      break;
+  PROCESS* candidates[NR_PCBS] = {};
+  PROCESS** slot = candidates;
+
+  for (int i = 0; i < NR_PCBS; ++i) {
+    const auto proc = &proc_table[i];
+    if (proc->task.stat == SLEEPING && proc->task.channel == channel) {
+      *slot++ = proc;
     }
   }
-  if (target_p != NULL) {
-    if (target_p->task.is_rt == false) {
-      target_p->task.vruntime = get_min_vruntime();  // min_vruntime
+
+  //! ATTENTION: the reason why the following method works is because size of rq
+  //! equals to max pcbs
+  //! FIXME: a completely concurrency-unsafe impl
+  //! FIXME: expect a queue or other impl rather than simply wakeup all
+
+  const auto min_vruntime = get_min_vruntime();
+  for (auto p = candidates; p < slot; ++p) {
+    auto proc = *p;
+    proc->task.stat = READY;
+    proc->task.channel = NULL;
+    if (!proc->task.is_rt) {
+      proc->task.vruntime = min_vruntime;
     }
-    target_p->task.channel = 0;
-    in_rq(target_p);
+    rq_insert(proc);
   }
+
+  disable_int_end();
 }
 
 // added by zq

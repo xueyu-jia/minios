@@ -53,8 +53,8 @@
 // #define NR_PCBS	32		//add by visual 2016.4.5
 // #define NR_K_PCBS 10		//add by visual 2016.4.5
 #define NR_PCBS 64  // modified by zhenhao 2023.3.5
-//#define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan
-// 2019-5-19
+// #define NR_TASKS	4	//TestA~TestC + hd_service //deleted by mingxuan
+//  2019-5-19
 #define NR_TASKS \
   3                   // task_tty + hd_service		//modified by mingxuan 2019-5-19
 #define NR_K_PCBS 16  // modified by zhenhao 2023.3.5
@@ -90,8 +90,8 @@
 //	READY: 此PCB表示的进程/线程正在使用且可被调度
 //	SLEEPING: 此PCB表示的进程/线程处于睡眠等待状态
 //	KILLED: 进程收到了一个信号（通常是 SIGKILL
-//或其他无法被忽略的致命信号），导致它被立即终止。被杀死的进程不会保留其 PCB
-//以供父进程检索状态。
+// 或其他无法被忽略的致命信号），导致它被立即终止。被杀死的进程不会保留其 PCB
+// 以供父进程检索状态。
 //	ZOMBY：僵尸状态通常指的是子进程已经结束运行，但其父进程尚未通过调用如
 // wait 或 waitpid 这样的系统调用来检索其退出状态。 	note:
 // KILLED和ZOMBY的差异请参考wait.c的注释
@@ -108,23 +108,24 @@ enum proc_stat {
 // deleted by dongzhangqi 2023-6-2
 
 #define NR_CHILD_MAX \
-  (NR_PCBS - NR_K_PCBS - 1)  //定义最多子进程/线程数量	//add by visual
-                             // 2016.5.26
-#define TYPE_PROCESS 0  //进程//add by visual 2016.5.26
-#define TYPE_THREAD 1   //线程//add by visual 2016.5.26
+  (NR_PCBS - NR_K_PCBS - 1)  // 定义最多子进程/线程数量	//add by visual
+                             //  2016.5.26
+#define TYPE_PROCESS 0  // 进程//add by visual 2016.5.26
+#define TYPE_THREAD 1   // 线程//add by visual 2016.5.26
 #define TIME_SCALE 100
 
-typedef struct s_tree_info {  //进程树记录，包括父进程，子进程，子线程  //add by
-                              // visual 2016.5.25
-  int type;                         //当前是进程还是线程
-  int real_ppid;                    //亲父进程，创建它的那个进程
-  int ppid;                         //当前父进程
-  int child_p_num;                  //子进程数量
-  int child_process[NR_CHILD_MAX];  //子进程列表
-  int child_t_num;                  //子线程数量
-  int child_thread[NR_CHILD_MAX];   //子线程列表
-  int text_hold;                    //是否拥有代码
-  int data_hold;                    //是否拥有数据
+typedef struct s_tree_info {  // 进程树记录，包括父进程，子进程，子线程  //add
+                              // by
+                              //  visual 2016.5.25
+  int type;                         // 当前是进程还是线程
+  int real_ppid;                    // 亲父进程，创建它的那个进程
+  int ppid;                         // 当前父进程
+  int child_p_num;                  // 子进程数量
+  int child_process[NR_CHILD_MAX];  // 子进程列表
+  int child_t_num;                  // 子线程数量
+  int child_thread[NR_CHILD_MAX];   // 子线程列表
+  int text_hold;                    // 是否拥有代码
+  int data_hold;                    // 是否拥有数据
 } TREE_INFO;
 
 struct vmem_area {
@@ -136,30 +137,30 @@ struct vmem_area {
   struct list_node vma_list;
 };
 
-typedef struct s_lin_memmap {  //线性地址分布结构体	edit by visual 2016.5.25
-  u32 text_lin_base;           //代码段基址
-  u32 text_lin_limit;          //代码段界限
+typedef struct s_lin_memmap {  // 线性地址分布结构体	edit by visual 2016.5.25
+  u32 text_lin_base;           // 代码段基址
+  u32 text_lin_limit;          // 代码段界限
 
-  u32 data_lin_base;   //数据段基址
-  u32 data_lin_limit;  //数据段界限
+  u32 data_lin_base;   // 数据段基址
+  u32 data_lin_limit;  // 数据段界限
 
-  u32 vpage_lin_base;   //保留内存基址
-  u32 vpage_lin_limit;  //保留内存界限
+  u32 vpage_lin_base;   // 保留内存基址
+  u32 vpage_lin_limit;  // 保留内存界限
 
-  u32 heap_lin_base;   //堆基址
-  u32 heap_lin_limit;  //堆界限
+  u32 heap_lin_base;   // 堆基址
+  u32 heap_lin_limit;  // 堆界限
 
-  u32 stack_lin_base;   //栈基址
-  u32 stack_lin_limit;  //栈界限（使用时注意栈的生长方向）
+  u32 stack_lin_base;   // 栈基址
+  u32 stack_lin_limit;  // 栈界限（使用时注意栈的生长方向）
 
-  u32 arg_lin_base;   //参数内存基址
-  u32 arg_lin_limit;  //参数内存界限
+  u32 arg_lin_base;   // 参数内存基址
+  u32 arg_lin_limit;  // 参数内存界限
 
-  u32 kernel_lin_base;   //内核基址
-  u32 kernel_lin_limit;  //内核界限
+  u32 kernel_lin_base;   // 内核基址
+  u32 kernel_lin_limit;  // 内核界限
 
-  u32 stack_child_limit;  //分给子线程的栈的界限		//add by visual
-                          // 2016.5.27
+  u32 stack_child_limit;  // 分给子线程的栈的界限		//add by visual
+                          //  2016.5.27
   struct address_space anon_pages;
   list_head vma_map;  // list of vmem_area
   struct spinlock vma_lock;
@@ -175,13 +176,13 @@ typedef struct s_proc {
                     'ticks'.
                                  */
 
-  LIN_MEMMAP memmap;    //线性内存分部信息 		add by visual 2016.5.4
-  TREE_INFO tree_info;  //记录进程树关系	add by visual 2016.5.25
+  LIN_MEMMAP memmap;    // 线性内存分部信息 		add by visual 2016.5.4
+  TREE_INFO tree_info;  // 记录进程树关系	add by visual 2016.5.25
   int ticks;            /* remained ticks */
   int priority;
 
   u32 pid;               /* process id passed in from MM */
-  pthread_t pthread_id;  //线程id Add By ZengHao & MaLinhan 21.12.22
+  pthread_t pthread_id;  // 线程id Add By ZengHao & MaLinhan 21.12.22
 
   char p_name[16]; /* name of the process */
 
@@ -191,7 +192,7 @@ typedef struct s_proc {
 
   struct dentry* cwd;
 
-  int suspended;  //线程id Add By ZengHao & MaLinhan 21.12.22
+  int suspended;  // 线程id Add By ZengHao & MaLinhan 21.12.22
   // added by zcr
   struct file_desc* filp[NR_FILES];
   //~zcr
@@ -199,15 +200,15 @@ typedef struct s_proc {
   int exit_status;        // added by mingxuan 2021-1-6
   int child_exit_status;  // added by mingxuan 2021-1-6
 
-  //与signal相关
-  // added by mingxuan 2021-2-28
+  // 与signal相关
+  //  added by mingxuan 2021-2-28
   void* sig_handler[NR_SIGNALS];
   u32 sig_set;
   u32 sig_arg[NR_SIGNALS];
   void* _Hanlder;
 
   // add by dongzhangqi 2023.5.8
-  //线程相关
+  // 线程相关
   pthread_attr_t attr;
   void* retval;
   u32 who_wait_flag;
@@ -243,8 +244,8 @@ typedef struct s_task {
 } TASK;
 
 #define STACK_SIZE_TASK 0x1000  // add by visual 2016.4.5
-//#define STACK_SIZE_TOTAL	(STACK_SIZE_TASK*NR_PCBS)	//edit by visual
-// 2016.4.5
+// #define STACK_SIZE_TOTAL	(STACK_SIZE_TASK*NR_PCBS)	//edit by visual
+//  2016.4.5
 extern u32 cr3_ready;
 extern int u_proc_sum;
 extern PROCESS* p_proc_current;
@@ -274,8 +275,8 @@ typedef struct process_message {
 } proc_msg;
 
 void sched_init();
-void in_rq(PROCESS* p_in);
-void out_rq(PROCESS* p_out);
+PUBLIC void rq_insert(PROCESS* proc);
+PUBLIC void rq_remove(PROCESS* proc);
 PUBLIC void idle();
 void proc_update();
 

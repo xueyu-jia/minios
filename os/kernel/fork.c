@@ -1,4 +1,4 @@
-/*****************************************************
+﻿/*****************************************************
  *			fork.c			//add by visual 2016.5.25
  *系统调用fork()功能实现部分sys_fork()
  ********************************************************/
@@ -29,7 +29,8 @@ PUBLIC int kern_fork() {
 
   // init proc page
   // disable_int();
-  if (ch->task.cr3 == 0)  //如果没有页目录，就申请 //added by mingxuan 2021-1-11
+  if (ch->task.cr3 == 0)  // 如果没有页目录，就申请 //added by mingxuan
+                          // 2021-1-11
     retval = init_proc_page(ch->task.pid);
   // enable_int();
   if (retval != 0) goto init_page_failed;
@@ -93,7 +94,7 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child) {
   // 也不应该使用旧的无效pcb中的上下文，简单起见这里直接调用初始化重置上下文字段
   // jiangfeng  2024.5
   STACK_FRAME* esp_save_stackframe;  // added by lcy, 2023.10.24
-  //暂存子进程的标识信息
+  // 暂存子进程的标识信息
   pid = p_child->task.pid;
   cr3_child = p_child->task.cr3;
   esp_save_stackframe = p_child->task.context.esp_save_int;
@@ -107,7 +108,7 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child) {
   p_child->task.stat = SLEEPING;
   enable_int();
 
-  //恢复子进程PCB独有的信息
+  // 恢复子进程PCB独有的信息
   p_child->task.cpu_use = 0;
   p_child->task.sum_cpu_use = 0;
   p_child->task.context.esp_save_int =
@@ -141,21 +142,21 @@ PRIVATE int fork_pcb_info_cpy(PROCESS* p_child) {
 
 PRIVATE int fork_update_proc_tree(PROCESS* p_child) {
   /************更新父进程的info***************/
-  p_proc_current->task.tree_info.child_p_num += 1;  //子进程数量
+  p_proc_current->task.tree_info.child_p_num += 1;  // 子进程数量
   p_proc_current->task.tree_info
       .child_process[p_proc_current->task.tree_info.child_p_num - 1] =
-      p_child->task.pid;  //子进程列表
+      p_child->task.pid;  // 子进程列表
 
   /************更新子进程的info***************/
   p_child->task.tree_info.type =
-      p_proc_current->task.tree_info.type;  //当前进程属性跟父进程一样
+      p_proc_current->task.tree_info.type;  // 当前进程属性跟父进程一样
   p_child->task.tree_info.real_ppid =
-      p_proc_current->task.pid;  //亲父进程，创建它的那个进程
-  p_child->task.tree_info.ppid = p_proc_current->task.pid;  //当前父进程
-  p_child->task.tree_info.child_p_num = 0;                  //子进程数量
-  p_child->task.tree_info.child_t_num = 0;                  //子线程数量
-  p_child->task.tree_info.text_hold = 0;  //是否拥有代码，子进程不拥有代码
-  p_child->task.tree_info.data_hold = 1;  //是否拥有数据，子进程拥有数据
+      p_proc_current->task.pid;  // 亲父进程，创建它的那个进程
+  p_child->task.tree_info.ppid = p_proc_current->task.pid;  // 当前父进程
+  p_child->task.tree_info.child_p_num = 0;                  // 子进程数量
+  p_child->task.tree_info.child_t_num = 0;                  // 子线程数量
+  p_child->task.tree_info.text_hold = 0;  // 是否拥有代码，子进程不拥有代码
+  p_child->task.tree_info.data_hold = 1;  // 是否拥有数据，子进程拥有数据
 
   return 0;
 }
