@@ -1,4 +1,4 @@
-﻿/*****************************************************
+/*****************************************************
  *			fork.c			//add by visual 2016.5.25
  *系统调用fork()功能实现部分sys_fork()
  ********************************************************/
@@ -59,7 +59,7 @@ PUBLIC int kern_fork() {
   // disable_int();
   ch->task.stat = READY;
   release(&fa->task.lock);
-  in_rq(ch);
+  rq_insert(ch);
   // enable_int();
   return ch->task.pid;
 

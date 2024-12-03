@@ -14,9 +14,18 @@
 #include <kernel/const.h>
 #include <kernel/hd.h>
 #include <kernel/proc.h>
+#include <kernel/protect.h>
 #include <kernel/proto.h>
 #include <kernel/type.h>
+#include <klib/assert.h>
+#include <klib/compiler.h>
 #include <klib/string.h>
+
+//! FIXME: assert in sched is not allowed, we need another special assert method
+//! here
+#define sched_assert(...) assert(__VA_ARGS__)
+
+#define VRUNTIME_THRESHOULD 0xffffff
 
 typedef struct sched_process_entity {
   u32 pid;
@@ -36,11 +45,13 @@ int nice_to_weight[40] = {
     /*  10 */ 110,   87,    70,    56,    45,
     /*  15 */ 36,    29,    23,    18,    15};
 
+//! realtime runtime queue
 sched_entity rt_rq_head_empty = {-1, NULL, NULL, NULL};
 sched_entity* rt_rq = &rt_rq_head_empty;
 sched_entity* rt_rq_tail = &rt_rq_head_empty;
 sched_entity rt_rq_array[PROC_READY_MAX];
 
+//! non-realtime runtime queue
 sched_entity rq_head_empty = {-1, NULL, NULL, NULL};
 sched_entity* rq = &rq_head_empty;
 sched_entity* rq_tail = &rq_head_empty;
@@ -52,106 +63,130 @@ int rt_runtime;
 int rt_period;
 
 PRIVATE u32 get_min_vruntime();
-PRIVATE sched_entity* get_curr_entity(PROCESS* current_proc);
+PRIVATE sched_entity* get_current_entity(PROCESS* current_proc);
 PRIVATE void rq_resort(sched_entity* changed_entity);
-
-PRIVATE int test_cfs() {
-  if (p_proc_current->task.stat == READY ||
-      rt_rq->next->p_process->task.stat == READY)
-    return true;
-  else
-    return false;
-}
 
 /*======================================================================*
                               cfs_schedule
  *======================================================================*/
 
+static inline bool is_rq_empty() {
+  sched_assert((rq == rq_tail) == (rq->next == NULL));
+  return rq == rq_tail;
+}
+static inline sched_entity* rq_front() {
+  sched_assert(!is_rq_empty());
+  return rq->next;
+}
+static inline sched_entity* rq_back() {
+  sched_assert(!is_rq_empty());
+  return rq_tail;
+}
+static inline PROCESS* rq_front_p() { return rq_front()->p_process; }
+static inline PROCESS* rq_back_p() { return rq_back()->p_process; }
+
+static inline bool is_rt_rq_empty() {
+  sched_assert((rt_rq == rt_rq_tail) == (rt_rq->next == NULL));
+  return rt_rq == rt_rq_tail;
+}
+static inline sched_entity* rt_rq_front() {
+  sched_assert(!is_rt_rq_empty());
+  return rt_rq->next;
+}
+static inline sched_entity* rt_rq_back() {
+  sched_assert(!is_rt_rq_empty());
+  return rt_rq_tail;
+}
+static inline PROCESS* rt_rq_front_p() { return rt_rq_front()->p_process; }
+static inline PROCESS* rt_rq_back_p() { return rt_rq_back()->p_process; }
+
+static inline void consume_proc_cpu_time(PROCESS* proc) {
+  if (!proc->task.is_rt) {
+    proc->task.vruntime += proc->task.cpu_use * 1024. / proc->task.weight;
+  }
+  proc->task.sum_cpu_use += proc->task.cpu_use;
+  proc->task.cpu_use = 0;
+}
+
 void cfs_sched() {
-  if (rt_runtime < sysctl_sched_rt_runtime &&
-      rt_rq->next !=
-          NULL)  // rt_runtime<950000 rt_rq is not empty(静态优先级+FIFO)
-  {
-    if (p_proc_current->task.is_rt == true) {
-      if (p_proc_current->task.stat == READY &&
-          p_proc_current->task.rt_priority >
-              rt_rq->next->p_process->task.rt_priority) {
-        p_proc_next = p_proc_current;
-      } else {
-        p_proc_current->task.sum_cpu_use += p_proc_current->task.cpu_use;
-        p_proc_current->task.cpu_use = 0;
+  bool need_maintain = false;
 
-        p_proc_next = rt_rq->next->p_process;
-      }
-    } else {
-      p_proc_current->task.vruntime +=
-          p_proc_current->task.cpu_use * 1024 / p_proc_current->task.weight;
-      p_proc_current->task.sum_cpu_use += p_proc_current->task.cpu_use;
-      p_proc_current->task.cpu_use = 0;
+  PROCESS* sched_next = NULL;
+  do {
+#define SCHED_NEXT(next)      \
+  assert(sched_next == NULL); \
+  sched_next = (next);        \
+  break;
 
-      sched_entity* curr_entity = get_curr_entity(p_proc_current);
+    const auto cur = &p_proc_current->task;
 
-      if (curr_entity != NULL && curr_entity->next != NULL &&
-          p_proc_current->task.vruntime >
-              curr_entity->next->p_process->task.vruntime) {
-        // resort
-        rq_resort(curr_entity);
-      }
-
-      p_proc_next = rt_rq->next->p_process;
+    const bool expect_realtime_next =
+        rt_runtime < sysctl_sched_rt_runtime && !is_rt_rq_empty();
+    if (expect_realtime_next && cur->is_rt && cur->stat == READY &&
+        cur->rt_priority > rt_rq_front_p()->task.rt_priority) {
+      SCHED_NEXT(p_proc_current);
     }
-  } else {
-    // update vruntime/sum_cpu_use
-    if (p_proc_current->task.is_rt == false) {
-      p_proc_current->task.vruntime += p_proc_current->task.cpu_use *
-                                       (double)1024 /
-                                       p_proc_current->task.weight;
-    }
-    p_proc_current->task.sum_cpu_use += p_proc_current->task.cpu_use;
-    p_proc_current->task.cpu_use = 0;
 
-    if (rq->next == NULL) {
-      // disp_str("-cfs-");	//mark debug
-      int idle_pid = kern_get_pid_byname("task_idle");
-      proc_table[idle_pid].task.stat = READY;  // IDLE
-      in_rq(&proc_table[idle_pid]);
-      p_proc_next = rq->next->p_process;
-      return;
-    }
-    // disp_int(rq->next->p_process->task.pid);
+    consume_proc_cpu_time(p_proc_current);
 
-    if (p_proc_current->task.stat != READY ||
-        p_proc_current->task.is_rt == true) {
-      p_proc_next = rq->next->p_process;
-    } else {
-      sched_entity* curr_entity = get_curr_entity(p_proc_current);
-      // if(curr_entity == NULL){
-      // 	disp_str("cfs_sched error1: cannot find the curr_entity");
-      // 	while(1){};
-      // }
-      if (curr_entity != NULL && curr_entity->next != NULL &&
-          p_proc_current->task.vruntime >
-              curr_entity->next->p_process->task.vruntime) {
-        // resort
-        rq_resort(curr_entity);
-      }
-      p_proc_next = rq->next->p_process;
-
-      if (rq_tail != rq &&
-          rq_tail->p_process->task.vruntime  // must check rq not empty
-              > 0xFFFFF)  // vruntime-min_vruntime,avoid overflow and time
-                          // waste
-      {
-        sched_entity* pos = rq->next;
-        double min_vruntime = get_min_vruntime();
-
-        while (pos != NULL) {
-          pos->p_process->task.vruntime -= min_vruntime;
-          pos = pos->next;
+    if (expect_realtime_next) {
+      if (!cur->is_rt) {
+        auto cur_ent = get_current_entity(p_proc_current);
+        if (cur_ent != NULL && cur_ent->next != NULL &&
+            cur->vruntime > cur_ent->next->p_process->task.vruntime) {
+          rq_resort(cur_ent);
         }
+      }
+      SCHED_NEXT(rt_rq_front_p());
+    }
+
+    if (is_rq_empty()) {
+      const int pid = kern_get_pid_byname("task_idle");
+      sched_assert(pid != -1);
+      auto idle = &proc_table[pid];
+      idle->task.stat = READY;
+      rq_insert(idle);
+      sched_assert(rq_front_p() == idle);
+      SCHED_NEXT(rq_front_p());
+    }
+
+    if (cur->is_rt || cur->stat != READY) {
+      SCHED_NEXT(rq_front_p());
+    }
+
+    //! ATTENTION: i'm not sure whether cur_ent must be non null here @zymelaii
+    auto cur_ent = get_current_entity(p_proc_current);
+    if (cur_ent != NULL && cur_ent->next != NULL &&
+        cur->vruntime > cur_ent->next->p_process->task.vruntime) {
+      rq_resort(cur_ent);
+    }
+
+    need_maintain = true;
+
+    SCHED_NEXT(rq_front_p());
+#undef SCHED_NEXT
+  } while (0);
+
+  /*!
+   * two purpose for maintaining procedure
+   *
+   * 1. avoid vruntime overflow
+   * 2. use a threshould to avoid frequent maintaing
+   */
+  if (need_maintain) {
+    const int threshold = VRUNTIME_THRESHOULD;
+    if (!is_rq_empty() && rq_back_p()->task.vruntime > threshold) {
+      const double min_vruntime = get_min_vruntime();
+      auto ent = rq_front();
+      while (ent != NULL) {
+        ent->p_process->task.vruntime -= min_vruntime;
+        ent = ent->next;
       }
     }
   }
+
+  sched_assert(sched_next != NULL);
+  p_proc_next = sched_next;
 }
 
 void sched_init() {
@@ -163,20 +198,22 @@ void sched_init() {
 }
 
 void proc_update() {
-  rt_period++;
-  if (p_proc_current->task.is_rt == true) {
-    rt_runtime++;
+  ++rt_period;
+
+  //! FIXME: 关于下面这两段的执行顺序是否有问题暂且存疑
+
+  if (p_proc_current->task.is_rt) {
+    ++rt_runtime;
   }
 
-  if (rt_period > sysctl_sched_rt_period)  // initialize
-  {
-    rt_period = rt_runtime = 0;
+  if (rt_period > sysctl_sched_rt_period) {
+    rt_period = 0;
+    rt_runtime = 0;
   }
 
-  if (p_proc_current->task.is_rt == false) {
-    p_proc_current->task.cpu_use++;
+  if (!p_proc_current->task.is_rt) {
+    ++p_proc_current->task.cpu_use;
   }
-  // p_proc_current->task.ticks--;
 }
 
 void schedule() {
@@ -186,8 +223,7 @@ void schedule() {
 
 u32 get_min_vruntime() {
   sched_entity* pos = rq->next;
-  u32 min_vruntime = 0xFFFFFF;
-
+  u32 min_vruntime = VRUNTIME_THRESHOULD;
   while (pos != NULL) {
     if (min_vruntime > pos->p_process->task.vruntime) {
       min_vruntime = pos->p_process->task.vruntime;
@@ -198,7 +234,7 @@ u32 get_min_vruntime() {
 }
 
 // 返回指定PCB的调度实体sched_entity
-sched_entity* get_curr_entity(PROCESS* current_proc) {
+sched_entity* get_current_entity(PROCESS* current_proc) {
   sched_entity* pos = rq->next;
 
   while (pos != NULL) {
@@ -222,21 +258,20 @@ void rq_resort(sched_entity* changed_entity)  // only for rq
     rq_tail = changed_entity->prev;
   }
 
-  in_rq(changed_entity->p_process);  // reinsert
+  rq_insert(changed_entity->p_process);  // reinsert
 }
 
 PRIVATE sched_entity* find_new_sched_entity(sched_entity* array) {
-  int i = 0;
-  for (; i < PROC_READY_MAX && array[i].pid < NR_PCBS; i++);
-  if (i < PROC_READY_MAX) {
-    return &array[i];
+  for (int i = 0; i < PROC_READY_MAX; ++i) {
+    if (array[i].pid == PID_NO_PROC) {
+      return &array[i];
+    }
   }
   return NULL;
 }
 
-// todo: rename
-void in_rq(PROCESS* p_in) {
-  int is_rt = p_in->task.is_rt;
+void rq_insert(PROCESS* proc) {
+  int is_rt = proc->task.is_rt;
   sched_entity* _rq_head = (is_rt) ? rt_rq : rq;
   sched_entity* _rq_tail = (is_rt) ? rt_rq_tail : rq_tail;
   sched_entity* _rq_arr = (is_rt) ? rt_rq_array : rq_array;
@@ -245,8 +280,8 @@ void in_rq(PROCESS* p_in) {
     disp_str("in_rq error1: cannot find a rq_array\n");
     return;  // mark 这里没做错误处理和提示，之后要加上
   }
-  new_entity->pid = p_in->task.pid;
-  new_entity->p_process = p_in;
+  new_entity->pid = proc->task.pid;
+  new_entity->p_process = proc;
   new_entity->next = NULL;
   new_entity->prev = NULL;
 
@@ -289,34 +324,25 @@ void in_rq(PROCESS* p_in) {
   }
 }
 
-void out_rq(PROCESS* p_out) {
-  sched_entity* pos;
-  if (p_out->task.is_rt == true)  // real time process
-  {
-    pos = rt_rq->next;
-  } else  // not real time process
-  {
-    pos = rq->next;
+void rq_remove(PROCESS* proc) {
+  auto ent = proc->task.is_rt ? rt_rq_front() : rq_front();
+  while (ent != NULL && ent->pid != proc->task.pid) {
+    ent = ent->next;
   }
-  while (pos != NULL && pos->pid != p_out->task.pid) pos = pos->next;
-  if (pos != NULL)  // found
-  {
-    pos->prev->next = pos->next;
-    if (pos->next != NULL) {
-      pos->next->prev = pos->prev;
-    } else {
-      if (p_out->task.is_rt == true)  // real time process
-      {
-        rt_rq_tail = pos->prev;
-      } else  // not real time process
-      {
-        rq_tail = pos->prev;
-      }
-    }
-    pos->next = NULL;
-    pos->prev = NULL;
-    pos->pid = PID_NO_PROC;  // mark empty
+  if (ent == NULL) {
+    return;
   }
+  ent->prev->next = ent->next;
+  if (ent->next != NULL) {
+    ent->next->prev = ent->prev;
+  } else if (proc->task.is_rt) {
+    rt_rq_tail = ent->prev;
+  } else {
+    rq_tail = ent->prev;
+  }
+  ent->next = NULL;
+  ent->prev = NULL;
+  ent->pid = PID_NO_PROC;
 }
 
 /*======================================================================*
@@ -330,8 +356,7 @@ PUBLIC void kern_yield() {
 }
 
 PUBLIC void sched_yield() {
-  u32 ringlevel = get_ring_level();
-  if (ringlevel == 0) {
+  if (get_ring_level() == RPL_KERNEL) {
     kern_yield();
   } else {
     yield();
@@ -343,10 +368,7 @@ PUBLIC void do_yield() { kern_yield(); }
 PUBLIC void sys_yield() { do_yield(); }
 
 PUBLIC void kern_sleep(int n) {
-  int ticks0;
-
-  ticks0 = ticks;
-  //
+  int ticks0 = ticks;
   while (ticks - ticks0 < n) {
     wait_event(&ticks);
   }
@@ -406,17 +428,17 @@ PUBLIC void kern_set_rt(int turn_rt) {
   if (turn_rt == true &&
       p_proc_current->task.is_rt == false)  // not rt change to rt process
   {
-    out_rq(p_proc_current);
+    rq_remove(p_proc_current);
     p_proc_current->task.is_rt = true;
   } else if (turn_rt == false &&
              p_proc_current->task.is_rt == true)  // rt change to not rt process
   {
-    out_rq(p_proc_current);
+    rq_remove(p_proc_current);
     p_proc_current->task.is_rt = false;
   } else {
     return;
   }
-  in_rq(p_proc_current);
+  rq_insert(p_proc_current);
   sched();
 }
 

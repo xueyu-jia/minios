@@ -139,7 +139,7 @@ PUBLIC int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr,
     p_child->task.stat = READY;
     p_child->task.pthread_id = p_parent->task.tree_info.child_t_num +
                                1;  // Add By ZengHao & MaLinhan 21.12.22
-    in_rq(p_child);
+    rq_insert(p_child);
     release(&p_child->task.lock);
     release(&p_parent->task.lock);
   }
@@ -331,7 +331,7 @@ PUBLIC void kern_pthread_exit(void *retval) {
   //设置返回值
   p_proc->task.retval = retval;
   p_proc->task.stat = ZOMBY;
-  out_rq(p_proc);
+  rq_remove(p_proc);
   sched_yield();
   return;
 }

@@ -95,7 +95,7 @@ void wait_for_sem(void* chan, struct spinlock* lk) {
   disable_int();
   p_proc_current->task.channel = chan;
   p_proc_current->task.stat = SLEEPING;
-  out_rq(p_proc_current);
+  rq_remove(p_proc_current);
   release(lk);
   enable_int();
 
@@ -125,7 +125,7 @@ PUBLIC void* va2la(int pid, void* va) {
 PUBLIC void idle() {
   while (1) {
     // disp_str("-idle-"); //mark debug
-    out_rq(p_proc_current);
+    rq_remove(p_proc_current);
     asm volatile("sti\n hlt" ::: "memory");
   }
   // p_proc_current->task.channel = 0;
@@ -142,7 +142,7 @@ PUBLIC void wait_event(void* event) {
   p_proc_current->task.channel = event;
   p_proc_current->task.stat = SLEEPING;
 
-  out_rq(p_proc_current);
+  rq_remove(p_proc_current);
   enable_int();
   sched_yield();
 }

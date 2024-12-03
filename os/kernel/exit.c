@@ -60,7 +60,7 @@ PUBLIC void kern_exit(int exit_code) {
   disable_int();
   exit_pcb->task.stat = ZOMBY;
   exit_pcb->task.exit_status = exit_code;
-  out_rq(exit_pcb);
+  rq_remove(exit_pcb);
   enable_int();
   // assert(exit_pcb->task.lock);
   // assert(fa_pcb->task.lock);

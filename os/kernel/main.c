@@ -143,12 +143,12 @@ PRIVATE int initialize_processes() {
     int pid = kthread_create(task_table[i].name,
                              (void*)task_table[i].initial_eip, task_table[i].rt,
                              task_table[i].rpl, task_table[i].priority_nice);
-    in_rq(&proc_table[pid]);
+    rq_insert(&proc_table[pid]);
   }
 
   int initial_pid =
       kthread_create("initial", initial, false, PRIVILEGE_TASK, 0);
-  in_rq(&proc_table[initial_pid]);
+  rq_insert(&proc_table[initial_pid]);
 
   /*************************进程树信息初始化***************************************/
   PROCESS* p_proc = &proc_table[PID_INIT];

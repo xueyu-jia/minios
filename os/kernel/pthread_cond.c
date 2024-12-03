@@ -14,7 +14,7 @@ int suspend_with_cancellation(PROCESS* self,
     if (self->task.suspended == READY)  //统一PCB state 20240314
     {
       self->task.stat = READY;
-      in_rq(self);
+      rq_insert(self);
       return 0;
     }
     // self->task.stat = SLEEPING;
