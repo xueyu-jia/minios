@@ -38,7 +38,8 @@ void deamon() {
   if (fork() != 0) {
     return;
   }
-  while (1) {
+  int n = 10;
+  while (n--) {
     delay(1);
     printf("heartbeat.");
   }
@@ -54,7 +55,7 @@ int main() {
     printf("echo from child pid=%d\n", get_pid());
     exit(0);
   }
-  sleep(10000);
+  sleep(1000);
   printf("echo from fa pid=%d\n", get_pid());
   return 0;
 }
