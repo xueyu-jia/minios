@@ -1,7 +1,3 @@
-// /**********************************************************
-// *	fat32.c
-// ***********************************************************/
-// #define FAT_TEST
 #include <kernel/buffer.h>
 #include <kernel/clock.h>
 #include <kernel/const.h>
@@ -10,6 +6,7 @@
 #include <kernel/time.h>
 #include <kernel/type.h>
 #include <kernel/vfs.h>
+#include <klib/compiler.h>
 #include <klib/string.h>
 
 PRIVATE void uni2char(u16* uni_name, char* norm_name, int max_len) {
@@ -103,7 +100,7 @@ PRIVATE u32 fat_read_datetime(u16 date, u16 time, u8 centi_sec) {
   time_s.__tm_gmtoff = 0;
   time_s.tm_year = (date >> 9) + 1980 - 1900;
   time_s.tm_mon = ((date >> 5) & 0xF) - 1;
-  time_s.tm_mday = ((date)&0x1F);
+  time_s.tm_mday = ((date) & 0x1F);
   time_s.tm_hour = ((time >> 11) & 0x1F);
   time_s.tm_min = ((time >> 5) & 0x2F);
   time_s.tm_sec = ((time & 0x1F) << 1) + (centi_sec) / 100;
@@ -241,10 +238,10 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start,
 
 PRIVATE int fat_get_cluster(struct inode* inode, int cluster, int new_space) {
   struct super_block* sb = inode->i_sb;
-  struct fat_sb_info* sbi = (struct fat_sb_info*)FAT_SB(sb);
+  struct fat_sb_info* sbi = FAT_SB(sb);
   int clus_skip = cluster;
   int clus, last = 0;
-  struct fat_info* info = inode->fat32_inode.fat_info;
+  struct fat_info* info = FAT_INODE(inode)->fat_info;
   int new = 0;
   if (!info->cluster_start) {
     if (!new_space) {
@@ -305,9 +302,8 @@ PRIVATE int fat_entry_offset_by_ino(struct inode* dir, u32 ino) {
   entry += (block_offset % sbi->cluster_block) *
            entry_block;  // 计算最后一簇的偏移量
   int start = 0, found = 0;
-  struct fat_info* info = dir->fat32_inode.fat_info;
-  for (struct fat_info* info = dir->fat32_inode.fat_info; info;
-       info = info->next) {
+  struct fat_info* info = FAT_INODE(dir)->fat_info;
+  for (auto info = FAT_INODE(dir)->fat_info; info; info = info->next) {
     if (cluster >= info->cluster_start &&
         cluster < info->cluster_start + info->length) {
       found = 1;
@@ -607,7 +603,7 @@ PRIVATE struct inode* fat_add_entry(struct inode* dir, const char* name,
   inode->i_dev = dir->i_sb->sb_dev;
   inode->i_no = fat_ino(dir, free_slot_order + nslot);
   inode->i_atime = inode->i_crtime = inode->i_mtime = timestamp;
-  fill_fat_info(dir->i_sb, 0, &inode->fat32_inode.fat_info);
+  fill_fat_info(dir->i_sb, 0, &FAT_INODE(inode)->fat_info);
   struct fat_dir_entry de;
   memset(&de, 0, sizeof(struct fat_dir_entry));
   memcpy(de.name, shortname, 11);
@@ -654,7 +650,7 @@ PUBLIC void fat32_read_inode(struct inode* inode) {
   inode->i_sb = sb;
   inode->i_dev = sb->sb_dev;
   inode->i_no = ino;
-  int cnt = fill_fat_info(sb, cluster_start, &inode->fat32_inode.fat_info);
+  int cnt = fill_fat_info(sb, cluster_start, &FAT_INODE(inode)->fat_info);
   if (!inode->i_size) {
     inode->i_size = cnt * FAT_SB(sb)->cluster_block * sb->sb_blocksize;
   }
@@ -672,7 +668,7 @@ PUBLIC int fat32_sync_inode(struct inode* inode) {
   int entry_block = sb->sb_blocksize / FAT_ENTRY_SIZE;
   buf_head* bh = NULL;
   u32 ino = inode->i_no;
-  int start = inode->fat32_inode.fat_info->cluster_start;
+  int start = FAT_INODE(inode)->fat_info->cluster_start;
   struct fat_dir_entry* de = &((struct fat_dir_entry*)fat_bread(
       inode->i_sb, ino / entry_block, &bh))[ino % entry_block];
   if (!de) {
@@ -695,14 +691,14 @@ PUBLIC int fat32_sync_inode(struct inode* inode) {
 
 PUBLIC void fat32_put_inode(struct inode* inode) {
   struct fat_info* next;
-  for (struct fat_info* ent = inode->fat32_inode.fat_info; ent; ent = next) {
+  for (struct fat_info* ent = FAT_INODE(inode)->fat_info; ent; ent = next) {
     next = ent->next;
     free_fat_info(ent);
   }
 }
 
 PUBLIC void fat32_delete_inode(struct inode* inode) {
-  struct fat_info* ent = inode->fat32_inode.fat_info;
+  struct fat_info* ent = FAT_INODE(inode)->fat_info;
   if (!ent->cluster_start) {  // inode 并没有分配磁盘空间
     return;
   }
@@ -982,7 +978,13 @@ PUBLIC int fat32_fill_superblock(struct super_block* sb, int dev) {
   return 0;
 }
 
+void fat32_query_size_info(struct fs_size_info* info) {
+  info->sb_size = sizeof(struct fat32_sb_info);
+  info->inode_size = sizeof(struct fat32_inode_info);
+}
+
 struct superblock_operations fat32_sb_ops = {
+    .query_size_info = fat32_query_size_info,
     .fill_superblock = fat32_fill_superblock,
     .read_inode = fat32_read_inode,
     .sync_inode = fat32_sync_inode,

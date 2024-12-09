@@ -1,12 +1,4 @@
-/**
- * fs.h
- * This file contains APIs of filesystem, it's used inside the kernel.
- * There is a seperate header file for user program's use.
- * This file is added by xw. 18/6/17
- */
-
-#ifndef FS_ORANGE_H
-#define FS_ORANGE_H
+#pragma once
 
 #include <kernel/const.h>
 #include <kernel/type.h>
@@ -45,7 +37,7 @@ struct orange_sb_info {
   u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr' */
   u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
 };
-#define ORANGE_SB(sb) (&((sb)->orange_sb))
+
 /**
  * @def   SUPER_BLOCK_SIZE
  * @brief The size of super block \b in \b the \b device.
@@ -88,6 +80,10 @@ struct orange_inode_info {
   u32 i_start_block; /**< The first block of the data */
   u32 i_nr_blocks;   /**< How many blocks the file occupies */
 };
+
+#define ORANGE_SB(sb) ((struct orange_sb_info*)((sb)->sb_private))
+#define ORANGE_INODE(inode) ((struct orange_inode_info*)((inode)->i_private))
+
 /**
  * @def   INODE_SIZE
  * @brief The size of i-node stored \b in \b the \b device.
@@ -113,22 +109,3 @@ struct dir_entry {
  * It is as same as the size in memory.
  */
 #define DIR_ENTRY_SIZE sizeof(struct dir_entry)
-/* //deleted by mingxuan 2019-5-17
-PUBLIC int open(const char *pathname, int flags);
-PUBLIC int close(int fd);
-PUBLIC int read(int fd, void *buf, int count);
-PUBLIC int write(int fd, const void *buf, int count);
-PUBLIC int lseek(int fd, int offset, int whence);
-PUBLIC int unlink(const char *pathname);
-*/
-
-// added by xw, 18/6/18
-/* //deleted by mingxuan 2019-5-17
-PUBLIC int sys_open(void *uesp);
-PUBLIC int sys_close(void *uesp);
-PUBLIC int sys_read(void *uesp);
-PUBLIC int sys_write(void *uesp);
-PUBLIC int sys_lseek(void *uesp);	//~xw
-PUBLIC int sys_unlink(void *uesp);	//added by xw, 18/6/19
-*/
-#endif /* FS_H */

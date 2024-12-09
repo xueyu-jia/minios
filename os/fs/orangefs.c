@@ -1,5 +1,3 @@
-/// zcr copy from chapter9/d fs/main.c and modified it.
-
 #include <kernel/buffer.h>
 #include <kernel/const.h>
 #include <kernel/fs.h>
@@ -284,7 +282,7 @@ PRIVATE int lookup_inode_in_dir(struct inode *dir, const char *filename) {
   }
   unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-  int dir_blk0_nr = dir->orange_inode.i_start_block;
+  int dir_blk0_nr = ORANGE_INODE(dir)->i_start_block;
   unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
   struct dir_entry *pde;
@@ -319,7 +317,7 @@ PRIVATE int lookup_inode_in_dir(struct inode *dir, const char *filename) {
 PRIVATE int remove_name_in_dir(struct inode *dir, int nr_inode) {
   unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-  int dir_blk0_nr = dir->orange_inode.i_start_block;
+  int dir_blk0_nr = ORANGE_INODE(dir)->i_start_block;
   unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
   struct dir_entry *pde;
@@ -355,7 +353,7 @@ PRIVATE int remove_name_in_dir(struct inode *dir, int nr_inode) {
 PRIVATE int orange_check_dir_empty(struct inode *dir) {
   unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-  int dir_blk0_nr = dir->orange_inode.i_start_block;
+  int dir_blk0_nr = ORANGE_INODE(dir)->i_start_block;
   unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
   struct dir_entry *pde;
@@ -391,7 +389,7 @@ PUBLIC int orange_readdir(struct file_desc *file, unsigned int count,
   struct inode *dir = file->fd_dentry->d_inode;
   unsigned int nr_dir_blks = (dir->i_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-  int dir_blk0_nr = dir->orange_inode.i_start_block;
+  int dir_blk0_nr = ORANGE_INODE(dir)->i_start_block;
   unsigned int nr_dir_entries = dir->i_size / DIR_ENTRY_SIZE;
 
   struct dir_entry *pde;
@@ -444,8 +442,8 @@ PRIVATE void orange_fill_inode(struct inode *inode, struct super_block *sb,
   inode->i_mode = I_RWX;
   inode->i_op = &orange_inode_ops;
   inode->i_fop = &orange_file_ops;
-  inode->orange_inode.i_start_block = pinode->i_start_block;
-  inode->orange_inode.i_nr_blocks = pinode->i_nr_blocks;
+  ORANGE_INODE(inode)->i_start_block = pinode->i_start_block;
+  ORANGE_INODE(inode)->i_nr_blocks = pinode->i_nr_blocks;
   brelse(bh);
 }
 
@@ -463,8 +461,8 @@ PRIVATE int orange_sync_inode(struct inode *inode) {
                                INODE_SIZE));
   pinode->i_mode = inode->i_type;
   pinode->i_size = inode->i_size;
-  pinode->i_start_block = inode->orange_inode.i_start_block;
-  pinode->i_nr_blocks = inode->orange_inode.i_nr_blocks;
+  pinode->i_start_block = ORANGE_INODE(inode)->i_start_block;
+  pinode->i_nr_blocks = ORANGE_INODE(inode)->i_nr_blocks;
   mark_buff_dirty(bh);
   brelse(bh);
   // sync_buffers(0);
@@ -487,13 +485,13 @@ PUBLIC void orange_read_inode(struct inode *inode) {
  *****************************************************************************/
 PRIVATE void orange_new_dir_entry(struct inode *dir_inode, int inode_nr,
                                   char *filename) {
-  if (dir_inode->orange_inode.i_nr_blocks == 0) {
-    orange_alloc_smap_bit(dir_inode->i_sb, &(dir_inode->orange_inode));
+  if (ORANGE_INODE(dir_inode)->i_nr_blocks == 0) {
+    orange_alloc_smap_bit(dir_inode->i_sb, ORANGE_INODE(dir_inode));
   }
   /* write the dir_entry */
   // 原orange逻辑存在问题：当目录项使用至Blk边界时,对于仍有空间的目录没有正确分配空间
-  int dir_blk0_nr = dir_inode->orange_inode.i_start_block;
-  unsigned int dir_blk_total = dir_inode->orange_inode.i_nr_blocks;
+  int dir_blk0_nr = ORANGE_INODE(dir_inode)->i_start_block;
+  unsigned int dir_blk_total = ORANGE_INODE(dir_inode)->i_nr_blocks;
   unsigned int nr_dir_blks = (dir_inode->i_size - 1 + BLOCK_SIZE) / BLOCK_SIZE;
   unsigned int nr_dir_entries =
       dir_inode->i_size / DIR_ENTRY_SIZE; /**
@@ -556,13 +554,14 @@ PUBLIC int orange_read(struct file_desc *file, unsigned int count, char *buf) {
   int pos = file->fd_pos;
   struct inode *pin = file->fd_dentry->d_inode;
   int pos_end = min(pos + count, pin->i_size);
-  if (pin->orange_inode.i_nr_blocks == 0) {
+  if (ORANGE_INODE(pin)->i_nr_blocks == 0) {
     return 0;
   }
   int off = pos % BLOCK_SIZE;
-  int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
+  int rw_sect_min =
+      ORANGE_INODE(pin)->i_start_block + (pos >> BLOCK_SIZE_SHIFT);
   int rw_sect_max =
-      pin->orange_inode.i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
+      ORANGE_INODE(pin)->i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
   int chunk =
       min(rw_sect_max - rw_sect_min + 1, BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
   int bytes_rw = 0;
@@ -594,16 +593,17 @@ PUBLIC int orange_write(struct file_desc *file, unsigned int count,
   int pos = file->fd_pos;
   struct inode *pin = file->fd_dentry->d_inode;
   int sync_needed = 0;
-  if (pin->orange_inode.i_nr_blocks == 0) {
-    orange_alloc_smap_bit(pin->i_sb, &(pin->orange_inode));
-    // pin->orange_inode.i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
+  if (ORANGE_INODE(pin)->i_nr_blocks == 0) {
+    orange_alloc_smap_bit(pin->i_sb, ORANGE_INODE(pin));
+    // ORANGE_INODE(pin)->i_nr_blocks = NR_DEFAULT_FILE_BLOCKS;
     sync_needed = 1;
   }
-  int pos_end = min(pos + count, pin->orange_inode.i_nr_blocks * BLOCK_SIZE);
+  int pos_end = min(pos + count, ORANGE_INODE(pin)->i_nr_blocks * BLOCK_SIZE);
   int off = pos % BLOCK_SIZE;
-  int rw_sect_min = pin->orange_inode.i_start_block + (pos >> BLOCK_SIZE_SHIFT);
+  int rw_sect_min =
+      ORANGE_INODE(pin)->i_start_block + (pos >> BLOCK_SIZE_SHIFT);
   int rw_sect_max =
-      pin->orange_inode.i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
+      ORANGE_INODE(pin)->i_start_block + (pos_end >> BLOCK_SIZE_SHIFT);
   int chunk =
       min(rw_sect_max - rw_sect_min + 1, BLOCK_SIZE >> BLOCK_SIZE_SHIFT);
   int bytes_rw = 0;
@@ -643,14 +643,14 @@ PUBLIC int orange_write(struct file_desc *file, unsigned int count,
 PUBLIC int orange_get_block(struct inode *inode, u32 iblock, int create) {
   struct super_block *sb = inode->i_sb;
   int phys = -1;
-  if (inode->orange_inode.i_nr_blocks == 0) {
+  if (ORANGE_INODE(inode)->i_nr_blocks == 0) {
     if (create == 0) {
       return -1;
     }
-    orange_alloc_smap_bit(sb, &(inode->orange_inode));
+    orange_alloc_smap_bit(sb, ORANGE_INODE(inode));
   }
-  if (iblock < inode->orange_inode.i_nr_blocks) {
-    phys = inode->orange_inode.i_start_block + iblock;
+  if (iblock < ORANGE_INODE(inode)->i_nr_blocks) {
+    phys = ORANGE_INODE(inode)->i_start_block + iblock;
   }
   return phys;
 }
@@ -668,8 +668,8 @@ int orange_create(struct inode *dir, struct dentry *dentry, int mode) {
   newino->i_no = inode_nr;
   newino->i_sb = dir->i_sb;
   newino->i_dev = dir->i_dev;
-  newino->orange_inode.i_start_block = 0;
-  newino->orange_inode.i_nr_blocks = 0;
+  ORANGE_INODE(newino)->i_start_block = 0;
+  ORANGE_INODE(newino)->i_nr_blocks = 0;
   newino->i_size = 0;
   newino->i_nlink = 1;
   newino->i_mode = I_RWX;
@@ -699,8 +699,8 @@ int orange_mkdir(struct inode *dir, struct dentry *dentry, int mode) {
   newino->i_dev = dir->i_dev;
   newino->i_size = 0;
   newino->i_nlink = 1;
-  newino->orange_inode.i_start_block = 0;
-  newino->orange_inode.i_nr_blocks = 0;
+  ORANGE_INODE(newino)->i_start_block = 0;
+  ORANGE_INODE(newino)->i_nr_blocks = 0;
   newino->i_mode = I_RWX;
   newino->i_type = I_DIRECTORY;
   newino->i_op = &orange_inode_ops;
@@ -720,8 +720,8 @@ int orange_rmdir(struct inode *dir, struct dentry *dentry) {
 }
 
 void orange_deleteinode(struct inode *inode) {
-  orange_free_smap_bit(inode->i_sb, inode->orange_inode.i_start_block,
-                       inode->orange_inode.i_nr_blocks);
+  orange_free_smap_bit(inode->i_sb, ORANGE_INODE(inode)->i_start_block,
+                       ORANGE_INODE(inode)->i_nr_blocks);
   orange_free_imap_bit(inode->i_sb, inode->i_no);
 }
 
@@ -739,7 +739,13 @@ int orange_fill_superblock(struct super_block *sb, int dev) {
   return 0;
 }
 
+void orange_query_size_info(struct fs_size_info *info) {
+  info->sb_size = sizeof(struct orange_sb_info);
+  info->inode_size = sizeof(struct orange_inode_info);
+}
+
 struct superblock_operations orange_sb_ops = {
+    .query_size_info = orange_query_size_info,
     .fill_superblock = orange_fill_superblock,
     .sync_inode = orange_sync_inode,
     .read_inode = orange_read_inode,
@@ -768,4 +774,3 @@ struct file_operations orange_file_ops = {
 #endif
     .readdir = orange_readdir,
 };
-// #endif

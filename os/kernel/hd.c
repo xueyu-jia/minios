@@ -486,7 +486,7 @@ PRIVATE void partition(int device, int style) {
       if (part_tbl[1].sys_id == NO_PART) break;
     }
   }
-  if (no_part_count == 4) {  //没有分区
+  if (no_part_count == 4) {  // 没有分区
     int dev_nr = 0;
 
     int boot_sec = hdi->part[dev_nr].base;
@@ -664,7 +664,7 @@ PRIVATE void hd_cmd_out(struct hd_cmd *cmd, int drive) {
   /* Activate the Interrupt Enable (nIEN) bit */
   outb(REG_DEV_CTRL, 0);
 
-  if (hd_LBA48_sup[drive] == 1) {  //若是大硬盘，则LBA48第一次写
+  if (hd_LBA48_sup[drive] == 1) {  // 若是大硬盘，则LBA48第一次写
     outb(REG_FEATURES, cmd->features);
     outb(REG_NSECTOR, cmd->count_LBA48);
     outb(REG_LBA_LOW, cmd->lba_low_LBA48);
@@ -818,7 +818,7 @@ PRIVATE void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
         ((drive << 4) &
          0xFF);  // 0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
     cmd.command = (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-  }       // by qianglong 2022.4.26
+  }  // by qianglong 2022.4.26
   else {  // LBA28
     cmd.device = MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
     cmd.command = (type == DEV_READ) ? ATA_READ : ATA_WRITE;
@@ -963,8 +963,7 @@ PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
   if (kernel_initial == 1) {
     port->ci = 1 << slot;  // Issue command
-    while (sata_wait_flag)
-      ;
+    while (sata_wait_flag);
     sata_wait_flag = 1;
   } else {
     /*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
@@ -981,7 +980,7 @@ PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 }
 
 // add by sundong 2023.6.3
-//读写扇区  读写块的函数实现应该放在驱动层 而不是放在文件系统的实现中
+// 读写扇区  读写块的函数实现应该放在驱动层 而不是放在文件系统的实现中
 /*****************************************************************************
  *                                rw_sector
  *****************************************************************************/
@@ -1099,12 +1098,6 @@ PUBLIC int orangefs_identify(int drive, u32 _sect_nr) {
 PUBLIC int fat32_identify(int drive, u32 _sect_nr) {
   char sect_buf[SECTOR_SIZE];
   hd_rdwt_base(drive, DEV_READ, _sect_nr, SECTOR_SIZE, sect_buf);
-
-  int fs_name;
-  fs_name = *(int *)(sect_buf + 0x52);
-  if (fs_name != 0x33544146) {
-    return 0;
-  }
-  fs_name = *(int *)(sect_buf + 0x56);
-  return fs_name == 0x20202032;
+  const char *fat32_flag = (void *)(sect_buf + 0x52);
+  return strncmp(fat32_flag, "FAT32   ", 8) == 0;
 }

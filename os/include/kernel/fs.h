@@ -1,33 +1,22 @@
-/**
- * fs_misc.h
- * This file contains miscellaneous defines and declarations associated with
- * filesystem. The code is added by zcr, and the file is added by xw. 18/6/17
- */
-
-#ifndef FS_H
-#define FS_H
+#pragma once
 
 #include <kernel/atomic.h>
+#include <kernel/fs_const.h>
+#include <kernel/mempage.h>
 #include <kernel/type.h>
 #include <klib/list.h>
-// forward declarations
+#include <klib/spinlock.h>
+
 struct inode;
 struct address_space;
 struct dentry;
 struct file_desc;
 struct super_block;
-#include <kernel/fs_const.h>
-#include <kernel/mempage.h>
-#include <klib/spinlock.h>
 
-/**
- * structure for fs common ***文件系统公共数据结构***
- *
- *
- */
-
-#include <kernel/fat32.h>
-#include <kernel/orangefs.h>
+struct fs_size_info {
+  int sb_size;
+  int inode_size;
+};
 
 struct address_space {
   struct inode *host;
@@ -35,6 +24,7 @@ struct address_space {
   list_head page_list;
   struct spinlock lock;
 };
+
 struct inode {
   u32 i_no;
   struct super_block *i_sb;
@@ -56,10 +46,10 @@ struct inode {
   struct inode_operations *i_op;
   struct file_operations *i_fop;
   struct spinlock lock;
-  union {
-    struct orange_inode_info orange_inode;
-    struct fat32_inode_info fat32_inode;
-  };
+  //! NOTE: private data maintained by fs instance
+  //! ATTENTION: struct inode must be allocated dynamically due to unknown
+  //! private data size
+  char i_private[0];
 };
 
 // **** dentry 的本质是cache !!! ****
@@ -94,16 +84,15 @@ struct super_block {
   int fs_type;  // added by mingxuan 2020-10-30
   int used;
   struct spinlock lock;
-  union {
-    struct orange_sb_info orange_sb;
-    struct fat32_sb_info fat32_sb;
-  };
-  // 实际文件系统的元数据
+  //! NOTE: private data maintained by fs instance
+  //! ATTENTION: struct super_block must be allocated dynamically due to unknown
+  //! private data size
+  char sb_private[0];
 };
 
 struct file_desc {
   int fd_mode;        /**< R or W */
-  atomic_t fd_count;  //用于维护进程间相同File引用的资源释放
+  atomic_t fd_count;  // 用于维护进程间相同File引用的资源释放
   u64 fd_pos;         /**< Current position for R/W. */
   struct dentry *fd_dentry;
   struct address_space *fd_mapping;
@@ -159,6 +148,7 @@ struct file_operations {
 };
 
 struct superblock_operations {
+  void (*query_size_info)(struct fs_size_info *);
   int (*fill_superblock)(struct super_block *, int);
   int (*sync_inode)(struct inode *inode);
   void (*read_inode)(struct inode *inode);
@@ -168,6 +158,7 @@ struct superblock_operations {
 
 struct fs_type {
   char *fstype_name;
+  struct fs_size_info fs_size_info;
   struct file_operations *fs_fop;
   struct inode_operations *fs_iop;
   struct superblock_operations *fs_sop;
@@ -175,9 +166,11 @@ struct fs_type {
   int (*identify)(int drive, u32 start_sector);
 };
 
-extern struct super_block super_blocks[NR_SUPER_BLOCK];
+extern struct super_block *super_blocks[NR_SUPER_BLOCK];
 extern struct fs_type fstype_table[NR_FS_TYPE];
+
 int get_free_superblock();
+void generic_query_size_info(struct fs_size_info *info);
 int generic_file_readpage(struct address_space *file_mapping,
                           struct page *target);
 int generic_file_writepage(struct address_space *file_mapping,
@@ -186,4 +179,3 @@ int generic_file_read(struct file_desc *file, unsigned int count, char *buf);
 int generic_file_write(struct file_desc *file, unsigned int count,
                        const char *buf);
 int generic_file_fsync(struct file_desc *file, int datasync);
-#endif /* FS_MISC_H */

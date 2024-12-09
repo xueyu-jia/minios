@@ -1,8 +1,3 @@
-/**********************************************************
- *	vfs.c       //added by mingxuan 2019-5-17
- ***********************************************************/
-// VFS   modified by jiangfeng 2024-03
-// finally edit 2024-05
 #include <kernel/buffer.h>
 #include <kernel/const.h>
 #include <kernel/devfs.h>
@@ -15,24 +10,23 @@
 #include <kernel/proto.h>
 #include <kernel/stat.h>
 #include <kernel/tty.h>
+#include <kernel/type.h>
 #include <kernel/vfs.h>
+#include <klib/assert.h>
+#include <klib/compiler.h>
 #include <klib/list.h>
 #include <klib/string.h>
 
 // PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 PUBLIC struct dentry* vfs_root;
 
-// 实例文件系统调用：
-PUBLIC struct inode* vfs_new_inode(struct super_block* sb);  // inode create
-PUBLIC struct inode* vfs_get_inode(struct super_block* sb,
-                                   u32 ino);  // inode lookup
-PUBLIC struct dentry* vfs_new_dentry(const char* name,
-                                     struct inode* inode);  // inode lookup
+PUBLIC struct inode* vfs_new_inode(struct super_block* sb);
+PUBLIC struct inode* vfs_get_inode(struct super_block* sb, u32 ino);
+PUBLIC struct dentry* vfs_new_dentry(const char* name, struct inode* inode);
 
 // 此锁维护inode内存申请释放以及超级块(super_block)中使用中inode链表的一致性
 PRIVATE SPIN_LOCK inode_lock;
 
-//
 PRIVATE SPIN_LOCK file_desc_lock;
 PRIVATE SPIN_LOCK superblock_lock;
 
@@ -59,12 +53,16 @@ PRIVATE void free_file(struct file_desc* file) {
   // release(&file_desc_lock);
 }
 
-// 申请内存分配新的inode
-// lock require: inode alloc lock
 PRIVATE struct inode* alloc_inode_locked(struct super_block* sb) {
-  struct inode* inode = NULL;
-  inode = (struct inode*)kern_kmalloc(sizeof(struct inode));
-  memset(inode, 0, sizeof(struct inode));
+  //! ATTENTION: the locked method is required to be invoked only when
+  //! inode_lock is held
+  assert(inode_lock.locked);
+
+  const int inode_impl_size =
+      sizeof(struct inode) + fstype_table[sb->fs_type].fs_size_info.inode_size;
+  struct inode* inode = (struct inode*)kern_kmalloc(inode_impl_size);
+  memset(inode, 0, inode_impl_size);
+
   inode->i_nlink = 1;
   atomic_set(&inode->i_count, 1);
   inode->i_sb = sb;
@@ -73,6 +71,7 @@ PRIVATE struct inode* alloc_inode_locked(struct super_block* sb) {
   inode->i_mapping = &inode->i_data;
   inode->i_mapping->host = inode;
   init_mem_page(inode->i_mapping, MEMPAGE_CACHED);
+
   return inode;
 }
 
@@ -291,8 +290,10 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
                               struct dentry_operations* d_op,
                               struct superblock_operations* s_op,
                               int (*identify)(int, u32)) {
-  struct fs_type* fs = &fstype_table[fs_type];
+  auto fs = &fstype_table[fs_type];
   fs->fstype_name = fstype_name;
+  assert(s_op && s_op->query_size_info);
+  s_op->query_size_info(&fs->fs_size_info);
   fs->fs_fop = f_op;
   fs->fs_iop = i_op;
   fs->fs_dop = d_op;
@@ -370,10 +371,10 @@ PRIVATE struct dentry* _do_lookup(struct dentry* dir, const char* name,
       return dentry;
     }
   }
-  int (*compare)(const char*, const char*) = strcmp;  // default compare func
-  if (dir->d_op && dir->d_op->compare) {
-    compare = dir->d_op->compare;
-  }
+
+  typedef int (*fn_dirent_name_cmp)(const char*, const char*);
+  fn_dirent_name_cmp dirent_name_cmp =
+      dir->d_op && dir->d_op->compare ? dir->d_op->compare : strcmp;
   if (!dentry) {
     // dentry = dir->d_subdirs;
     // int new_dentry = 0;
@@ -381,7 +382,7 @@ PRIVATE struct dentry* _do_lookup(struct dentry* dir, const char* name,
     int found = 0;
     if (!list_empty(&dir->d_subdirs)) {
       list_for_each(&dir->d_subdirs, dentry, d_list) {
-        if (!compare(dentry_name(dentry), name)) {
+        if (!dirent_name_cmp(dentry_name(dentry), name)) {
           found = 1;
           break;
         }
@@ -453,12 +454,12 @@ PUBLIC struct dentry* vfs_lookup(const char* path) {
   char c = '\0';
   while (1) {
     // 注意：此处是读入一个字符到c, c = *p 是赋值不是比较，下同
-    while ((c = *p) && c == '/') p++;  //找到这一级名字的开头
+    while ((c = *p) && c == '/') p++;  // 找到这一级名字的开头
     if (c == '\0') {
       break;  // 查找到末尾
     }
     p_name = p;
-    while ((c = *p) && c != '/') p++;  //找到这一级名字的末尾
+    while ((c = *p) && c != '/') p++;  // 找到这一级名字的末尾
     strncpy(d_name, p_name, p - p_name);
     d_name[p - p_name] = '\0';
     dir = _do_lookup(dir, d_name, 1);
@@ -534,31 +535,42 @@ PRIVATE struct super_block* vfs_read_super(int dev, u32 fstype) {
       disp_str("fail: fstype not match");
       return NULL;
     }
-    // todo: check hd busy
+    //! TODO: check hd busy
   }
+
   struct fs_type* file_sys = &fstype_table[fstype];
+  if (!(file_sys->fs_sop && file_sys->fs_sop->fill_superblock)) {
+    disp_str("error: fstype undefined fill_superblock\n");
+    return NULL;
+  }
+
   lock_or_yield(&superblock_lock);
+
   int sb_index = get_free_superblock();
-  if (-1 == sb_index) {
+  if (sb_index == -1) {
     release(&superblock_lock);
     disp_str("error: no available superblock\n");
     return NULL;
   }
-  struct super_block* sb = &super_blocks[sb_index];
-  if (!(file_sys->fs_sop && file_sys->fs_sop->fill_superblock)) {
-    release(&superblock_lock);
-    disp_str("error: fstype undefined fill_superblock\n");
-    return NULL;
-  }
+
+  const int sb_private_size = file_sys->fs_size_info.sb_size;
+  assert(sb_private_size >= 0);
+  const int sb_impl_size = sizeof(struct super_block) + sb_private_size;
+  super_blocks[sb_index] = (void*)kern_kmalloc(sb_impl_size);
+  auto sb = super_blocks[sb_index];
+
   list_init(&sb->sb_inode_list);
+
   int state = file_sys->fs_sop->fill_superblock(sb, dev);
-  if (state) {
-    // error
+  if (state != 0) {
+    kern_kfree((uint32_t)sb);
+    super_blocks[sb_index] = NULL;
     release(&superblock_lock);
     disp_str("error: fs fill_superblock failed\n");
     return NULL;
   }
-  sb->used = 1;
+
+  sb->used = true;
   release(&superblock_lock);
   return sb;
 }
@@ -599,8 +611,12 @@ out_inode:
 
 PRIVATE struct super_block* vfs_get_super(int dev, u32 fstype) {
   for (int i = 0; i < NR_SUPER_BLOCK; i++) {
-    if (super_blocks[i].used && super_blocks[i].sb_dev == dev) {
-      return &super_blocks[i];
+    if (super_blocks[i] == NULL) {
+      continue;
+    }
+    const auto sb = super_blocks[i];
+    if (sb->used && sb->sb_dev == dev) {
+      return sb;
     }
   }
   return vfs_read_super(dev, fstype);
@@ -621,7 +637,7 @@ PRIVATE struct dentry* vfs_mount_dev(int dev, u32 fstype, const char* dev_name,
   sb->sb_vfsmount = sb->sb_root->d_vfsmount =
       add_vfsmount(dev_name, mnt, sb->sb_root, sb);
   if (mnt) {
-    mnt->d_mounted = 1;
+    mnt->d_mounted = true;
   }
   return sb->sb_root;
 }
@@ -696,7 +712,7 @@ PUBLIC int kern_vfs_mount(const char* source, const char* target,
                           const void* data) {
   // modified by sundong 2023.5.28
   // int device = get_dev_from_name(source);
-  //从根文件系统中获取块设备的设备号
+  // 从根文件系统中获取块设备的设备号
   struct dentry* block_dev = vfs_lookup(source);
   if (!block_dev) {
     return -1;
@@ -840,7 +856,7 @@ PUBLIC int kern_vfs_open(const char* path, int flags, int mode) {
     disp_str(")\n");
     return -1;
   }
-  //此处拆解开始是因为 某些情况下用户对底层filp应当不可见(如opendir)
+  // 此处拆解开始是因为 某些情况下用户对底层filp应当不可见(如opendir)
   struct file_desc* filp = vfs_file_open(path, flags, mode);
   if (filp == NULL) {
     return -1;

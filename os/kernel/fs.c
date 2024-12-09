@@ -8,14 +8,13 @@
 #include <klib/assert.h>
 #include <klib/string.h>
 
-PUBLIC struct super_block
-    super_blocks[NR_SUPER_BLOCK];  // added by mingxuan 2020-10-30
+PUBLIC struct super_block* super_blocks[NR_SUPER_BLOCK];
 PUBLIC struct fs_type fstype_table[NR_FS_TYPE];
 
 PUBLIC int get_free_superblock() {
   int sb_index = 0;
   for (sb_index = 0; sb_index < NR_SUPER_BLOCK; sb_index++) {
-    if (super_blocks[sb_index].used == 0) {
+    if (super_blocks[sb_index] == NULL) {
       break;
     }
   }
@@ -42,7 +41,7 @@ int init_block_dev() {
 }
 
 // add by sundong 2023.5.19
-//在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
+// 在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
 int init_char_dev() {
   // struct super_block *sb = get_super_block(drive);
   // real_mkdir(sb, "dev");
@@ -263,4 +262,9 @@ int generic_file_fsync(struct file_desc* file, int datasync) {
   struct inode* inode = file->fd_dentry->d_inode;
   vfs_sync_inode(inode);
   return 0;
+}
+
+void generic_query_size_info(struct fs_size_info* info) {
+  info->sb_size = 0;
+  info->inode_size = 0;
 }

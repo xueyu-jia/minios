@@ -1,5 +1,4 @@
-#ifndef FAT32_H
-#define FAT32_H
+#pragma once
 
 #include <kernel/type.h>
 #include <klib/spinlock.h>
@@ -109,10 +108,6 @@ struct fat32_sb_info {
   struct fat_fsinfo fsinfo;
 };
 
-#define FAT_SB(sb) (&((sb)->fat32_sb))
-#define FAT32_END (0xFFFFFFF)
-#define FAT_END FAT32_END
-
 struct fat_info {
   int cluster_start;
   int length;  // 连续簇个数
@@ -123,11 +118,15 @@ struct fat32_inode_info {
   struct fat_info* fat_info;
 };
 
+#define FAT_SB(sb) ((struct fat32_sb_info*)((sb)->sb_private))
+#define FAT_INODE(inode) ((struct fat32_inode_info*)((inode)->i_private))
+
+#define FAT32_END (0xFFFFFFF)
+#define FAT_END FAT32_END
+
 extern struct superblock_operations fat32_sb_ops;
 extern struct inode_operations fat32_inode_ops;
 extern struct dentry_operations fat32_dentry_ops;
 extern struct file_operations fat32_file_ops;
 
 PUBLIC int fat32_sync_inode(struct inode* inode);
-
-#endif

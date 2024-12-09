@@ -206,8 +206,12 @@ PUBLIC int devfs_fill_superblock(struct super_block *sb, int dev) {
 }
 
 struct superblock_operations devfs_sb_ops = {
+    .query_size_info = generic_query_size_info,
     .fill_superblock = devfs_fill_superblock,
+    .sync_inode = NULL,
     .read_inode = devfs_read_inode,
+    .put_inode = NULL,
+    .delete_inode = NULL,
 };
 
 struct inode_operations devfs_inode_ops = {
