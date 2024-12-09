@@ -843,16 +843,17 @@ no_dentry_out:
 PRIVATE inline void vfs_file_close(struct file_desc* file) { fput(file); }
 
 PUBLIC int kern_vfs_open(const char* path, int flags, int mode) {
+  PROCESS* p_proc = proc_real(p_proc_current);
   int fd = -1, i;
   for (i = 0; i < NR_FILES; i++) {  // modified by mingxuan 2019-5-20
-    if (p_proc_current->task.filp[i] == 0) {
+    if (p_proc->task.filp[i] == 0) {
       fd = i;
       break;
     }
   }
   if ((fd < 0) || (fd >= NR_FILES)) {
     disp_str("filp[] is full (PID:");
-    disp_int(proc2pid(p_proc_current));
+    disp_int(proc2pid(p_proc));
     disp_str(")\n");
     return -1;
   }
@@ -862,7 +863,7 @@ PUBLIC int kern_vfs_open(const char* path, int flags, int mode) {
     return -1;
   }
   /* connects proc with file_descriptor */
-  p_proc_current->task.filp[fd] = filp;
+  p_proc->task.filp[fd] = filp;
   return fd;
 }
 
