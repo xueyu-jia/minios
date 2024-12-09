@@ -16,7 +16,7 @@
 int get_ticks() { return _syscall0(_NR_get_ticks); }
 
 int get_pid() { return _syscall0(_NR_get_pid); }
-void* malloc_4k() { return _syscall0(_NR_malloc_4k); }
+void* malloc_4k() { return (void*)_syscall0(_NR_malloc_4k); }
 
 int free_4k(void* AdddrLin) { return _syscall1(_NR_free_4k, AdddrLin); }
 
@@ -66,7 +66,9 @@ int creat(const char* pathname) { return _syscall1(_NR_creat, pathname); }
 
 int closedir(DIR* dirp) { return _syscall1(_NR_closedir, dirp); }
 
-DIR* opendir(const char* dirname) { return _syscall1(_NR_opendir, dirname); }
+DIR* opendir(const char* dirname) {
+  return (void*)_syscall1(_NR_opendir, dirname);
+}
 
 int mkdir(const char* dirname, int mode) {
   return _syscall2(_NR_mkdir, dirname, mode);
@@ -75,12 +77,14 @@ int mkdir(const char* dirname, int mode) {
 int rmdir(const char* dirname) { return _syscall1(_NR_rmdir, dirname); }
 
 struct dirent* readdir(DIR* dirp) {
-  return _syscall1(_NR_readdir, dirp);
+  return (void*)_syscall1(_NR_readdir, dirp);
 }
 
 int chdir(const char* path) { return _syscall1(_NR_chdir, path); }
 
-char* getcwd(char* buf, int size) { return _syscall2(_NR_getcwd, buf, size); }
+char* getcwd(char* buf, int size) {
+  return (void*)_syscall2(_NR_getcwd, buf, size);
+}
 
 int wait(int* status) { return _syscall1(_NR_wait, status); }
 
@@ -105,18 +109,18 @@ int shmget(int key, int size, int shmflg) {
 
 // "user/ulib/ushm.c" 中提供了上层封装
 void* _shmat(int shmid, char* shmaddr, int shmflg) {
-  return _syscall3(_NR_shmat, shmid, shmaddr, shmflg);
+  return (void*)_syscall3(_NR_shmat, shmid, shmaddr, shmflg);
 }
 
 // "user/ulib/ushm.c" 中提供了上层封装
 void _shmdt(char* shmaddr) { _syscall1(_NR_shmdt, shmaddr); }
 
 struct ipc_shm* shmctl(int shmid, int cmd, struct ipc_shm* buf) {
-  return _syscall3(_NR_shmctl, shmid, cmd, buf);
+  return (void*)_syscall3(_NR_shmctl, shmid, cmd, buf);
 }
 
 void* shmmemcpy(void* dst, const void* src, long unsigned int len) {
-  return _syscall3(_NR_shmmemcpy, dst, src, len);
+  return (void*)_syscall3(_NR_shmmemcpy, dst, src, len);
 }
 
 int ftok(char* f, int key) { return _syscall2(_NR_ftok, f, key); }
