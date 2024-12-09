@@ -1,5 +1,3 @@
-// added by mingxuan 2021-2-28
-
 #include <errno.h>  // IWYU pragma: keep
 #include <kernel/interrupt_x86.h>
 #include <kernel/ksignal.h>
@@ -10,33 +8,20 @@
 #include <klib/compiler.h>
 #include <klib/string.h>
 
-/*  //deleted by mingxuan 2021-8-20
-int do_signal(int sig, void *handler, void* _Handler) {
-    if((u32)sig >= NR_SIGNALS) {
-        return -1;
-    }
-    p_proc_current->task.sig_handler[sig] = handler;
-    p_proc_current->task._Hanlder = _Handler;
-    return 0;
-}
-*/
-
-// added by mingxuan 2021-8-20
 int kern_signal(int sig, void* handler, void* _Handler) {
   if ((u32)sig >= NR_SIGNALS) {
     return -1;
   }
-  p_proc_current->task.sig_handler[sig] = handler;
-  p_proc_current->task._Hanlder = _Handler;
+  auto proc = proc_real(p_proc_current);
+  proc->task.sig_handler[sig] = handler;
+  proc->task._Handler = _Handler;
   return 0;
 }
 
-// modified by mingxuan 2021-8-20
 int do_signal(int sig, void* handler, void* _Handler) {
   return kern_signal(sig, handler, _Handler);
 }
 
-// modified by mingxuan 2021-8-20
 int kern_sigsend(int pid, Sigaction* action) {
   //! TODO: support kill process group
   if (!(pid >= 0 && pid < NR_PCBS)) {
@@ -44,7 +29,7 @@ int kern_sigsend(int pid, Sigaction* action) {
   }
 
   const int sig_bit = 1 << action->sig;
-  auto task = &proc_table[pid].task;
+  auto task = &proc_real(&proc_table[pid])->task;
   if (task->sig_handler[action->sig] == SIG_IGN || (task->sig_set & sig_bit)) {
     return -1;
   }
@@ -54,51 +39,20 @@ int kern_sigsend(int pid, Sigaction* action) {
   return 0;
 }
 
-// modified by mingxuan 2021-8-20
 int do_sigsend(int pid, Sigaction* sigaction_p) {
   return kern_sigsend(pid, sigaction_p);
 }
 
-// modified by mingxuan 2021-8-20
 void kern_sigreturn(int ebp) {
-  STACK_FRAME regs;
-
-  // copy saved regs from stack to  this regs
-  // to some operation to compute true address
-  // int ebp = msg->data[1];
-  STACK_FRAME* esp_syscall = p_proc_current->task.context.esp_save_int;
-  u32 last_esp = (ebp + sizeof(Sigaction) + 8);  // int save esp
-
-  // u16 user_ss = p_proc_current->task.regs.ss;
-  u16 user_ss = p_proc_current->task.context.esp_save_int->ss;
-  u16 kernel_es;
-
-  // change es to B_ss
-  __asm__(
-      "mov %%es, %%ax\n"
-      "mov %%ebx, %%es\n"
-      : "=a"(kernel_es)
-      : "b"(user_ss)
-      :);
-
-  //! FIXME: signal02和signal02能通过，signal01仍然不能通过
-  regs = *(STACK_FRAME*)last_esp;
-  // for(u32 *p = (u32*)&regs, *q = (u32*)last_esp, i = 0; i <
-  // sizeof(regs)/sizeof(u32);i++, p++, q++)
-  // {
-  //     __asm__ (
-  //     "mov %%eax, %%es:(%%edi)"
-  //     :
-  //     : "a"(*q), "D"(p)
-  //     :
-  //     );
-  // }
-
-  __asm__("mov %%eax, %%es\n" : : "a"(kernel_es));
-  memcpy(esp_syscall, &regs, sizeof(STACK_FRAME));
+  auto user_regs = p_proc_current->task.context.esp_save_int;
+  //! NOTE: see process_signal(), here old_esp refers to the `saved context
+  //! reserved for sigreturn`
+  //! ATTENTION: the first plus 4 here refers to the saved ebp pushed in the
+  //! _Handler
+  const u32 old_esp = ebp + 4 + 4 + sizeof(Sigaction);
+  memcpy(user_regs, (void*)old_esp, sizeof(STACK_FRAME));
 }
 
-// modified by mingxuan 2021-8-20
 void do_sigreturn(int ebp) { kern_sigreturn(ebp); }
 
 int sys_signal() {
@@ -110,19 +64,19 @@ int sys_sigsend() { return do_sigsend(get_arg(1), (Sigaction*)get_arg(2)); }
 void sys_sigreturn() { do_sigreturn(get_arg(1)); }
 
 void process_signal() {
-  auto task = &p_proc_current->task;
+  auto real_proc = proc_real(p_proc_current);
+  auto real_task = &real_proc->task;
 
-  //! get next signal nr
-  int sig_nr = -1;
-  if (task->sig_set == 0) {
+  if (real_task->sig_set == 0) {
     return;
   }
 
+  int sig_nr = -1;
   while (++sig_nr < NR_SIGNALS) {
     const int mask = 1 << sig_nr;
     //! FIXME: some signals cannot be ignored
-    const bool ignored = task->sig_handler[sig_nr] == SIG_IGN;
-    if (task->sig_set & mask && !ignored) {
+    const bool ignored = real_task->sig_handler[sig_nr] == SIG_IGN;
+    if (real_task->sig_set & mask && !ignored) {
       break;
     }
   }
@@ -130,9 +84,9 @@ void process_signal() {
     return;
   }
 
-  task->sig_set ^= 1 << sig_nr;
+  real_task->sig_set ^= 1 << sig_nr;
 
-  void* handler = task->sig_handler[sig_nr];
+  void* handler = real_task->sig_handler[sig_nr];
   bool has_custom_handler = false;
   if (false) {
   } else if (handler == SIG_DFL) {
@@ -154,82 +108,46 @@ void process_signal() {
     return;
   }
 
-  //  change this proc(B)'s eip to warper function
-  // warp function includes { handler, signal_return }
-  // then first execuate handler function
-  // then second call signal_return to kernel
+  //! NOTE: we do need to force the main thread, i.e. real proc, to handle the
+  //! signal, actually, all threads are available to complete the stuff, the
+  //! only thing we need to guarantee is that the signal is handled at most once
+  //! TODO: the given signal can be blocked by the current thread, in this case,
+  //! we must select another thread to handle the signal
+  auto sigproc_proc = p_proc_current;
 
-  STACK_FRAME regs;
-  STACK_FRAME* regs1;
-  PROCESS* proc = p_proc_current;
-  // memcpy(&regs, &proc->task.regs, sizeof(STACK_FRAME));
-  regs1 = p_proc_current->task.context.esp_save_int;
+  //! ATTENTION: info of signal action is saved in the main thread, i.e. real
+  //! proc, get it from there and copy it to the signal processing thread
+
   Sigaction sigaction = {
       .sig = sig_nr,
-      .handler = proc->task.sig_handler[sig_nr],
-      .arg = proc->task.sig_arg[sig_nr],
+      .handler = real_proc->task.sig_handler[sig_nr],
+      .arg = real_proc->task.sig_arg[sig_nr],
   };
 
   disable_int_begin();
 
-  // u16 B_ss = regs.ss & 0xfffc;
-  u16 B_ss = regs1->ss & 0xfffc;
-  u16 A_es;
+  auto sigproc_user_regs = sigproc_proc->task.context.esp_save_int;
 
-  /* change es to B_ss */
-  __asm__(
-      "mov %%es, %%ax\n"
-      "mov %%ebx, %%es\n"
-      : "=a"(A_es)
-      : "b"(B_ss)
-      :);
+  //! NOTE: control flow: kernel -> _Handler (noreturn) -> sigreturn -> kernel
 
-  //! 在消除WARNING时，以下代码逻辑比较混乱，重构前测试signal01无法通过，重构后也无法通过
-  //! signal部分代码可能有较大问题
-  /* save context */
-  u32 start = proc->task.context.esp_save_int->esp - sizeof(regs);
-  STACK_FRAME* esp_save_int_copy =
-      (STACK_FRAME*)(proc->task.context.esp_save_int->esp -
-                     sizeof(regs));  //: = (STACK_FRAME*)start
-  *esp_save_int_copy = *proc->task.context.esp_save_int;
+  u32 frame_ptr = sigproc_user_regs->esp;
 
-  // for(u32 *p = start, *sf = proc->task.context.esp_save_int, i=0;
-  // i<sizeof(regs) / sizeof(u32) ; i++,p++, sf++) {
-  //     __asm__ (
-  //         "mov %%eax, %%es:(%%edi)"
-  //         :
-  //         : "a"(*sf), "D"(p)
-  //         :
-  //     );
-  // }
+  //! NOTE: saved context reserved for sigreturn
+  frame_ptr -= sizeof(STACK_FRAME);
+  memcpy((void*)frame_ptr, sigproc_user_regs, sizeof(STACK_FRAME));
 
-  /* push para */
-  start -= sizeof(Sigaction);
-  Sigaction* sigaction_copy = (Sigaction*)start;
-  *sigaction_copy = sigaction;
+  //! NOTE: args passed to _Handler
+  //! FIXME: args copy method below may violate the arch abi rules
+  frame_ptr -= sizeof(Sigaction);
+  memcpy((void*)frame_ptr, &sigaction, sizeof(Sigaction));
 
-  // for(u32 *p = start, *sf = &sigaction, i = 0; i < sizeof(Sigaction) /
-  // sizeof(u32) ;i++, p++, sf++) {
-  //     __asm__ (
-  //         "mov %%eax, %%es:(%%edi)"
-  //         :
-  //         : "a"(*sf), "D"(p)
-  //         :
-  //     );
-  // }
+  //! NOTE: stack place of return address, is ignored here since our wrapped
+  //! handler is a noreturn method, it will trap into another syscall at the end
+  //! and directly turn to sigreturn
+  frame_ptr -= sizeof(void*);
 
-  /* Handler return address */
-  start -= sizeof(u32);
-
-  /* switch to Handler */
-  // u32 *context_p = proc->task.esp_save_int;
-  proc->task.context.esp_save_int->eip = (u32)proc->task._Hanlder;
-  proc->task.context.esp_save_int->esp = start;
-  //*(context_p + 14) =  proc->task._Hanlder; /* eip */
-  //*(context_p + 17) = start;                /* esp */
-
-  /*  reverse  */
-  __asm__ __volatile__("mov %0, %%es\n" : : "r"(A_es) :);
+  sigproc_user_regs->esp = frame_ptr;
+  sigproc_user_regs->eip = (u32)real_proc->task._Handler;
 
   disable_int_end();
 }

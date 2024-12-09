@@ -205,7 +205,7 @@ typedef struct s_proc {
   void* sig_handler[NR_SIGNALS];
   u32 sig_set;
   u32 sig_arg[NR_SIGNALS];
-  void* _Hanlder;
+  void* _Handler;
 
   // add by dongzhangqi 2023.5.8
   // 线程相关
@@ -281,10 +281,14 @@ PUBLIC void idle();
 void proc_update();
 
 // 通过pcb找到真正的进程, added by jiangfeng
-#define proc_real(proc)                           \
-  ((proc->task.tree_info.type == TYPE_THREAD)     \
-       ? &(proc_table[proc->task.tree_info.ppid]) \
-       : proc)
+#define proc_real(proc)                                                      \
+  ({                                                                         \
+    PROCESS* proc_src = (proc);                                              \
+    const int ppid = proc_src->task.tree_info.ppid;                          \
+    const int type = proc_src->task.tree_info.type;                          \
+    PROCESS* proc_real = type == TYPE_THREAD ? &proc_table[ppid] : proc_src; \
+    proc_real;                                                               \
+  })
 
 // 获得pcb对应的memmap
 PRIVATE inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {
