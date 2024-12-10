@@ -1,3 +1,5 @@
+#include <driver/pci/pci.h>
+#include <driver/pci/vendor.h>
 #include <kernel/ahci.h>
 #include <kernel/blame.h>
 #include <kernel/buddy.h>
@@ -24,9 +26,33 @@
 PRIVATE int initialize_processes();  // added by xw, 18/5/26
 PRIVATE int initialize_cpus();       // added by xw, 18/6/2
 
-/*======================================================================*
-                            kernel_main
- *======================================================================*/
+PRIVATE bool do_scan_pci_tree(pci_device_info_t *info, void *arg) {
+  UNUSED(arg);
+  pci_vendor_info_t vendor_info = {};
+  bool found =
+      pci_lookup_vendor(info->vendor_id, info->device_id, &vendor_info);
+  if (found) {
+    disp_str("visit pci device: vendor_id=");
+    disp_int(info->vendor_id);
+    disp_str(" \"");
+    disp_str(vendor_info.vendor_name);
+    disp_str("\" device_id=");
+    disp_int(info->device_id);
+    disp_str(" \"");
+    disp_str(vendor_info.device_name);
+    disp_str("\"\n");
+  } else {
+    disp_str("unknown pci device: vendor_id=");
+    disp_int(info->vendor_id);
+    disp_str(" device_id=");
+    disp_int(info->device_id);
+    disp_str("\n");
+  }
+  return true;
+}
+
+PRIVATE void scan_pci_tree() { pci_visit(do_scan_pci_tree, NULL); }
+
 PUBLIC int kernel_main() {
 #ifdef GDBSTUB
   gdb_sys_init();
@@ -64,7 +90,11 @@ PUBLIC int kernel_main() {
   *************************************************************************/
   init_kb();  // added by mingxuan 2019-5-19
 
-  AHCI_init();
+  scan_pci_tree();
+
+  init_kb();
+
+  ahci_sata_init();
 
   /* initialize hd-irq and hd rdwt queue */
   init_hd();

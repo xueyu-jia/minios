@@ -1,13 +1,16 @@
+#include <driver/pci/pci.h>
+#include <driver/pci/vendor.h>
 #include <kernel/ahci.h>
 #include <kernel/const.h>
 #include <kernel/memman.h>
 #include <kernel/pagetable.h>
-#include <kernel/pci.h>
 #include <kernel/proc.h>
 #include <kernel/protect.h>
 #include <kernel/proto.h>
 #include <kernel/type.h>
 #include <klib/string.h>
+
+#define PCI_SUBCLS_SATA_CTRL 0x06
 
 // 0: free;  1: waiting
 PUBLIC volatile int sata_wait_flag = 1;
@@ -16,187 +19,96 @@ PUBLIC volatile int sata_error_flag = 0;
 
 PUBLIC HBA_MEM *HBA;
 
-PUBLIC AHCI_INFO ahci_info
-    [MAX_AHCI_NUM];  // 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+// 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+PUBLIC AHCI_INFO ahci_info[MAX_AHCI_NUM];
 
 PRIVATE int check_type(HBA_PORT *port);
 PRIVATE void probe_port(HBA_MEM *abar);
 PRIVATE void sata_handler(int irq);
 void port_rebase(HBA_PORT *port);
 
-PUBLIC int AHCI_init()  // 遍历pci设备，找到AHCI  by qianglong	2022.5.17
-{
-  u32 bus, dev, fun, err_temp, sata_irq;
+PRIVATE bool do_pci_ahci_init(pci_device_info_t *info, void *arg) {
+  int *total_found = (int *)arg;
+  if (*total_found >= MAX_AHCI_NUM) {
+    return false;
+  }
+
+  const bool is_ahci_sata = info->class_code == PCI_CLASS_MASS_STORAGE_CTRL &&
+                            info->subclass == PCI_SUBCLS_SATA_CTRL;
+  if (!is_ahci_sata) {
+    return true;
+  }
+
+  const int index = (*total_found)++;
+  ahci_info[index].achi_pos_pci.bus = PCI_GET_BUS(info->id);
+  ahci_info[index].achi_pos_pci.dev = PCI_GET_DEV(info->id);
+  ahci_info[index].achi_pos_pci.fun = PCI_GET_FUNC(info->id);
+  ahci_info[index].int_line =
+      pci_io_r8(info->id, PCI_CONFIG_HDR0_INTERRUPT_LINE);
+  ahci_info[index].int_pin = pci_io_r8(info->id, PCI_CONFIG_HDR0_INTERRUPT_PIN);
+
+  //! NOTE: well, I actually don't know why the base address is on BAR5 yet, but
+  //! there're facts as below
+  //! ===
+  //! vendor=0x8086 "Intel Corporation"
+  //! device=0x2922 "82801IR/IO/IH (ICH9R/DO/DH) 6 port SATA Controller [AHCI
+  //! mode]"
+  //! ===
+  //! BAR#0 = 0x00000000
+  //! BAR#1 = 0x00000000
+  //! BAR#2 = 0x00000000
+  //! BAR#3 = 0x00000000
+  //! BAR#4 = 0x0000c041
+  //! BAR#5 = 0xfebf1000
+  //! ===
+  //! SO WHERE IS THE DOC OF AHCI SPEC?!! @zymelaii
+  ahci_info[index].ABAR = pci_io_r32(info->id, PCI_CONFIG_HDR0_BAR5);
+
+  return true;
+}
+
+PUBLIC int ahci_sata_init() {
   memset(ahci_info, 0, sizeof(AHCI_INFO));
-  u32 AHCI_cnt = 0;
-  for (bus = 0; bus <= MAXBUS; bus++) {
-    for (dev = 0; dev <= MAXDEV; dev++) {
-      for (fun = 0; fun <= MAXFUN; fun++) {
-        outl(
-            PCI_CONFIG_ADD,
-            mk_pci_add(bus, dev, fun, 0));  // 0号寄存器为device——id和vendor——id
-        if ((inl(PCI_CONFIG_DATA) & 0xffff) !=
-            0xffff) {  // 如果vendorid合法,表示该位置存在设备
-          outl(0xcf8,
-               mk_pci_add(bus, dev, fun, 2));  // 2号寄存器为classcode,设备类别
-          if ((inl(PCI_CONFIG_DATA) >> 16) == 0x0106) {  // 判断是否为AHCI
-            // disp_str("  bus: ");
-            // disp_int(bus);
-            // disp_str("  dev: ");
-            // disp_int(dev);
-            // disp_str("  fun: ");
-            // disp_int(fun);
-            // disp_str("\n");
-            AHCI_cnt += 1;
-            // if(AHCI_cnt>MAX_AHCI_NUM)break;
-            ahci_info[AHCI_cnt - 1].achi_pos_pci.bus = bus;
-            ahci_info[AHCI_cnt - 1].achi_pos_pci.dev = dev;
-            ahci_info[AHCI_cnt - 1].achi_pos_pci.fun = fun;
-            outl(PCI_CONFIG_ADD,
-                 mk_pci_add(bus, dev, fun, 9));  // 9号寄存器为ABAR
-            disp_str("  ABAR: ");
-            ahci_info[AHCI_cnt - 1].ABAR = inl(PCI_CONFIG_DATA);
-            disp_int(ahci_info[AHCI_cnt - 1].ABAR);
 
-            outl(PCI_CONFIG_ADD, mk_pci_add(bus, dev, fun, 15));
-            disp_str("  interrupt: ");
+  u32 ahci_cnt = 0;
+  pci_visit(do_pci_ahci_init, &ahci_cnt);
 
-            disp_int(inl(PCI_CONFIG_DATA));
-            ahci_info[AHCI_cnt - 1].irq_info = inl(PCI_CONFIG_DATA) & 0xffff;
-          }
-          // if ((inl(PCI_CONFIG_DATA)>>16)==0x0101)
-          // {
-          // 	disp_str(" idecontorler ");
-          // }
-        }
-      }
-    }
-  }
-  if (AHCI_cnt == 0) {
-    disp_str("no AHCI HBA!");
+  if (ahci_cnt == 0) {
+    disp_str("ahci controller not fonud\n");
     return FALSE;
   }
 
-  // 将AHCI基地址映射到线性地址
   int lin_hba = kmapping_phy(ahci_info[0].ABAR);
-  // err_temp = lin_mapping_phy_nopid(	ahci_info[0].ABAR,  //线性地址
-  // //add by visual 2016.5.9
-  // ahci_info[0].ABAR,
-  // //物理地址
-  // read_cr3(), PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）
-  // //edit by visual
-  // 2016.5.26 PG_P | PG_USS | PG_RWW);
-  // //页表的属性位（系统权限）
-  // //edit by visual 2016.5.17 for(int pid = 0; pid <= NR_K_PCBS; pid++){
-  // 	if(proc_table[pid].task.stat == READY){
-  // 		err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址
-  // //add by visual 2016.5.9
-  // ahci_info[0].ABAR, //物理地址
-  // pid, PG_P | PG_USS | PG_RWW,  //页目录的属性位（系统权限）
-  // //edit by visual
-  // 2016.5.26 PG_P | PG_USS | PG_RWW);
-  // //页表的属性位（系统权限）
-  // 	}
-  // }
-  // int hd_service_pid = kern_get_pid_byname("hd_service");
-
-  // err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址
-  // //add by
-  // visual 2016.5.9
-  // ahci_info[0].ABAR,
-  // //物理地址 hd_service_pid,
-  // PG_P
-  // |
-  // PG_USS | PG_RWW,  //页目录的属性位（系统权限）			//edit
-  // by visual
-  // 2016.5.26 PG_P | PG_USS | PG_RWW);
-  // //页表的属性位（系统权限）
-
-  // int task_tty_pid = kern_get_pid_byname("task_tty");
-
-  // err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址
-  // //add by
-  // visual 2016.5.9
-  // ahci_info[0].ABAR,
-  // //物理地址 task_tty_pid,
-  // PG_P | PG_USS
-  // | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual
-  // 2016.5.26 PG_P | PG_USS | PG_RWW);
-  // //页表的属性位（系统权限）
-
-  // int initial_pid = kern_get_pid_byname("initial");
-
-  // err_temp |= lin_mapping_phy(	ahci_info[0].ABAR,  //线性地址
-  // //add by
-  // visual 2016.5.9
-  // ahci_info[0].ABAR,
-  // //物理地址 initial_pid,
-  // PG_P | PG_USS
-  // | PG_RWW,  //页目录的属性位（系统权限）			//edit by visual
-  // 2016.5.26 PG_P | PG_USS | PG_RWW);
-  // //页表的属性位（系统权限）
-
-  if (lin_hba == 0)
-  // if (err_temp != 0)
-  {
-    disp_color_str("kernel page Error:lin_mapping_phy_ahci", 0x74);
-    return FALSE;
+  if (lin_hba == 0) {
+    disp_color_str("failed to map ahci memory\n", 0x74);
+    return false;
   }
 
-  // disp_str("\nlin_mapping_phy_ahci");
-  HBA = (HBA_MEM *)(lin_hba);
+  HBA = (HBA_MEM *)lin_hba;
 
-  ahci_info[0].is_AHCI_MODE = (HBA->ghc) >> 31;
-
-  if (ahci_info[0].is_AHCI_MODE == 0) {
+  ahci_info[0].is_ahci_mode = HBA->ghc >> 31;
+  if (ahci_info[0].is_ahci_mode == 0) {
     disp_str("AHCI is not Enable!");
-    return FALSE;
+    return false;
   }
-  ahci_info[0].portnum = (HBA->cap) & 0xff;
-  // disp_int(HBA->cap);
-  // disp_int(HBA->ghc);
 
+  ahci_info[0].portnum = HBA->cap & 0xff;
   probe_port(HBA);
-  // disp_str("\nprobe_port");
-  // disp_int(HBA->pi);
-  u32 i = 0;
-  for (i = 0; i < ahci_info[0].satadrv_num; i++) {
+  for (int i = 0; i < ahci_info[0].satadrv_num; ++i) {
     port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
   }
 
-  HBA->ghc |= (1 << 1);  // enable interrupt
-  sata_irq = ahci_info[0].irq_info & 0xff;
+  //! enable interrupt
+  HBA->ghc |= BIT(1);
+  int sata_irq = ahci_info[0].int_line;
   if (sata_irq <= 16) {
     put_irq_handler(sata_irq, sata_handler);
     enable_irq(sata_irq);
   } else {
     disp_str("sata_irq is large than 16");
   }
-  // disp_str("\nread write test:");
-  // // u64 n=0x800;
-  // u64 n=3000;
-  // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n+=1;
-  // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n+=1;
-  // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n=0x12bffffc;
-  // // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n+=1;
-  // // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n+=1;
-  // // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // n=0x1000;
-  // SATA_rdwt_test(1,n);
-  // SATA_rdwt_test(0,n);
-  // while(1);
-  return TRUE;
+
+  return true;
 }
 
 /*
@@ -313,8 +225,7 @@ PRIVATE int check_type(HBA_PORT *port) {
 
 void start_cmd(HBA_PORT *port) {
   // Wait until CR (bit15) is cleared
-  while (port->cmd & HBA_PxCMD_CR)
-    ;
+  while (port->cmd & HBA_PxCMD_CR);
 
   // Set FRE (bit4) and ST (bit0)
   port->cmd |= HBA_PxCMD_FRE;
@@ -440,8 +351,7 @@ PUBLIC u32 identity_SATA(HBA_PORT *port, u8 *buf) {
   // }
   if (kernel_initial == 1) {
     port->ci = 1 << slot;  // Issue command
-    while (sata_wait_flag)
-      ;
+    while (sata_wait_flag);
     sata_wait_flag = 1;
   } else {
     disable_int();

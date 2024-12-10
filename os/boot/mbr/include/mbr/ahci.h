@@ -1,7 +1,6 @@
 #ifndef _AHCI_H
 #define _AHCI_H
 
-//#include "const.h"
 #include "type.h"
 #define mk_pci_add(bus, dev, fun, reg) \
   0x80000000 | bus << 16 | dev << 11 | fun << 8 | reg << 2
@@ -9,7 +8,7 @@
 #define MAXDEV 31
 #define MAXFUN 7
 
-#define PCI_CONFIG_ADD 0xcf8
+#define PCI_CONFIG_ADDR 0xcf8
 #define PCI_CONFIG_DATA 0Xcfc
 #define HBA_PxCMD_ST 0x0001
 #define HBA_PxCMD_FRE 0x0010
@@ -225,24 +224,25 @@ typedef struct tagahci_info {
     u32 dev;
     u32 fun;
   } achi_pos_pci;
-  u8 is_AHCI_MODE;
+  u8 is_ahci_mode;
   u32 ABAR;     // AHCI基本内存（物理地址）
-  u32 portnum;  //支持的端口数0~31,0表示支持1一个端口
+  u32 portnum;  // 支持的端口数0~31,0表示支持1一个端口
   u32 satadrv_num;
   u32 satadrv_atport
-      [4];  //连接了SATADRIVE的端口号0~31，考虑到实际情况，这里只支持4个硬盘,默认第一个为minios系统盘
+      [4];  // 连接了SATADRIVE的端口号0~31，考虑到实际情况，这里只支持4个硬盘,默认第一个为minios系统盘
   u16 irq_info;
 } AHCI_INFO;
 #define HBA_PxIS_TFES 0x40000000
 #define MAX_AHCI_NUM 4
-PUBLIC int AHCI_init();
+PUBLIC int ahci_sata_init();
 PUBLIC u32 identity_SATA(HBA_PORT *port, u8 *buf);
 PUBLIC int find_cmdslot(HBA_PORT *port);
 PUBLIC void tf_err_rec(HBA_PORT *port);
 int sata_read(int dev, u16 *buf, u64 sect, u32 count);
 extern HBA_MEM *HBA;
 
-extern AHCI_INFO ahci_info
-    [MAX_AHCI_NUM];  //可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+// 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+extern AHCI_INFO ahci_info[MAX_AHCI_NUM];
 extern volatile int sata_wait_flag;
+
 #endif /* ACHI_H */
