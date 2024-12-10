@@ -553,7 +553,7 @@ PUBLIC struct dentry *orange_lookup(struct inode *dir, const char *filename) {
 PUBLIC int orange_read(struct file_desc *file, unsigned int count, char *buf) {
   int pos = file->fd_pos;
   struct inode *pin = file->fd_dentry->d_inode;
-  int pos_end = min(pos + count, pin->i_size);
+  int pos_end = min((u64)(pos + count), pin->i_size);
   if (ORANGE_INODE(pin)->i_nr_blocks == 0) {
     return 0;
   }
@@ -656,6 +656,7 @@ PUBLIC int orange_get_block(struct inode *inode, u32 iblock, int create) {
 }
 
 int orange_create(struct inode *dir, struct dentry *dentry, int mode) {
+  UNUSED(mode);
   int inode_nr = orange_alloc_imap_bit(dir->i_sb);
   if (inode_nr == INVALID_INODE) {
     return -1;
@@ -686,6 +687,7 @@ int orange_unlink(struct inode *dir, struct dentry *dentry) {
 }
 
 int orange_mkdir(struct inode *dir, struct dentry *dentry, int mode) {
+  UNUSED(mode);
   int inode_nr = orange_alloc_imap_bit(dir->i_sb);
   if (inode_nr == INVALID_INODE) {
     return -1;

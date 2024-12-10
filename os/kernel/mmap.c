@@ -192,7 +192,7 @@ PUBLIC int do_mmap(u32 addr, u32 len, u32 prot, u32 flag, int fd, u32 offset) {
 
 PRIVATE void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr,
                        int new_below) {
-  // copy
+  UNUSED(mmap);
   struct vmem_area *new =
       (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
   *new = *vma;
@@ -219,6 +219,7 @@ PUBLIC int kern_munmap(PROCESS *p_proc, u32 start, u32 len) {
   LIN_MEMMAP *mmap = proc_memmap(p_proc);
   lock_or_yield(&mmap->vma_lock);
   struct vmem_area *vma, *next, *last;
+  UNUSED(next);
   u32 end = start + len;
   vma = find_vma(mmap, start);
   if (!vma)  // no target region

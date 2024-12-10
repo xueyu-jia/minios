@@ -23,6 +23,10 @@
 #ifndef GDBSTUB_H
 #define GDBSTUB_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-function"
+
 /* Enable function definitions */
 #define GDBSTUB_IMPLEMENTATION
 /* Define to enable bare metal x86 support, or define your own architecture */
@@ -1535,15 +1539,13 @@ static uint8_t gdb_x86_io_read_8(uint16_t port) {
 
 static int gdb_x86_serial_getc(void) {
   /* Wait for data */
-  while ((gdb_x86_io_read_8(SERIAL_PORT + SERIAL_LSR) & 1) == 0)
-    ;
+  while ((gdb_x86_io_read_8(SERIAL_PORT + SERIAL_LSR) & 1) == 0);
   return gdb_x86_io_read_8(SERIAL_PORT + SERIAL_RBR);
 }
 
 static int gdb_x86_serial_putchar(int ch) {
   /* Wait for THRE (bit 5) to be high */
-  while ((gdb_x86_io_read_8(SERIAL_PORT + SERIAL_LSR) & (1 << 5)) == 0)
-    ;
+  while ((gdb_x86_io_read_8(SERIAL_PORT + SERIAL_LSR) & (1 << 5)) == 0);
   gdb_x86_io_write_8(SERIAL_PORT + SERIAL_THR, ch);
   return ch;
 }
@@ -1625,4 +1627,7 @@ void gdb_sys_init(void) {
 
 #endif /* GDBSTUB_ARCH_X86 */
 #endif /* GDBSTUB_IMPLEMENTATION */
+
+#pragma GCC diagnostic pop
+
 #endif /* GDBSTUB_H */

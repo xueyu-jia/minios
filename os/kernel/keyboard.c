@@ -420,6 +420,7 @@ PRIVATE void kb_wait();
 PRIVATE void kb_ack();
 
 void kb_handler(int irq) {
+  UNUSED(irq);
   // disp_str("kbkbkb");
   u8 scan_code = inb(0x60);
   if (kb_in.count < KB_inbS) {
@@ -437,6 +438,7 @@ void kb_handler(int irq) {
 #define TTY_END (tty_table + NR_CONSOLES)
 
 void mouse_handler(int irq) {
+  UNUSED(irq);
   u8 scan_code = inb(0x60);
   if (!mouse_init) {
     mouse_init = 1;
@@ -772,7 +774,7 @@ PRIVATE void kb_wait() /* 等待 8042 的输入缓冲区空 */
  * Read from the keyboard controller until a KB_ACK is received.
  *
  *****************************************************************************/
-PRIVATE void kb_ack() {
+MAYBE_UNUSED PRIVATE void kb_ack() {
   u8 kb_read;
 
   do {

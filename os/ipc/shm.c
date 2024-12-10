@@ -59,7 +59,7 @@ static int newseg(int key, int id, int size) {
     disp_str("err key");
   }
   ids.perms[id].state =
-      SHM_BUSY;  //代表这个shm（share memory）通道被一组id-key占用了
+      SHM_BUSY;  // 代表这个shm（share memory）通道被一组id-key占用了
   ids.perms[id].size = size;
   ids.perms[id].pid = p_proc_current->task.pid;
   ids.perms[id].key = key;
@@ -71,9 +71,10 @@ static int newseg(int key, int id, int size) {
   // disp_int( ids.perms[id].phy_address);
 
   void *a = ids.perms[id].phy_address;
+  UNUSED(a);
   // disp_str("phy_value: ");
   // disp_int(a);//打印物理地址
-  if (ids.perms[id].phy_address == (void *)-1)  //分配,失败返回-1
+  if (ids.perms[id].phy_address == (void *)-1)  // 分配,失败返回-1
   {
     disp_str(" fail mem");
     return -1;
@@ -114,7 +115,7 @@ PUBLIC int id_exist(int key) {
 }
 
 PUBLIC int kern_shmget(int key, int size, int shmflg) {
-  acquire(&lock_msg);  //保证get操作的原子性
+  acquire(&lock_msg);  // 保证get操作的原子性
 
   if (size > num_4K) {
     disp_str("only support 4096 shm mem size\n");
@@ -125,13 +126,13 @@ PUBLIC int kern_shmget(int key, int size, int shmflg) {
   if (shmflg ==
       SHM_IPC_CREAT) {  // 1.查看key的是否已经创造来共享内存，如果是，就返回id
                         // 2.key并没有创建，就找一个空闲的id和key建立关系。
-    id = id_exist(key);  //不存在返回-1，存在返回id号
+    id = id_exist(key);  // 不存在返回-1，存在返回id号
 
     if (id == -1) {
       id = find_out();
       if (id != -1) {
         id = newseg(key, id, size);
-      }  //创建物理页，并建立key-id的关系
+      }  // 创建物理页，并建立key-id的关系
       else {
         disp_str("\nno_free_shm");
       }
@@ -140,10 +141,10 @@ PUBLIC int kern_shmget(int key, int size, int shmflg) {
     // disp_int(id);
   }
   if (shmflg ==
-      SHM_IPC_FIND)  //寻找key试图与之链接，key如果没有创建物理内存，就返回-1;
+      SHM_IPC_FIND)  // 寻找key试图与之链接，key如果没有创建物理内存，就返回-1;
   {
     // disp_str("FIND");
-    id = id_exist(key);  //不存在返回-1，存在返回id号
+    id = id_exist(key);  // 不存在返回-1，存在返回id号
     if (id == -1) {
       disp_str("\nthis key possessed");
     }
@@ -185,6 +186,7 @@ PUBLIC int sys_shmget() {
 // }
 
 PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg) {
+  UNUSED(shmflg);
   // u32 vir_addr;
   u32 phy_addr = (u32)ids.perms[shmid].phy_address;
   // // int size = ids.perms[shmid].size;
@@ -203,13 +205,13 @@ PUBLIC void *kern_shmat(int shmid, char *shmaddr, int shmflg) {
   int vir_addr = kern_mmap(p_proc_current, NULL, (u32)shmaddr, PAGE_SIZE,
                            PROT_READ | PROT_WRITE, MAP_SHARED, shmid);
 
-  if (phy_addr == NULL) {
+  if ((void *)phy_addr == NULL) {
     lock_or_yield(&shm_pages.lock);
     page *shm_page = find_mem_page(&shm_pages, shmid);
     ids.perms[shmid].phy_address = (void *)pfn_to_phy(page_to_pfn(shm_page));
     release(&shm_pages.lock);
   }
-  return (void *)((vir_addr)&0xFFFFF000);
+  return (void *)((vir_addr) & 0xFFFFF000);
 }
 
 PUBLIC void *do_shmat(int shmid, char *shmaddr, int shmflg) {
@@ -242,7 +244,7 @@ PUBLIC struct ipc_shm *kern_shmctl(int shmid, int cmd, struct ipc_shm *buf) {
       disp_str("memmory has freed before\n");
       return (struct ipc_shm *)buf;
     }
-    ids.perms[shmid].state = SHM_AVAILABLE;  //代表这个通道可用
+    ids.perms[shmid].state = SHM_AVAILABLE;  // 代表这个通道可用
     // int size = ids.perms[shmid].size;
     ids.in_use--;
 
@@ -283,7 +285,7 @@ PUBLIC void *kern_shmmemcpy(void *dst, const void *src, long unsigned int len) {
   void *ret = dst;
 
   if (dst <= src || (char *)dst >= (char *)src + len) {
-    //没有内存重叠，从低地址开始复制
+    // 没有内存重叠，从低地址开始复制
     while (len--) {
       // sleep(100);
       *(char *)dst = *(char *)src;
@@ -291,7 +293,7 @@ PUBLIC void *kern_shmmemcpy(void *dst, const void *src, long unsigned int len) {
       src = (char *)src + 1;
     }
   } else {
-    //有内存重叠，从高地址开始复制
+    // 有内存重叠，从高地址开始复制
     src = (char *)src + len - 1;
     dst = (char *)dst + len - 1;
     while (len--) {

@@ -18,6 +18,8 @@ u32 current_timestamp;
                            clock_handler
  *======================================================================*/
 PUBLIC void clock_handler(int irq) {
+  UNUSED(irq);
+
   ticks++;
   if (!(ticks % HZ)) {
     current_timestamp++;

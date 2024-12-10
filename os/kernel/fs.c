@@ -31,6 +31,7 @@ int init_block_dev() {
       for (int j = 0; j < 16; j++) {
         if (hd_infos[i].part[j].size > 0) {
           int major = i, minor = j;
+          UNUSED(major);
           register_device(MAKE_DEV(DEV_HD_BASE + i, minor), DEV_BLOCK_TYPE,
                           &blk_file_ops);
         }
@@ -231,7 +232,7 @@ int generic_file_write(struct file_desc* file, unsigned int count,
     } else {
       get_page(_page);
     }
-    len = min(PAGE_SIZE, total) - page_offset;
+    len = min(PAGE_SIZE, (int)total) - page_offset;
     copy_to_page(_page, buf + cnt, len, page_offset);
     _page->dirty = 1;
     total -= (len + page_offset);

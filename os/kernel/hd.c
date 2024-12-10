@@ -48,6 +48,12 @@ PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count);
 
 #define DRV_OF_DEV(dev) (((dev >> 20) & 0x0FFF) - DEV_HD_BASE)
 
+static inline void port_read(int port, void *buf, int n) { insw(port, buf, n); }
+
+static inline void port_write(int port, const void *buf, int n) {
+  outsw(port, buf, n);
+}
+
 /*****************************************************************************
  *                                init_hd
  *****************************************************************************/
@@ -88,6 +94,7 @@ PUBLIC void hd_open(int drive)  // modified by mingxuan 2020-10-27
   if (satabuf == NULL) satabuf = (u8 *)kern_kmalloc(BLOCK_SIZE);
   /* Get the number of drives from the BIOS data area */
   u8 *pNrDrives = (u8 *)(0x475);
+  UNUSED(pNrDrives);
   // printf("NrDrives:%d.\n", *pNrDrives);
   // disp_str("NrDrives:");	//deleted by mingxuan 2019-5-20
   // disp_int(*pNrDrives);		//deleted by mingxuan 2019-5-20
@@ -104,6 +111,7 @@ PUBLIC void hd_open(int drive)  // modified by mingxuan 2020-10-27
     // print_identify_info((u16*)buf);
     u16 *hdinfo = (u16 *)buf;
     int cmd_set_supported = hdinfo[83];
+    UNUSED(cmd_set_supported);
     hd_infos[drive].part[0].base = 0;
     /* Total Nr of User Addressable Sectors */
     hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
@@ -213,6 +221,8 @@ PUBLIC void hd_service() {
   RWInfo *rwinfo;
   PROCESS *proc;
   int wait;
+  UNUSED(wait);
+  UNUSED(proc);
   while (1) {
     // disp_str("-hd-"); //mark debug
     // //the hd queue is not empty when out_hd_queue return 1.
@@ -240,6 +250,7 @@ PRIVATE void hd_rdwt_real(RWInfo *p) { hd_rdwt(p->msg); }
 PUBLIC void hd_rdwt_sched(MESSAGE *p) {
   RWInfo *rwinfo = (RWInfo *)kern_kmalloc(sizeof(RWInfo));
   int size = p->CNT;
+  UNUSED(size);
 
   // buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
   // buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan
@@ -476,7 +487,7 @@ PRIVATE void partition(int device, int style) {
  *
  * @param hdi  Ptr to struct hd_info.
  *****************************************************************************/
-PRIVATE void print_hdinfo(struct hd_info *hdi) {
+MAYBE_UNUSED PRIVATE void print_hdinfo(struct hd_info *hdi) {
   disp_str("Drive num : ");
   disp_int(hdi - hd_infos);
   int i;
@@ -563,7 +574,7 @@ PRIVATE void hd_identify(int drive) {
  *
  * @param hdinfo  The buffer read from the disk i/o port.
  *****************************************************************************/
-PRIVATE void print_identify_info(u16 *hdinfo) {
+MAYBE_UNUSED PRIVATE void print_identify_info(u16 *hdinfo) {
   int i;
   char s[64];
 
@@ -735,6 +746,7 @@ PRIVATE int waitfor(int mask, int val, int timeout) {
  * @param irq  IRQ nr of the disk interrupt.
  *****************************************************************************/
 PRIVATE void hd_handler(int irq) {
+  UNUSED(irq);
   /*
    * Interrupts are cleared when the host
    *   - reads the Status Register,
@@ -788,7 +800,7 @@ PRIVATE void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
         ((drive << 4) &
          0xFF);  // 0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
     cmd.command = (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-  }       // by qianglong 2022.4.26
+  }  // by qianglong 2022.4.26
   else {  // LBA28
     cmd.device = MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
     cmd.command = (type == DEV_READ) ? ATA_READ : ATA_WRITE;
@@ -933,8 +945,7 @@ PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
   if (kernel_initial == 1) {
     port->ci = 1 << slot;  // Issue command
-    while (sata_wait_flag)
-      ;
+    while (sata_wait_flag);
     sata_wait_flag = 1;
   } else {
     /*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/

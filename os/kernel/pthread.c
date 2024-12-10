@@ -163,22 +163,22 @@ PUBLIC int sys_pthread_create() {
  *复制父进程PCB表，但是又马上恢复了子进程的标识信息
  *************************************************************/
 PRIVATE int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent) {
-  int pid;
   u32 eflags, cr3_child;
-  char *p_reg;  // point to a register in the new kernel stack, added by xw,
-                // 17/12/11
-  CONTEXT_FRAME *esp_save_context;  // use to save corresponding field in
-                                    // child's PCB, xw, 18/4/21
-  STACK_FRAME *esp_save_int;        // added by lcy, 2023.10.24
-  // 暂存标识信息
-  pid = p_child->task.pid;
+  UNUSED(eflags);
+  UNUSED(cr3_child);
+
+  int pid = p_child->task.pid;
 
   // 复制PCB内容
   //  esp_save_int and esp_save_context must be saved, because the child and the
   //  parent use different kernel stack! And these two are importent to the
   //  child's initial running. Added by xw, 18/4/21
-  esp_save_int = p_child->task.context.esp_save_int;
-  esp_save_context = p_child->task.context.esp_save_context;
+  STACK_FRAME *esp_save_int = p_child->task.context.esp_save_int;
+  CONTEXT_FRAME *esp_save_context = p_child->task.context.esp_save_context;
+
+  UNUSED(esp_save_int);
+  UNUSED(esp_save_context);
+
   disable_int();
 
   p_child->task = p_parent->task;
@@ -262,7 +262,8 @@ PRIVATE int pthread_stack_init(PROCESS *p_child, PROCESS *p_parent,
                                pthread_attr_t *attr) {
   int addr_lin;
   char *p_reg;  // point to a register in the new kernel stack, added by xw,
-                // 17/12/11
+  UNUSED(p_reg);
+  UNUSED(addr_lin);
 
   p_child->task.memmap.stack_lin_limit =
       (u32)(attr->stackaddr - attr->stacksize);  // 子线程的栈界

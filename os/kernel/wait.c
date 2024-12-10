@@ -93,7 +93,8 @@ PRIVATE PROCESS* try_get_zombie_child(u32 pid) {
 }
 
 PRIVATE int try_remove_killed_child(u32 pid) {
-  // todo：完善KILLED状态机制
+  UNUSED(pid);
+  //! TODO: 完善KILLED状态机制
   return -1;
 }
 // static int try_remove_killed_child(u32 pid) {

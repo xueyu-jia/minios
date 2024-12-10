@@ -1,4 +1,6 @@
+#include <malloc.h>
 #include <stdio.h>
+
 /*
  * 父进程第一次fork，子进程1执行fstest（该进程还会再fork一次）
  * 第二次fork， 父进程等待，子进程调用test_1
@@ -54,16 +56,16 @@ void test_malloc() {
   //    udisp_str("-----------malloc_table--------------\n");
   //    scan_malloc_table();
 
-  malloc(1024);  //测试vmalloc中for循环外的if分支
-                 //即没有合适的空闲块分配4K页面并建立映射
-                 //    udisp_str("-----------vtable-------\n");
-                 //    scan_vtable();
+  malloc(1024);  // 测试vmalloc中for循环外的if分支
+                 // 即没有合适的空闲块分配4K页面并建立映射
+                 //     udisp_str("-----------vtable-------\n");
+                 //     scan_vtable();
 
   //    udisp_str("-----------malloc_table--------------\n");
   //    scan_malloc_table();
 
-  malloc(1072);  //测试vmalloc中for循环内的第一个if分支
-                 //即空闲表中有合适的分区，并且分区大小大于要分配的空间
+  malloc(1072);  // 测试vmalloc中for循环内的第一个if分支
+                 // 即空闲表中有合适的分区，并且分区大小大于要分配的空间
   udisp_str("-----------vtable-------\n");
   scan_vtable();
 
@@ -71,8 +73,8 @@ void test_malloc() {
   scan_malloc_table();
 
   malloc(
-      2000);  //测试vmalloc中for循环内的第二个if分支
-              //即空闲表中有合适的分区，并且分区大小等于要分配的空间,分配后要将该分区删除
+      2000);  // 测试vmalloc中for循环内的第二个if分支
+              // 即空闲表中有合适的分区，并且分区大小等于要分配的空间,分配后要将该分区删除
 
   udisp_str("-----------vtable-------\n");
   scan_vtable();
@@ -114,7 +116,7 @@ void test_free()
   udisp_str("-----------malloc_table--------------\n");
   scan_malloc_table();
 
-  free(vaddr7);  //不属于同一页的分区即使连续也不合并
+  free(vaddr7);  // 不属于同一页的分区即使连续也不合并
 
   //    udisp_str("-----------vtable-------\n");
   //    scan_vtable();
@@ -123,17 +125,7 @@ void test_free()
 
   //    scan_malloc_table();
 
-  free(vaddr4);  //前后都不连续，直接插入
-
-  //    udisp_str("-----------vtable-------\n");
-
-  //    scan_vtable();
-
-  //    udisp_str("-----------malloc_table--------------\n");
-
-  //    scan_malloc_table();
-
-  free(vaddr3);  //仅和后面内存块连续，合并
+  free(vaddr4);  // 前后都不连续，直接插入
 
   //    udisp_str("-----------vtable-------\n");
 
@@ -143,7 +135,17 @@ void test_free()
 
   //    scan_malloc_table();
 
-  free(vaddr5);  //仅和前面内存块连续，合并
+  free(vaddr3);  // 仅和后面内存块连续，合并
+
+  //    udisp_str("-----------vtable-------\n");
+
+  //    scan_vtable();
+
+  //    udisp_str("-----------malloc_table--------------\n");
+
+  //    scan_malloc_table();
+
+  free(vaddr5);  // 仅和前面内存块连续，合并
 
   udisp_str("-----------vtable-------\n");
 
@@ -154,7 +156,7 @@ void test_free()
   scan_malloc_table();
 
   free(
-      vaddr6);  //和前面的内存块及后面内存块都连续，两次合并，合并后size=4K,释放页面
+      vaddr6);  // 和前面的内存块及后面内存块都连续，两次合并，合并后size=4K,释放页面
 
   udisp_str("-----------vtable-------\n");
 
@@ -170,7 +172,7 @@ void test_alloc_free_page() {
   //    udisp_str("-------------vtable-------------------\n");
   //    scan_vtable();
 
-  p1 = malloc(4000);  //测试alloc_hpage;
+  p1 = malloc(4000);  // 测试alloc_hpage;
 
   p2 = malloc(4032);
 
@@ -187,7 +189,7 @@ void test_alloc_free_page() {
   //    udisp_str("-------------vpage_list---------------\n");
   //    scan_page_list();
 
-  free(p3);  //测试free_vpage
+  free(p3);  // 测试free_vpage
 
   //    udisp_str("-------------vtable-------------------\n");
   //    scan_vtable();
@@ -196,15 +198,15 @@ void test_alloc_free_page() {
   //    udisp_str("-------------vpage_list---------------\n");
   //    scan_page_list();
 
-  free(p4);  //测试free_vpage
-             //    udisp_str("-------------vtable-------------------\n");
-             //    scan_vtable();
-             //    udisp_str("-------------heap_pointer-------------\n");
-             //    scan_heap_ptr();
-             //    udisp_str("-------------vpage_list---------------\n");
-             //    scan_page_list();
+  free(p4);  // 测试free_vpage
+             //     udisp_str("-------------vtable-------------------\n");
+             //     scan_vtable();
+             //     udisp_str("-------------heap_pointer-------------\n");
+             //     scan_heap_ptr();
+             //     udisp_str("-------------vpage_list---------------\n");
+             //     scan_page_list();
 
-  p6 = malloc(3999);  //测试alloc_vpage
+  p6 = malloc(3999);  // 测试alloc_vpage
   //    udisp_str("-------------vtable-------------------\n");
   //    scan_vtable();
   //    udisp_str("-------------heap_pointer-------------\n");
@@ -220,7 +222,7 @@ void test_alloc_free_page() {
   udisp_str("-------------vpage_list---------------\n");
   scan_page_list();
 
-  free(p5);  //测试free_ppage
+  free(p5);  // 测试free_ppage
   udisp_str("-------------vtable-------------------\n");
   scan_vtable();
   udisp_str("-------------heap_pointer-------------\n");

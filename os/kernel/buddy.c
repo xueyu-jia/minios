@@ -6,6 +6,7 @@
 #include <kernel/console.h>
 #include <kernel/kmalloc.h>
 #include <kernel/proto.h>
+#include <klib/compiler.h>
 #include <klib/string.h>
 
 buddy kbuddy, ubuddy;
@@ -74,25 +75,28 @@ int free_pages(buddy *bud, page *page, u32 order) {
   u32 free_order = order;
 
 continue_merging:
+  MAYBE_UNUSED
+
   while (order < max_order) {
-    //查找伙伴块的页号
+    // 查找伙伴块的页号
     buddy_pfn = __find_buddy_pfn(pfn, order);
     buddy = page + (buddy_pfn - pfn);
-    //查找伙伴块是否在buddy系统中
-    //若不在，继续执行done_merging
+    // 查找伙伴块是否在buddy系统中
+    // 若不在，继续执行done_merging
     if (!page_is_buddy(buddy_pfn, buddy, order)) goto done_merging;
-    //若在，将伙伴块从free_list中删除
+    // 若在，将伙伴块从free_list中删除
     del_page_from_free_list(buddy, bud, order);
-    //合并伙伴块
+    // 合并伙伴块
     combined_pfn = buddy_pfn & pfn;  // find head of block by &
     page = page + (combined_pfn - pfn);
     pfn = combined_pfn;
     order++;
   }
+
 done_merging:
-  //设置当前page的order
+  // 设置当前page的order
   set_buddy_order(page, order);
-  //将该page加入对应order的free_list中
+  // 将该page加入对应order的free_list中
   add_to_free_list(page, bud, order);
 
   bud->current_mem_size += block_size[free_order];
@@ -104,13 +108,13 @@ page *alloc_pages(buddy *bud, u32 order) {
   page *page = NULL;
   struct free_area *area;
 
-  //从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
+  // 从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
   for (current_order = order; current_order < MAX_ORDER; ++current_order) {
     area = &(bud->free_area[current_order]);
     page = get_page_from_free_area(area);
-    //若未查到则继续查找
+    // 若未查到则继续查找
     if (!page) continue;
-    //若查找到了，先将其从free_list中删除，如果需要再调用expand()函数进行大内存块拆分
+    // 若查找到了，先将其从free_list中删除，如果需要再调用expand()函数进行大内存块拆分
     del_page_from_free_list(page, bud, current_order);
     expand(bud, page, order, current_order);
 
@@ -191,7 +195,7 @@ PRIVATE void set_buddy_order(page *page, u32 order) {
 
 PRIVATE page *get_page_from_free_area(struct free_area *area) {
   struct page *node;
-  //返回该链表第一个块或者返回NULL
+  // 返回该链表第一个块或者返回NULL
   node = area->free_list;  // *page
   return node;
 }
@@ -552,8 +556,7 @@ bud->free_area[order].free_list[j + 1];
 // test buddy
 
 void Scan_free_area(buddy *bud) {
-  u32 i, j;
-  for (i = 0; i < MAX_ORDER; i++) {
+  for (size_t i = 0; i < MAX_ORDER; i++) {
     struct free_area *area = &bud->free_area[i];
     page *node = area->free_list;
     disp_str("   order = ");
@@ -589,13 +592,13 @@ void test_alloc_pages() {
 
   disp_str("\n-------------test1----------------\n");
   disp_str("alloc_pages(kbud,5)\n");
-  alloc_pages(kbud, 5);  //测试链表非空
+  alloc_pages(kbud, 5);  // 测试链表非空
   Scan_free_area(kbud);
 
   //    disp_str("\n-------------test2----------------\n");
   //    disp_str("alloc_pages(kbud,4)\n");
-  alloc_pages(kbud, 4);  //测试order链表为空，上级链表非空
-                         //    Scan_free_area(kbud);
+  alloc_pages(kbud, 4);  // 测试order链表为空，上级链表非空
+                         //     Scan_free_area(kbud);
 
   disp_str("\n-------------test3----------------\n");
   disp_str("alloc_pages(kbud,10)\n");
@@ -619,22 +622,22 @@ void test_free_pages() {
   //    Scan_free_area(ubud);
 
   free_pages(ubud, first,
-             1);  //测试if(tag==0),伙伴被分配直接挂在链表上
-                  //    disp_str("\n------------test1----------\n");
-                  //    disp_str("free_pages(ubud,first,1)\n");
-                  //    Scan_free_area(ubud);
+             1);  // 测试if(tag==0),伙伴被分配直接挂在链表上
+                  //     disp_str("\n------------test1----------\n");
+                  //     disp_str("free_pages(ubud,first,1)\n");
+                  //     Scan_free_area(ubud);
 
   free_pages(ubud, second,
-             1);  //测试else 伙伴未被分配，合并挂在order+1链表
-                  //    disp_str("\n------------test2----------\n");
-                  //    disp_str("free_pages(ubud,second,1)\n");
-                  //    Scan_free_area(ubud);
+             1);  // 测试else 伙伴未被分配，合并挂在order+1链表
+                  //     disp_str("\n------------test2----------\n");
+                  //     disp_str("free_pages(ubud,second,1)\n");
+                  //     Scan_free_area(ubud);
 
   free_pages(ubud, third,
-             10);  //测试if(order==10)，直接挂在链表上。
-                   //    disp_str("\n------------test3----------\n");
-                   //    disp_str("free_pages(ubud,third,10)\n");
-                   //    Scan_free_area(ubud);
+             10);  // 测试if(order==10)，直接挂在链表上。
+                   //     disp_str("\n------------test3----------\n");
+                   //     disp_str("free_pages(ubud,third,10)\n");
+                   //     Scan_free_area(ubud);
 
   first = alloc_pages(ubud, 9);
   second = alloc_pages(ubud, 9);

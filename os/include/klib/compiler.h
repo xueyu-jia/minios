@@ -18,3 +18,11 @@
 #define static_assert(expr, msg) _Static_assert(expr, msg)
 
 #define offsetof(TYPE, MEMBER) __builtin_offsetof(TYPE, MEMBER)
+
+#define container_of(ptr, type, member)                  \
+  ({                                                     \
+    const typeof(((type *)0)->member) *__mptr = (ptr);   \
+    (type *)((char *)(__mptr) - offsetof(type, member)); \
+  })
+
+#define MAYBE_UNUSED __attribute__((unused))

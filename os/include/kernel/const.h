@@ -1,12 +1,9 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                            const.h
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
 #pragma once
+
 #include <kernel/type.h>
+#include <klib/compiler.h>
+#include <klib/stddef.h>
+
 /*最大整数定义*/
 #define MAX_UNSIGNED_INT 0xFFFFFFFF  // 最大的无符号整形
 #define MAX_INT 0x7FFFFFFF           // 最大的整形数
@@ -214,17 +211,6 @@
 #define MAXARG                         \
   ((ArgLinLimitMAX - ArgLinBase) / 4 - \
    2)  // 减2是因为Arg开头用来保存argv,末尾需要保存一个NULL
-
-/* max() & min() */
-// added by mingxuan 2019-5-19
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#define offsetof(type, member) ((u32) & ((type *)0)->member)
-#define container_of(ptr, type, member)                  \
-  ({                                                     \
-    const typeof(((type *)0)->member) *__mptr = (ptr);   \
-    (type *)((char *)(__mptr) - offsetof(type, member)); \
-  })
 
 // Options
 #define OPT_DISP_SERIAL  // 是否将disp_xx的输出打印到串口

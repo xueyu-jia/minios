@@ -134,6 +134,7 @@ PUBLIC void vfs_sync_inode(struct inode* inode) {
 PUBLIC void vfs_put_inode(struct inode* inode) {
   if (atomic_dec_and_test(&inode->i_count)) {
     page* _page = NULL;
+    UNUSED(_page);
     struct superblock_operations* ops = inode->i_sb->sb_op;
     if (inode->i_nlink == 0) {
       if (ops && ops->delete_inode) {
@@ -163,6 +164,7 @@ PRIVATE void insert_sub_dentry(struct dentry* dir, struct dentry* dentry) {
 
 // require mutex: dir, ent
 PRIVATE void remove_sub_dentry(struct dentry* dir, struct dentry* dentry) {
+  UNUSED(dir);
   list_remove(&dentry->d_list);
   // ent->d_parent = NULL;
   // parent saved,因为存在此dentry已被删除但仍有引用的情况，比如rmdir ../cwd, cd
@@ -304,7 +306,9 @@ PRIVATE void register_fs_type(char* fstype_name, int fs_type,
 // 文件名拆分：同时删除末尾多余的"/"
 PRIVATE const char* strip_dir_path(const char* path, char* dir) {
   int len = strlen(path), flag = 0;
+  UNUSED(flag);
   const char *p = path + len - 1, *file_name = path, *file_end = path + len - 1;
+  UNUSED(file_end);
   while (p != path && (*p) == '/') p--;
   file_end = p;
   // file_end[1] = '\0';
@@ -446,6 +450,7 @@ PUBLIC struct dentry* vfs_lookup(const char* path) {
   const char* p_name = NULL;
   const char* p = path;
   int flag_name = 0;
+  UNUSED(flag_name);
   struct dentry* dir = vfs_root;
   if (path[0] != '/') {
     dir = p_proc_current->task.cwd;
@@ -496,6 +501,7 @@ PRIVATE struct dentry* vfs_create(struct inode* dir, const char* file_name,
   struct inode_operations* i_ops = NULL;
   struct dentry* dentry = NULL;
   struct inode* inode = NULL;
+  UNUSED(inode);
   int state = -1;
   lock_or_yield(&dir->lock);
   if (dir->i_type == I_DIRECTORY) {
@@ -710,6 +716,8 @@ PUBLIC int get_fstype_by_name(const char* fstype_name) {
 PUBLIC int kern_vfs_mount(const char* source, const char* target,
                           const char* filesystemtype, unsigned long mountflags,
                           const void* data) {
+  UNUSED(mountflags);
+  UNUSED(data);
   // modified by sundong 2023.5.28
   // int device = get_dev_from_name(source);
   // 从根文件系统中获取块设备的设备号
@@ -1033,6 +1041,7 @@ PUBLIC int kern_vfs_mknod(const char* path, int mode, int dev) {
   const char* file_name = strip_dir_path(path, dir_path);
   struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
   struct inode* inode = NULL;
+  UNUSED(inode);
   if (!dir) {
     return -1;
   }
@@ -1063,6 +1072,7 @@ PUBLIC int kern_vfs_mkdir(const char* path, int mode) {
   const char* file_name = strip_dir_path(path, dir_path);
   struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
   struct inode* inode = NULL;
+  UNUSED(inode);
   if (!dir) {
     return -1;
   }

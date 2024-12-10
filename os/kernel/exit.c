@@ -131,9 +131,13 @@ PRIVATE void exit_file(PROCESS* p_proc) {
  */
 
 PRIVATE void exit_handle_child_thread(u32 pid, bool lock_recy) {
+  UNUSED(lock_recy);
+
   //: NOTE:fixed, now recursive delete
   PROCESS* pcb = (PROCESS*)pid2proc(pid);
   PROCESS* recy_pcb = (PROCESS*)pid2proc(NR_RECY_PROC);
+  UNUSED(recy_pcb);
+
   for (int i = 0; i < pcb->task.tree_info.child_t_num; ++i) {
     PROCESS* child_pcb =
         (PROCESS*)pid2proc(pcb->task.tree_info.child_thread[i]);

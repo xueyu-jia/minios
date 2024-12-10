@@ -128,6 +128,7 @@ found:
 
 PUBLIC int devfs_readdir(struct file_desc *file, unsigned int count,
                          struct dirent *start) {
+  UNUSED(file);
   struct device *dev_struct = NULL;
   struct dirent *dent = start;
   char dev_name[8];

@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <string.h>
 #include <syscall.h>
 
 #define BUF_SIZE 1024

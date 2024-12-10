@@ -12,8 +12,9 @@ AR		= ar
 ASMKFLAGS	= -f elf
 ARFLAGS		= rcs
 
-USE_CFLAGS		= -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -Wall -Wextra -g -std=gnu99
-LDFLAGS		= -m elf_i386 -s -Tuser/user/lds
+USE_CFLAGS = -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -g -std=gnu99
+LDFLAGS    = -m elf_i386 -Tuser/user/lds
+#LDFLAGS    += -s
 
 LDFLAGS_user_gdb	= -m elf_i386					#added by mingxuan 2021-8-21
 

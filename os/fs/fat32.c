@@ -58,7 +58,7 @@ PRIVATE inline int fat_replace_char(char c) {
   return (strchr("+,;=[]", c) != NULL);
 }
 
-PRIVATE char fat_shortname_char(char c) {
+MAYBE_UNUSED PRIVATE char fat_shortname_char(char c) {
   if (c >= 'a' && c <= 'z') {
     c = c - 'a' + 'A';
   }
@@ -143,6 +143,7 @@ PRIVATE char* fat_bread(struct super_block* sb, int block, buf_head** bh) {
 // value == -1 for read
 PRIVATE int read_write_fat(struct super_block* sb, int cluster, int value) {
   int dev = sb->sb_dev, next;
+  UNUSED(dev);
   if (cluster > FAT_SB(sb)->max_cluster) {
     return 0;
   }
@@ -238,11 +239,13 @@ PRIVATE int fill_fat_info(struct super_block* sb, int cluster_start,
 
 PRIVATE int fat_get_cluster(struct inode* inode, int cluster, int new_space) {
   struct super_block* sb = inode->i_sb;
-  struct fat_sb_info* sbi = FAT_SB(sb);
+  struct fat32_sb_info* sbi = FAT_SB(sb);
+  UNUSED(sbi);
   int clus_skip = cluster;
   int clus, last = 0;
   struct fat_info* info = FAT_INODE(inode)->fat_info;
   int new = 0;
+  UNUSED(new);
   if (!info->cluster_start) {
     if (!new_space) {
       return -1;
@@ -303,6 +306,7 @@ PRIVATE int fat_entry_offset_by_ino(struct inode* dir, u32 ino) {
            entry_block;  // 计算最后一簇的偏移量
   int start = 0, found = 0;
   struct fat_info* info = FAT_INODE(dir)->fat_info;
+  UNUSED(info);
   for (auto info = FAT_INODE(dir)->fat_info; info; info = info->next) {
     if (cluster >= info->cluster_start &&
         cluster < info->cluster_start + info->length) {

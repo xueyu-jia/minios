@@ -1,10 +1,11 @@
 #include <stdio.h>
+#include <string.h>
 
 #define BUF_SIZE 4096  // 4KB
-//#define BUF_SIZE 8196		//8KB
-//#define BUF_SIZE 16384	//16KB
-//#define BUF_SIZE 32768	//32KB
-//#define BUF_SIZE 65536	//64KB
+// #define BUF_SIZE 8196		//8KB
+// #define BUF_SIZE 16384	//16KB
+// #define BUF_SIZE 32768	//32KB
+// #define BUF_SIZE 65536	//64KB
 
 #define DATA_SIZE 200
 

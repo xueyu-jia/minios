@@ -11,14 +11,14 @@
 #include <klib/string.h>
 
 int big_kernel =
-    0;  //当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added
-        // by wang 2021.8.16
-u32 kernel_size = 0;  //表示内核大小的全局变量，added by wang 2021.8.27
+    0;  // 当big_kernel=1时，表示大内核，big_kernel=0表示小内核，added
+        //  by wang 2021.8.16
+u32 kernel_size = 0;  // 表示内核大小的全局变量，added by wang 2021.8.27
 u32 kernel_code_size =
-    0;  //为内核代码数据分配的内存大小，     added by wang 2021.8.27
+    0;  // 为内核代码数据分配的内存大小，     added by wang 2021.8.27
 u32 test_phy_mem_size =
-    0;  //检测到的物理机的物理内存的大小，    added by wang 2021.8.27
-u32 MemInfo[256] = {0};  //存放FMIBuff后1k内容
+    0;  // 检测到的物理机的物理内存的大小，    added by wang 2021.8.27
+u32 MemInfo[256] = {0};  // 存放FMIBuff后1k内容
 page mem_map[ALL_PAGES];
 list_head page_inactive = {
     .next = &page_inactive,
@@ -27,7 +27,7 @@ list_head page_inactive = {
 PRIVATE struct spinlock page_inactive_lock;
 
 void memory_init() {
-  memcpy(MemInfo, (u32 *)FMIBuff, 1024);  //复制内存
+  memcpy(MemInfo, (u32 *)FMIBuff, 1024);  // 复制内存
 
   test_phy_mem_size = MemInfo[MemInfo[0]];
   u32 i;
@@ -71,7 +71,7 @@ void memory_init() {
 
 // modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kmalloc(
-    u32 size)  //有int型参数size，从内核线性地址空间申请一段大小为size的内存
+    u32 size)  // 有int型参数size，从内核线性地址空间申请一段大小为size的内存
 {
   if (size <= (1 << MAX_BUFF_ORDER)) {
     return (u32)kmalloc(size);
@@ -95,7 +95,7 @@ PUBLIC u32 kern_kmalloc(u32 size) {
   // return K_PHY2LIN(phy_kmalloc(size));
 }
 // add by sundong 2023.6.3
-//分配一段内存,并初始化为0
+// 分配一段内存,并初始化为0
 PUBLIC u32 kern_kzalloc(u32 size) {
   void *p = (void *)K_PHY2LIN(phy_kmalloc(size));
   // disp_str("\na:");
@@ -106,8 +106,8 @@ PUBLIC u32 kern_kzalloc(u32 size) {
   return (u32)p;
 }
 
-//在内核中直接使用,mingxuan 2021-3-25
-// edited by wang 2021.6.8
+// 在内核中直接使用,mingxuan 2021-3-25
+//  edited by wang 2021.6.8
 /*
 PUBLIC u32 do_kfree(u32 addr) //有unsigned
 int型参数addr和size，释放掉起始地址为addr长度为size的一段内存
@@ -137,8 +137,8 @@ int型参数addr和size，释放掉起始地址为addr长度为size的一段内�
 }
 */
 PUBLIC u32 phy_kfree(
-    u32 phy_addr)  //有unsigned
-                   // int型参数addr和size，释放掉起始地址为addr长度为size的一段内存
+    u32 phy_addr)  // 有unsigned
+                   //  int型参数addr和size，释放掉起始地址为addr长度为size的一段内存
 {
   if (big_kernel == 1) {
     if (phy_addr >= KUWALL2) {
@@ -167,7 +167,7 @@ PUBLIC u32 kern_kfree(u32 addr)  // addr must be lin addr
   return phy_kfree(K_LIN2PHY(addr));
 }
 
-//在内核中直接使用,mingxuan 2021-3-25
+// 在内核中直接使用,mingxuan 2021-3-25
 /* //deleted by mingxuan 2021-8-16
 PUBLIC u32 do_kmalloc_4k() //无参数，从内核线性地址空间申请一页内存
 {
@@ -179,7 +179,7 @@ PUBLIC u32 do_kmalloc_4k() //无参数，从内核线性地址空间申请一页
 */
 
 // modified by mingxuan 2021-8-16
-PUBLIC u32 phy_kmalloc_4k()  //无参数，从内核线性地址空间申请一页内存
+PUBLIC u32 phy_kmalloc_4k()  // 无参数，从内核线性地址空间申请一页内存
 {
   page *page = alloc_pages(kbud, 0);
   int res = pfn_to_phy(page_to_pfn(page));
@@ -193,7 +193,7 @@ PUBLIC u32 phy_kmalloc_4k()  //无参数，从内核线性地址空间申请一�
 // added by mingxuan 2021-8-17
 PUBLIC u32 kern_kmalloc_4k() { return K_PHY2LIN(phy_kmalloc_4k()); }
 
-//在内核中直接使用,mingxuan 2021-3-25
+// 在内核中直接使用,mingxuan 2021-3-25
 /*
 PUBLIC u32 do_kfree_4k(u32 addr) //有unsigned
 int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
@@ -221,8 +221,8 @@ int型参数addr，释放掉起始地址为addr的一段内存，大小由内存
 
 // modified by mingxuan 2021-8-16
 PUBLIC u32 phy_kfree_4k(
-    u32 phy_addr)  //有unsigned
-                   // int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
+    u32 phy_addr)  // 有unsigned
+                   //  int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
 {
   if (phy_addr % num_4K) {
     disp_color_str("phy_free_4k: addr Error", 0x74);
@@ -253,8 +253,8 @@ PUBLIC u32 kern_kfree_4k(u32 addr)  // this addr must be lin addr
   return (phy_kfree_4k(K_LIN2PHY(addr)));
 }
 
-//在用户态下通过malloc调用sys_malloc_4k,进而使用。不可以在内核中使用。mingxuan
-// 2021-3-25
+// 在用户态下通过malloc调用sys_malloc_4k,进而使用。不可以在内核中使用。mingxuan
+//  2021-3-25
 /*
 PUBLIC u32 do_malloc_4k() //无参数，从用户线性地址空间堆中申请一页内存
 {
@@ -265,7 +265,7 @@ PUBLIC u32 do_malloc_4k() //无参数，从用户线性地址空间堆中申请�
 }
 */
 // modified by mingxuan 2021-8-14
-PUBLIC u32 phy_malloc_4k()  //无参数，从用户线性地址空间堆中申请一页内存
+PUBLIC u32 phy_malloc_4k()  // 无参数，从用户线性地址空间堆中申请一页内存
 {
   page *page = alloc_pages(ubud, 0);
   int res = pfn_to_phy(page_to_pfn(page));
@@ -290,8 +290,8 @@ PUBLIC u32 kern_malloc_4k()
 }
 */
 
-//在用户态下通过free调用sys_free_4k,进而使用。不可以在内核中使用。mingxuan
-// 2021-3-25
+// 在用户态下通过free调用sys_free_4k,进而使用。不可以在内核中使用。mingxuan
+//  2021-3-25
 /*
 PUBLIC u32 do_free_4k(u32 addr) //有unsigned
 int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
@@ -319,8 +319,8 @@ int型参数addr，释放掉起始地址为addr的一段内存，大小由内存
 // modified by mingxuan 2021-8-14
 // phy_free_4k, the param addr mush be phy addr, mingxuan 2021-8-16
 PUBLIC u32 phy_free_4k(
-    u32 phy_addr)  //有unsigned
-                   // int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
+    u32 phy_addr)  // 有unsigned
+                   //  int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
 {
   if (phy_addr % num_4K != 0) {
     disp_color_str("phy_free_4k: addr Error1", 0x74);
@@ -356,7 +356,7 @@ PUBLIC u32 kern_free_4k(u32 addr) //addr is lin address
 }
 */
 
-//此函数已废弃不用 //deleted by mingxuan 2021-3-25
+// 此函数已废弃不用 //deleted by mingxuan 2021-3-25
 /*
 PUBLIC u32 do_free(u32 addr,u32 size) //有unsigned
 int型参数addr和size，释放掉起始地址为addr长度为size的一段内存
@@ -444,7 +444,7 @@ PUBLIC u32 kern_malloc_4k()  // modified by mingxuan 2021-8-19
       do_mmap(AddrLin, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
   if (addr == -1) {
     disp_str("kern_malloc_4k: error mmap addr occupied");
-    return NULL;
+    return 0x00000000;
   }
   return AddrLin;
 }
@@ -661,6 +661,7 @@ PRIVATE page *find_or_create_page(LIN_MEMMAP *mmap, struct vmem_area *vma,
 
 PRIVATE void free_vma_pages(PROCESS *p_proc, LIN_MEMMAP *mmap,
                             struct vmem_area *vma) {
+  UNUSED(mmap);
   u32 nr_pages = (vma->end - vma->start) >> PAGE_SHIFT;
   u32 addr = vma->start;
   for (u32 i = 0; i < nr_pages; i++) {
@@ -802,7 +803,7 @@ int handle_mm_fault(LIN_MEMMAP *mmap, u32 vaddr, int flag) {
     u32 attr = PG_P | PG_USU;  // 这里目前没有做架构分离
     u32 phy = get_page_phy_addr(proc2pid(p_proc_current), vaddr);
     page *pte_page = NULL;
-    if (phy != NULL) {
+    if ((void *)phy != NULL) {
       pte_page = pfn_to_page(phy_to_pfn(phy));
     }
     if (flag & FAULT_NOPAGE) {  // handler should check page and set pte
@@ -822,7 +823,7 @@ int handle_mm_fault(LIN_MEMMAP *mmap, u32 vaddr, int flag) {
     } else if ((flag & FAULT_WRITE) && (vma->flags & PROT_WRITE)) {
       if (pte_page == NULL) {
         disp_str("error: no page for page present fault");
-      }                                // error
+      }  // error
       if (vma->flags & MAP_PRIVATE) {  // file private RW: COW now
         _page = alloc_user_page(vaddr >> PAGE_SHIFT);
         copy_page(_page, pte_page);

@@ -10,28 +10,6 @@
 
 extern int tty;
 
-/*syscall.asm*/
-// int get_ticks();
-// int get_pid();
-// pthread_t  pthread_self();		//added by ZengHao & MaLinhan 21.12.23
-
-/*  //deleted by mingxuan 2021-8-7
-void* kmalloc(int size);
-void* kmalloc_4k();
-void* malloc(int size);
-void* malloc_4k();
-int free(void *arg);
-int free_4k(void* AdddrLin);
-*/
-
-// int fork();
-// int pthread_create(int *thread, void *attr, void *entry, void *arg);
-// void pthread_exit(void *retval);
-// int pthread_join(pthread_t pthread, void **retval);
-
-// void udisp_int(int arg);
-// void udisp_str(char* arg);
-
 // added by xw
 /* file system */
 #define MAX_FILENAME_LEN 12  //? only orange limit this

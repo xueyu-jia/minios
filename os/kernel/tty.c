@@ -10,8 +10,8 @@
 
 TTY tty_table[NR_CONSOLES];
 
-PUBLIC int current_console;  //当前显示在屏幕上的console
-PRIVATE struct Semaphore tty_empty;
+PUBLIC int current_console;  // 当前显示在屏幕上的console
+MAYBE_UNUSED PRIVATE struct Semaphore tty_empty;
 PRIVATE struct Semaphore tty_full;
 PRIVATE struct Semaphore tty_buf_read;
 PUBLIC void wake_the_tty();
@@ -27,12 +27,13 @@ PRIVATE void put_key(TTY* tty, u32 key) {
   }
 }
 
-PUBLIC void wake_the_tty() {  //让tty的锁永远小于等于1
+PUBLIC void wake_the_tty() {  // 让tty的锁永远小于等于1
   if (tty_full.value < 1) ksem_post(&tty_full, 1);
 }
 
 PUBLIC void in_process(TTY* p_tty, u32 key) {
   int real_line = p_tty->console->orig / SCR_WIDTH;
+  UNUSED(real_line);
 
   if (!(key & FLAG_EXT)) {
     put_key(p_tty, key);
@@ -124,8 +125,9 @@ PRIVATE void init_tty(TTY* p_tty) {
 PRIVATE void tty_mouse(TTY* tty) {
   if (is_current_console(tty->console)) {
     int real_line = tty->console->orig / SCR_WIDTH;
+    UNUSED(real_line);
     if (tty->mouse_left_button) {
-      if (tty->mouse_Y > MOUSE_UPDOWN_BOUND) {  //按住鼠标左键向上滚动
+      if (tty->mouse_Y > MOUSE_UPDOWN_BOUND) {  // 按住鼠标左键向上滚动
         // if(tty->console->current_line < 43){
         //     disable_int( );
         //     tty->console->current_line ++;
@@ -137,7 +139,7 @@ PRIVATE void tty_mouse(TTY* tty) {
         // }
         scroll_screen(tty->console, SCR_UP);
         tty->mouse_Y = 0;
-      } else if (tty->mouse_Y < -MOUSE_UPDOWN_BOUND) {  //按住鼠标左键向下滚动
+      } else if (tty->mouse_Y < -MOUSE_UPDOWN_BOUND) {  // 按住鼠标左键向下滚动
         // if(tty->console->current_line > 0){
         //     disable_int( );
         //     tty->console->current_line --;
@@ -152,10 +154,10 @@ PRIVATE void tty_mouse(TTY* tty) {
       }
     }
 
-    if (tty->mouse_mid_button) {  //点击中键复原
-                                  // disable_int( );
-                                  // tty->console->current_line = 0;
-                                  // outb(CRTC_ADDR_REG, START_ADDR_H);
+    if (tty->mouse_mid_button) {  // 点击中键复原
+                                  //  disable_int( );
+                                  //  tty->console->current_line = 0;
+                                  //  outb(CRTC_ADDR_REG, START_ADDR_H);
       // outb(CRTC_DATA_REG, ( (80*(tty->console->current_line+real_line)) >> 8)
       // & 0xFF); outb(CRTC_ADDR_REG, START_ADDR_L); outb(CRTC_DATA_REG,
       // (80*(tty->console->current_line+real_line))  & 0xFF); enable_int( );
@@ -215,19 +217,19 @@ PUBLIC void init_ttys() {
   p_tty = TTY_FIRST;
 
   select_console(0);
-  //设置第一个tty光标位置，第一个tty需要特殊处理
-  // disable_int( );
-  // outb(CRTC_ADDR_REG,CURSOR_H);
-  // outb(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
-  // outb(CRTC_ADDR_REG,CURSOR_L);
-  // outb(CRTC_DATA_REG,(disp_pos/2)&0xFF);
-  // enable_int( );
+  // 设置第一个tty光标位置，第一个tty需要特殊处理
+  //  disable_int( );
+  //  outb(CRTC_ADDR_REG,CURSOR_H);
+  //  outb(CRTC_DATA_REG,((disp_pos/2)>>8)&0xFF);
+  //  outb(CRTC_ADDR_REG,CURSOR_L);
+  //  outb(CRTC_DATA_REG,(disp_pos/2)&0xFF);
+  //  enable_int( );
   ksem_init(&tty_full, 0);
 }
 
 PUBLIC void task_tty() {
   TTY* p_tty;
-  //轮询
+  // 轮询
   while (1) {
     ksem_wait(&tty_full, 1);
     // disp_str("-tty-");  //mark debug
@@ -270,8 +272,7 @@ PUBLIC int tty_read(TTY* tty, char* buf, int len) {
     ksem_wait(&tty_buf_read, 1);
   }
 
-  while ((tty->status & TTY_STATE_WAIT_ENTER))
-    ;  //等待回车按下
+  while ((tty->status & TTY_STATE_WAIT_ENTER));  // 等待回车按下
 
   // if((tty->ibuf_head-tty->ibuf) >= tty->ibuf_cnt ){
   //     start = tty->ibuf_head - tty->ibuf_cnt;

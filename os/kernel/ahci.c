@@ -94,7 +94,7 @@ PUBLIC int ahci_sata_init() {
 
   ahci_info[0].portnum = HBA->cap & 0xff;
   probe_port(HBA);
-  for (int i = 0; i < ahci_info[0].satadrv_num; ++i) {
+  for (uint32_t i = 0; i < ahci_info[0].satadrv_num; ++i) {
     port_rebase(&(HBA->ports[ahci_info[0].satadrv_atport[i]]));
   }
 
@@ -120,6 +120,8 @@ PUBLIC int ahci_sata_init() {
  * 			目前没加内存屏障，有出现bug的可能性
  */
 PRIVATE void sata_handler(int irq) {
+  UNUSED(irq);
+
   u32 port_bitmap = HBA->is;
 
   if (port_bitmap == 0) {
@@ -129,7 +131,7 @@ PRIVATE void sata_handler(int irq) {
 
   // 判断是哪个端口触发的中断
   int prot_num;
-  for (prot_num = 0; prot_num <= MAXDEV; prot_num++) {
+  for (prot_num = 0; prot_num <= PCI_MAX_DEV; prot_num++) {
     if (port_bitmap & (1 << prot_num)) break;
   }
   // 中断处理

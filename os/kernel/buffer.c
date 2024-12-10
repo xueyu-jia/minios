@@ -249,6 +249,7 @@ static inline void sync_buff(buf_head *bh) {
   // disp_str(".");
   update_bh_lru(bh, BUFFER_LOCKED);
   int tick = ticks;
+  UNUSED(tick);
   // if(kernel_initial){
   // 	WR_BLOCK(bh->dev, bh->block, bh->buffer);
   // }else{
@@ -284,6 +285,8 @@ PUBLIC void sync_buffers(int flush_delay) {
 }
 
 PRIVATE void try_sync_buffers(int background) {
+  UNUSED(background);
+
   lock_or_yield(&buf_lock);
   // buffer写回条件: dirty buffer数超过buffer总量的buf_dirty_nfrac% (20%)
   // 或者存在dirty buffer且距离上一次将dirty buffer同步操作的时间超过20ticks
