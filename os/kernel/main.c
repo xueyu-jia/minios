@@ -14,10 +14,12 @@
 #include <kernel/proto.h>
 #include <kernel/shm.h>
 #include <kernel/type.h>
-#ifndef OPT_DISP_SERIAL
-// #define GDBSTUB
+
+#if defined(GDBSTUB) && defined(OPT_DISP_SERIAL)
+#error gdb stub is not compatible with serial display
 #endif
-#include "../gdbstub/gdbstub.h"
+
+#include <gdbstub/gdbstub.h>  // IWYU pragma: keep
 
 PRIVATE int initialize_processes();  // added by xw, 18/5/26
 PRIVATE int initialize_cpus();       // added by xw, 18/6/2
