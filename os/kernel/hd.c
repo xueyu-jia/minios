@@ -1,32 +1,3 @@
-
-/*************************************************************************/ /**
-                                                                             *****************************************************************************
-                                                                             * @file
-                                                                             *hd.c
-                                                                             * @brief
-                                                                             *Hard
-                                                                             *disk
-                                                                             *(winchester)
-                                                                             *driver.
-                                                                             * The
-                                                                             *`device
-                                                                             *nr'
-                                                                             *in
-                                                                             *this
-                                                                             *file
-                                                                             *means
-                                                                             *minor
-                                                                             *device
-                                                                             *nr.
-                                                                             * @author
-                                                                             *Forrest
-                                                                             *Y.
-                                                                             *Yu
-                                                                             * @date
-                                                                             *2005~2008
-                                                                             *****************************************************************************
-                                                                             *****************************************************************************/
-
 #include <kernel/ahci.h>
 #include <kernel/blame.h>
 #include <kernel/const.h>
@@ -74,7 +45,6 @@ PRIVATE int waitfor(int mask, int val, int timeout);
 PRIVATE int SATA_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf);
 PRIVATE void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf);
 PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count);
-//~xw
 
 #define DRV_OF_DEV(dev) (((dev >> 20) & 0x0FFF) - DEV_HD_BASE)
 
@@ -818,7 +788,7 @@ PRIVATE void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
         ((drive << 4) &
          0xFF);  // 0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
     cmd.command = (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-  }  // by qianglong 2022.4.26
+  }       // by qianglong 2022.4.26
   else {  // LBA28
     cmd.device = MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
     cmd.command = (type == DEV_READ) ? ATA_READ : ATA_WRITE;
@@ -963,7 +933,8 @@ PRIVATE int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
   if (kernel_initial == 1) {
     port->ci = 1 << slot;  // Issue command
-    while (sata_wait_flag);
+    while (sata_wait_flag)
+      ;
     sata_wait_flag = 1;
   } else {
     /*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/

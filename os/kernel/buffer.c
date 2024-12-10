@@ -334,17 +334,17 @@ buf_head *getblk(u32 dev, u32 block) {
     if (bh->used) {
       rm_bh_hashtbl(bh);
       bh->used = 0;
-      //缓冲区重新初始化为0
+      // 缓冲区重新初始化为0
       memset(bh->buffer, 0, num_4K);
     }
     bh->dev = dev;
     bh->block = block;
-    //放到hash 表中
+    // 放到hash 表中
     release(&bh->lock);
     put_bh_hashtbl(bh);
     update_bh_lru(bh, BUFFER_CLEAN);
   }
-  //更新 lru
+  // 更新 lru
   update_bh_lru(bh, bh->b_state);
   release(&buf_lock);
   return bh;
@@ -538,4 +538,7 @@ PUBLIC int blk_file_read(struct file_desc *file, unsigned int count,
 }
 
 struct file_operations blk_file_ops = {
-    .read = blk_file_read, .write = blk_file_write, .fsync = NULL};
+    .read = blk_file_read,
+    .write = blk_file_write,
+    .fsync = NULL,
+};

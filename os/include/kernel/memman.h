@@ -58,15 +58,16 @@ typedef struct page {
 
 extern u32 kernel_size;
 extern int big_kernel;
-extern u32 kernel_code_size;  //为内核代码数据分配的内存大小，     added by wang
-                              // 2021.8.27
-extern u32 test_phy_mem_size;  //检测到的物理机的物理内存的大小，    added by
-                               // wang 2021.8.27
+extern u32
+    kernel_code_size;  // 为内核代码数据分配的内存大小，     added by wang
+                       //  2021.8.27
+extern u32 test_phy_mem_size;  // 检测到的物理机的物理内存的大小，    added by
+                               //  wang 2021.8.27
 extern page mem_map[ALL_PAGES];
 #define phy_to_pfn(x) ((x) / PAGE_SIZE)
-#define pfn_to_phy(x) ((x)*PAGE_SIZE)
+#define pfn_to_phy(x) ((x) * PAGE_SIZE)
 #define pfn_to_page(x) (mem_map + (x))
-#define page_to_pfn(x) ((x)-mem_map)
+#define page_to_pfn(x) ((x) - mem_map)
 #define kpage_lin(_page) K_PHY2LIN(pfn_to_phy(page_to_pfn((_page))))
 void memory_init();
 PUBLIC u32 phy_kmalloc(u32 size);

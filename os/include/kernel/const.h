@@ -60,7 +60,11 @@
 // 物理内存长度
 //! 存在bug，当PHY_MEM_SIZE超过2G时，无论物理内存为多少，都会会闪退，推测是数据结构mem_map[ALL_PAGES]太大了，内核空间不够
 //! 当PHY_MEM_SIZE超过1G时，KernelLinLimitMAX和KernelLinMapBase会限制
+
+//! ATTENTION: qemu 改内存的时候这里一定要改！！！！
+//! NOTE: 当然，你改了也没用，大于 64M 照爆不误
 #define PHY_MEM_SIZE 0x04000000  // 64M
+
 // #define PHY_MEM_SIZE    0x08000000               //128M
 // #define PHY_MEM_SIZE    (0x40000000-0x04000000)                  // 1G-64M
 // #define PHY_MEM_SIZE    0x40000000                  // 1G
@@ -77,9 +81,9 @@
   (((u32)x) + 0xC0000000)  // 内核中物理地址转线性地址		//add by visual
                            // 2016.5.10
 #define K_LIN2PHY(x) (((u32)x) - 0xC0000000)  // added by xw, 18/8/27
-#define UPPER_BOUND(x, size) ((((u32)(x)) + ((size)-1)) & (~((size)-1)))
+#define UPPER_BOUND(x, size) ((((u32)(x)) + ((size) - 1)) & (~((size) - 1)))
 #define UPPER_BOUND_4K(x) UPPER_BOUND(x, num_4K)
-#define LOWER_BOUND(x, size) ((((u32)(x))) & (~((size)-1)))
+#define LOWER_BOUND(x, size) ((((u32)(x))) & (~((size) - 1)))
 #define LOWER_BOUND_4K(x) LOWER_BOUND(x, num_4K)
 #define num_4B 0x4       // 4B大小
 #define num_1K 0x400     // 1k大小
@@ -216,10 +220,10 @@
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define offsetof(type, member) ((u32) & ((type *)0)->member)
-#define container_of(ptr, type, member)                \
-  ({                                                   \
-    const typeof(((type *)0)->member) *__mptr = (ptr); \
-    (type *)((char *)(__mptr)-offsetof(type, member)); \
+#define container_of(ptr, type, member)                  \
+  ({                                                     \
+    const typeof(((type *)0)->member) *__mptr = (ptr);   \
+    (type *)((char *)(__mptr) - offsetof(type, member)); \
   })
 
 // Options

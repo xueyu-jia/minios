@@ -59,9 +59,6 @@ PUBLIC int kernel_main() {
 #endif
   int error;
 
-  // kernel_initial = 1; //kernel is in initial state. added by xw, 18/5/31
-  // moved to cstart begin
-  // zcr added(清屏)
   disp_pos = 0;
   for (int i = 0; i < 25; i++) {
     for (int j = 0; j < 80; j++) {
@@ -172,9 +169,9 @@ PRIVATE int initialize_cpus() {
 PRIVATE int initialize_processes() {
   // init_all_PCB();
   for (int i = 0; i < NR_TASKS; i++) {
-    int pid = kthread_create(task_table[i].name,
-                             (void*)task_table[i].initial_eip, task_table[i].rt,
-                             task_table[i].rpl, task_table[i].priority_nice);
+    int pid = kthread_create(
+        task_table[i].name, (void *)task_table[i].initial_eip, task_table[i].rt,
+        task_table[i].rpl, task_table[i].priority_nice);
     rq_insert(&proc_table[pid]);
   }
 
@@ -183,16 +180,16 @@ PRIVATE int initialize_processes() {
   rq_insert(&proc_table[initial_pid]);
 
   /*************************进程树信息初始化***************************************/
-  PROCESS* p_proc = &proc_table[PID_INIT];
-  p_proc->task.tree_info.type = TYPE_PROCESS;  //当前是进程还是线程
-  p_proc->task.tree_info.real_ppid = -1;  //亲父进程，创建它的那个进程
-  p_proc->task.tree_info.ppid = -1;       //当前父进程
-  p_proc->task.tree_info.child_p_num = 0;  //子进程数量
+  PROCESS *p_proc = &proc_table[PID_INIT];
+  p_proc->task.tree_info.type = TYPE_PROCESS;  // 当前是进程还是线程
+  p_proc->task.tree_info.real_ppid = -1;  // 亲父进程，创建它的那个进程
+  p_proc->task.tree_info.ppid = -1;       // 当前父进程
+  p_proc->task.tree_info.child_p_num = 0;  // 子进程数量
   // p_proc->task.tree_info.child_process[NR_CHILD_MAX];//子进程列表
-  p_proc->task.tree_info.child_t_num = 0;  //子线程数量
+  p_proc->task.tree_info.child_t_num = 0;  // 子线程数量
 
-  p_proc->task.memmap.vpage_lin_base = VpageLinBase;   //保留内存基址
-  p_proc->task.memmap.vpage_lin_limit = VpageLinBase;  //保留内存界限
+  p_proc->task.memmap.vpage_lin_base = VpageLinBase;   // 保留内存基址
+  p_proc->task.memmap.vpage_lin_limit = VpageLinBase;  // 保留内存界限
 
   return initial_pid;
 }

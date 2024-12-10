@@ -1,17 +1,3 @@
-/*************************************************************************/ /**
-                                                                             *****************************************************************************
-                                                                             * @file
-                                                                             *include/sys/hd.h
-                                                                             * @brief
-                                                                             * @author
-                                                                             *Forrest
-                                                                             *Y.
-                                                                             *Yu
-                                                                             * @date
-                                                                             *2008
-                                                                             *****************************************************************************
-                                                                             *****************************************************************************/
-
 #ifndef _ORANGES_HD_H_
 #define _ORANGES_HD_H_
 #include <kernel/const.h>
@@ -160,8 +146,9 @@ struct fs_flags {
   0x1F4 /*	Cylinder Low / LBA Bits 8-15	I/O		*/
 #define REG_LBA_HIGH \
   0x1F5 /*	Cylinder High / LBA Bits 16-23	I/O		*/
-#define REG_DEVICE \
-  0x1F6 /*	Drive | Head | LBA bits 24-27	I/O		*/
+#define REG_DEVICE                           \
+  0x1F6 /*	Drive | Head | LBA bits 24-27	I/O \
+         */
         /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
                 +-----+-----+-----+-----+-----+-----+-----+-----+
                 |  1  |  L  |  1  | DRV | HS3 | HS2 | HS1 | HS0 |
@@ -180,26 +167,27 @@ struct fs_flags {
            selects the mode of operation.         When L=0, addressing is by 'CHS' mode.
            When         L=1, addressing is by 'LBA' mode.
         */
-#define REG_STATUS \
-  0x1F7 /*	Status				I		*/
-        /* 	Any pending interrupt is cleared whenever this register is read.
-                |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
-                +-----+-----+-----+-----+-----+-----+-----+-----+
-                | BSY | DRDY|DF/SE|  #  | DRQ |     |     | ERR |
-                +-----+-----+-----+-----+-----+-----+-----+-----+
-                   |     |     |     |     |     |     |     |
-                   |     |     |     |     |     |     |     `--- 0. Error.(an error
-           occurred)         |     |     |     |     |     |     `--------- 1. Obsolete.
-           |     |         |     |     |     `--------------- 2. Obsolete.         |         |         |
-           |
-           `--------------------- 3. Data Request. (ready to transfer data)         |         |
-           |
-           `--------------------------- 4. Command dependent. (formerly DSC bit)         |     |
-           `--------------------------------- 5. Device Fault / Stream Error.         |
-           `--------------------------------------- 6. Drive Ready.
-                   `--------------------------------------------- 7. Busy. If BSY=1, no
-           other bits in the register are valid.
-        */
+#define REG_STATUS     \
+  0x1F7 /*	Status				I \
+         */
+/* 	Any pending interrupt is cleared whenever this register is read.
+        |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+        +-----+-----+-----+-----+-----+-----+-----+-----+
+        | BSY | DRDY|DF/SE|  #  | DRQ |     |     | ERR |
+        +-----+-----+-----+-----+-----+-----+-----+-----+
+           |     |     |     |     |     |     |     |
+           |     |     |     |     |     |     |     `--- 0. Error.(an error
+   occurred)         |     |     |     |     |     |     `--------- 1. Obsolete.
+   |     |         |     |     |     `--------------- 2. Obsolete.         | | |
+   |
+   `--------------------- 3. Data Request. (ready to transfer data)         | |
+   |
+   `--------------------------- 4. Command dependent. (formerly DSC bit) |     |
+   `--------------------------------- 5. Device Fault / Stream Error.         |
+   `--------------------------------------- 6. Drive Ready.
+           `--------------------------------------------- 7. Busy. If BSY=1, no
+   other bits in the register are valid.
+*/
 #define STATUS_BSY 0x80
 #define STATUS_DRDY 0x40
 #define STATUS_DFSE 0x20
@@ -222,7 +210,7 @@ struct fs_flags {
                      | 20h    | Read Sectors With Retry         |    V  V  V  V   |
                      | E8h  @ | Write Buffer                    |             D   |
                      +--------+---------------------------------+-----------------+
-             
+
                      KEY FOR SYMBOLS IN THE TABLE:
                      ===========================================-----=========================================================================
                      PC    Register 1F1: Write Precompensation	@     These commands              are
@@ -319,8 +307,8 @@ struct hd_cmd {
 #define NR_PART_PER_DRIVE 4  // 每块硬盘(驱动器)只能有4个主分区, mingxuan
 #define NR_SUB_PER_PART 11  // 扩展分区最多有11个逻辑分区, mingxuan
 #define NR_SUB_PER_DRIVE \
-  (NR_SUB_PER_PART *     \
-   NR_PART_PER_DRIVE)  //每块硬盘(驱动器)最多有16 * 4 = 64个逻辑分区, mingxuan
+  (NR_SUB_PER_PART * NR_PART_PER_DRIVE)  // 每块硬盘(驱动器)最多有16 * 4 =
+                                         // 64个逻辑分区, mingxuan
 #define NR_PRIM_PER_DRIVE \
   (NR_PART_PER_DRIVE +    \
    1)  // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待,
@@ -418,28 +406,28 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr,
                     void *buf);
 
 //~xw
-//硬盘中数据块的读写
+// 硬盘中数据块的读写
 // added by sundong 2023.5.26
 #define RD_BLOCK_SCHED(dev, block_nr, fsbuf)                     \
-  rw_blocks_sched(DEV_READ, dev, (u64)(block_nr)*BLOCK_SIZE,     \
+  rw_blocks_sched(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE,   \
                   BLOCK_SIZE,               /* read one block */ \
                   proc2pid(p_proc_current), /*current task id*/  \
                   fsbuf);
 // added by sundong 2023.5.26
-#define WR_BLOCK_SCHED(dev, block_nr, fsbuf)                  \
-  rw_blocks_sched(DEV_WRITE, dev, (u64)(block_nr)*BLOCK_SIZE, \
-                  BLOCK_SIZE, /* write one block */           \
+#define WR_BLOCK_SCHED(dev, block_nr, fsbuf)                    \
+  rw_blocks_sched(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, \
+                  BLOCK_SIZE, /* write one block */             \
                   proc2pid(p_proc_current), fsbuf);
 
 #define RD_BLOCK(dev, block_nr, fsbuf)                     \
-  rw_blocks(DEV_READ, dev, (u64)(block_nr)*BLOCK_SIZE,     \
+  rw_blocks(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE,   \
             BLOCK_SIZE,               /* read one block */ \
             proc2pid(p_proc_current), /*current task id*/  \
             fsbuf);
 // added by sundong 2023.5.26
-#define WR_BLOCK(dev, block_nr, fsbuf)                  \
-  rw_blocks(DEV_WRITE, dev, (u64)(block_nr)*BLOCK_SIZE, \
-            BLOCK_SIZE, /* write one block */           \
+#define WR_BLOCK(dev, block_nr, fsbuf)                    \
+  rw_blocks(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, \
+            BLOCK_SIZE, /* write one block */             \
             proc2pid(p_proc_current), fsbuf);
 
 #endif /* _ORANGES_HD_H_ */

@@ -9,12 +9,13 @@
 #include <mbr/string.h>
 void loader_cstart(u32 MemChkBuf, u32 MCRNumber) {
   clear_screen();
-  lprintf("MemChkBuf: %d MCRNumber %d \n", MemChkBuf, MCRNumber);
+  lprintf("MemChkBuf: %d MCRNumber %d\n", MemChkBuf, MCRNumber);
   // 启动分页
   paging(MemChkBuf, MCRNumber);
   // 初始化AHCI
-  AHCI_init();
-  // 加载kernel并执行kernel
+  ahci_sata_init();
+  // 加载 kernel 并执行 kernel
+
   load_kernel();
 }
 
@@ -71,25 +72,6 @@ void load_kernel() {
            ph[i].p_memsz - ph[i].p_filesz);  // 将不需要的内存置为0
   }
   if (ret != TRUE) goto bad;
-  // 不需要，加载program段的代码已经将bss段清零了
-  // //开始清空bss section
-  // char sh_name[128];
-  // ret &= read(eh.e_shoff+eh.e_shentsize*eh.e_shstrndx, sizeof(struct
-  // Secthdr), (void *)&sh); if(ret != TRUE) goto bad; char *sh_name_tbl_offset
-  // = sh.sh_offset;
-  // //比较各个section header的名称，是否与BSS_SECTION_NAME相等
-  // //若相等则将该section置为0
-  // for(int i = 0; i < eh.e_shnum; i++){
-  //     ret &= read(eh.e_shoff+eh.e_shentsize*i, sizeof(struct Secthdr), (void
-  //     *)&sh); ret &= read(sh_name_tbl_offset+sh.sh_name, 128,
-  //     (void*)sh_name); if(strcmp(sh_name, BSS_SECTION_NAME) == 0){
-  //         memset(sh.sh_addr, 0, sh.sh_size);
-  //         //检查是否已经设置为0
-  //         if(mem_check_IsZero(sh.sh_addr, sh.sh_size))    break;
-  //         else goto bad;
-  //     }
-  // }
-  // if(ret != TRUE) goto bad;
 
   lprintf("----finish loading kernel elf----\n");
   lprintf("%d", eh.e_entry);

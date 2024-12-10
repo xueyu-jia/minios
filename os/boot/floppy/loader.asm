@@ -67,7 +67,7 @@ LABEL_START:			; <--- 从这里开始 *************
 .MemChkOK:
 
 	; 下面在 A 盘的根目录寻找 KERNEL.BIN
-	mov	word [wSectorNo], SectorNoOfRootDirectory	
+	mov	word [wSectorNo], SectorNoOfRootDirectory
 	xor	ah, ah	; ┓
 	xor	dl, dl	; ┣ 软驱复位
 	int	13h	; ┛
@@ -178,7 +178,7 @@ LABEL_FILE_LOADED:
 	mov	dh, 1			; "Ready."
 	call	DispStrRealMode		; 显示字符串
 
-;;add begin add by liang 2016.04.20 	
+;;add begin add by liang 2016.04.20
 EXE_LABEL_START:			; <--- 从这里开始 *************
 	mov	ax, cs
 	mov	ds, ax
@@ -188,10 +188,10 @@ EXE_LABEL_START:			; <--- 从这里开始 *************
 
 	mov	dh, 3			; "exLoading"
 	call	DispStrRealMode		; 显示字符串
- 
-	
+
+
 	; 下面在 A 盘的根目录寻找 ECHO
-	mov	word [wSectorNo], SectorNoOfRootDirectory	
+	mov	word [wSectorNo], SectorNoOfRootDirectory
 	xor	ah, ah	; ┓
 	xor	dl, dl	; ┣ 软驱复位
 	int	13h	; ┛
@@ -289,7 +289,7 @@ EXE_LABEL_FILE_LOADED:
 	mov	dh, 4			; "exReady."
 	call	DispStrRealMode		; 显示字符串
 
-;;add end add by liang 2016.04.20	
+;;add end add by liang 2016.04.20
 ; 下面准备跳入保护模式 -------------------------------------------
 
 ; 加载 GDTR
@@ -744,7 +744,7 @@ MemCpy:
 memtest:
 	push	edi
 	push	esi
-	
+
 	mov	esi,0xaa55aa55
 	mov	edi,0x55aa55aa
 	mov	eax,[esp+8+4]		;start
@@ -766,23 +766,23 @@ memtest:
 	pop	esi
 	pop	edi
 	ret
-	
+
 .mt_fin:
 	mov	[ebx],ecx		;恢复为修改前的值
 	pop	esi
 	pop	edi
 	ret
-	
+
 getFreeMemInfo:
 	push	eax
 	push	ebx
 	push	ecx
 	push	edx
-	
+
 	mov	eax,cr0
 	or	eax,0x60000000	;禁止缓存
 	mov	cr0,eax
-	
+
 	mov	ebx,0x00000000	;检查0到32M
 	mov	ecx,0xffffffff
 	mov	edx,FMIBuff	;存于0x007ff000处
@@ -800,34 +800,34 @@ getFreeMemInfo:
 	inc	dword [dwFMINumber]	;循环次数，即返回值个数
 	cmp	ebx,ecx
 	jb	.fmi_loop
-	
+
 	mov	ebx,[dwFMINumber]
 	mov	edx,FMIBuff
 	mov	[edx],ebx		;前4B存放返回值个数
-	mov	ebx,[FMIBuff]		
+	mov	ebx,[FMIBuff]
 	push	ebx
 	call	DispInt			;打印返回值个数
 	add	esp,4
-	
+
 	mov	eax,cr0
 	and	eax,0x9fffffff	;恢复缓存
 	mov	cr0,eax
-	
+
 	pop	edx
 	pop	ecx
 	pop	ebx
 	pop	eax
 	ret
-	
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;add end add by liang 2016.04.13;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;add begin add by liang 2016.04.21	
+;;add begin add by liang 2016.04.21
 DispEchoSize:
 	push	eax
 	mov	eax,[dwEchoSize]
 	push	eax
-	call	DispInt			
+	call	DispInt
 	add	esp,4
 	pop	eax
 	ret
@@ -893,7 +893,7 @@ SetupPaging:
 .no_remainder:
 	push	ecx		; 暂存页表个数
 	mov dword[PageTblNumAddr],ecx ;将页表数写进这个物理地址
-	
+
 	; 为简化处理, 所有线性地址对应相等的物理地址. 并且不考虑内存空洞.
 
 	; 首先初始化页目录
@@ -906,27 +906,27 @@ SetupPaging:
 	stosd
 	add	eax, 4096		; 为了简化, 所有页表在内存中是连续的.
 	loop	.1
-	
+
 ;;;;初始化3G处的页目录;;;;;;;;;;;;;;;;	//add by visual 2016.5.10
 	pop eax			;页表个数
 	mov ecx,eax 	;重新放到ecx里
 	push ecx		;暂存页表个数
 	mov	ax, SelectorFlatRW
-	mov	es, ax	
+	mov	es, ax
 	mov eax, 3072				;768*4
 	add eax, PageDirBase		;
 	mov	edi, eax				; 应该往页目录这个位置写： PageDirBase+768*4，即线性地址3G处
-	
+
 	xor	eax, eax				; 清0
 	mov eax, ecx				;
 	mov ebx, 4096				;
 	mul ebx						;跳过前ecx个页表，即PageTblBase+页表数*4096
-	add eax, PageTblBase | PG_P  | PG_USU | PG_RWW;		 
+	add eax, PageTblBase | PG_P  | PG_USU | PG_RWW;
 .1k:
 	stosd
 	add	eax, 4096		; 为了简化, 所有页表在内存中是连续的.
 	loop	.1k
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	; 再初始化所有页表（最开始处，一一映射的）
 	pop	eax			; 页表个数
@@ -941,20 +941,20 @@ SetupPaging:
 	stosd
 	add	eax, 4096		; 每一页指向 4K 的空间
 	loop	.2
-	
+
 ;;;;初始化3G处的页表;;;;;;;;;;;;;;;;	//add by visual 2016.5.10
 	; 再初始化3G后的页表
 	pop	eax			; 页表个数
 	mov	ebx, 1024		; 每个页表 1024 个 PTE
 	mul	ebx
 	mov	ecx, eax		; PTE个数 = 页表个数 * 1024
-	
+
 	xor	eax, eax				; 清0
 	mov eax, ecx				;
 	mov ebx, 4
 	mul ebx				;跳过前ecx个页表，即PageTblBase+页表数*4096
 	add eax, PageTblBase		; 后面3G对应页表的起始位置为 PageTblBase+页表数*4096
-	mov	edi, eax		
+	mov	edi, eax
 	xor	eax, eax
 	mov	eax, PG_P  | PG_USU | PG_RWW		;从0开始
 .2k:
@@ -962,11 +962,11 @@ SetupPaging:
 	add	eax, 4096		; 每一页指向 4K 的空间
 	loop	.2k
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	
+
 	;mov	ah, 0Fh				; 0000: 黑底    1111: 白字
 	;mov	al, 'P'
 	;mov	[gs:((80 * 0 + 39) * 2)], ax	; 屏幕第 0 行, 第 39 列。
-	
+
 	;启动页表机制
 	mov	eax, PageDirBase
 	mov	cr3, eax
@@ -1058,4 +1058,3 @@ dwEchoSize		equ	BaseOfLoaderPhyAddr + _dwEchoSize		;add by liang 2016.04.21
 StackSpace:	times	1000h	db	0
 TopOfStack	equ	BaseOfLoaderPhyAddr + $	; 栈顶
 ; SECTION .data1 之结束 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
