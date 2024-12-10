@@ -8,7 +8,9 @@
 #ifndef _ORANGES_TYPE_H_
 #define _ORANGES_TYPE_H_
 
-#include <kernel/stdint.h>
+#include <klib/stdbool.h>
+#include <klib/stddef.h>
+#include <klib/stdint.h>
 
 typedef unsigned char BYTE;   // 字节
 typedef unsigned short WORD;  // 双字节
@@ -116,15 +118,6 @@ enum msgtype {
 //~xw
 
 // typedef int key_t;
-
-#define NULL 0
-
-#define bool _Bool
-
-enum {
-  false,
-  true,
-};
 
 #if defined __GNUC__ && __GNUC__ >= 14
 #pragma GCC diagnostic warning "-Wimplicit-function-declaration"

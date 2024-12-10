@@ -1,7 +1,7 @@
 #ifndef _ORANGES_KEYMAP_H_
 #define _ORANGES_KEYMAP_H_
 // #include <kernel/keyboard.h>
-#include <kernel/stdint.h>
+#include <klib/stdint.h>
 
 /************************************************************************/
 /*                          Macros Declaration                          */

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/stdint.h>
+#include <klib/stdint.h>
 
 #define ASMCALL __attribute__((optimize("O3"))) static inline
 

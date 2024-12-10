@@ -10,8 +10,8 @@
  */
 #pragma once
 
-#include <kernel/stdint.h>
-// #include <stddef.h>
+#include <klib/stddef.h>
+#include <klib/stdint.h>
 
 #define SCR_WIDTH 80
 #define SCR_HEIGHT 25

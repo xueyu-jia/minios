@@ -11,8 +11,8 @@
 #pragma once
 
 #include <kernel/protect.h>
-#include <kernel/stdint.h>
 #include <kernel/x86-asm.h>
+#include <klib/stdint.h>
 
 // ring0权限
 #define kern_cs ((8 * 0) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL | RPL_KRNL

@@ -3,7 +3,7 @@
  *************************************************************/
 #ifndef MSG
 #define MSG
-#include <kernel/stdint.h>
+#include <klib/stdint.h>
 // msgget使用
 #define IPC_CREAT 00001000
 #define IPC_EXCL 00002000
