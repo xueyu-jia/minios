@@ -31,28 +31,30 @@ logging logger;
 // an invalid pathname
 const char *dirname = ":\nfdfsdf/dir03sdf";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
 void cleanup() {
-  rmdir(dirname);
-  logger_close(&logger);
+    rmdir(dirname);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval = mkdir(dirname, I_RWX);
-  info(&logger, "mkdir %s return %d, expected %d\n", dirname, rval,
-       DIR_PATH_INEXISTE);
-  if (rval != DIR_PATH_INEXISTE) {
-    cleanup();
-    exit(-1);
-  }
+    int rval = mkdir(dirname, I_RWX);
+    info(&logger, "mkdir %s return %d, expected %d\n", dirname, rval,
+         DIR_PATH_INEXISTE);
+    if (rval != DIR_PATH_INEXISTE) {
+        cleanup();
+        exit(-1);
+    }
 
-  info(&logger, "test passed\n");
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

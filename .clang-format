@@ -1,4 +1,24 @@
 ---
 Language: Cpp
 BasedOnStyle: Google
+
+ColumnLimit: 80
+
+SortIncludes: Never
+
+AllowShortBlocksOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLoopsOnASingleLine: true
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+MaxEmptyLinesToKeep: 1
+
+SpacesBeforeTrailingComments: 1
+SpacesInLineCommentPrefix:
+    Minimum: 1
+    Maximum: 1
 ...

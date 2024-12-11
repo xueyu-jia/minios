@@ -12,7 +12,7 @@ AR		= ar
 ASMKFLAGS	= -f elf
 ARFLAGS		= rcs
 
-USE_CFLAGS = -m32 -mno-sse -mno-mmx -c -fno-builtin -fno-stack-protector -g -std=gnu99
+USE_CFLAGS = -m32 -mno-sse -mno-mmx -c -nostdlib -fno-builtin -fno-stack-protector -g -std=gnu99 -w
 LDFLAGS    = -m elf_i386 -Tuser/user/lds
 #LDFLAGS    += -s
 

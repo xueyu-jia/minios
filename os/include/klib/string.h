@@ -17,7 +17,7 @@ PUBLIC int strlen(const char *p_str);
 // added by ran
 char *strncpy(char *dest, const char *src, int n);
 int strncmp(const char *s1, const char *s2, int n);
-int stricmp(const char *s1, const char *s2);  // 不区分大小写
+int stricmp(const char *s1, const char *s2); // 不区分大小写
 
 // added jiangfeng 2024.7
 char *strchr(const char *str, char c);

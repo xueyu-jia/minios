@@ -15,34 +15,22 @@
 //: <Slave> setting bits in this port disables ints
 #define INT_S_CTLMASK 0xA1
 
-//: 8253/8254 PIT (Programmable Interval Timer)
-//: I/O port for timer channel 0
-#define TIMER0 0x40
-//: I/O port for timer mode control
-#define TIMER_MODE 0x43
-//: 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
-#define RATE_GENERATOR 0x34
-//: clock frequency for timer in PC and AT
-#define TIMER_FREQ 1193182L
-//: clock freq (software settable on IBM-PC)
-#define HZ 100
-
 //: hardware interrupts
 #define NR_IRQ 16
-#define CLOCK_IRQ 0           //<! clock
-#define KEYBOARD_IRQ 1        //<! keyboard
-#define CASCADE_IRQ 2         //<! cascade enable for 2nd AT controller
-#define ETHER_IRQ 3           //<! default ethernet interrupt vector
-#define SECONDARY_IRQ 3       //<! RS232 interrupt vector for port 2
-#define RS232_IRQ 4           //<! RS232 interrupt vector for port 1
-#define XT_WINI_IRQ 5         //<! xt winchester
-#define FLOPPY_IRQ 6          //<! floppy disk
-#define PRINTER_IRQ 7         //<! printer
-#define REALTIME_CLOCK_IRQ 8  //<! realtime clock
-#define REDIRECT_IRQ 9        //<! irq 2 redirected
-#define MOUSE_IRQ 12          //<! mouse (or else)
-#define FPU_IRQ 13            //<! fpu exception
-#define AT_WINI_IRQ 14        //<! AT winchester disk
+#define CLOCK_IRQ 0          //<! clock
+#define KEYBOARD_IRQ 1       //<! keyboard
+#define CASCADE_IRQ 2        //<! cascade enable for 2nd AT controller
+#define ETHER_IRQ 3          //<! default ethernet interrupt vector
+#define SECONDARY_IRQ 3      //<! RS232 interrupt vector for port 2
+#define RS232_IRQ 4          //<! RS232 interrupt vector for port 1
+#define XT_WINI_IRQ 5        //<! xt winchester
+#define FLOPPY_IRQ 6         //<! floppy disk
+#define PRINTER_IRQ 7        //<! printer
+#define REALTIME_CLOCK_IRQ 8 //<! realtime clock
+#define REDIRECT_IRQ 9       //<! irq 2 redirected
+#define MOUSE_IRQ 12         //<! mouse (or else)
+#define FPU_IRQ 13           //<! fpu exception
+#define AT_WINI_IRQ 14       //<! AT winchester disk
 
 /* 中断向量 */
 #define INT_VECTOR_IRQ0 0x20
@@ -68,18 +56,14 @@
 /* 系统调用 */
 #define INT_VECTOR_SYS_CALL 0x90
 
-#define disable_int_begin()                                  \
-  {                                                          \
-    int __scoped_interrupt_flag = read_eflags() & EFLAGS_IF; \
-    if (__scoped_interrupt_flag) {                           \
-      disable_int();                                         \
-    }
+#define disable_int_begin()                                      \
+    {                                                            \
+        int __scoped_interrupt_flag = read_eflags() & EFLAGS_IF; \
+        if (__scoped_interrupt_flag) { disable_int(); }
 
-#define disable_int_end()        \
-  if (__scoped_interrupt_flag) { \
-    enable_int();                \
-  }                              \
-  }
+#define disable_int_end()                          \
+    if (__scoped_interrupt_flag) { enable_int(); } \
+    }
 
 void enable_irq(int irq);
 void disable_irq(int irq);
@@ -143,19 +127,19 @@ void page_fault();
 void copr_error();
 
 // void syscall_handler();
-PUBLIC void sys_call();  // int_handler defined in kernel.asm
+PUBLIC void sys_call(); // int_handler defined in kernel.asm
 PUBLIC void divide_error_handler();
 
 /* 门描述符 */
 typedef struct s_gate {
-  u16 offset_low;  /* Offset Low */
-  u16 selector;    /* Selector */
-  u8 dcount;       /* 该字段只在调用门描述符中有效。
-                   如果在利用调用门调用子程序时引起特权级的转换和堆栈的改变，需要将外层堆栈中的参数复制到内层堆栈。
-                   该双字计数字段就是用于说明这种情况发生时，要复制的双字参数的数量。
-                 */
-  u8 attr;         /* P(1) DPL(2) DT(1) TYPE(4) */
-  u16 offset_high; /* Offset High */
+    u16 offset_low;  /* Offset Low */
+    u16 selector;    /* Selector */
+    u8 dcount;       /* 该字段只在调用门描述符中有效。
+                     如果在利用调用门调用子程序时引起特权级的转换和堆栈的改变，需要将外层堆栈中的参数复制到内层堆栈。
+                     该双字计数字段就是用于说明这种情况发生时，要复制的双字参数的数量。
+                   */
+    u8 attr;         /* P(1) DPL(2) DT(1) TYPE(4) */
+    u16 offset_high; /* Offset High */
 } GATE;
 
 #define GDT_SIZE 128

@@ -18,67 +18,68 @@ logging logger;
 static pthread_mutex_t mutex;
 
 void setup() {
-  int rval;
+    int rval;
 
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 }
 
 void cleanup() {
-  int rval;
-  logger_close(&logger);
+    int rval;
+    logger_close(&logger);
 
-  rval = pthread_mutex_destroy(&mutex);
-  if (rval != 0) {
-    info(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n",
-         test_name, rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_destroy(&mutex);
+    if (rval != 0) {
+        info(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n",
+             test_name, rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 }
 
 void run() {
-  int rval;
-  pthread_mutexattr_t mutex_attr1 = {
-      .name = "pthread_mutex_destroy02 old mutex attr name",
-  };
-  pthread_mutexattr_t mutex_attr2 = {
-      .name = "pthread_mutex_destroy02 new mutex attr name",
-  };
+    int rval;
+    pthread_mutexattr_t mutex_attr1 = {
+        .name = "pthread_mutex_destroy02 old mutex attr name",
+    };
+    pthread_mutexattr_t mutex_attr2 = {
+        .name = "pthread_mutex_destroy02 new mutex attr name",
+    };
 
-  rval = pthread_mutex_init(&mutex, &mutex_attr1);
-  if (rval != 0) {
-    info(&logger, "pthread_mutex_init mutex failed, return %d\n", rval);
-    cleanup();
-    exit(TC_UNRESOLVED);
-  }
+    rval = pthread_mutex_init(&mutex, &mutex_attr1);
+    if (rval != 0) {
+        info(&logger, "pthread_mutex_init mutex failed, return %d\n", rval);
+        cleanup();
+        exit(TC_UNRESOLVED);
+    }
 
-  rval = pthread_mutex_destroy(&mutex);
-  info(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n",
-       test_name, rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_destroy(&mutex);
+    info(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n",
+         test_name, rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_mutex_init(&mutex, &mutex_attr2);
-  info(&logger, "pthread_mutex_init mutex return %d, expected 0\n", rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_init(&mutex, &mutex_attr2);
+    info(&logger, "pthread_mutex_init mutex return %d, expected 0\n", rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "mutex.name: %s, expected: %s\n", mutex.name, mutex_attr2.name);
-  if (strcmp(mutex.name, mutex_attr2.name) != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    info(&logger, "mutex.name: %s, expected: %s\n", mutex.name,
+         mutex_attr2.name);
+    if (strcmp(mutex.name, mutex_attr2.name) != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

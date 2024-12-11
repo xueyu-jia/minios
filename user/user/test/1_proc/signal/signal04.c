@@ -1,30 +1,36 @@
 /*
- * 自己给自己发信号
- *
+ * 线程信号测试
  */
 #include <usertest.h>
 
-const char *test_name = "signal03";
+const char *test_name = "signal04";
 const char *syscall_name = "signal";
 
 logging logger;
 
-const int set_sig = 10;
-const int set_arg = 11;
-int recved_sig = 0;
-int recved_arg = 0;
+typedef struct atomic {
+    int counter;
+} atomic_t;
+atomic_t triggered = {.counter = 0};
+
+const int set_sig = 0;
+const int set_arg = set_sig;
+
+static inline void atomic_inc(atomic_t *v) {
+    asm volatile("lock; incl %0" : "+m"(v->counter));
+}
 
 void sighandler(int sig, uint32_t arg) {
-    recved_sig = sig;
-    recved_arg = arg;
+    atomic_inc(&triggered);
 }
+
+void worker(void *arg) {}
 
 void setup() {
     logger_init(&logger, log_filename, test_name, LOG_INFO);
 }
 
 void run() {
-    // 注册信号
     int rval = signal(set_sig, sighandler);
     if (rval == -1) {
         info(&logger, "failed to register signal %d\n", set_sig);
@@ -33,15 +39,20 @@ void run() {
     }
 
     kill(get_pid(), set_sig, set_arg);
-    sleep(10);
+    pthread_t tid;
+    pthread_create(&tid, NULL, worker, NULL);
+    yield();
 
-    if (recved_sig != set_sig || recved_arg != set_arg) {
-        info(&logger,
-             "received sig %d, expected %d; received arg %d, expected %d\n",
-             test_name, recved_sig, set_sig, recved_arg, set_arg);
+    sleep(100);
+    yield();
+
+    if (triggered.counter != 1) {
+        info(&logger, "signal processed more than once (%d) among threads!",
+             triggered.counter);
         cleanup();
         exit(-1);
     }
+
     info(&logger, "passed\n");
 }
 

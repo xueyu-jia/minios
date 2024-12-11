@@ -11,25 +11,29 @@ logging logger;
 
 int mq_id;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  key_t key = ftok("msgget02_key", 23);
-  mq_id = msgget(key, 0);
-  if (mq_id != -ENOENT) {
-    info(&logger, "msgget return %d, expected %d\n", mq_id, -ENOENT);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    key_t key = ftok("msgget02_key", 23);
+    mq_id = msgget(key, 0);
+    if (mq_id != -ENOENT) {
+        info(&logger, "msgget return %d, expected %d\n", mq_id, -ENOENT);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

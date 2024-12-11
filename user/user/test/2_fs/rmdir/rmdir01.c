@@ -31,35 +31,35 @@ logging logger;
 const char *dirname = "ddir01";
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  int rval = mkdir(dirname, I_RWX);
-  if (rval != 0) {
-    info(&logger, "mkdir return %d\n", rval);
-    exit(-1);
-  }
+    int rval = mkdir(dirname, I_RWX);
+    if (rval != 0) {
+        info(&logger, "mkdir return %d\n", rval);
+        exit(-1);
+    }
 }
 
 void cleanup() {
-  rmdir(dirname);
-  logger_close(&logger);
+    rmdir(dirname);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval = rmdir(dirname);
-  if (rval != 0) {
-    error(&logger, "rmdir %s return %d, expected 0\n", dirname, rval);
-    cleanup();
-    exit(-1);
-  }
-  // TODO
-  info(&logger, "rmdir %s return %d\n", dirname, rval);
-  info(&logger, "test passed\n");
+    int rval = rmdir(dirname);
+    if (rval != 0) {
+        error(&logger, "rmdir %s return %d, expected 0\n", dirname, rval);
+        cleanup();
+        exit(-1);
+    }
+    // TODO
+    info(&logger, "rmdir %s return %d\n", dirname, rval);
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

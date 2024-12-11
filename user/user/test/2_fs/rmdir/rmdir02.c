@@ -30,25 +30,29 @@ logging logger;
 
 const char *dirname = "noexistsdir";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int rval = rmdir(dirname);
-  info(&logger, "rmdir %s return %d, expected %d\n", dirname, rval,
-       DIR_PATH_INEXISTE);
-  if (rval != DIR_PATH_INEXISTE) {
-    cleanup();
-    exit(-1);
-  }
+    int rval = rmdir(dirname);
+    info(&logger, "rmdir %s return %d, expected %d\n", dirname, rval,
+         DIR_PATH_INEXISTE);
+    if (rval != DIR_PATH_INEXISTE) {
+        cleanup();
+        exit(-1);
+    }
 
-  info(&logger, "test passed\n");
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

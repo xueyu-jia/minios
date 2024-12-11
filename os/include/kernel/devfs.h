@@ -10,11 +10,11 @@
 
 // 每个device结构体对应一个主设备号的设备
 struct device {
-  int dev_major;
-  int dev_type;  // CHAR / BLOCK
-  u32 dev_minor_map;
-  struct file_operations *dev_fop;
-  struct list_node dev_list;
+    int dev_major;
+    int dev_type; // CHAR / BLOCK
+    u32 dev_minor_map;
+    struct file_operations *dev_fop;
+    struct list_node dev_list;
 };
 
 extern struct superblock_operations devfs_sb_ops;

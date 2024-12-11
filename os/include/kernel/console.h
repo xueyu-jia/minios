@@ -27,12 +27,12 @@
 
 /* CONSOLE */
 typedef struct s_console {
-  unsigned int crtc_start; /* set CRTC start addr reg */
-  unsigned int orig;       /* start addr of the console */
-  unsigned int con_size;   /* how many words does the console have */
-  unsigned int cursor;
-  int is_full;
-  unsigned int current_line;
+    unsigned int crtc_start; /* set CRTC start addr reg */
+    unsigned int orig;       /* start addr of the console */
+    unsigned int con_size;   /* how many words does the console have */
+    unsigned int cursor;
+    int is_full;
+    unsigned int current_line;
 } CONSOLE;
 
 #define SCR_UP 1  /* scroll upward */
@@ -47,10 +47,10 @@ typedef struct s_console {
 extern int disp_pos;
 extern CONSOLE console_table[];
 extern SPIN_LOCK
-    video_mem_lock;  // 用于 disp调用与tty_write互斥,内核初始化完成后生效
+    video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 PUBLIC void disp_color_str(const char* info, int color);
 PUBLIC void disp_str(const char* info);
-PUBLIC void disp_int(int input);  // declare for easy use
+PUBLIC void disp_int(int input); // declare for easy use
 typedef struct s_tty TTY;
 PUBLIC void init_screen(TTY* tty);
 PUBLIC void out_char(CONSOLE* con, char ch);

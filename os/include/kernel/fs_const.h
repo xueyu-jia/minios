@@ -13,23 +13,23 @@
 #define SECTOR_BITS (SECTOR_SIZE * 8)
 #define SECTOR_SIZE_SHIFT 9
 
-#define BLOCK_SIZE 4096  // add by sundong 2023.5.26
+#define BLOCK_SIZE 4096 // add by sundong 2023.5.26
 #define BLOCK_SIZE_SHIFT 12
 #define SECTOR_PER_BLOCK (BLOCK_SIZE / SECTOR_SIZE)
 #define MAX_DNAME_LEN 32
 #define MAX_PATH 256
 
 // #define	NR_FILES	64	//moved to proc.h. xw, 18/6/14
-//#define	NR_FILE_DESC	64	/* FIXME */	//deleted by mingxuan
+// #define	NR_FILE_DESC	64	/* FIXME */	//deleted by mingxuan
 // 2019-5-19
-#define NR_FILE_DESC 128 /* FIXME */  // modified by mingxuan 2019-5-19
-#define NR_INODE 512                  /* FIXME */
+#define NR_FILE_DESC 128 /* FIXME */ // modified by mingxuan 2019-5-19
+#define NR_INODE 512                 /* FIXME */
 #define NR_SUPER_BLOCK 16
 #define NR_FS_TYPE 4
 
 /* APIs of file operation */
 // octol
-#define O_APPEND 32  // 040
+#define O_APPEND 32 // 040
 #define O_TRUNC 16
 #define O_DIRECTORY 8
 #define O_CREAT 4
@@ -55,14 +55,14 @@
 #define I_CHAR_SPECIAL 0020000
 #define I_NAMED_PIPE 0010000
 
-#define I_MOUNTPOINT 0110000  // add by xiaofeng
+#define I_MOUNTPOINT 0110000 // add by xiaofeng
 
-#define is_special(m)                        \
-  ((((m)&I_TYPE_MASK) == I_BLOCK_SPECIAL) || \
-   (((m)&I_TYPE_MASK) == I_CHAR_SPECIAL))
+#define is_special(m)                            \
+    ((((m) & I_TYPE_MASK) == I_BLOCK_SPECIAL) || \
+     (((m) & I_TYPE_MASK) == I_CHAR_SPECIAL))
 #define inode_allow_lseek(type) \
-  ((type) != I_CHAR_SPECIAL && (type) != I_NAMED_PIPE)
+    ((type) != I_CHAR_SPECIAL && (type) != I_NAMED_PIPE)
 
 // deleted by xw, 18/12/27
-//#define FSBUF_SIZE	0x100000	//added by xw, 18/6/17
+// #define FSBUF_SIZE	0x100000	//added by xw, 18/6/17
 // #define FSBUF_SIZE	0x100000		//added by mingxuan 2019-5-17

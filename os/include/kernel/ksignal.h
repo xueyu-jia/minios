@@ -3,7 +3,7 @@
 #ifndef KSIGNAL_H
 #define KSIGNAL_H
 
-#include <kernel/signal.h>  //modified by mingxuan 2021-4-2
+#include <kernel/signal.h> //modified by mingxuan 2021-4-2
 
 int sys_signal();
 int sys_sigsend();

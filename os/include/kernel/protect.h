@@ -13,12 +13,12 @@
 /* 存储段描述符/系统段描述符 */
 typedef struct s_descriptor /* 共 8 个字节 */
 {
-  u16 limit_low;       /* Limit */
-  u16 base_low;        /* Base */
-  u8 base_mid;         /* Base */
-  u8 attr1;            /* P(1) DPL(2) DT(1) TYPE(4) */
-  u8 limit_high_attr2; /* G(1) D(1) 0(1) AVL(1) LimitHigh(4) */
-  u8 base_high;        /* Base */
+    u16 limit_low;       /* Limit */
+    u16 base_low;        /* Base */
+    u8 base_mid;         /* Base */
+    u8 attr1;            /* P(1) DPL(2) DT(1) TYPE(4) */
+    u8 limit_high_attr2; /* G(1) D(1) 0(1) AVL(1) LimitHigh(4) */
+    u8 base_high;        /* Base */
 } DESCRIPTOR;
 
 /* 门描述符 */
@@ -33,50 +33,50 @@ typedef struct s_descriptor /* 共 8 个字节 */
 // offset_high;	/* Offset High */ }GATE;
 
 typedef struct s_tss {
-  u32 backlink;
-  u32 esp0; /* stack pointer to use during interrupt */
-  u32 ss0;  /*   "   segment  "  "    "        "     */
-  u32 esp1;
-  u32 ss1;
-  u32 esp2;
-  u32 ss2;
-  u32 cr3;
-  u32 eip;
-  u32 flags;
-  u32 eax;
-  u32 ecx;
-  u32 edx;
-  u32 ebx;
-  u32 esp;
-  u32 ebp;
-  u32 esi;
-  u32 edi;
-  u32 es;
-  u32 cs;
-  u32 ss;
-  u32 ds;
-  u32 fs;
-  u32 gs;
-  u32 ldt;
-  u16 trap;
-  u16 iobase; /* I/O位图基址大于或等于TSS段界限，就表示没有I/O许可位图 */
-              /*u8	iomap[2];*/
+    u32 backlink;
+    u32 esp0; /* stack pointer to use during interrupt */
+    u32 ss0;  /*   "   segment  "  "    "        "     */
+    u32 esp1;
+    u32 ss1;
+    u32 esp2;
+    u32 ss2;
+    u32 cr3;
+    u32 eip;
+    u32 flags;
+    u32 eax;
+    u32 ecx;
+    u32 edx;
+    u32 ebx;
+    u32 esp;
+    u32 ebp;
+    u32 esi;
+    u32 edi;
+    u32 es;
+    u32 cs;
+    u32 ss;
+    u32 ds;
+    u32 fs;
+    u32 gs;
+    u32 ldt;
+    u16 trap;
+    u16 iobase; /* I/O位图基址大于或等于TSS段界限，就表示没有I/O许可位图 */
+                /*u8	iomap[2];*/
 } TSS;
 
 /* GDT */
 /* 描述符索引 */
-#define INDEX_DUMMY 0    // ┓
-#define INDEX_FLAT_C 1   // ┣ LOADER 里面已经确定了的.
-#define INDEX_FLAT_RW 2  // ┃
-#define INDEX_VIDEO 3    // ┛
+#define INDEX_DUMMY 0   // ┓
+#define INDEX_FLAT_C 1  // ┣ LOADER 里面已经确定了的.
+#define INDEX_FLAT_RW 2 // ┃
+#define INDEX_VIDEO 3   // ┛
 #define INDEX_TSS 4
 #define INDEX_LDT_FIRST 5
 /* 选择子 */
-#define SELECTOR_DUMMY 0           // ┓
-#define SELECTOR_FLAT_C 0x08       // ┣ LOADER 里面已经确定了的.
-#define SELECTOR_FLAT_RW 0x10      // ┃
-#define SELECTOR_VIDEO (0x18 + 3)  // ┛<-- RPL=3
-#define SELECTOR_TSS 0x20  // TSS. 从外层跳到内存时 SS 和 ESP 的值从里面获得.
+#define SELECTOR_DUMMY 0          // ┓
+#define SELECTOR_FLAT_C 0x08      // ┣ LOADER 里面已经确定了的.
+#define SELECTOR_FLAT_RW 0x10     // ┃
+#define SELECTOR_VIDEO (0x18 + 3) // ┛<-- RPL=3
+#define SELECTOR_TSS 0x20 // TSS. 从外层跳到内存时 SS 和 ESP 的值从里面获得.
 #define SELECTOR_LDT_FIRST 0x28
 
 #define SELECTOR_KERNEL_CS SELECTOR_FLAT_C
@@ -143,16 +143,6 @@ typedef struct s_tss {
 #define common_ss (((8 * 1) & SA_RPL_MASK & SA_TI_MASK) | SA_TIL)
 #define common_gs (SELECTOR_KERNEL_GS & SA_RPL_MASK)
 
-/* 8253/8254 PIT (Programmable Interval Timer) */
-#define TIMER0 0x40     /* I/O port for timer channel 0 */
-#define TIMER_MODE 0x43 /* I/O port for timer mode control */
-#define RATE_GENERATOR                                                           \
-  0x34                      /* 00-11-010-0 :                                     \
-                             * Counter0 - LSB then MSB - rate generator - binary \
-                             */
-#define TIMER_FREQ 1193182L /* clock frequency for timer in PC and AT */
-#define HZ 100              /* clock freq (software settable on IBM-PC) */
-
 /* 宏 */
 /* 线性地址 → 物理地址 */
 #define vir2phys(seg_base, vir) (u32)(((u32)seg_base) + (u32)(vir))
@@ -160,7 +150,7 @@ typedef struct s_tss {
 extern u32 k_reenter;
 extern TSS tss;
 
-extern u8 gdt_ptr[6];  // 0~15:Limit  16~47:Base
+extern u8 gdt_ptr[6]; // 0~15:Limit  16~47:Base
 extern DESCRIPTOR gdt[GDT_SIZE];
 
 PUBLIC u32 seg2phys(u16 seg);

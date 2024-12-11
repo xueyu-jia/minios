@@ -12,38 +12,36 @@
  *	spinlock.h       //added by mingxuan 2018-12-26
  ***********************************************************/
 #pragma once
-#include <klib/list.h>  // dbg
+#include <klib/list.h> // dbg
 // Mutual exclusion lock.
 #define uint unsigned
 
 #define uint unsigned
-#define PTHREAD_MUTEX_INITIALIZER \
-  { {0, 0, 0, {0}}, 0, 0, {0}, 0, 0, "test" }
-#define PTHREAD_COND_INITIALIZER \
-  { {0, 0, 0, {0}}, 0, 0, {0}, "test" }
+#define PTHREAD_MUTEX_INITIALIZER {{0, 0, 0, {0}}, 0, 0, {0}, 0, 0, "test"}
+#define PTHREAD_COND_INITIALIZER {{0, 0, 0, {0}}, 0, 0, {0}, "test"}
 #define queue_size 20
 
 typedef struct spinlock {
-  uint locked;  // Is the lock held?
+    uint locked; // Is the lock held?
 
-  // For debugging:
-  char *name;   // Name of lock.
-  int cpu;      // The number of the cpu holding the lock.
-  uint pcs[5];  // The call stack (an array of program counters)
-                // that locked the lock.
+    // For debugging:
+    char *name;  // Name of lock.
+    int cpu;     // The number of the cpu holding the lock.
+    uint pcs[5]; // The call stack (an array of program counters)
+                 // that locked the lock.
 } SPIN_LOCK;
 
 typedef struct {
-  SPIN_LOCK lock;
-  int head;  //等待队列头部
-  int tail;  //等待队列尾部
-  int queue[queue_size];
-  // For debugging:
-  char *name;
+    SPIN_LOCK lock;
+    int head; // 等待队列头部
+    int tail; // 等待队列尾部
+    int queue[queue_size];
+    // For debugging:
+    char *name;
 } pthread_cond_t;
 
 typedef struct {
-  char *name;
+    char *name;
 } pthread_condattr_t;
 
 void initlock(struct spinlock *lock, char *name);

@@ -7,8 +7,8 @@
 // ported by sundong 2023.3.26
 #ifndef _LOADKERNEL_H_
 #define _LOADKERNEL_H_
-//#include "disk.h"
-//#include "string.h"
+// #include "disk.h"
+// #include "string.h"
 #include "type.h"
 #define KERNEL_FILENAME "kernel.bin"
 #define BSS_SECTION_NAME ".bss"

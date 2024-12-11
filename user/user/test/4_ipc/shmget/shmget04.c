@@ -19,42 +19,42 @@ const key_t fail_key = 20;
 const int SHM_SIZE = 64;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  shm_id = shmget(KEY, SHM_SIZE, SHM_IPC_CREAT);
-  info(&logger, "shmget return %d\n", shm_id);
-  if (shm_id == -1) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    shm_id = shmget(KEY, SHM_SIZE, SHM_IPC_CREAT);
+    info(&logger, "shmget return %d\n", shm_id);
+    if (shm_id == -1) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 }
 
 void run() {
-  int shm_id_2 = shmget(KEY, SHM_SIZE, SHM_IPC_FIND);
-  info(&logger, "shmget return %d, expected %d\n", shm_id_2, shm_id);
-  if (shm_id_2 != shm_id) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    int shm_id_2 = shmget(KEY, SHM_SIZE, SHM_IPC_FIND);
+    info(&logger, "shmget return %d, expected %d\n", shm_id_2, shm_id);
+    if (shm_id_2 != shm_id) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  int fail_id = shmget(fail_key, SHM_SIZE, SHM_IPC_FIND);
-  info(&logger, "shmget return %d, expected %d\n", fail_id, -1);
-  if (fail_id != -1) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    int fail_id = shmget(fail_key, SHM_SIZE, SHM_IPC_FIND);
+    info(&logger, "shmget return %d, expected %d\n", fail_id, -1);
+    if (fail_id != -1) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 }
 
 void cleanup() {
-  if (shmctl(shm_id, DELETE, NULL) == -1) {
-    error(&logger, "failed to DELETE %d\n", shm_id);
-  }
-  logger_close(&logger);
+    if (shmctl(shm_id, DELETE, NULL) == -1) {
+        error(&logger, "failed to DELETE %d\n", shm_id);
+    }
+    logger_close(&logger);
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

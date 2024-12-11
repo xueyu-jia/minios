@@ -21,37 +21,39 @@ logging logger;
 
 const char *dirname = "dir01";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
 void cleanup() {
-  rmdir(dirname);
-  logger_close(&logger);
+    rmdir(dirname);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval = mkdir(dirname, I_RWX);
-  info(&logger, "mkdir %s return %d, expected 0\n", dirname, rval);
-  if (rval != 0) {
-    cleanup();
-    exit(-1);
-  }
-  // info(&logger, "done\n");
-  //  how to detemine a directory exists?
-  //  readdir?
-  info(&logger, "mkdir return %d\n", rval);
-  /*
-  if (chdir(dirname) == 0) {
-    info(&logger, "mkdir failed\n");
-    cleanup();
-    exit(-1);
-  }
-   */
-  info(&logger, "test passed\n");
+    int rval = mkdir(dirname, I_RWX);
+    info(&logger, "mkdir %s return %d, expected 0\n", dirname, rval);
+    if (rval != 0) {
+        cleanup();
+        exit(-1);
+    }
+    // info(&logger, "done\n");
+    //  how to detemine a directory exists?
+    //  readdir?
+    info(&logger, "mkdir return %d\n", rval);
+    /*
+    if (chdir(dirname) == 0) {
+      info(&logger, "mkdir failed\n");
+      cleanup();
+      exit(-1);
+    }
+     */
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

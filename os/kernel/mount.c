@@ -75,23 +75,23 @@ PUBLIC int do_umount(const char* target);
 //     char num = devname[7];
 //     int major = ch - 'a';
 
-//     if (devname[4] == 'h')
-//     {
-//         major += IDE_BASE;
-//     }
-//     else if (devname[4] == 's')
-//     {
-//         major += SATA_BASE;
-//     }
+// if (devname[4] == 'h')
+// {
+//     major += IDE_BASE;
+// }
+// else if (devname[4] == 's')
+// {
+//     major += SATA_BASE;
+// }
 
-//     int minor = num - '0';
+// int minor = num - '0';
 
-//     if (num == '\0')
-//         minor = 0;
+// if (num == '\0')
+//     minor = 0;
 
-//     int dev_num = MAKE_DEV(major, minor);
+// int dev_num = MAKE_DEV(major, minor);
 
-//     return dev_num;
+// return dev_num;
 // }
 
 // PRIVATE int find_dev_in_mnttable(int device)
@@ -192,64 +192,60 @@ flags);
 } */
 
 PRIVATE struct vfs_mount* get_free_vfsmount() {
-  int i;
-  for (i = 0; i < NR_MNT; i++) {
-    if (vfs_mnt_table[i].used == 0) {
-      return &vfs_mnt_table[i];
+    int i;
+    for (i = 0; i < NR_MNT; i++) {
+        if (vfs_mnt_table[i].used == 0) { return &vfs_mnt_table[i]; }
     }
-  }
-  return NULL;
+    return NULL;
 }
 
 PUBLIC struct vfs_mount* add_vfsmount(const char* dev_path,
                                       struct dentry* mnt_mountpoint,
                                       struct dentry* mnt_root,
                                       struct super_block* sb) {
-  acquire(&mnt_table_lock);
-  struct vfs_mount* mnt = get_free_vfsmount();
-  strcpy(mnt->mnt_devname, dev_path);
-  mnt->mnt_sb = sb;
-  mnt->mnt_mountpoint = mnt_mountpoint;
-  mnt->mnt_root = mnt_root;
-  mnt->used = 1;
-  release(&mnt_table_lock);
-  return mnt;
+    acquire(&mnt_table_lock);
+    struct vfs_mount* mnt = get_free_vfsmount();
+    strcpy(mnt->mnt_devname, dev_path);
+    mnt->mnt_sb = sb;
+    mnt->mnt_mountpoint = mnt_mountpoint;
+    mnt->mnt_root = mnt_root;
+    mnt->used = 1;
+    release(&mnt_table_lock);
+    return mnt;
 }
 
 PUBLIC struct vfs_mount* lookup_vfsmnt(struct dentry* mountpoint) {
-  struct vfs_mount* mnt = vfs_mnt_table;
-  acquire(&mnt_table_lock);
-  while (mnt < vfs_mnt_table + NR_MNT) {
-    if (mnt->mnt_mountpoint == mountpoint && mnt->used == 1) {
-      break;
+    struct vfs_mount* mnt = vfs_mnt_table;
+    acquire(&mnt_table_lock);
+    while (mnt < vfs_mnt_table + NR_MNT) {
+        if (mnt->mnt_mountpoint == mountpoint && mnt->used == 1) { break; }
+        mnt++;
     }
-    mnt++;
-  }
-  release(&mnt_table_lock);
-  return mnt;
+    release(&mnt_table_lock);
+    return mnt;
 }
 
 PUBLIC struct dentry* remove_vfsmnt(struct dentry* entry) {
-  struct vfs_mount* mnt = vfs_mnt_table;
-  struct dentry* mountpoint = NULL;
-  acquire(&mnt_table_lock);
-  while (mnt < vfs_mnt_table + NR_MNT) {
-    if (mnt->mnt_root == entry && mnt->used == 1) {
-      mnt->used = 0;
-      mountpoint = mnt->mnt_mountpoint;
-      break;
+    struct vfs_mount* mnt = vfs_mnt_table;
+    struct dentry* mountpoint = NULL;
+    acquire(&mnt_table_lock);
+    while (mnt < vfs_mnt_table + NR_MNT) {
+        if (mnt->mnt_root == entry && mnt->used == 1) {
+            mnt->used = 0;
+            mountpoint = mnt->mnt_mountpoint;
+            break;
+        }
+        mnt++;
     }
-    mnt++;
-  }
-  mnt->mnt_sb->sb_vfsmount = NULL;
-  release(&mnt_table_lock);
-  return mountpoint;
+    mnt->mnt_sb->sb_vfsmount = NULL;
+    release(&mnt_table_lock);
+    return mountpoint;
 }
 
 PUBLIC int do_mount(const char* source, const char* target,
                     const char* filesystemtype, unsigned long mountflags,
                     const void* data) {
-  return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
+    return kern_vfs_mount(source, target, filesystemtype, mountflags, data);
 }
 
 // PUBLIC int kern_umount(const char *target)
@@ -261,8 +257,8 @@ PUBLIC int do_mount(const char* source, const char* target,
 // }
 
 PUBLIC int do_umount(const char* target) {
-  // kern_umount(target);
-  return kern_vfs_umount(target);
+    // kern_umount(target);
+    return kern_vfs_umount(target);
 }
 
 /*======================================================================*
@@ -270,8 +266,11 @@ PUBLIC int do_umount(const char* target) {
  *======================================================================*/
 
 PUBLIC int sys_mount() {
-  return do_mount((const char*)get_arg(1), (const char*)get_arg(2),
-                  (const char*)get_arg(3), get_arg(4), (const void*)get_arg(5));
+    return do_mount((const char*)get_arg(1), (const char*)get_arg(2),
+                    (const char*)get_arg(3), get_arg(4),
+                    (const void*)get_arg(5));
 }
 
-PUBLIC int sys_umount() { return do_umount((const char*)get_arg(1)); }
+PUBLIC int sys_umount() {
+    return do_umount((const char*)get_arg(1));
+}

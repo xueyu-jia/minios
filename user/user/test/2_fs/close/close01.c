@@ -16,34 +16,34 @@ char *filename = "close01.txt";
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
-  info(&logger, "starting......\n");
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+    info(&logger, "starting......\n");
 
-  fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
-  info(&logger, "setup done\n");
+    fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
+    info(&logger, "setup done\n");
 }
 
 void cleanup() {
-  unlink(filename);
-  logger_close(&logger);
+    unlink(filename);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval;
-  rval = close(fd);
-  info(&logger, "close(%d) return %d, expected: %d\n", fd, rval, 0);
-  if (rval) {
-    warning(&logger, "FAILED\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    int rval;
+    rval = close(fd);
+    info(&logger, "close(%d) return %d, expected: %d\n", fd, rval, 0);
+    if (rval) {
+        warning(&logger, "FAILED\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

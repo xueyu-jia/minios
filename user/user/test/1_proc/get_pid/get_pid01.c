@@ -10,24 +10,28 @@ const char *syscall_name = "get_pid";
 
 logging logger;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int pid = get_pid();
-  info(&logger, "pid: %d\n", pid);
-  if (pid < 0 || pid >= 64) {
-    info(&logger, "pid not in range [0, 64)\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
-  info(&logger, "PASSED\n");
+    int pid = get_pid();
+    info(&logger, "pid: %d\n", pid);
+    if (pid < 0 || pid >= 64) {
+        info(&logger, "pid not in range [0, 64)\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

@@ -35,20 +35,20 @@
 
 /* TTY */
 typedef struct s_tty {
-  u32 ibuf[TTY_inbS]; /* TTY input buffer */
-  u32* ibuf_head;     /* the next free slot */
-  u32* ibuf_tail;     /* 缓冲区显示位置指针 */
-  u32* ibuf_read;
-  int ibuf_cnt; /* how many */
-  int ibuf_read_cnt;
-  int status;
+    u32 ibuf[TTY_inbS]; /* TTY input buffer */
+    u32* ibuf_head;     /* the next free slot */
+    u32* ibuf_tail;     /* 缓冲区显示位置指针 */
+    u32* ibuf_read;
+    int ibuf_cnt; /* how many */
+    int ibuf_read_cnt;
+    int status;
 
-  int mouse_left_button;
-  int mouse_mid_button;
-  int mouse_X;
-  int mouse_Y;
+    int mouse_left_button;
+    int mouse_mid_button;
+    int mouse_X;
+    int mouse_Y;
 
-  struct s_console* console;
+    struct s_console* console;
 } TTY;
 
 extern TTY tty_table[NR_CONSOLES];

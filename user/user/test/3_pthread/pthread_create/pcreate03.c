@@ -23,9 +23,13 @@ const char *syscall_name = "pthread_create";
 
 logging logger;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 // 给新线程发的信号
 const int sig = 10;
@@ -34,63 +38,61 @@ int thread_pid;
 // 信号的 handler
 // 线程在此退出
 void handler(int sig, uint32_t arg) {
-  info(&logger, "sig handler tid: %d\n", pthread_self());
-  pthread_exit(NULL);
+    info(&logger, "sig handler tid: %d\n", pthread_self());
+    pthread_exit(NULL);
 }
 
 // 线程函数
 void *thread_func(void *arg) {
-  thread_pid = get_pid();
-  // info(&logger, "thread tid: %d\n", pthread_self());
-  //  register signal
-  int rval = signal(sig, handler);
-  if (rval == -1) {
-    info(&logger, "thread %d failed to register signal %d\n", pthread_self(),
-         sig);
+    thread_pid = get_pid();
+    // info(&logger, "thread tid: %d\n", pthread_self());
+    //  register signal
+    int rval = signal(sig, handler);
+    if (rval == -1) {
+        info(&logger, "thread %d failed to register signal %d\n",
+             pthread_self(), sig);
+        pthread_exit(NULL);
+    }
+    // 死循环
+    while (1) { sleep(10); }
+    // unreachable!
     pthread_exit(NULL);
-  }
-  // 死循环
-  while (1) {
-    sleep(10);
-  }
-  // unreachable!
-  pthread_exit(NULL);
 }
 
 void run() {
-  pthread_t thread_id;
-  pthread_t main_id;
-  int main_pid;
-  int rval;
+    pthread_t thread_id;
+    pthread_t main_id;
+    int main_pid;
+    int rval;
 
-  // 创建新线程
-  rval = pthread_create(&thread_id, NULL, thread_func, NULL);
-  if (rval != 0) {
-    info(&logger, "pthread_create return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 创建新线程
+    rval = pthread_create(&thread_id, NULL, thread_func, NULL);
+    if (rval != 0) {
+        info(&logger, "pthread_create return %d, expected 0\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // info(&logger, "main tid: %d\n", pthread_self());
-  sleep(10);
+    // info(&logger, "main tid: %d\n", pthread_self());
+    sleep(10);
 
-  Sigaction sigaction = {.sig = sig, .handler = NULL, .arg = 0};
-  sigsend(thread_pid, &sigaction);
+    Sigaction sigaction = {.sig = sig, .handler = NULL, .arg = 0};
+    sigsend(thread_pid, &sigaction);
 
-  // 等待线程结束
-  rval = pthread_join(thread_id, NULL);
-  if (rval != 0) {
-    info(&logger, "pthread_join return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 等待线程结束
+    rval = pthread_join(thread_id, NULL);
+    if (rval != 0) {
+        info(&logger, "pthread_join return %d, expected 0\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

@@ -31,35 +31,35 @@ logging logger;
 const char *dirname = "dir02";
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  // 预先创建目录
-  int rval = mkdir(dirname, I_RWX);
-  if (rval != 0) {
-    info(&logger, "setup(): return %d\n", rval);
-    exit(-1);
-  }
+    // 预先创建目录
+    int rval = mkdir(dirname, I_RWX);
+    if (rval != 0) {
+        info(&logger, "setup(): return %d\n", rval);
+        exit(-1);
+    }
 }
 
 void cleanup() {
-  rmdir(dirname);
-  logger_close(&logger);
+    rmdir(dirname);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval = mkdir(dirname, I_RWX);
-  info(&logger, "mkdir %s return %d, expected %d\n", dirname, rval,
-       DIR_PATH_REPEATED);
-  if (rval != DIR_PATH_REPEATED) {
-    cleanup();
-    exit(-1);
-  }
-  info(&logger, "test passed\n");
+    int rval = mkdir(dirname, I_RWX);
+    info(&logger, "mkdir %s return %d, expected %d\n", dirname, rval,
+         DIR_PATH_REPEATED);
+    if (rval != DIR_PATH_REPEATED) {
+        cleanup();
+        exit(-1);
+    }
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

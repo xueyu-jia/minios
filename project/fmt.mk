@@ -1,5 +1,5 @@
 #! minios pragma: optional
-CLANG_FORMAT_VERSION ?= 12
+CLANG_FORMAT_VERSION ?= 18
 
 #! minios pragma: export
 CLANG_FORMAT_EXECUTABLE := $(shell \

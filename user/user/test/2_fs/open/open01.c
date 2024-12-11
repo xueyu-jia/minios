@@ -13,35 +13,35 @@ const char *filename = "abcdef";
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
-  info(&logger, "starting......\n");
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+    info(&logger, "starting......\n");
 }
 
 void run() {
-  fd = open(filename, O_RDWR);
+    fd = open(filename, O_RDWR);
 
-  info(&logger, "open(%s) return %d, expected %d\n", filename, fd, -1);
-  if (fd >= 0) {
-    warning(&logger, "test FAILED\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    info(&logger, "open(%s) return %d, expected %d\n", filename, fd, -1);
+    if (fd >= 0) {
+        warning(&logger, "test FAILED\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "test PASSED\n");
+    info(&logger, "test PASSED\n");
 }
 
 void cleanup() {
-  if (fd >= 0) {
-    SAFE_CLOSE(fd);
-    unlink(filename);
-  }
+    if (fd >= 0) {
+        SAFE_CLOSE(fd);
+        unlink(filename);
+    }
 
-  logger_close(&logger);
+    logger_close(&logger);
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

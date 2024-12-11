@@ -26,51 +26,51 @@ char read_buf[BUF_SIZE];
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  fd = SAFE_OPEN(filename, O_RDWR | O_CREAT);
-  SAFE_WRITE(fd, orign_str, strlen(orign_str));
-  SAFE_CLOSE(fd);
-  memset(read_buf, 0, BUF_SIZE);
+    fd = SAFE_OPEN(filename, O_RDWR | O_CREAT);
+    SAFE_WRITE(fd, orign_str, strlen(orign_str));
+    SAFE_CLOSE(fd);
+    memset(read_buf, 0, BUF_SIZE);
 }
 
 void cleanup() {
-  SAFE_CLOSE(fd);
-  unlink(filename);
+    SAFE_CLOSE(fd);
+    unlink(filename);
 
-  logger_close(&logger);
+    logger_close(&logger);
 }
 
 void run() {
-  fd = SAFE_OPEN(filename, O_RDWR);
-  int off = lseek(fd, 5, SEEK_SET);
-  info(&logger, "lseek return %d, expected %d\n", off, 5);
-  if (off != 5) {
-    cleanup();
-    exit(-1);
-  }
-  SAFE_WRITE(fd, write_str, strlen(write_str));
-  SAFE_CLOSE(fd);
+    fd = SAFE_OPEN(filename, O_RDWR);
+    int off = lseek(fd, 5, SEEK_SET);
+    info(&logger, "lseek return %d, expected %d\n", off, 5);
+    if (off != 5) {
+        cleanup();
+        exit(-1);
+    }
+    SAFE_WRITE(fd, write_str, strlen(write_str));
+    SAFE_CLOSE(fd);
 
-  fd = SAFE_OPEN(filename, O_RDWR);
-  int n = SAFE_READ(fd, read_buf, BUF_SIZE);
-  info(&logger, "read return %d, expected %d\n", n, exp_size);
-  if (n != strlen(exp_str)) {
-    // cleanup();
-    // exit(-1);
-  }
+    fd = SAFE_OPEN(filename, O_RDWR);
+    int n = SAFE_READ(fd, read_buf, BUF_SIZE);
+    info(&logger, "read return %d, expected %d\n", n, exp_size);
+    if (n != strlen(exp_str)) {
+        // cleanup();
+        // exit(-1);
+    }
 
-  info(&logger, "read %s, expected: %s\n", (char *)read_buf, exp_str);
-  if (strcmp((char *)read_buf, exp_str) != 0) {
-    cleanup();
-    exit(-1);
-  }
-  info(&logger, "passed\n");
+    info(&logger, "read %s, expected: %s\n", (char *)read_buf, exp_str);
+    if (strcmp((char *)read_buf, exp_str) != 0) {
+        cleanup();
+        exit(-1);
+    }
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

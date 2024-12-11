@@ -21,10 +21,10 @@
 
 /*信号量*/
 struct Semaphore {
-  int value;
-  int maxValue;
-  int active;
-  struct spinlock lock;
+    int value;
+    int maxValue;
+    int active;
+    struct spinlock lock;
 };
 
 int ksem_init(struct Semaphore *sem, int max);

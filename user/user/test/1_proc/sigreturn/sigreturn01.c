@@ -18,18 +18,22 @@ logging logger;
 int sig_num = 1;
 
 void handler(int sig, uint32_t arg) {
-  printf("%s: handler %d %d\n", test_name, sig, arg);
+    printf("%s: handler %d %d\n", test_name, sig, arg);
 }
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {}
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

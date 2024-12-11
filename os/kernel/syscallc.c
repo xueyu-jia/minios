@@ -21,13 +21,13 @@
  *======================================================================*/
 
 PUBLIC void do_udisp_int(int arg) {
-  disp_int(arg);
-  return;
+    disp_int(arg);
+    return;
 }
 
 PUBLIC void sys_udisp_int() {
-  do_udisp_int(get_arg(1));
-  return;
+    do_udisp_int(get_arg(1));
+    return;
 }
 
 /*======================================================================*
@@ -36,18 +36,22 @@ PUBLIC void sys_udisp_int() {
  *======================================================================*/
 
 PUBLIC void do_udisp_str(char* arg) {
-  disp_str(arg);
-  return;
+    disp_str(arg);
+    return;
 }
 
 PUBLIC void sys_udisp_str() {
-  do_udisp_str((char*)get_arg(1));
-  return;
+    do_udisp_str((char*)get_arg(1));
+    return;
 }
 
-PUBLIC u32 do_total_mem_size() { return kern_total_mem_size(); }
+PUBLIC u32 do_total_mem_size() {
+    return kern_total_mem_size();
+}
 
-PUBLIC u32 sys_total_mem_size() { return do_total_mem_size(); }
+PUBLIC u32 sys_total_mem_size() {
+    return do_total_mem_size();
+}
 
 PUBLIC system_call sys_call_table[NR_SYS_CALL] = {
     [_NR_get_ticks] = sys_get_ticks,
@@ -118,13 +122,21 @@ PUBLIC system_call sys_call_table[NR_SYS_CALL] = {
     [_NR_rt_prio] = sys_rt_prio,
     [_NR_get_proc_msg] = sys_get_proc_msg};
 
-PUBLIC int do_get_pid() { return kern_get_pid(); }
+PUBLIC int do_get_pid() {
+    return kern_get_pid();
+}
 
-PUBLIC int sys_get_pid() { return do_get_pid(); }
+PUBLIC int sys_get_pid() {
+    return do_get_pid();
+}
 
-PUBLIC int do_get_pid_byname(char* name) { return kern_get_pid_byname(name); }
+PUBLIC int do_get_pid_byname(char* name) {
+    return kern_get_pid_byname(name);
+}
 
-PUBLIC int sys_get_pid_byname() { return do_get_pid_byname((char*)get_arg(1)); }
+PUBLIC int sys_get_pid_byname() {
+    return do_get_pid_byname((char*)get_arg(1));
+}
 
 // #define TEST_FOR_SEMAPHORE
 #ifdef TEST_FOR_SEMAPHORE
@@ -149,25 +161,23 @@ int sum = 0;
  *added by cjj 2021-12-25
  */
 int test1(void) {
-  int i = 10;
-  int tmp;
-  while (i) {
-    ksem_wait(&print_sem, 1);  // ensure add and print won't be intereupted
-    tmp = sum;
-    int j = 1000000;
-    while (j) {
-      j--;
+    int i = 10;
+    int tmp;
+    while (i) {
+        ksem_wait(&print_sem, 1); // ensure add and print won't be intereupted
+        tmp = sum;
+        int j = 1000000;
+        while (j) { j--; }
+        sum = tmp + 1;
+        i--;
+
+        disp_str("sum1=");
+        disp_int(sum);
+
+        ksem_post(&print_sem, 1); // Release lock and Exit conflict domain
     }
-    sum = tmp + 1;
-    i--;
 
-    disp_str("sum1=");
-    disp_int(sum);
-
-    ksem_post(&print_sem, 1);  // Release lock and Exit conflict domain
-  }
-
-  return 0;
+    return 0;
 }
 /*
  *This function is used to ensure that
@@ -177,134 +187,127 @@ int test1(void) {
  *added by cjj 2021-12-25
  */
 int test2(void) {
-  int i = 10;
-  int tmp;
-  while (i) {
-    ksem_wait(&print_sem, 1);  // ensure add and print won't be intereupted
-    tmp = sum;
-    int j = 1000000;
-    while (j) {
-      j--;
+    int i = 10;
+    int tmp;
+    while (i) {
+        ksem_wait(&print_sem, 1); // ensure add and print won't be intereupted
+        tmp = sum;
+        int j = 1000000;
+        while (j) { j--; }
+        sum = tmp + 1;
+        i--;
+        // printf("sum2=%d\n",sum);
+        disp_str("sum2=");
+        disp_int(sum);
+
+        ksem_post(&print_sem, 1); // Release lock and Exit conflict domain
     }
-    sum = tmp + 1;
-    i--;
-    // printf("sum2=%d\n",sum);
-    disp_str("sum2=");
-    disp_int(sum);
 
-    ksem_post(&print_sem, 1);  // Release lock and Exit conflict domain
-  }
-
-  return 0;
+    return 0;
 }
 /*
  *This function is used to represent producers.
  *There are three producers in total
  */
 int test_produce(int x) {
-  while (1) {
-    int j = 70000000;
-    while (j) {
-      j--;
+    while (1) {
+        int j = 70000000;
+        while (j) { j--; }
+
+        ksem_wait(&full, 1);
+        ksem_wait(&print_sem, 1);
+        // printf("pth%d ",x);
+        disp_str("pth");
+        disp_int(x);
+        disp_str("one product has been stored by");
+        disp_int(x);
+        disp_str("\n");
+        // printf("one product has been stored by %d     \n",x);
+        ksem_post(&print_sem, 1);
+        ksem_post(&empty, 1);
     }
+    while (1) { /* code */ }
 
-    ksem_wait(&full, 1);
-    ksem_wait(&print_sem, 1);
-    // printf("pth%d ",x);
-    disp_str("pth");
-    disp_int(x);
-    disp_str("one product has been stored by");
-    disp_int(x);
-    disp_str("\n");
-    // printf("one product has been stored by %d     \n",x);
-    ksem_post(&print_sem, 1);
-    ksem_post(&empty, 1);
-  }
-  while (1) {
-    /* code */
-  }
-
-  return 0;
+    return 0;
 }
 /*
  *This function is used to represent consumer.
  */
 int test_consume(int x) {
-  while (1) {
-    int j = 10000000;
-    while (j) {
-      j--;
-    }
+    while (1) {
+        int j = 10000000;
+        while (j) { j--; }
 
 #ifdef TEST1
-    int num = ksem_getvalue(&empty);
+        int num = ksem_getvalue(&empty);
 
-    if (ksem_trywait(&empty, num) != -1) {
-      ksem_wait(&print_sem, 1);
-      // printf("pth%d ",x);
-      // printf("someone has bought %d product       \n",num);
-      disp_str("pth");
-      disp_int(x);
-      disp_str("someone has bought ");
-      disp_int(num);
-      disp_str(" product\n");
-      ksem_post(&print_sem, 1);
-      ksem_post(&full, num);
-    }
+        if (ksem_trywait(&empty, num) != -1) {
+            ksem_wait(&print_sem, 1);
+            // printf("pth%d ",x);
+            // printf("someone has bought %d product       \n",num);
+            disp_str("pth");
+            disp_int(x);
+            disp_str("someone has bought ");
+            disp_int(num);
+            disp_str(" product\n");
+            ksem_post(&print_sem, 1);
+            ksem_post(&full, num);
+        }
 #endif
 #ifdef TEST2
-    ksem_wait(&empty, 1);
-    ksem_wait(&print_sem, 1);
-    disp_str("pth");
-    disp_int(x);
-    disp_str("someone has bought ");
-    disp_int(1);
-    disp_str(" product\n");
-    ksem_post(&print_sem, 1);
-    ksem_post(&full, 1);
+        ksem_wait(&empty, 1);
+        ksem_wait(&print_sem, 1);
+        disp_str("pth");
+        disp_int(x);
+        disp_str("someone has bought ");
+        disp_int(1);
+        disp_str(" product\n");
+        ksem_post(&print_sem, 1);
+        ksem_post(&full, 1);
 
 #endif
-  }
+    }
 
-  return 0;
+    return 0;
 }
 void kern_sem_test(int function) {
-  if (!tmp) {
-    tmp = 1;
-    ksem_init(&print_sem, 1);  // Semaphore to ensure atomic operation
-    ksem_init(
-        &full,
-        MAXSIZE);  // Semaphore used to judge whether the warehouse is full
-    ksem_init(&empty,
-              EMPTY);  // Semaphore used to judge whether the warehouse is empty
-    // printf("1");
-  }
+    if (!tmp) {
+        tmp = 1;
+        ksem_init(&print_sem, 1); // Semaphore to ensure atomic operation
+        ksem_init(
+            &full,
+            MAXSIZE); // Semaphore used to judge whether the warehouse is full
+        ksem_init(
+            &empty,
+            EMPTY); // Semaphore used to judge whether the warehouse is empty
+                    // printf("1");
+    }
 
-  switch (function) {
-    case first_adder:
-      test1();
-      break;
+    switch (function) {
+        case first_adder:
+            test1();
+            break;
 
-    case second_adder:
-      test2();
-      break;
+        case second_adder:
+            test2();
+            break;
 
-    case producer:  //	ksem_wait(print_sem,1);
-      i++;
-      test_produce(i);
-      // ksem_post(print_sem,1);
-      break;
+        case producer: //	ksem_wait(print_sem,1);
+            i++;
+            test_produce(i);
+            // ksem_post(print_sem,1);
+            break;
 
-    case consumer:  //	ksem_wait(print_sem,1);
-      i++;
-      test_consume(i);
-      // ksem_post(print_sem,1);
-      break;
+        case consumer: //	ksem_wait(print_sem,1);
+            i++;
+            test_consume(i);
+            // ksem_post(print_sem,1);
+            break;
 
-    default:
-      break;
-  }
-  return;
+        default:
+            break;
+    }
+    return;
 }
 #endif /*TEST_FOR_SEMAPHORE*/
 /*======================================================================*
@@ -313,8 +316,14 @@ cjj 2021.12.25	modified by Juan 2021.12.26 用于测试内核信号量的功能
 // modified jiangfeng 使用此接口便于进行内核调试 2024.5
 *======================================================================*/
 
-PUBLIC void kern_test(int function) { UNUSED(function); }
+PUBLIC void kern_test(int function) {
+    UNUSED(function);
+}
 
-PUBLIC void do_test(int function) { return kern_test(function); }
+PUBLIC void do_test(int function) {
+    return kern_test(function);
+}
 
-PUBLIC void sys_test() { return do_test(get_arg(1)); }
+PUBLIC void sys_test() {
+    return do_test(get_arg(1));
+}

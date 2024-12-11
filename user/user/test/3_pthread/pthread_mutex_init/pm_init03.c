@@ -19,42 +19,46 @@ logging logger;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int rval;
+    int rval;
 
-  // 获取 mutex
-  if ((rval = pthread_mutex_lock(&mutex)) != 0) {
-    info(&logger, "pthread_mutex_lock failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 获取 mutex
+    if ((rval = pthread_mutex_lock(&mutex)) != 0) {
+        info(&logger, "pthread_mutex_lock failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  sleep(10);
+    sleep(10);
 
-  // 释放 mutex
-  if ((rval = pthread_mutex_unlock(&mutex)) != 0) {
-    info(&logger, "pthread_mutex_unlock failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 释放 mutex
+    if ((rval = pthread_mutex_unlock(&mutex)) != 0) {
+        info(&logger, "pthread_mutex_unlock failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 销毁 mutex
-  if ((rval = pthread_mutex_destroy(&mutex)) != 0) {
-    info(&logger, "pthread_mutex_destroy failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 销毁 mutex
+    if ((rval = pthread_mutex_destroy(&mutex)) != 0) {
+        info(&logger, "pthread_mutex_destroy failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

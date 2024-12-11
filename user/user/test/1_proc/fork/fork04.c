@@ -23,80 +23,80 @@ const char write_char = 'a';
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  // 创建文件
-  fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
-  for (int i = 0; i < NFORKS; i++) {
-    write(fd, &write_char, 1);
-  }
-  SAFE_CLOSE(fd);
+    // 创建文件
+    fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
+    for (int i = 0; i < NFORKS; i++) { write(fd, &write_char, 1); }
+    SAFE_CLOSE(fd);
 
-  fd = SAFE_OPEN(filename, O_RDWR);
+    fd = SAFE_OPEN(filename, O_RDWR);
 }
 
 int run() {
-  info(&logger, "parent: fork chilren...\n");
-  for (int i = 0; i < NFORKS; i++) {
-    int pid = SAFE_FORK();
-    if (pid == 0) {  // child process
-      char c;
-      int n = read(fd, &c, 1);
-      if (c != 'a') {
-        info(&logger, "child[%d]: read '%c' instead of 'a'\n", get_pid(), c);
-        exit(-1);
-      }
-      exit(0);
+    info(&logger, "parent: fork chilren...\n");
+    for (int i = 0; i < NFORKS; i++) {
+        int pid = SAFE_FORK();
+        if (pid == 0) { // child process
+            char c;
+            int n = read(fd, &c, 1);
+            if (c != 'a') {
+                info(&logger, "child[%d]: read '%c' instead of 'a'\n",
+                     get_pid(), c);
+                exit(-1);
+            }
+            exit(0);
+        }
     }
-  }
 
-  // father process
-  // 接收子进程状态
-  info(&logger, "parent: waiting for chilren...\n");
-  for (int i = 0; i < NFORKS; i++) {
-    int status;
-    wait(&status);
-    if (status != 0) {
-      error(&logger, "parent: receive %d from child\n", test_name, status);
-      cleanup();
-      exit(TC_FAIL);
+    // father process
+    // 接收子进程状态
+    info(&logger, "parent: waiting for chilren...\n");
+    for (int i = 0; i < NFORKS; i++) {
+        int status;
+        wait(&status);
+        if (status != 0) {
+            error(&logger, "parent: receive %d from child\n", test_name,
+                  status);
+            cleanup();
+            exit(TC_FAIL);
+        }
     }
-  }
 
-  info(&logger, "parent: check eof\n");
-  // 使用 lseek 检查当前指向的位置是否正确
-  int rval = lseek(fd, 0, SEEK_CUR);
-  if (rval != NFORKS) {
-    error(&logger, "lseek CUR return %d, expected %d\n", rval, NFORKS);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    info(&logger, "parent: check eof\n");
+    // 使用 lseek 检查当前指向的位置是否正确
+    int rval = lseek(fd, 0, SEEK_CUR);
+    if (rval != NFORKS) {
+        error(&logger, "lseek CUR return %d, expected %d\n", rval, NFORKS);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 检查是否读取到 EOF
-  char c = '\0';
-  int n = read(fd, &c, 1);
-  // 由于 read 的
-  // bug，这里不使用返回值进行判断，而是通过是否读取到字符进行判断
-  if (c != '\0') {
-    error(&logger, "file not reach EOF\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 检查是否读取到 EOF
+    char c = '\0';
+    int n = read(fd, &c, 1);
+    // 由于 read 的
+    // bug，这里不使用返回值进行判断，而是通过是否读取到字符进行判断
+    if (c != '\0') {
+        error(&logger, "file not reach EOF\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // reach EOF
-  info(&logger, "read EOF correctly\n");
-  return 0;
+    // reach EOF
+    info(&logger, "read EOF correctly\n");
+    return 0;
 }
 
 void cleanup() {
-  SAFE_CLOSE(fd);
-  unlink(filename);
-  logger_close(&logger);
+    SAFE_CLOSE(fd);
+    unlink(filename);
+    logger_close(&logger);
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  int exit_status = run();
-  cleanup();
-  exit(exit_status);
+    setup();
+    int exit_status = run();
+    cleanup();
+    exit(exit_status);
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h>  // IWYU pragma: keep
+#include <stddef.h> // IWYU pragma: keep
 
 #define BIT(n) (1 << (n))
 

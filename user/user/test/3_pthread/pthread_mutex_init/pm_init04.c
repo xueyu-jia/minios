@@ -18,36 +18,40 @@ logging logger;
 
 const char *mta_name = "test_mta_name";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  pthread_mutexattr_t mta = {
-      .name = mta_name,
-  };
-  pthread_mutex_t mutex;
-  int rval;
+    pthread_mutexattr_t mta = {
+        .name = mta_name,
+    };
+    pthread_mutex_t mutex;
+    int rval;
 
-  // 初始化 mutex
-  if ((rval = pthread_mutex_init(&mutex, &mta)) != 0) {
-    info(&logger, "pthread_mutex_init failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 初始化 mutex
+    if ((rval = pthread_mutex_init(&mutex, &mta)) != 0) {
+        info(&logger, "pthread_mutex_init failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "mutex.name: %s, expected: %s\n", mutex.name, mta_name);
-  if (strcmp(mta_name, mutex.name) != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    info(&logger, "mutex.name: %s, expected: %s\n", mutex.name, mta_name);
+    if (strcmp(mta_name, mutex.name) != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

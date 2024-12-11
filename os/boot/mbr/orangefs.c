@@ -5,58 +5,57 @@
 super_block sb;
 inode elf_inode;
 
-//遍历根目录，找到filename 对应的inode id
+// 遍历根目录，找到filename 对应的inode id
 static int search_file(char *filename) {
-  // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
-  // nr_smap_sects个sector map扇区
-  int inode_array_start_sect =
-      bootPartStartSector +
-      (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
-  //读出存储1号inode 的扇区 1号inode是根目录的inode
-  readsect((void *)BUF_ADDR, inode_array_start_sect);
-  inode root_inode;
-  memcpy(&root_inode, (void *)BUF_ADDR, INODE_SIZE);
-  // lprintf("i_size %d i_start_sect %d i_nr_sects
-  // %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
-  for (unsigned int i = 0;
-       i < root_inode.i_nr_blocks * (BLOCK_SIZE / SECT_SIZE); i++) {
-    readsect((void *)BUF_ADDR,
-             bootPartStartSector +
-                 root_inode.i_start_block * (BLOCK_SIZE / SECT_SIZE) + i);
-    dir_entry *de = (dir_entry *)(BUF_ADDR);
-    for (unsigned int j = 0; j < SECTSIZE / DIR_ENTRY_SIZE; j++) {
-      /*             lprintf(de->name);
-                  lprintf("\n"); */
-      if (strcmp(de->name, filename) == 0) {
-        return de->inode_nr;
-      }
-      de++;
+    // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
+    // nr_smap_sects个sector map扇区
+    int inode_array_start_sect =
+        bootPartStartSector + (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) *
+                                  (BLOCK_SIZE / SECT_SIZE);
+    // 读出存储1号inode 的扇区 1号inode是根目录的inode
+    readsect((void *)BUF_ADDR, inode_array_start_sect);
+    inode root_inode;
+    memcpy(&root_inode, (void *)BUF_ADDR, INODE_SIZE);
+    // lprintf("i_size %d i_start_sect %d i_nr_sects
+    // %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
+    for (unsigned int i = 0;
+         i < root_inode.i_nr_blocks * (BLOCK_SIZE / SECT_SIZE); i++) {
+        readsect((void *)BUF_ADDR,
+                 bootPartStartSector +
+                     root_inode.i_start_block * (BLOCK_SIZE / SECT_SIZE) + i);
+        dir_entry *de = (dir_entry *)(BUF_ADDR);
+        for (unsigned int j = 0; j < SECTSIZE / DIR_ENTRY_SIZE; j++) {
+            /*             lprintf(de->name);
+                        lprintf("\n"); */
+            if (strcmp(de->name, filename) == 0) { return de->inode_nr; }
+            de++;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
-//根据inode id，返回inode
+// 根据inode id，返回inode
 static inode get_inode(int inode_id) {
-  inode target_inode;
-  // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
-  // nr_smap_sects个sector map扇区
-  int inode_array_start_sect =
-      bootPartStartSector +
-      (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
-  int nr_inode_per_sect = SECTSIZE / INODE_SIZE;
-  int inode_sect = inode_array_start_sect + (inode_id - 1) / nr_inode_per_sect;
-  int inode_offset_in_sect = (inode_id - 1) % nr_inode_per_sect;
-  readsect((void *)BUF_ADDR, inode_sect);
-  memcpy(&target_inode, (void *)BUF_ADDR + (INODE_SIZE * inode_offset_in_sect),
-         INODE_SIZE);
-  return target_inode;
+    inode target_inode;
+    // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
+    // nr_smap_sects个sector map扇区
+    int inode_array_start_sect =
+        bootPartStartSector + (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) *
+                                  (BLOCK_SIZE / SECT_SIZE);
+    int nr_inode_per_sect = SECTSIZE / INODE_SIZE;
+    int inode_sect =
+        inode_array_start_sect + (inode_id - 1) / nr_inode_per_sect;
+    int inode_offset_in_sect = (inode_id - 1) % nr_inode_per_sect;
+    readsect((void *)BUF_ADDR, inode_sect);
+    memcpy(&target_inode,
+           (void *)BUF_ADDR + (INODE_SIZE * inode_offset_in_sect), INODE_SIZE);
+    return target_inode;
 }
 void orangefs_init() {
-  // superblock初始化
-  readsect((void *)BUF_ADDR, bootPartStartSector + (BLOCK_SIZE / SECT_SIZE));
-  memcpy(&sb, (void *)BUF_ADDR, SUPER_BLOCK_SIZE);
-  // lprintf("nr inodes %d nr 1st sect %d  nr_sects %d
-  // \n",sb.nr_inodes,sb.n_1st_sect,sb.nr_sects);
+    // superblock初始化
+    readsect((void *)BUF_ADDR, bootPartStartSector + (BLOCK_SIZE / SECT_SIZE));
+    memcpy(&sb, (void *)BUF_ADDR, SUPER_BLOCK_SIZE);
+    // lprintf("nr inodes %d nr 1st sect %d  nr_sects %d
+    // \n",sb.nr_inodes,sb.n_1st_sect,sb.nr_sects);
 }
 /*
 // 读一个完整的文件，目前loader不需要这个功能
@@ -88,9 +87,9 @@ num_sect); return TRUE;
  * @return  TRUE or FALSE
  */
 static int orangefs_read_blocks(u32 block_number, u32 size, void *buf) {
-  return readsects(
-      buf, bootPartStartSector + block_number * (BLOCK_SIZE / SECT_SIZE),
-      (BLOCK_SIZE / SECT_SIZE) * size);
+    return readsects(
+        buf, bootPartStartSector + block_number * (BLOCK_SIZE / SECT_SIZE),
+        (BLOCK_SIZE / SECT_SIZE) * size);
 }
 
 /*
@@ -98,14 +97,14 @@ static int orangefs_read_blocks(u32 block_number, u32 size, void *buf) {
  * @return TRUE or FALSE
  */
 int orangefs_open_file(char *filename) {
-  int inode_id = search_file(filename);
-  if (inode_id == 0 || inode_id > sb.nr_inodes) {
-    lprintf("error : can not find inode!\n");
-    return FALSE;
-  }
-  elf_inode = get_inode(inode_id);
+    int inode_id = search_file(filename);
+    if (inode_id == 0 || inode_id > sb.nr_inodes) {
+        lprintf("error : can not find inode!\n");
+        return FALSE;
+    }
+    elf_inode = get_inode(inode_id);
 
-  return TRUE;
+    return TRUE;
 }
 
 /*
@@ -116,16 +115,16 @@ int orangefs_open_file(char *filename) {
  * @note 请先用orangefs_open_file()打开文件
  */
 int orangefs_read(u32 offset, u32 lenth, void *buf) {
-  if (lenth <= 0) return TRUE;
-  u32 block_i =
-      offset / BLOCK_SIZE;  // 根据偏移量计算要从文件的第几个块开始读取
-  u32 offset_in_block = offset % BLOCK_SIZE;
-  u32 nr_block = (offset_in_block + lenth + BLOCK_SIZE - 1) /
-                 BLOCK_SIZE;  // 要读的数据块的数量
+    if (lenth <= 0) return TRUE;
+    u32 block_i =
+        offset / BLOCK_SIZE; // 根据偏移量计算要从文件的第几个块开始读取
+    u32 offset_in_block = offset % BLOCK_SIZE;
+    u32 nr_block = (offset_in_block + lenth + BLOCK_SIZE - 1) /
+                   BLOCK_SIZE; // 要读的数据块的数量
 
-  int ret = orangefs_read_blocks(block_i + elf_inode.i_start_block, nr_block,
-                                 (void *)BUF_ADDR);
-  memcpy(buf, (void *)(BUF_ADDR + offset_in_block), lenth);
+    int ret = orangefs_read_blocks(block_i + elf_inode.i_start_block, nr_block,
+                                   (void *)BUF_ADDR);
+    memcpy(buf, (void *)(BUF_ADDR + offset_in_block), lenth);
 
-  return ret;
+    return ret;
 }

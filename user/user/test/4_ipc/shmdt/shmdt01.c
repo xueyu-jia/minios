@@ -17,19 +17,23 @@ const key_t KEY = 12;
 const int SIZE = 1024;
 char *shm_addr;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
-
-void run() {
-  _shmdt(shm_addr);
-
-  info(&logger, "PASSED\n");
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 }
 
-void cleanup() { logger_close(&logger); }
+void run() {
+    _shmdt(shm_addr);
+
+    info(&logger, "PASSED\n");
+}
+
+void cleanup() {
+    logger_close(&logger);
+}
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

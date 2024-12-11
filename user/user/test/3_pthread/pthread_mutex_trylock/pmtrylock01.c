@@ -19,68 +19,70 @@ logging logger;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void *thread_lock_func() {
-  int rval = pthread_mutex_lock(&mutex);
-  if (rval != 0) {
-    info(&logger, "thread: pthread_mutex_lock: %d\n", rval);
-  }
-  pthread_exit(NULL);
+    int rval = pthread_mutex_lock(&mutex);
+    if (rval != 0) { info(&logger, "thread: pthread_mutex_lock: %d\n", rval); }
+    pthread_exit(NULL);
 }
 
 void *thread_unlock_func() {
-  int rval = pthread_mutex_unlock(&mutex);
-  if (rval != 0) {
-    info(&logger, "thread: pthread_mutex_unlock: %d\n", rval);
-  }
-  pthread_exit(NULL);
+    int rval = pthread_mutex_unlock(&mutex);
+    if (rval != 0) {
+        info(&logger, "thread: pthread_mutex_unlock: %d\n", rval);
+    }
+    pthread_exit(NULL);
 }
 
 void run() {
-  int rval;
-  pthread_t tid1, tid2;
+    int rval;
+    pthread_t tid1, tid2;
 
-  rval = pthread_create(&tid1, NULL, thread_lock_func, NULL);
-  if (rval != 0) {
-    info(&logger, "error: pthread_create return %d\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_create(&tid1, NULL, thread_lock_func, NULL);
+    if (rval != 0) {
+        info(&logger, "error: pthread_create return %d\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  pthread_join(tid1, NULL);
+    pthread_join(tid1, NULL);
 
-  rval = pthread_mutex_trylock(&mutex);
-  info(&logger, "pthread_mutex_trylock return %d, expected -1\n", rval);
-  if (rval != -1) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_trylock(&mutex);
+    info(&logger, "pthread_mutex_trylock return %d, expected -1\n", rval);
+    if (rval != -1) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_create(&tid2, NULL, thread_unlock_func, NULL);
-  if (rval != 0) {
-    info(&logger, "error: pthread_create return %d\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_create(&tid2, NULL, thread_unlock_func, NULL);
+    if (rval != 0) {
+        info(&logger, "error: pthread_create return %d\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  pthread_join(tid2, NULL);
+    pthread_join(tid2, NULL);
 
-  rval = pthread_mutex_trylock(&mutex);
-  info(&logger, "pthread_mutex_trylock return %d, expected 0\n", rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_trylock(&mutex);
+    info(&logger, "pthread_mutex_trylock return %d, expected 0\n", rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

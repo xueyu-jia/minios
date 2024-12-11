@@ -7,7 +7,7 @@
 
 PUBLIC void *kmap(page *_page);
 PUBLIC void kunmap(page *_page);
-struct file_desc;  // forward declare
+struct file_desc; // forward declare
 PUBLIC int kern_mmap(PROCESS *p_proc, struct file_desc *file, u32 addr, u32 len,
                      u32 prot, u32 flag, u32 pgoff);
 PUBLIC int kern_munmap(PROCESS *p_proc, u32 start, u32 len);

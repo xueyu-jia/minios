@@ -15,69 +15,69 @@
 #define IPC_STAT 0x2
 #define IPC_SET 0x4
 
-//队列属性
-// #define MAX_MSQ_NUM     4
-// #define MAX_MSG_IN_Q    1024
-// #define MAX_MSGBYTES    (1<<14)
+// 队列属性
+//  #define MAX_MSQ_NUM     4
+//  #define MAX_MSG_IN_Q    1024
+//  #define MAX_MSGBYTES    (1<<14)
 typedef int key_t;
 
 // message queue types
-//队列信息类型
+// 队列信息类型
 typedef struct msqid_ds {
-  // struct ipc_perm msg_perm;   /* Ownership and permissions */ 未实现
-  int msg_stime;              /* Time of last msgsnd(2) */
-  int msg_rtime;              /* Time of last msgrcv(2) */
-  int msg_ctime;              /* Time of last change */
-  unsigned long __msg_cbytes; /* Current number of bytes in
-                                 queue (nonstandard) */
-  int msg_qnum;               /* Current number of messages
-                                 in queue */
-  int msg_qbytes;             /* Maximum number of bytes
-                                 allowed in queue */
-  int msg_lspid;              /* PID of last msgsnd(2) */
-  int msg_lrpid;              /* PID of last msgrcv(2) */
+    // struct ipc_perm msg_perm;   /* Ownership and permissions */ 未实现
+    int msg_stime;              /* Time of last msgsnd(2) */
+    int msg_rtime;              /* Time of last msgrcv(2) */
+    int msg_ctime;              /* Time of last change */
+    unsigned long __msg_cbytes; /* Current number of bytes in
+                                   queue (nonstandard) */
+    int msg_qnum;               /* Current number of messages
+                                   in queue */
+    int msg_qbytes;             /* Maximum number of bytes
+                                   allowed in queue */
+    int msg_lspid;              /* PID of last msgsnd(2) */
+    int msg_lrpid;              /* PID of last msgrcv(2) */
 } msqid_ds;
 
-//消息类型
-// typedef struct msg_item{
-//     long type;
-//     char* buf;
-// }msg_item;
+// 消息类型
+//  typedef struct msg_item{
+//      long type;
+//      char* buf;
+//  }msg_item;
 
-//队列中的元素，消息类型在内部，还有前后指针
-// typedef struct list_item{
-//     msg_item msg;
-//     int msgsz; //消息长度
-//     /**
-//      * 这两个联合体是结点在整个链表中的使用的，头结点使用head_nxt和head_pre，
-//      * 非头结点使用full_list_nxt和full_list_pre
-//      * 头结点的type_list_pre都应该为NULL
-//      */
-//     union{
-//         struct list_item* full_list_nxt;
-//         struct list_item* head_nxt;
-//     }nxt;
-//     union{
-//         struct list_item* full_list_pre;
-//         struct list_item* head_pre;
-//     }pre;
+// 队列中的元素，消息类型在内部，还有前后指针
+//  typedef struct list_item{
+//      msg_item msg;
+//      int msgsz; //消息长度
+//      /**
+//       * 这两个联合体是结点在整个链表中的使用的，头结点使用head_nxt和head_pre，
+//       * 非头结点使用full_list_nxt和full_list_pre
+//       * 头结点的type_list_pre都应该为NULL
+//       */
+//      union{
+//          struct list_item* full_list_nxt;
+//          struct list_item* head_nxt;
+//      }nxt;
+//      union{
+//          struct list_item* full_list_pre;
+//          struct list_item* head_pre;
+//      }pre;
 
-//     /**
-//      * 这两个指针是结点在自己类型队列中使用的，标记在类型队列中的前后结点
-//      */
-//     struct list_item* type_list_nxt;//NOTE: type
-//     0头结点使用这个指针指向完整队列第一个实际的消息对象！！！ struct
-//     list_item* type_list_pre;
+// /**
+//  * 这两个指针是结点在自己类型队列中使用的，标记在类型队列中的前后结点
+//  */
+// struct list_item* type_list_nxt;//NOTE: type
+// 0头结点使用这个指针指向完整队列第一个实际的消息对象！！！ struct
+// list_item* type_list_pre;
 // }list_item;
 
-//消息队列类型，包括id、key和指向type 0头结点的指针
-// typedef struct msg_queue{
-//     int key;
-//     list_item* head;
-// 	int use;//是否占用
-//     int num;//队列中消息数量
-//     msqid_ds info; //队列信息
-// }msg_queue;
+// 消息队列类型，包括id、key和指向type 0头结点的指针
+//  typedef struct msg_queue{
+//      int key;
+//      list_item* head;
+//  	int use;//是否占用
+//      int num;//队列中消息数量
+//      msqid_ds info; //队列信息
+//  }msg_queue;
 
 // user API:
 int ftok(char* f, int key);

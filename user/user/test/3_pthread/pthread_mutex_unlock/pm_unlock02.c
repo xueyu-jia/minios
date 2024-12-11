@@ -18,56 +18,60 @@ logging logger;
 
 static volatile pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void *thread_func() {
-  int rval = pthread_mutex_unlock(&mutex);
-  if (rval != 0) {
-    info(&logger, "thread: pthread_mutex_unlock: %d\n", rval);
-  }
-  pthread_exit(NULL);
+    int rval = pthread_mutex_unlock(&mutex);
+    if (rval != 0) {
+        info(&logger, "thread: pthread_mutex_unlock: %d\n", rval);
+    }
+    pthread_exit(NULL);
 }
 
 void run() {
-  int rval;
-  pthread_t thread_id;
-  pthread_t tid;
+    int rval;
+    pthread_t thread_id;
+    pthread_t tid;
 
-  // 主线程获取 mutex
-  rval = pthread_mutex_lock(&mutex);
-  if (rval != 0) {
-    info(&logger, "pthread_mutex_lock return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 主线程获取 mutex
+    rval = pthread_mutex_lock(&mutex);
+    if (rval != 0) {
+        info(&logger, "pthread_mutex_lock return %d, expected 0\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 创建线程
-  rval = pthread_create(&tid, NULL, thread_func, NULL);
-  if (rval != 0) {
-    info(&logger, "pthread_create return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 创建线程
+    rval = pthread_create(&tid, NULL, thread_func, NULL);
+    if (rval != 0) {
+        info(&logger, "pthread_create return %d, expected 0\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  sleep(100);
+    sleep(100);
 
-  rval = pthread_mutex_trylock(&mutex);
-  if (rval != 0) {
-    info(&logger, "pthread_mutex_unlock failed to release mutex");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_trylock(&mutex);
+    if (rval != 0) {
+        info(&logger, "pthread_mutex_unlock failed to release mutex");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

@@ -13,49 +13,41 @@
 #include <usertest.h>
 
 int tm_sec() {
-  struct tm tm = {};
-  get_time(&tm);
-  return tm.tm_sec;
+    struct tm tm = {};
+    get_time(&tm);
+    return tm.tm_sec;
 }
 
 void delay(int dur_sec) {
-  if (dur_sec <= 0) {
-    return;
-  }
-  const int now = tm_sec();
-  while (1) {
-    const int t = tm_sec();
-    if (t >= now + dur_sec) {
-      break;
+    if (dur_sec <= 0) { return; }
+    const int now = tm_sec();
+    while (1) {
+        const int t = tm_sec();
+        if (t >= now + dur_sec) { break; }
+        if (t < now && t + 60 >= now + dur_sec) { break; }
     }
-    if (t < now && t + 60 >= now + dur_sec) {
-      break;
-    }
-  }
 }
 
 void deamon() {
-  if (fork() != 0) {
-    return;
-  }
-  int n = 10;
-  while (n--) {
-    delay(1);
-    printf("heartbeat.");
-  }
-  exit(0);
+    if (fork() != 0) { return; }
+    int n = 10;
+    while (n--) {
+        delay(1);
+        printf("heartbeat.");
+    }
+    exit(0);
 }
 
 int main() {
-  deamon();
-  int pid = fork();
-  if (pid == 0) {
-    printf("child spawned pid=%d\n", get_pid());
-    sleep(1);
-    printf("echo from child pid=%d\n", get_pid());
-    exit(0);
-  }
-  sleep(1000);
-  printf("echo from fa pid=%d\n", get_pid());
-  return 0;
+    deamon();
+    int pid = fork();
+    if (pid == 0) {
+        printf("child spawned pid=%d\n", get_pid());
+        sleep(1);
+        printf("echo from child pid=%d\n", get_pid());
+        exit(0);
+    }
+    sleep(1000);
+    printf("echo from fa pid=%d\n", get_pid());
+    return 0;
 }

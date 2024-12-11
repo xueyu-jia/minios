@@ -14,24 +14,28 @@ logging logger;
 
 const char *child_name = "a_name_longer_than_MAX_FILENAME_PATH";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int ret = execve(child_name, NULL, NULL);
-  if (ret != -1) {
-    error(&logger, "execve return %d\n", ret);
-    cleanup();
-    exit(-1);
-  }
-  info(&logger, "execve return %d\n", ret);
-  info(&logger, "passed\n");
+    int ret = execve(child_name, NULL, NULL);
+    if (ret != -1) {
+        error(&logger, "execve return %d\n", ret);
+        cleanup();
+        exit(-1);
+    }
+    info(&logger, "execve return %d\n", ret);
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(-1);
+    setup();
+    run();
+    cleanup();
+    exit(-1);
 }

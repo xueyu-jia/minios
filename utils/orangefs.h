@@ -10,34 +10,34 @@ typedef u_int8_t u8;
 #define ORANGE_MAGIC 0x111
 
 struct orange_sb {
-  u32 magic;             /**< Magic number */
-  u32 nr_inodes;         /**< How many inodes */
-  u32 nr_blocks;         /**< How many blocks */
-  u32 nr_imap_blocks;    /**< How many inode-map blocks */
-  u32 nr_smap_blocks;    /**< How many sector-map blocks */
-  u32 n_1st_block;       /**< Number of the 1st data block */
-  u32 nr_inode_blocks;   /**< How many inode blocks */
-  u32 root_inode;        /**< Inode nr of root directory */
-  u32 inode_size;        /**< INODE_SIZE */
-  u32 inode_isize_off;   /**< Offset of `struct inode::i_size' */
-  u32 inode_start_off;   /**< Offset of `struct inode::i_start_sect' */
-  u32 dir_ent_size;      /**< DIR_ENTRY_SIZE */
-  u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr' */
-  u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
+    u32 magic;             /**< Magic number */
+    u32 nr_inodes;         /**< How many inodes */
+    u32 nr_blocks;         /**< How many blocks */
+    u32 nr_imap_blocks;    /**< How many inode-map blocks */
+    u32 nr_smap_blocks;    /**< How many sector-map blocks */
+    u32 n_1st_block;       /**< Number of the 1st data block */
+    u32 nr_inode_blocks;   /**< How many inode blocks */
+    u32 root_inode;        /**< Inode nr of root directory */
+    u32 inode_size;        /**< INODE_SIZE */
+    u32 inode_isize_off;   /**< Offset of `struct inode::i_size' */
+    u32 inode_start_off;   /**< Offset of `struct inode::i_start_sect' */
+    u32 dir_ent_size;      /**< DIR_ENTRY_SIZE */
+    u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr' */
+    u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
 };
 
 struct orange_inode {
-  u32 i_mode;        /**< Accsess mode */
-  u32 i_size;        /**< File size */
-  u32 i_start_block; /**< The first block of the data */
-  u32 i_nr_blocks;   /**< How many blocks the file occupies */
-  u8 _unused[15];    /**< Stuff for alignment */
-  u8 i_mnt_index;    /**the index in mnt_table when the inode is mountpoint*/
-  // only in orangefsutils mem inode
-  u8 deleted;  // fuse no interface for delete inode, we use this to mark inode
-               // unlinked to free sec
+    u32 i_mode;        /**< Accsess mode */
+    u32 i_size;        /**< File size */
+    u32 i_start_block; /**< The first block of the data */
+    u32 i_nr_blocks;   /**< How many blocks the file occupies */
+    u8 _unused[15];    /**< Stuff for alignment */
+    u8 i_mnt_index;    /**the index in mnt_table when the inode is mountpoint*/
+    // only in orangefsutils mem inode
+    u8 deleted; // fuse no interface for delete inode, we use this to mark inode
+                // unlinked to free sec
 
-  pthread_mutex_t lock;
+    pthread_mutex_t lock;
 };
 
 #define ORANGE_INODE_SIZE 32
@@ -46,16 +46,16 @@ struct orange_inode {
 #define I_DIRECTORY 0040000
 
 struct inode_cache {
-  int ino;
-  struct orange_inode *iptr;
-  struct list_node ilist;
+    int ino;
+    struct orange_inode *iptr;
+    struct list_node ilist;
 };
 
 #define MAX_FILENAME_LEN 12
 
 struct orange_direntry {
-  int inode_nr;                /**< inode nr. */
-  char name[MAX_FILENAME_LEN]; /**< Filename */
+    int inode_nr;                /**< inode nr. */
+    char name[MAX_FILENAME_LEN]; /**< Filename */
 };
 
 #define ORANGE_DIRENT_SIZE 16

@@ -13,32 +13,36 @@ const char *syscall_name = "get_pid";
 
 logging logger;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int pid = SAFE_FORK();
-  if (pid == 0) {     // child process
-    exit(get_pid());  // 返回 pid
-  }
+    int pid = SAFE_FORK();
+    if (pid == 0) {      // child process
+        exit(get_pid()); // 返回 pid
+    }
 
-  // father process
-  int status = -1;
-  wait(&status);
-  info(&logger, "child get_pid: %d, parent fork(): %d\n", status, pid);
-  if (status != pid) {
-    warning(&logger, "FAILED\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // father process
+    int status = -1;
+    wait(&status);
+    info(&logger, "child get_pid: %d, parent fork(): %d\n", status, pid);
+    if (status != pid) {
+        warning(&logger, "FAILED\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

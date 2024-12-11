@@ -2,7 +2,7 @@
 #define USR_STRING_H
 void* memcpy(
     void* p_dst, void* p_src,
-    int size);  // void* memcpy(void* es:p_dst, void* ds:p_src, int size);
+    int size); // void* memcpy(void* es:p_dst, void* ds:p_src, int size);
 void memset(void* p_dst, char ch, int size);
 int memcmp(const void* p1, const void* p2, int size);
 char* strcat(char* dst, const char* src);

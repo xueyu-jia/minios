@@ -5,4 +5,6 @@ const char *name = "child06";
 
 const int exp_val = 6;
 
-int main(int argc, char *argv[]) { exit(exp_val); }
+int main(int argc, char *argv[]) {
+    exit(exp_val);
+}

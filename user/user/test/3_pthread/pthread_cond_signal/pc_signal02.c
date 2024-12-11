@@ -22,118 +22,123 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int flag = 0;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
-  info(&logger, "starting\n");
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+    info(&logger, "starting\n");
 }
 
 void cleanup() {
-  int rval;
+    int rval;
 
-  rval = pthread_mutex_destroy(&mutex);
-  if (rval != 0) {
-    error(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_destroy(&mutex);
+    if (rval != 0) {
+        error(&logger, "pthread_mutex_destroy mutex return %d, expected 0\n",
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_cond_destroy(&cond);
-  if (rval != 0) {
-    error(&logger, "pthread_cond_destroy cond return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_cond_destroy(&cond);
+    if (rval != 0) {
+        error(&logger, "pthread_cond_destroy cond return %d, expected 0\n",
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  logger_close(&logger);
+    logger_close(&logger);
 }
 
 // 线程函数
 void *thread_func(void *arg) {
-  int rval;
-  pthread_t tid = pthread_self();
+    int rval;
+    pthread_t tid = pthread_self();
 
-  // 必须先持有 mutex
-  rval = pthread_mutex_lock(&mutex);
-  if (rval != 0) {
-    error(&logger, "thread[%d]: failed to acquire mutex, return %d\n", tid,
-          rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
-
-  while (!flag) {
-    // 等待唤醒
-    rval = pthread_cond_wait(&cond, &mutex);
+    // 必须先持有 mutex
+    rval = pthread_mutex_lock(&mutex);
     if (rval != 0) {
-      error(&logger, "thread[%d]: pthread_cond_wait return %d\n", tid, rval);
-      cleanup();
-      exit(TC_FAIL);
+        error(&logger, "thread[%d]: failed to acquire mutex, return %d\n", tid,
+              rval);
+        cleanup();
+        exit(TC_FAIL);
     }
-  }
 
-  rval = pthread_mutex_unlock(&mutex);
-  if (rval != 0) {
-    error(&logger, "thread[%d]: failed to release mutex, return %d\n", tid,
-          rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    while (!flag) {
+        // 等待唤醒
+        rval = pthread_cond_wait(&cond, &mutex);
+        if (rval != 0) {
+            error(&logger, "thread[%d]: pthread_cond_wait return %d\n", tid,
+                  rval);
+            cleanup();
+            exit(TC_FAIL);
+        }
+    }
 
-  pthread_exit(NULL);
+    rval = pthread_mutex_unlock(&mutex);
+    if (rval != 0) {
+        error(&logger, "thread[%d]: failed to release mutex, return %d\n", tid,
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
+
+    pthread_exit(NULL);
 }
 
 void run() {
-  int rval;
-  pthread_t thid;
+    int rval;
+    pthread_t thid;
 
-  // 创建线程
-  rval = pthread_create(&thid, NULL, thread_func, NULL);
-  if (rval != 0) {
-    error(&logger, "failed to create thread, return %d\n", rval);
-    cleanup();
-    exit(TC_UNRESOLVED);
-  }
+    // 创建线程
+    rval = pthread_create(&thid, NULL, thread_func, NULL);
+    if (rval != 0) {
+        error(&logger, "failed to create thread, return %d\n", rval);
+        cleanup();
+        exit(TC_UNRESOLVED);
+    }
 
-  // sleep 等待线程开始
-  sleep(100);
+    // sleep 等待线程开始
+    sleep(100);
 
-  rval = pthread_mutex_lock(&mutex);
-  if (rval != 0) {
-    error(&logger, "main thread: pthread_mutex_lock failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_lock(&mutex);
+    if (rval != 0) {
+        error(&logger, "main thread: pthread_mutex_lock failed, return %d\n",
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  flag = 1;
-  info(&logger, "main thread: signal a condition\n");
-  rval = pthread_cond_signal(&cond);
-  if (rval != 0) {
-    error(&logger, "main thread: failed to sinal condition, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    flag = 1;
+    info(&logger, "main thread: signal a condition\n");
+    rval = pthread_cond_signal(&cond);
+    if (rval != 0) {
+        error(&logger, "main thread: failed to sinal condition, return %d\n",
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_mutex_unlock(&mutex);
-  if (rval != 0) {
-    error(&logger, "main thread: pthread_mutex_unlock failed, return %d\n",
-          rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_unlock(&mutex);
+    if (rval != 0) {
+        error(&logger, "main thread: pthread_mutex_unlock failed, return %d\n",
+              rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 等待所有线程结束
-  rval = pthread_join(thid, NULL);
-  if (rval != 0) {
-    error(&logger, "failed to join thread, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 等待所有线程结束
+    rval = pthread_join(thid, NULL);
+    if (rval != 0) {
+        error(&logger, "failed to join thread, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

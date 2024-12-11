@@ -33,35 +33,35 @@ const char *dirname = "ddir03";
 const char *filename = "ddir03/file";
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  int rval = mkdir(dirname, I_RWX);
-  if (rval != 0) {
-    exit(-1);
-  }
-  int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
-  write(fd, (void *)"a", 1);
-  SAFE_CLOSE(fd);
+    int rval = mkdir(dirname, I_RWX);
+    if (rval != 0) { exit(-1); }
+    int fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
+    write(fd, (void *)"a", 1);
+    SAFE_CLOSE(fd);
 }
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int rval = rmdir(dirname);
-  if (rval != DIR_PATH_INEXISTE) {
-    error(&logger, "rmdir %s return %d, expected %d\n", dirname, rval,
-          DIR_PATH_INEXISTE);
-    cleanup();
-    exit(-1);
-  }
-  // TODO
-  info(&logger, "rmdir %s return %d\n", dirname, rval);
-  info(&logger, "test passed\n");
+    int rval = rmdir(dirname);
+    if (rval != DIR_PATH_INEXISTE) {
+        error(&logger, "rmdir %s return %d, expected %d\n", dirname, rval,
+              DIR_PATH_INEXISTE);
+        cleanup();
+        exit(-1);
+    }
+    // TODO
+    info(&logger, "rmdir %s return %d\n", dirname, rval);
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

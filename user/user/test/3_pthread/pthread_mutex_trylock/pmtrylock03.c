@@ -16,33 +16,37 @@ logging logger;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int rval;
+    int rval;
 
-  rval = pthread_mutex_trylock(&mutex);
-  info(&logger, "pthread_mutex_trylock return %d, expected 0\n", rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_trylock(&mutex);
+    info(&logger, "pthread_mutex_trylock return %d, expected 0\n", rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_mutex_trylock(&mutex);
-  info(&logger, "pthread_mutex_trylock return %d, expected -1\n", rval);
-  if (rval != -1) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    rval = pthread_mutex_trylock(&mutex);
+    info(&logger, "pthread_mutex_trylock return %d, expected -1\n", rval);
+    if (rval != -1) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

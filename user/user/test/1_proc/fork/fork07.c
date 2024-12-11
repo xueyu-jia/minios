@@ -16,63 +16,67 @@ const char *syscall_name = "fork";
 logging logger;
 
 struct test_struct {
-  char one;
-  short two;
-  int three;
-  void *four;
+    char one;
+    short two;
+    int three;
+    void *four;
 };
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 int run() {
-  int rval;
-  int pid;
+    int rval;
+    int pid;
 
-  info(&logger, "prepare data....\n");
-  struct test_struct mystruct = {'1', 2, 3, (void *)4};
-  void *malloced = malloc_4k();
-  if (malloced == NULL) {
-    error(&logger, "malloc_4k error\n");
-    cleanup();
-    exit(TC_UNRESOLVED);
-  }
-  info(&logger, "prepare done....\n");
-  info(&logger, "fork...\n");
-  if ((pid = SAFE_FORK()) == 0) {
-    // child process
-    if (mystruct.one != '1' || mystruct.two != 2 || mystruct.three != 3 ||
-        mystruct.four != (void *)4) {
-      error(&logger, "mystruct error\n");
-      exit(TC_FAIL);
+    info(&logger, "prepare data....\n");
+    struct test_struct mystruct = {'1', 2, 3, (void *)4};
+    void *malloced = malloc_4k();
+    if (malloced == NULL) {
+        error(&logger, "malloc_4k error\n");
+        cleanup();
+        exit(TC_UNRESOLVED);
+    }
+    info(&logger, "prepare done....\n");
+    info(&logger, "fork...\n");
+    if ((pid = SAFE_FORK()) == 0) {
+        // child process
+        if (mystruct.one != '1' || mystruct.two != 2 || mystruct.three != 3 ||
+            mystruct.four != (void *)4) {
+            error(&logger, "mystruct error\n");
+            exit(TC_FAIL);
+        }
+
+        // shoud succed
+        free_4k(malloced);
+
+        exit(TC_PASS);
     }
 
-    // shoud succed
-    free_4k(malloced);
+    // parent process
+    int status;
+    if (pid != wait(&status)) {
+        error(&logger, "wait return wrong PID\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
+    if (status != TC_PASS) {
+        error(&logger, "FAILED\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-    exit(TC_PASS);
-  }
-
-  // parent process
-  int status;
-  if (pid != wait(&status)) {
-    error(&logger, "wait return wrong PID\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
-  if (status != TC_PASS) {
-    error(&logger, "FAILED\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
-
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

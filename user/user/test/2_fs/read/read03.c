@@ -22,43 +22,43 @@ int len;
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
 
-  len = strlen(write_str);
-  fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
-  SAFE_WRITE(fd, write_str, len);
-  SAFE_CLOSE(fd);
-  fd = SAFE_OPEN(filename, O_RDWR);
+    len = strlen(write_str);
+    fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
+    SAFE_WRITE(fd, write_str, len);
+    SAFE_CLOSE(fd);
+    fd = SAFE_OPEN(filename, O_RDWR);
 }
 
 void cleanup() {
-  SAFE_CLOSE(fd);
-  unlink(filename);
-  logger_close(&logger);
+    SAFE_CLOSE(fd);
+    unlink(filename);
+    logger_close(&logger);
 }
 
 void run() {
-  char read_buf[BUF_SIZE];
-  memset(read_buf, 0, BUF_SIZE);
-  int n = read(fd, read_buf, BUF_SIZE);
-  info(&logger, "read() return %d, expected %d\n", n, len);
-  if (n != len) {
-    cleanup();
-    exit(-1);
-  }
-  info(&logger, "read %s\n", (char *)read_buf);
-  info(&logger, "expected %s\n", write_str);
-  if (strncmp(write_str, read_buf, len) != 0) {
-    cleanup();
-    exit(-1);
-  }
+    char read_buf[BUF_SIZE];
+    memset(read_buf, 0, BUF_SIZE);
+    int n = read(fd, read_buf, BUF_SIZE);
+    info(&logger, "read() return %d, expected %d\n", n, len);
+    if (n != len) {
+        cleanup();
+        exit(-1);
+    }
+    info(&logger, "read %s\n", (char *)read_buf);
+    info(&logger, "expected %s\n", write_str);
+    if (strncmp(write_str, read_buf, len) != 0) {
+        cleanup();
+        exit(-1);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

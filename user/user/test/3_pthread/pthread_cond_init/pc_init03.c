@@ -11,42 +11,46 @@ const char *syscall_name = "pthread_cond_init";
 
 logging logger;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int rval;
+    int rval;
 
-  pthread_cond_t cond;
-  rval = pthread_cond_init(&cond, NULL);
-  info(&logger, "pthread_cond_init return %d, expected 0\n", rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    pthread_cond_t cond;
+    rval = pthread_cond_init(&cond, NULL);
+    info(&logger, "pthread_cond_init return %d, expected 0\n", rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // init again
-  rval = pthread_cond_init(&cond, NULL);
-  info(&logger, "pthread_cond_init return %d, expected 0\n", rval);
-  if (rval != 0) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // init again
+    rval = pthread_cond_init(&cond, NULL);
+    info(&logger, "pthread_cond_init return %d, expected 0\n", rval);
+    if (rval != 0) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  rval = pthread_cond_destroy(&cond);
-  if (rval != 0) {
-    error(&logger, "failed to destroy cond!");
-    cleanup();
-    exit(TC_UNRESOLVED);
-  }
+    rval = pthread_cond_destroy(&cond);
+    if (rval != 0) {
+        error(&logger, "failed to destroy cond!");
+        cleanup();
+        exit(TC_UNRESOLVED);
+    }
 
-  info(&logger, "passed\n");
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

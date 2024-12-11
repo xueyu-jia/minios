@@ -16,34 +16,36 @@ logging logger;
 // const char *dirname = "fat0/dir01";
 const char *dirname = "dir01";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
 void cleanup() {
-  rmdir(dirname);
-  logger_close(&logger);
+    rmdir(dirname);
+    logger_close(&logger);
 }
 
 void run() {
-  int rval = mkdir(dirname, I_RWX);
-  info(&logger, "mkdir %s return %d, expected 0\n", dirname, rval);
-  if (rval != 0) {
-    cleanup();
-    exit(-1);
-  }
+    int rval = mkdir(dirname, I_RWX);
+    info(&logger, "mkdir %s return %d, expected 0\n", dirname, rval);
+    if (rval != 0) {
+        cleanup();
+        exit(-1);
+    }
 
-  rval = chdir(dirname);
-  info(&logger, "chdir return %d\n", rval);
-  if (rval == 0) {
-    cleanup();
-    exit(-1);
-  }
+    rval = chdir(dirname);
+    info(&logger, "chdir return %d\n", rval);
+    if (rval == 0) {
+        cleanup();
+        exit(-1);
+    }
 
-  info(&logger, "test passed\n");
+    info(&logger, "test passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

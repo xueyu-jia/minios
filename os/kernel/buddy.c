@@ -13,7 +13,7 @@ buddy kbuddy, ubuddy;
 buddy *kbud = &kbuddy;
 buddy *ubud = &ubuddy;
 
-u32 block_size[MAX_ORDER];  // the block size of each order
+u32 block_size[MAX_ORDER]; // the block size of each order
 
 PRIVATE void fragmentUse(u32 addr, u32 size);
 PRIVATE u32 __find_buddy_pfn(u32 page_pfn, u32 order);
@@ -26,189 +26,188 @@ PRIVATE page *get_page_from_free_area(struct free_area *area);
 PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high);
 
 void buddy_init(buddy *bud, u32 bgn_addr, u32 end_addr) {
-  bud->current_mem_size = 0;
-  bud->total_mem_size = end_addr - bgn_addr;
-  for (int i = 0; i < MAX_ORDER; i++) {
-    bud->free_area[i].free_count = 0;
-  }
+    bud->current_mem_size = 0;
+    bud->total_mem_size = end_addr - bgn_addr;
+    for (int i = 0; i < MAX_ORDER; i++) { bud->free_area[i].free_count = 0; }
 
-  block_init(bgn_addr, end_addr, bud);
+    block_init(bgn_addr, end_addr, bud);
 }
 
 // added by wang 2021.6.8
 int block_init(u32 bgn_addr, u32 end_addr, buddy *bud) {
-  int i;
-  u32 bsize;
-  if (bgn_addr % num_4K != 0) {
-    int tmp = bgn_addr % num_4K;
-    if (bud == kbud)
-      fragmentUse(bgn_addr, num_4K - tmp);  // edited by wang 2021.6.25
-    bgn_addr = bgn_addr - tmp + num_4K;
-  }
-
-  bsize = end_addr - bgn_addr;
-  while (bsize) {
-    for (i = MAX_ORDER - 1; i >= 0; i--) {
-      if (bgn_addr % block_size[i] == 0 && bsize >= block_size[i]) {
-        free_pages(bud, pfn_to_page(phy_to_pfn(bgn_addr)), i);
-        bgn_addr += block_size[i];
-        bsize -= block_size[i];
-        break;
-      }
+    int i;
+    u32 bsize;
+    if (bgn_addr % num_4K != 0) {
+        int tmp = bgn_addr % num_4K;
+        if (bud == kbud)
+            fragmentUse(bgn_addr, num_4K - tmp); // edited by wang 2021.6.25
+        bgn_addr = bgn_addr - tmp + num_4K;
     }
-    if (bsize < num_4K && bsize != 0) {
-      if (bud == kbud)                 // edited by qianglong 2021.4.19
-        fragmentUse(bgn_addr, bsize);  // edited by wang 2021.6.25
-      break;
-    }
-  }
 
-  return 0;
+    bsize = end_addr - bgn_addr;
+    while (bsize) {
+        for (i = MAX_ORDER - 1; i >= 0; i--) {
+            if (bgn_addr % block_size[i] == 0 && bsize >= block_size[i]) {
+                free_pages(bud, pfn_to_page(phy_to_pfn(bgn_addr)), i);
+                bgn_addr += block_size[i];
+                bsize -= block_size[i];
+                break;
+            }
+        }
+        if (bsize < num_4K && bsize != 0) {
+            if (bud == kbud)                  // edited by qianglong 2021.4.19
+                fragmentUse(bgn_addr, bsize); // edited by wang 2021.6.25
+            break;
+        }
+    }
+
+    return 0;
 }
 
 int free_pages(buddy *bud, page *page, u32 order) {
-  u32 buddy_pfn;
-  u32 combined_pfn;
-  struct page *buddy;
-  u32 pfn = page_to_pfn(page);
-  u32 max_order = MAX_ORDER - 1;
-  u32 free_order = order;
+    u32 buddy_pfn;
+    u32 combined_pfn;
+    struct page *buddy;
+    u32 pfn = page_to_pfn(page);
+    u32 max_order = MAX_ORDER - 1;
+    u32 free_order = order;
 
 continue_merging:
-  MAYBE_UNUSED
+    MAYBE_UNUSED
 
-  while (order < max_order) {
-    // 查找伙伴块的页号
-    buddy_pfn = __find_buddy_pfn(pfn, order);
-    buddy = page + (buddy_pfn - pfn);
-    // 查找伙伴块是否在buddy系统中
-    // 若不在，继续执行done_merging
-    if (!page_is_buddy(buddy_pfn, buddy, order)) goto done_merging;
-    // 若在，将伙伴块从free_list中删除
-    del_page_from_free_list(buddy, bud, order);
-    // 合并伙伴块
-    combined_pfn = buddy_pfn & pfn;  // find head of block by &
-    page = page + (combined_pfn - pfn);
-    pfn = combined_pfn;
-    order++;
-  }
+    while (order < max_order) {
+        // 查找伙伴块的页号
+        buddy_pfn = __find_buddy_pfn(pfn, order);
+        buddy = page + (buddy_pfn - pfn);
+        // 查找伙伴块是否在buddy系统中
+        // 若不在，继续执行done_merging
+        if (!page_is_buddy(buddy_pfn, buddy, order)) goto done_merging;
+        // 若在，将伙伴块从free_list中删除
+        del_page_from_free_list(buddy, bud, order);
+        // 合并伙伴块
+        combined_pfn = buddy_pfn & pfn; // find head of block by &
+        page = page + (combined_pfn - pfn);
+        pfn = combined_pfn;
+        order++;
+    }
 
 done_merging:
-  // 设置当前page的order
-  set_buddy_order(page, order);
-  // 将该page加入对应order的free_list中
-  add_to_free_list(page, bud, order);
+    // 设置当前page的order
+    set_buddy_order(page, order);
+    // 将该page加入对应order的free_list中
+    add_to_free_list(page, bud, order);
 
-  bud->current_mem_size += block_size[free_order];
-  return 0;
+    bud->current_mem_size += block_size[free_order];
+    return 0;
 }
 
 page *alloc_pages(buddy *bud, u32 order) {
-  u32 current_order;
-  page *page = NULL;
-  struct free_area *area;
+    u32 current_order;
+    page *page = NULL;
+    struct free_area *area;
 
-  // 从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
-  for (current_order = order; current_order < MAX_ORDER; ++current_order) {
-    area = &(bud->free_area[current_order]);
-    page = get_page_from_free_area(area);
-    // 若未查到则继续查找
-    if (!page) continue;
-    // 若查找到了，先将其从free_list中删除，如果需要再调用expand()函数进行大内存块拆分
-    del_page_from_free_list(page, bud, current_order);
-    expand(bud, page, order, current_order);
+    // 从经过计算所得要查找的order开始，到MAX_ORDER进行遍历，查找bud中每一个free_area[]中是否存在空闲块
+    for (current_order = order; current_order < MAX_ORDER; ++current_order) {
+        area = &(bud->free_area[current_order]);
+        page = get_page_from_free_area(area);
+        // 若未查到则继续查找
+        if (!page) continue;
+        // 若查找到了，先将其从free_list中删除，如果需要再调用expand()函数进行大内存块拆分
+        del_page_from_free_list(page, bud, current_order);
+        expand(bud, page, order, current_order);
 
-    if (page) {
-      page->order = order;
-      bud->current_mem_size -= block_size[order];
-      return page;
+        if (page) {
+            page->order = order;
+            bud->current_mem_size -= block_size[order];
+            return page;
+        }
     }
-  }
-  return NULL;
+    return NULL;
 }
 
 // added by wang 2021.6.25
 PRIVATE void fragmentUse(u32 addr, u32 size) {
-  malloced_insert(addr, size);
-  kmem.total_mem_size += size;
-  // do_kfree(addr);
-  phy_kfree(addr);  // modified by mingxuan 2021-8-17
+    malloced_insert(addr, size);
+    kmem.total_mem_size += size;
+    // do_kfree(addr);
+    phy_kfree(addr); // modified by mingxuan 2021-8-17
 }
 
 PRIVATE u32 __find_buddy_pfn(u32 page_pfn, u32 order) {
-  return page_pfn ^ (1 << order);
+    return page_pfn ^ (1 << order);
 }
 
 PRIVATE u32 page_is_buddy(u32 pfn, page *page, u32 order) {
-  if (!page->inbuddy || page->order != order || pfn >= ALL_PAGES) return FALSE;
-  return TRUE;
+    if (!page->inbuddy || page->order != order || pfn >= ALL_PAGES)
+        return FALSE;
+    return TRUE;
 }
 
 PRIVATE void del_page_from_free_list(page *page, buddy *bud, u32 order) {
-  // list operation
-  struct page *node = bud->free_area[order].free_list;
-  if (node == page) {
-    bud->free_area[order].free_list = page->next;
-  } else {
-    while (node->next != NULL) {
-      if (node->next == page) {
-        break;
-      }
-      node = node->next;
+    // list operation
+    struct page *node = bud->free_area[order].free_list;
+    if (node == page) {
+        bud->free_area[order].free_list = page->next;
+    } else {
+        while (node->next != NULL) {
+            if (node->next == page) { break; }
+            node = node->next;
+        }
+        if (node->next != page) {
+            disp_color_str("buddy: del_page_from_free_list, page not found\n",
+                           0x74);
+        }
+        node->next = page->next;
     }
-    if (node->next != page) {
-      disp_color_str("buddy: del_page_from_free_list, page not found\n", 0x74);
-    }
-    node->next = page->next;
-  }
-  // page -> next != NULL
-  page->next = NULL;
-  page->inbuddy = FALSE;
-  bud->free_area[order].free_count--;
+    // page -> next != NULL
+    page->next = NULL;
+    page->inbuddy = FALSE;
+    bud->free_area[order].free_count--;
 }
 
 PRIVATE void add_to_free_list(page *page, buddy *bud, u32 order) {
-  struct free_area *area = &bud->free_area[order];
-  page->next = NULL;
-  if (area->free_list == NULL) {
-    area->free_list = page;
-  } else {
-    struct page *node;
-    node = area->free_list;
-    while (node != page && node->next) {
-      node = node->next;
+    struct free_area *area = &bud->free_area[order];
+    page->next = NULL;
+    if (area->free_list == NULL) {
+        area->free_list = page;
+    } else {
+        struct page *node;
+        node = area->free_list;
+        while (node != page && node->next) { node = node->next; }
+        if (node == page) {
+            disp_color_str("buddy: add_to_free_list, already in freelist\n",
+                           0x74);
+        }
+        node->next = page;
     }
-    if (node == page) {
-      disp_color_str("buddy: add_to_free_list, already in freelist\n", 0x74);
-    }
-    node->next = page;
-  }
-  area->free_count++;
+    area->free_count++;
 }
 
-PRIVATE void set_page_order(page *page, u32 order) { page->order = order; }
+PRIVATE void set_page_order(page *page, u32 order) {
+    page->order = order;
+}
 
 PRIVATE void set_buddy_order(page *page, u32 order) {
-  set_page_order(page, order);
-  page->inbuddy = TRUE;
+    set_page_order(page, order);
+    page->inbuddy = TRUE;
 }
 
 PRIVATE page *get_page_from_free_area(struct free_area *area) {
-  struct page *node;
-  // 返回该链表第一个块或者返回NULL
-  node = area->free_list;  // *page
-  return node;
+    struct page *node;
+    // 返回该链表第一个块或者返回NULL
+    node = area->free_list; // *page
+    return node;
 }
 
 PRIVATE void expand(buddy *bud, page *page, u32 low, u32 high) {
-  u32 size = 1 << high;
+    u32 size = 1 << high;
 
-  while (high > low) {
-    high--;
-    size >>= 1;
-    add_to_free_list(&page[size], bud, high);
-    set_buddy_order(&page[size], high);
-  }
+    while (high > low) {
+        high--;
+        size >>= 1;
+        add_to_free_list(&page[size], bud, high);
+        set_buddy_order(&page[size], high);
+    }
 }
 
 /*u32 alloc_pages(buddy *bud, u32 order) //分配2^order页的页块
@@ -556,95 +555,95 @@ bud->free_area[order].free_list[j + 1];
 // test buddy
 
 void Scan_free_area(buddy *bud) {
-  for (size_t i = 0; i < MAX_ORDER; i++) {
-    struct free_area *area = &bud->free_area[i];
-    page *node = area->free_list;
-    disp_str("   order = ");
-    disp_int(i);
-    disp_str("   nr_free=");
-    disp_int(area->free_count);
-    disp_str("  paddr:");
+    for (size_t i = 0; i < MAX_ORDER; i++) {
+        struct free_area *area = &bud->free_area[i];
+        page *node = area->free_list;
+        disp_str("   order = ");
+        disp_int(i);
+        disp_str("   nr_free=");
+        disp_int(area->free_count);
+        disp_str("  paddr:");
 
-    while (node != NULL) {
-      disp_int(pfn_to_phy(page_to_pfn(node)));
-      disp_str("  ");
-      node = node->next;
+        while (node != NULL) {
+            disp_int(pfn_to_phy(page_to_pfn(node)));
+            disp_str("  ");
+            node = node->next;
+        }
+        disp_str("\n");
     }
-    disp_str("\n");
-  }
 }
 
 void test_kbud_mem_size() {
-  u32 i;
-  for (i = 0; i < 10; i++) {
-    disp_str("before:kbud_mem_size=");
-    disp_int(kbud->current_mem_size);
-    u32 addr = phy_kmalloc_4k();
-    phy_kfree_4k(addr);
-    disp_str("after:kbud_mem_size=");
-    disp_int(kbud->current_mem_size);
-  }
+    u32 i;
+    for (i = 0; i < 10; i++) {
+        disp_str("before:kbud_mem_size=");
+        disp_int(kbud->current_mem_size);
+        u32 addr = phy_kmalloc_4k();
+        phy_kfree_4k(addr);
+        disp_str("after:kbud_mem_size=");
+        disp_int(kbud->current_mem_size);
+    }
 }
 
 void test_alloc_pages() {
-  disp_str("-------------initial state-----------\n");
-  Scan_free_area(kbud);
+    disp_str("-------------initial state-----------\n");
+    Scan_free_area(kbud);
 
-  disp_str("\n-------------test1----------------\n");
-  disp_str("alloc_pages(kbud,5)\n");
-  alloc_pages(kbud, 5);  // 测试链表非空
-  Scan_free_area(kbud);
+    disp_str("\n-------------test1----------------\n");
+    disp_str("alloc_pages(kbud,5)\n");
+    alloc_pages(kbud, 5); // 测试链表非空
+    Scan_free_area(kbud);
 
-  //    disp_str("\n-------------test2----------------\n");
-  //    disp_str("alloc_pages(kbud,4)\n");
-  alloc_pages(kbud, 4);  // 测试order链表为空，上级链表非空
-                         //     Scan_free_area(kbud);
+    // disp_str("\n-------------test2----------------\n");
+    // disp_str("alloc_pages(kbud,4)\n");
+    alloc_pages(kbud, 4); // 测试order链表为空，上级链表非空
+                          //     Scan_free_area(kbud);
 
-  disp_str("\n-------------test3----------------\n");
-  disp_str("alloc_pages(kbud,10)\n");
-  alloc_pages(kbud, 10);  // no enough memory;
-  Scan_free_area(kbud);
+    disp_str("\n-------------test3----------------\n");
+    disp_str("alloc_pages(kbud,10)\n");
+    alloc_pages(kbud, 10); // no enough memory;
+    Scan_free_area(kbud);
 }
 
 void test_free_pages() {
-  page *first, *second, *third;
+    page *first, *second, *third;
 
-  //    disp_str("\n-----------------before alloc------------\n");
-  //    Scan_free_area(ubud);
+    // disp_str("\n-----------------before alloc------------\n");
+    // Scan_free_area(ubud);
 
-  first = alloc_pages(ubud, 1);
+    first = alloc_pages(ubud, 1);
 
-  second = alloc_pages(ubud, 1);
+    second = alloc_pages(ubud, 1);
 
-  third = alloc_pages(ubud, 10);
+    third = alloc_pages(ubud, 10);
 
-  //    disp_str("\n--------------initial state-------------\n");
-  //    Scan_free_area(ubud);
+    // disp_str("\n--------------initial state-------------\n");
+    // Scan_free_area(ubud);
 
-  free_pages(ubud, first,
-             1);  // 测试if(tag==0),伙伴被分配直接挂在链表上
-                  //     disp_str("\n------------test1----------\n");
-                  //     disp_str("free_pages(ubud,first,1)\n");
-                  //     Scan_free_area(ubud);
-
-  free_pages(ubud, second,
-             1);  // 测试else 伙伴未被分配，合并挂在order+1链表
-                  //     disp_str("\n------------test2----------\n");
-                  //     disp_str("free_pages(ubud,second,1)\n");
-                  //     Scan_free_area(ubud);
-
-  free_pages(ubud, third,
-             10);  // 测试if(order==10)，直接挂在链表上。
-                   //     disp_str("\n------------test3----------\n");
-                   //     disp_str("free_pages(ubud,third,10)\n");
+    free_pages(ubud, first,
+               1); // 测试if(tag==0),伙伴被分配直接挂在链表上
+                   //     disp_str("\n------------test1----------\n");
+                   //     disp_str("free_pages(ubud,first,1)\n");
                    //     Scan_free_area(ubud);
 
-  first = alloc_pages(ubud, 9);
-  second = alloc_pages(ubud, 9);
-  //    Scan_free_area(ubud);
+    free_pages(ubud, second,
+               1); // 测试else 伙伴未被分配，合并挂在order+1链表
+                   //     disp_str("\n------------test2----------\n");
+                   //     disp_str("free_pages(ubud,second,1)\n");
+                   //     Scan_free_area(ubud);
 
-  free_pages(ubud, first, 9);
-  free_pages(ubud, second, 9);  // merge to order=10 then stop,no longer merge
-  disp_str("\n------------test4----------\n");
-  Scan_free_area(ubud);
+    free_pages(ubud, third,
+               10); // 测试if(order==10)，直接挂在链表上。
+                    //     disp_str("\n------------test3----------\n");
+                    //     disp_str("free_pages(ubud,third,10)\n");
+                    //     Scan_free_area(ubud);
+
+    first = alloc_pages(ubud, 9);
+    second = alloc_pages(ubud, 9);
+    // Scan_free_area(ubud);
+
+    free_pages(ubud, first, 9);
+    free_pages(ubud, second, 9); // merge to order=10 then stop,no longer merge
+    disp_str("\n------------test4----------\n");
+    Scan_free_area(ubud);
 }

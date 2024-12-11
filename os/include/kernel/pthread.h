@@ -22,8 +22,8 @@ schedparam需要涉及到对timespec定义，
 */
 
 typedef struct p_sched_param {
-  /* DATA */
-  int sched_priority;  // added by dongzhangqi 2023.5.8
+    /* DATA */
+    int sched_priority; // added by dongzhangqi 2023.5.8
 } SCHED_PARAM;
 
 /* inheritsched-线程的继承性 */
@@ -35,33 +35,33 @@ typedef struct p_sched_param {
 #define PTHREAD_SCOPE_SYSTEM 1
 
 typedef struct p_pthread_attr_t {
-  int detachstate;
-  int schedpolicy;
-  SCHED_PARAM schedparam;
-  int inheritsched;
-  int scope;
-  u32 guardsize;
-  int stackaddr_set;
-  void* stackaddr;
-  u32 stacksize;
+    int detachstate;
+    int schedpolicy;
+    SCHED_PARAM schedparam;
+    int inheritsched;
+    int scope;
+    u32 guardsize;
+    int stackaddr_set;
+    void* stackaddr;
+    u32 stacksize;
 } pthread_attr_t;
 
 typedef struct {
-  SPIN_LOCK lock;  //自旋锁:在获取锁之前一直处于忙等(自旋)阻塞状态 值为1
-  uint nusers;  //记录当前有多少线程需要这个互斥锁
-  uint owner;  //用来记录持有当前mutex的线程id，如果没有线程持有，这个值为0
-  //等待该互斥变量的线程队列
-  int queue_wait[queue_size];
-  int head;
-  int tail;
-  // For debugging:
-  char* name;  // 锁的名称
+    SPIN_LOCK lock; // 自旋锁:在获取锁之前一直处于忙等(自旋)阻塞状态 值为1
+    uint nusers; // 记录当前有多少线程需要这个互斥锁
+    uint owner; // 用来记录持有当前mutex的线程id，如果没有线程持有，这个值为0
+    // 等待该互斥变量的线程队列
+    int queue_wait[queue_size];
+    int head;
+    int tail;
+    // For debugging:
+    char* name; // 锁的名称
 } pthread_mutex_t;
 
 typedef struct {
-  char* name;
-  // char size[256];
-  //   long int align;
+    char* name;
+    // char size[256];
+    //   long int align;
 } pthread_mutexattr_t;
 
 PUBLIC int do_pthread_mutex_init(pthread_mutex_t* mutex,

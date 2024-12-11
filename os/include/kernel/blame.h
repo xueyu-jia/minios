@@ -5,9 +5,9 @@
 #include <kernel/type.h>
 
 struct performance_stat {
-  char info[16];
-  u32 ticks_usage;
-  u32 last_record;
+    char info[16];
+    u32 ticks_usage;
+    u32 last_record;
 };
 
 #define BLAME_TYPES 4

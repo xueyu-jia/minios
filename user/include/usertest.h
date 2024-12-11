@@ -21,35 +21,35 @@
 #define MAX_MSG_IN_Q 1024
 #define MAX_MSGBYTES (1 << 14)
 
-#define MSG_SIZE 1024  // 暂时先用 1024......
+#define MSG_SIZE 1024 // 暂时先用 1024......
 
-#define TC_FAIL -1       // 测试失败
-#define TC_PASS 0        // 测试成功
-#define TC_UNRESOLVED 1  // 未处理
+#define TC_FAIL -1      // 测试失败
+#define TC_PASS 0       // 测试成功
+#define TC_UNRESOLVED 1 // 未处理
 
 extern const char *LOG_LEVEL_LITERAL[];
 extern const char *log_filename;
 
 typedef enum {
-  LOG_DEBUG = 0,
-  LOG_INFO,
-  LOG_WARNING,
-  LOG_ERROR,
+    LOG_DEBUG = 0,
+    LOG_INFO,
+    LOG_WARNING,
+    LOG_ERROR,
 } logger_level;
 
 // logger
 typedef struct {
-  char *log_filename;
-  int logfd;
-  char *test_name;
-  logger_level level;
+    char *log_filename;
+    int logfd;
+    char *test_name;
+    logger_level level;
 } logging;
 
 typedef u32 uint32_t;
 
 struct msgbuf {
-  long mtype;
-  char mtext[MSG_SIZE];
+    long mtype;
+    char mtext[MSG_SIZE];
 };
 
 // TODO add cleanup function parameter
@@ -57,15 +57,15 @@ struct msgbuf {
 #define SAFE_FORK() safe_fork(__FILE__, __LINE__, NULL)
 
 #define SAFE_OPEN(filename, oflags) \
-  safe_open(__FILE__, __LINE__, NULL, (filename), (oflags))
+    safe_open(__FILE__, __LINE__, NULL, (filename), (oflags))
 
 #define SAFE_CLOSE(fd) safe_close(__FILE__, __LINE__, fd)
 
 #define SAFE_WRITE(fd, buf, nbytes) \
-  safe_write(__FILE__, __LINE__, fd, buf, nbytes)
+    safe_write(__FILE__, __LINE__, fd, buf, nbytes)
 
 #define SAFE_READ(fd, buf, nbytes) \
-  safe_read(__FILE__, __LINE__, fd, buf, nbytes)
+    safe_read(__FILE__, __LINE__, fd, buf, nbytes)
 
 int safe_fork(const char *file, const int lineno, void (*cleanup_fn)(void));
 int safe_open(const char *file, const int lineno, void (*cleanup_fn)(void),

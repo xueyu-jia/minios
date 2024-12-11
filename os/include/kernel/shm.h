@@ -14,21 +14,21 @@
 
 #define NO_EXCLUSION_SERVE 0xFF
 #define SHM_ERROR 0xFFFFFFFF
-#define SHM_AVAILABLE 0  //这个宏,不可改
+#define SHM_AVAILABLE 0 // 这个宏,不可改
 #define SHM_BUSY 0x0FFF
 
 struct shm_perm {
-  int size;           //这个共享内存的大小
-  int key;            // id所对应的唯一标识
-  int pid;            //创建进程的pid
-  int state;          //共享内存块的可用状态
-  void *phy_address;  //物理页的物理地址
+    int size;          // 这个共享内存的大小
+    int key;           // id所对应的唯一标识
+    int pid;           // 创建进程的pid
+    int state;         // 共享内存块的可用状态
+    void *phy_address; // 物理页的物理地址
 };
 struct ipc_shm {
-  int perms_size;
-  int in_use;  //已经被占用的id号
-  // struct lin_map_id lin_map*;
-  struct shm_perm perms[256];
+    int perms_size;
+    int in_use; // 已经被占用的id号
+    // struct lin_map_id lin_map*;
+    struct shm_perm perms[256];
 };
 
 /*

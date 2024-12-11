@@ -16,7 +16,7 @@
 #define TERMINAL_ROW 25
 #define VIDEO_MEM_START 0xB8000
 
-#define TERMINAL_POS(row, column) ((u16)(row)*TERMINAL_COLUMN + (column))
+#define TERMINAL_POS(row, column) ((u16)(row) * TERMINAL_COLUMN + (column))
 /*
  * 终端默认色，黑底白字
  */

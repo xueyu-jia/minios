@@ -9,16 +9,16 @@
 #include <kernel/type.h>
 #include <klib/spinlock.h>
 
-#define FMIBuff 0x007ff000  // loader中getFreeMemInfo返回值存放起始地址(7M1020K)
+#define FMIBuff 0x007ff000 // loader中getFreeMemInfo返回值存放起始地址(7M1020K)
 
-#define WALL 0x10000000  // 256M
+#define WALL 0x10000000 // 256M
 // #define WALL            0x02000000            //32M
 
-#define KKWALL1 0x00400000  // 4M
-#define KUWALL1 0x00800000  // 8M
+#define KKWALL1 0x00400000 // 4M
+#define KUWALL1 0x00800000 // 8M
 
-#define KKWALL2 0x00800000  // 8M
-#define KUWALL2 0x02000000  // 32M
+#define KKWALL2 0x00800000 // 8M
+#define KUWALL2 0x02000000 // 32M
 
 #define TEST 0x11223344
 
@@ -37,32 +37,31 @@
 #define FAULT_WRITE 2
 
 typedef struct page {
-  atomic_t count;
-  // buddy
-  u32 inbuddy;  // 当前page是否在buddy系统的管理中
-  u32 order;    // buddy的order
-  struct page* next;
-  // slab
-  kmem_cache_t* cache;  // slab对应的cache
-  // page cache
-  struct address_space* pg_mapping;  // page 所属的page cache结构
-  // 对于正在使用的页面，使用pg_list将page加入到对应的page链表
-  // 如file address_space中的链表，pcb匿名页面链表等
-  struct list_node pg_list;
-  int dirty;
-  // 对于使用过但为了再次使用的需要在缓存的页面，将pg_lru成员连入page_cache_inactive_lru;
-  struct list_node pg_lru;
-  buf_head* pg_buffer[MAX_BUF_PAGE];
-  u32 pg_off;
+    atomic_t count;
+    // buddy
+    u32 inbuddy; // 当前page是否在buddy系统的管理中
+    u32 order;   // buddy的order
+    struct page* next;
+    // slab
+    kmem_cache_t* cache; // slab对应的cache
+    // page cache
+    struct address_space* pg_mapping; // page 所属的page cache结构
+    // 对于正在使用的页面，使用pg_list将page加入到对应的page链表
+    // 如file address_space中的链表，pcb匿名页面链表等
+    struct list_node pg_list;
+    int dirty;
+    // 对于使用过但为了再次使用的需要在缓存的页面，将pg_lru成员连入page_cache_inactive_lru;
+    struct list_node pg_lru;
+    buf_head* pg_buffer[MAX_BUF_PAGE];
+    u32 pg_off;
 } page;
 
 extern u32 kernel_size;
 extern int big_kernel;
-extern u32
-    kernel_code_size;  // 为内核代码数据分配的内存大小，     added by wang
-                       //  2021.8.27
-extern u32 test_phy_mem_size;  // 检测到的物理机的物理内存的大小，    added by
-                               //  wang 2021.8.27
+extern u32 kernel_code_size; // 为内核代码数据分配的内存大小，     added by wang
+                             //  2021.8.27
+extern u32 test_phy_mem_size; // 检测到的物理机的物理内存的大小，    added by
+                              //  wang 2021.8.27
 extern page mem_map[ALL_PAGES];
 #define phy_to_pfn(x) ((x) / PAGE_SIZE)
 #define pfn_to_phy(x) ((x) * PAGE_SIZE)

@@ -1,6 +1,6 @@
-//#include <stdio.h>
-#include <malloc.h>  //added by mingxuan 2021-4-5
-#include <stdio.h>   //modified by mingxuan 2021-4-5
+// #include <stdio.h>
+#include <malloc.h> //added by mingxuan 2021-4-5
+#include <stdio.h>  //modified by mingxuan 2021-4-5
 
 // int global=0;
 
@@ -678,7 +678,7 @@ void main(int arg,char *argv[])
                                 验证多个FAT32
                                                                                         added by mingxuan 2021-2-7
  *======================================================================*/
-//验证多个FAT32
+// 验证多个FAT32
 /*
 void main()
 {
@@ -750,39 +750,38 @@ void main()
                                 启动shell_0
                                                                                         added by mingxuan 2021-2-7
  *======================================================================*/
-//启动shell_0
+// 启动shell_0
 
 int main(int arg, char *argv[]) {
-  int stdin = open("/dev/tty0", O_RDWR);
-  int stdout = open("/dev/tty0", O_RDWR);
-  int stderr = open("/dev/tty0", O_RDWR);
+    int stdin = open("/dev/tty0", O_RDWR);
+    int stdout = open("/dev/tty0", O_RDWR);
+    int stderr = open("/dev/tty0", O_RDWR);
 
-  printf("init:toatal_mem_size=%x\n", total_mem_size());
-  struct tm time;
-  get_time(&time);
-  // time.tm_hour = (time.tm_hour + 8)%24;
-  printf("time:%d-%02d-%02d %02d:%02d:%02d\n", time.tm_year + 1900,
-         time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec);
-  // char filename[30] = "fat0/shell_0.bin";
-  // printf("hello world!\n");
-  if (0 != fork()) {  // father
-    while (1) {
-      wait(NULL);
+    printf("init:toatal_mem_size=%x\n", total_mem_size());
+    struct tm time;
+    get_time(&time);
+    // time.tm_hour = (time.tm_hour + 8)%24;
+    printf("time:%d-%02d-%02d %02d:%02d:%02d\n", time.tm_year + 1900,
+           time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min,
+           time.tm_sec);
+    // char filename[30] = "fat0/shell_0.bin";
+    // printf("hello world!\n");
+    if (0 != fork()) { // father
+        while (1) { wait(NULL); }
+    } else { // child
+        // execve("fat0/shell_0.bin");
+        // #ifdef FAT32_BOOT
+        // 	execve("fat0/shell_0.bin",NULL,NULL);
+        // #endif
+        // #ifdef ORANGE_BOOT
+        char *arg[2] = {"/bin/shell", NULL};
+        char *env[2] = {"PATH=/bin;.", NULL};
+        execve(arg[0], arg, env);
+        // #endif
+        // execve("fat0/shell_0.bin",NULL,NULL);
+
+        // execve(filename);
     }
-  } else {  // child
-    // execve("fat0/shell_0.bin");
-    // #ifdef FAT32_BOOT
-    // 	execve("fat0/shell_0.bin",NULL,NULL);
-    // #endif
-    // #ifdef ORANGE_BOOT
-    char *arg[2] = {"/bin/shell", NULL};
-    char *env[2] = {"PATH=/bin;.", NULL};
-    execve(arg[0], arg, env);
-    // #endif
-    // execve("fat0/shell_0.bin",NULL,NULL);
 
-    // execve(filename);
-  }
-
-  return 0;
+    return 0;
 }

@@ -14,42 +14,42 @@
 #include <stdio.h>
 
 void thread_fun2(void *arg) {
-  printf("pth2 print : I'm thread2, arg = %d. \n", *(int *)arg);
+    printf("pth2 print : I'm thread2, arg = %d. \n", *(int *)arg);
 
-  pthread_exit(NULL);
-  printf("pth2 print : exit error");
+    pthread_exit(NULL);
+    printf("pth2 print : exit error");
 }
 
 void thread_fun1(void *arg) {
-  printf("pth1 print : I'm thread1, arg = %d. \n", *(int *)arg);
-  pthread_t thread2;
-  int ret1;
-  int a = 9;
-  ret1 = pthread_create(&thread2, NULL, thread_fun2, &a);
-  printf(" pth1 print : thread2 = %d \n", thread2);
+    printf("pth1 print : I'm thread1, arg = %d. \n", *(int *)arg);
+    pthread_t thread2;
+    int ret1;
+    int a = 9;
+    ret1 = pthread_create(&thread2, NULL, thread_fun2, &a);
+    printf(" pth1 print : thread2 = %d \n", thread2);
 
-  sleep(100);
-  pthread_join(thread2, NULL);
+    sleep(100);
+    pthread_join(thread2, NULL);
 
-  printf("pth1 print : pthread_create return = %d \n", ret1);
+    printf("pth1 print : pthread_create return = %d \n", ret1);
 
-  pthread_exit(NULL);
-  printf("pth1 print : exit error");
+    pthread_exit(NULL);
+    printf("pth1 print : exit error");
 }
 
 int main(int arg, char *argv[]) {
-  pthread_t thread1;
-  int ret1;
-  int a = 10;
-  int process = get_pid();
-  printf("main print : process = %d \n", process);
-  ret1 = pthread_create(&thread1, NULL, thread_fun1, &a);
-  printf("main print : thread1 = %d \n", thread1);
+    pthread_t thread1;
+    int ret1;
+    int a = 10;
+    int process = get_pid();
+    printf("main print : process = %d \n", process);
+    ret1 = pthread_create(&thread1, NULL, thread_fun1, &a);
+    printf("main print : thread1 = %d \n", thread1);
 
-  sleep(100);
-  pthread_join(thread1, NULL);
+    sleep(100);
+    pthread_join(thread1, NULL);
 
-  // sleep(20);
-  printf("main print : pthread_create return = %d \n", ret1);
-  exit(0);
+    // sleep(20);
+    printf("main print : pthread_create return = %d \n", ret1);
+    exit(0);
 }

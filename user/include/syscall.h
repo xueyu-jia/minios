@@ -74,7 +74,7 @@
 #define _NR_pthread_join 60
 #define _NR_get_time 61
 #define _NR_stat 62
-#define _NR_nice 63  // added by zq
+#define _NR_nice 63 // added by zq
 #define _NR_set_rt 64
 #define _NR_rt_prio 65
 #define _NR_get_proc_msg 66
@@ -82,77 +82,78 @@
 #define INT_VECTOR_SYS_CALL 0x90
 
 /* 无参数的系统调用 */
-#define _syscall0(NR_syscall)       \
-  ({                                \
-    int _retval;                    \
-    asm volatile("int $0x90"        \
-                 : "=a"(_retval)    \
-                 : "a"(NR_syscall)  \
-                 : "cc", "memory"); \
-    _retval;                        \
-  })
+#define _syscall0(NR_syscall)           \
+    ({                                  \
+        int _retval;                    \
+        asm volatile("int $0x90"        \
+                     : "=a"(_retval)    \
+                     : "a"(NR_syscall)  \
+                     : "cc", "memory"); \
+        _retval;                        \
+    })
 
 /* 一个参数的系统调用 */
-#define _syscall1(NR_syscall, ARG1)           \
-  ({                                          \
-    int _retval;                              \
-    asm volatile("int $0x90"                  \
-                 : "=a"(_retval)              \
-                 : "a"(NR_syscall), "b"(ARG1) \
-                 : "cc", "memory");           \
-    _retval;                                  \
-  })
+#define _syscall1(NR_syscall, ARG1)               \
+    ({                                            \
+        int _retval;                              \
+        asm volatile("int $0x90"                  \
+                     : "=a"(_retval)              \
+                     : "a"(NR_syscall), "b"(ARG1) \
+                     : "cc", "memory");           \
+        _retval;                                  \
+    })
 
 /* 两个参数的系统调用 */
-#define _syscall2(NR_syscall, ARG1, ARG2)                \
-  ({                                                     \
-    int _retval;                                         \
-    asm volatile("int $0x90"                             \
-                 : "=a"(_retval)                         \
-                 : "a"(NR_syscall), "b"(ARG1), "c"(ARG2) \
-                 : "cc", "memory");                      \
-    _retval;                                             \
-  })
+#define _syscall2(NR_syscall, ARG1, ARG2)                    \
+    ({                                                       \
+        int _retval;                                         \
+        asm volatile("int $0x90"                             \
+                     : "=a"(_retval)                         \
+                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2) \
+                     : "cc", "memory");                      \
+        _retval;                                             \
+    })
 
 /* 三个参数的系统调用 */
-#define _syscall3(NR_syscall, ARG1, ARG2, ARG3)                     \
-  ({                                                                \
-    int _retval;                                                    \
-    asm volatile("int $0x90"                                        \
-                 : "=a"(_retval)                                    \
-                 : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3) \
-                 : "cc", "memory");                                 \
-    _retval;                                                        \
-  })
+#define _syscall3(NR_syscall, ARG1, ARG2, ARG3)                         \
+    ({                                                                  \
+        int _retval;                                                    \
+        asm volatile("int $0x90"                                        \
+                     : "=a"(_retval)                                    \
+                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3) \
+                     : "cc", "memory");                                 \
+        _retval;                                                        \
+    })
 
 /* 四个参数的系统调用 */
-#define _syscall4(NR_syscall, ARG1, ARG2, ARG3, ARG4)                          \
-  ({                                                                           \
-    int _retval;                                                               \
-    asm volatile("int $0x90"                                                   \
-                 : "=a"(_retval)                                               \
-                 : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), "S"(ARG4) \
-                 : "cc", "memory");                                            \
-    _retval;                                                                   \
-  })
+#define _syscall4(NR_syscall, ARG1, ARG2, ARG3, ARG4)                    \
+    ({                                                                   \
+        int _retval;                                                     \
+        asm volatile("int $0x90"                                         \
+                     : "=a"(_retval)                                     \
+                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), \
+                       "S"(ARG4)                                         \
+                     : "cc", "memory");                                  \
+        _retval;                                                         \
+    })
 
 /* 五个参数的系统调用 */
-#define _syscall5(NR_syscall, ARG1, ARG2, ARG3, ARG4, ARG5)          \
-  ({                                                                 \
-    int _retval;                                                     \
-    asm volatile("int $0x90"                                         \
-                 : "=a"(_retval)                                     \
-                 : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), \
-                   "S"(ARG4), "D"(ARG5)                              \
-                 : "cc", "memory");                                  \
-    _retval;                                                         \
-  })
+#define _syscall5(NR_syscall, ARG1, ARG2, ARG3, ARG4, ARG5)              \
+    ({                                                                   \
+        int _retval;                                                     \
+        asm volatile("int $0x90"                                         \
+                     : "=a"(_retval)                                     \
+                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), \
+                       "S"(ARG4), "D"(ARG5)                              \
+                     : "cc", "memory");                                  \
+        _retval;                                                         \
+    })
 
 typedef struct process_message {
-  u32 pid;
-  int nice;
-  double vruntime;
-  u64 sum_cpu_use;
+    u32 pid;
+    int nice;
+    double vruntime;
+    u64 sum_cpu_use;
 } proc_msg;
 
 int get_ticks();
@@ -183,14 +184,14 @@ char* getcwd(char* buf, int size);
 int wait(int* status);
 void exit(int status);
 int _signal(int sig, void* handler,
-            void* _Handler);  //"user/ulib/signal.c" 中提供了上层封装
+            void* _Handler); //"user/ulib/signal.c" 中提供了上层封装
 int sigsend(int pid, Sigaction* sigaction_p);
 void sigreturn(int ebp);
 u32 total_mem_size();
 int shmget(int key, int size, int shmflg);
 void* _shmat(int shmid, char* shmaddr,
-             int shmflg);    //"user/ulib/ushm.c" 中提供了上层封装
-void _shmdt(char* shmaddr);  //"user/ulib/ushm.c" 中提供了上层封装
+             int shmflg);   //"user/ulib/ushm.c" 中提供了上层封装
+void _shmdt(char* shmaddr); //"user/ulib/ushm.c" 中提供了上层封装
 struct ipc_shm* shmctl(int shmid, int cmd, struct ipc_shm* buf);
 void* shmmemcpy(void* dst, const void* src, long unsigned int len);
 int ftok(char* f, int key);

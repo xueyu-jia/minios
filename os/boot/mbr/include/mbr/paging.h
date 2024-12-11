@@ -15,7 +15,7 @@
 #define PG_P 1
 #define PG_USU 4
 #define PG_RWW 2
-#define PGSIZE 4096  // bytes mapped by a page
+#define PGSIZE 4096 // bytes mapped by a page
 
 #define KERNBASE 0xC0000000
 #define K_PHY2LIN(x) ((x) + KERNBASE)
@@ -53,33 +53,33 @@
 // construct linear address from indexes and offset
 #define PGADDR(d, t, o) ((void*)((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
-#define PTSIZE (PGSIZE * NPTENTRIES)  // bytes mapped by a page directory entry
-#define PTSHIFT 22                    // log2(PTSIZE)
+#define PTSIZE (PGSIZE * NPTENTRIES) // bytes mapped by a page directory entry
+#define PTSHIFT 22                   // log2(PTSIZE)
 
-#define PTXSHIFT 12  // offset of PTX in a linear address
-#define PDXSHIFT 22  // offset of PDX in a linear address
+#define PTXSHIFT 12 // offset of PTX in a linear address
+#define PDXSHIFT 22 // offset of PDX in a linear address
 
 // Page table/directory entry flags.
-#define PTE_P 0x001    // Present
-#define PTE_W 0x002    // Writeable
-#define PTE_U 0x004    // User
-#define PTE_PWT 0x008  // Write-Through
-#define PTE_PCD 0x010  // Cache-Disable
-#define PTE_A 0x020    // Accessed
-#define PTE_D 0x040    // Dirty
-#define PTE_PS 0x080   // Page Size
-#define PTE_G 0x100    // Global
+#define PTE_P 0x001   // Present
+#define PTE_W 0x002   // Writeable
+#define PTE_U 0x004   // User
+#define PTE_PWT 0x008 // Write-Through
+#define PTE_PCD 0x010 // Cache-Disable
+#define PTE_A 0x020   // Accessed
+#define PTE_D 0x040   // Dirty
+#define PTE_PS 0x080  // Page Size
+#define PTE_G 0x100   // Global
 
 // Address in page table or page directory entry
 #define PTE_ADDR(pte) ((phyaddr_t)(pte) & ~0xFFF)
-#define PTE_FLAG(pte) ((size_t)(pte)&0xFFF)
+#define PTE_FLAG(pte) ((size_t)(pte) & 0xFFF)
 
 typedef struct ARDStruct {
-  u32 dwBaseAddrLow;
-  u32 dwBaseAddrHigh;
-  u32 dwLengthLow;
-  u32 dwLengthHigh;
-  u32 dwType;
+    u32 dwBaseAddrLow;
+    u32 dwBaseAddrHigh;
+    u32 dwLengthLow;
+    u32 dwLengthHigh;
+    u32 dwType;
 } ARDStruct;
 
 void paging(u32 MemChkBuf, u32 MCRNumber);

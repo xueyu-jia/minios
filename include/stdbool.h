@@ -5,8 +5,8 @@
 typedef _Bool bool;
 
 enum {
-  false,
-  true,
+    false,
+    true,
 };
 
 #endif

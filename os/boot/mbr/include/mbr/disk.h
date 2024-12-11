@@ -37,17 +37,17 @@
 extern u32 bootPartStartSector;
 extern bool found_sata_dev;
 
-//读一个扇区
+// 读一个扇区
 int readsect(void* dst, u32 offset);
 void find_act_part(void* dst);
-//读多个扇区
+// 读多个扇区
 int readsects(void* dst, u32 offset, u32 count);
 typedef struct {
-  u8 status;
-  u8 first_chs[3];
-  u8 partition_type;
-  u8 last_chs[3];
-  u32 lba;
-  u32 sector_count;
+    u8 status;
+    u8 first_chs[3];
+    u8 partition_type;
+    u8 last_chs[3];
+    u32 lba;
+    u32 sector_count;
 } part_tbl_entry;
 #endif

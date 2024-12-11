@@ -45,55 +45,56 @@
  * Remember to change SUPER_BLOCK_SIZE if the members are changed.
  */
 typedef struct super_block {
-  union {
-    struct {
-      u32 magic;             /**< Magic number */
-      u32 nr_inodes;         /**< How many inodes */
-      u32 nr_sects;          /**< How many sectors */
-      u32 nr_imap_sects;     /**< How many inode-map sectors */
-      u32 nr_smap_sects;     /**< How many sector-map sectors */
-      u32 n_1st_sect;        /**< Number of the 1st data sector */
-      u32 nr_inode_sects;    /**< How many inode sectors */
-      u32 root_inode;        /**< Inode nr of root directory */
-      u32 inode_size;        /**< INODE_SIZE */
-      u32 inode_isize_off;   /**< Offset of `struct inode::i_size' */
-      u32 inode_start_off;   /**< Offset of `struct inode::i_start_sect' */
-      u32 dir_ent_size;      /**< DIR_ENTRY_SIZE */
-      u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr' */
-      u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
+    union {
+        struct {
+            u32 magic;           /**< Magic number */
+            u32 nr_inodes;       /**< How many inodes */
+            u32 nr_sects;        /**< How many sectors */
+            u32 nr_imap_sects;   /**< How many inode-map sectors */
+            u32 nr_smap_sects;   /**< How many sector-map sectors */
+            u32 n_1st_sect;      /**< Number of the 1st data sector */
+            u32 nr_inode_sects;  /**< How many inode sectors */
+            u32 root_inode;      /**< Inode nr of root directory */
+            u32 inode_size;      /**< INODE_SIZE */
+            u32 inode_isize_off; /**< Offset of `struct inode::i_size' */
+            u32 inode_start_off; /**< Offset of `struct inode::i_start_sect' */
+            u32 dir_ent_size;    /**< DIR_ENTRY_SIZE */
+            u32 dir_ent_inode_off; /**< Offset of `struct dir_entry::inode_nr'
+                                    */
+            u32 dir_ent_fname_off; /**< Offset of `struct dir_entry::name' */
+        };
+        struct {
+            u32 TotalSectors; // 总扇区数，当载入磁盘时，才从DBR中读取。
+            u16 Bytes_Per_Sector; // 每个扇区的字节数，当载入磁盘时，才从DBR中读取。
+            u8 Sectors_Per_Cluster; // 每个簇的扇区数，当载入磁盘时，才从DBR中读取。
+            u16 Reserved_Sector; // 保留扇区数，当载入磁盘时，才从DBR中读取。
+            u32 Sectors_Per_FAT; // 每个FAT所占的扇区数，当载入磁盘时，才从DBR中读取。
+            u32 Position_Of_RootDir; // 根目录的位置。
+            u32 Position_Of_FAT1;    // FAT1的位置。
+            u32 Position_Of_FAT2;    // FAT2的位置。
+        };
     };
-    struct {
-      u32 TotalSectors;  //总扇区数，当载入磁盘时，才从DBR中读取。
-      u16 Bytes_Per_Sector;  //每个扇区的字节数，当载入磁盘时，才从DBR中读取。
-      u8 Sectors_Per_Cluster;  //每个簇的扇区数，当载入磁盘时，才从DBR中读取。
-      u16 Reserved_Sector;  //保留扇区数，当载入磁盘时，才从DBR中读取。
-      u32 Sectors_Per_FAT;  //每个FAT所占的扇区数，当载入磁盘时，才从DBR中读取。
-      u32 Position_Of_RootDir;  //根目录的位置。
-      u32 Position_Of_FAT1;     // FAT1的位置。
-      u32 Position_Of_FAT2;     // FAT2的位置。
-    };
-  };
 
-  /*
-   * the following item(s) are only present in memory
-   */
-  int sb_dev;   /**< the super block's home device */
-  int fs_type;  // added by mingxuan 2020-10-30
-  int used;
-  // SPIN_LOCK lock;
+    /*
+     * the following item(s) are only present in memory
+     */
+    int sb_dev;  /**< the super block's home device */
+    int fs_type; // added by mingxuan 2020-10-30
+    int used;
+    // SPIN_LOCK lock;
 } super_block;
 
 typedef struct inode {
-  u32 i_mode;        /**< Accsess mode */
-  u32 i_size;        /**< File size */
-  u32 i_start_block; /**< The first block of the data */
-  u32 i_nr_blocks;   /**< How many blocks the file occupies */
-  u8 _unused[15];    /**< Stuff for alignment */
-  u8 i_mnt_index;    /**the index in mnt_table when the inode is mountpoint*/
-  /* the following items are only present in memory */
-  int i_dev;
-  int i_cnt; /**< How many procs share this inode  */
-  int i_num; /**< inode nr.  */
+    u32 i_mode;        /**< Accsess mode */
+    u32 i_size;        /**< File size */
+    u32 i_start_block; /**< The first block of the data */
+    u32 i_nr_blocks;   /**< How many blocks the file occupies */
+    u8 _unused[15];    /**< Stuff for alignment */
+    u8 i_mnt_index;    /**the index in mnt_table when the inode is mountpoint*/
+    /* the following items are only present in memory */
+    int i_dev;
+    int i_cnt; /**< How many procs share this inode  */
+    int i_num; /**< inode nr.  */
 } inode;
 
 /**
@@ -101,8 +102,8 @@ typedef struct inode {
  * @brief  Directory Entry
  */
 typedef struct dir_entry {
-  int inode_nr;                /**< inode nr. */
-  char name[MAX_FILENAME_LEN]; /**< Filename */
+    int inode_nr;                /**< inode nr. */
+    char name[MAX_FILENAME_LEN]; /**< Filename */
 } dir_entry;
 extern super_block sb;
 

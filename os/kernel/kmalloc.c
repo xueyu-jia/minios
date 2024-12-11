@@ -5,7 +5,7 @@
 #include <kernel/buddy.h>
 #include <kernel/console.h>
 #include <kernel/kmalloc.h>
-//#include <kernel/../include/memman.h>    //deleted by mingxuan 2021-8-13
+// #include <kernel/../include/memman.h>    //deleted by mingxuan 2021-8-13
 
 malloced mal;
 free_kmem kmem;
@@ -23,87 +23,86 @@ static u32 which_order(u32 size);
 
 // added by mingxuan 2021-3-8
 void kmem_init() {
-  // kmem.kmem_table[0].addr=0x0;
-  // kmem.kmem_table[0].size=4092;
+    // kmem.kmem_table[0].addr=0x0;
+    // kmem.kmem_table[0].size=4092;
 
-  kmem.count = 0;
-  mal.count = 0;
-  kmem.total_mem_size = 0;
-  kmem.current_mem_size = 0;
+    kmem.count = 0;
+    mal.count = 0;
+    kmem.total_mem_size = 0;
+    kmem.current_mem_size = 0;
 }
 
 // added by wang 2021.6.8
 u32 kmalloc_over4k(u32 size) {
-  u32 order = which_order(size);
-  page *page = alloc_pages(kbud, order);
-  u32 addr = pfn_to_phy(page_to_pfn(page));
+    u32 order = which_order(size);
+    page *page = alloc_pages(kbud, order);
+    u32 addr = pfn_to_phy(page_to_pfn(page));
 
-  if (size <
-      block_size
-          [order])  //申请的内存小于order页块的大小，将剩余内存返回buddy系统，如申请10K，则分配一个16K页块，将剩余6K返回到buddy系统
+    if (size <
+        block_size
+            [order]) // 申请的内存小于order页块的大小，将剩余内存返回buddy系统，如申请10K，则分配一个16K页块，将剩余6K返回到buddy系统
 
-    block_init(addr + size, addr + block_size[order],
-               kbud);  //通过初始化函数将剩余内存返还
+        block_init(addr + size, addr + block_size[order],
+                   kbud); // 通过初始化函数将剩余内存返还
 
-  malloced_insert(addr, size);
+    malloced_insert(addr, size);
 
-  kmem.total_mem_size += size;
-  if (addr == 0) disp_color_str("kmalloc_over4k:kmalloc Error,no memory", 0x74);
+    kmem.total_mem_size += size;
+    if (addr == 0)
+        disp_color_str("kmalloc_over4k:kmalloc Error,no memory", 0x74);
 
-  return addr;
+    return addr;
 }
 
 // added by wang 2021.6.8
 u32 kfree_over4k(u32 addr) {
-  u32 i, size = 0;
+    u32 i, size = 0;
 
-  for (i = 0; i < mal.count; i++)  //使用地址在分配表中查找已分配内存块
-  {
-    if (addr == mal.mtable[i].addr) {
-      size = mal.mtable[i].size;
+    for (i = 0; i < mal.count; i++) // 使用地址在分配表中查找已分配内存块
+    {
+        if (addr == mal.mtable[i].addr) {
+            size = mal.mtable[i].size;
 
-      break;
+            break;
+        }
     }
-  }
-  if (i < mal.count) {
-    mal.count--;
+    if (i < mal.count) {
+        mal.count--;
 
-    for (; i < mal.count; i++) {
-      mal.mtable[i] = mal.mtable[i + 1];
+        for (; i < mal.count; i++) { mal.mtable[i] = mal.mtable[i + 1]; }
+    } else {
+        disp_color_str("kfree_over4k error", 0x74);
+
+        return -1; // 查找失败
     }
-  } else {
-    disp_color_str("kfree_over4k error", 0x74);
 
-    return -1;  //查找失败
-  }
+    kmem.total_mem_size -= size;
+    block_init(addr, addr + size, kbud);
 
-  kmem.total_mem_size -= size;
-  block_init(addr, addr + size, kbud);
-
-  return 0;
+    return 0;
 }
 
 u32 get_kmalloc_size(u32 addr) {
-  u32 i, size = 0;
+    u32 i, size = 0;
 
-  for (i = 0; i < mal.count; i++)  //使用地址在分配表中查找已分配内存块
-  {
-    if (addr == mal.mtable[i].addr) {
-      size = mal.mtable[i].size;
+    for (i = 0; i < mal.count; i++) // 使用地址在分配表中查找已分配内存块
+    {
+        if (addr == mal.mtable[i].addr) {
+            size = mal.mtable[i].size;
 
-      break;
+            break;
+        }
     }
-  }
-  return size;
+    return size;
 }
 
 // added by wang 2021.6.8
 static u32 which_order(u32 size) {
-  u32 i;
-  for (i = 0;; i++) {
-    if (size <= block_size[i]) break;
-  }
-  return i;
+    u32 i;
+    for (i = 0;; i++) {
+        if (size <= block_size[i]) break;
+    }
+    return i;
 }
 
 /*u32 kmalloc(u32 size) //核心态下为内核程序分配小内存
@@ -162,18 +161,18 @@ static u32 which_order(u32 size) {
     return addr;
 }*/
 
-void malloced_insert(u32 addr, u32 size)  //已经分配分区的记录表，供kfree使用
+void malloced_insert(u32 addr, u32 size) // 已经分配分区的记录表，供kfree使用
 {
-  u32 i = mal.count;
+    u32 i = mal.count;
 
-  mal.mtable[i].size = size;
+    mal.mtable[i].size = size;
 
-  mal.mtable[i].addr = addr;
+    mal.mtable[i].addr = addr;
 
-  mal.count++;
+    mal.count++;
 
-  if (mal.count >= MAX_MBLOCK)  // add by wang 2021.3.25
-    disp_color_str("kmalloc error:kmalloced table is full\n", 0x74);
+    if (mal.count >= MAX_MBLOCK) // add by wang 2021.3.25
+        disp_color_str("kmalloc error:kmalloced table is full\n", 0x74);
 }
 
 /*int kfree(u32 addr) //核心态下内核程序释放已申请的小内存
@@ -479,98 +478,77 @@ num_4K == pageid)
 // #define KMALLOC_TEST
 #ifdef KMALLOC_TEST
 void scan_ktable() {
-  u32 i;
-  for (i = 0; i < kmem.count; i++) {
-    u32 pageid = kmem.kmem_table[i].addr / num_4K;
-    disp_int(i);
-    //        disp_str(":pageid=");
-    //        disp_int(pageid);
-    disp_str(":  addr=");
-    disp_int(kmem.kmem_table[i].addr);
-    disp_str("  size=");
-    disp_int(kmem.kmem_table[i].size);
-    if (i % 2 == 1)
-      disp_str("\n");
-    else
-      disp_str("  ");
-  }
-  if (i % 2 == 1) disp_str("\n");
+    u32 i;
+    for (i = 0; i < kmem.count; i++) {
+        u32 pageid = kmem.kmem_table[i].addr / num_4K;
+        disp_int(i);
+        // disp_str(":pageid=");
+        // disp_int(pageid);
+        disp_str(":  addr=");
+        disp_int(kmem.kmem_table[i].addr);
+        disp_str("  size=");
+        disp_int(kmem.kmem_table[i].size);
+        if (i % 2 == 1)
+            disp_str("\n");
+        else
+            disp_str("  ");
+    }
+    if (i % 2 == 1) disp_str("\n");
 }
 
 void scan_malloc_table() {
-  u32 i;
-  for (i = 0; i < mal.count; i++) {
-    disp_int(i);
-    disp_str(": addr=");
-    disp_int(mal.mtable[i].addr);
-    disp_str("   size=");
-    disp_int(mal.mtable[i].size);
-    if (i % 2 == 1)
-      disp_str("\n");
-    else
-      disp_str("  ");
-  }
-  if (i % 2 == 1) disp_str("\n");
+    u32 i;
+    for (i = 0; i < mal.count; i++) {
+        disp_int(i);
+        disp_str(": addr=");
+        disp_int(mal.mtable[i].addr);
+        disp_str("   size=");
+        disp_int(mal.mtable[i].size);
+        if (i % 2 == 1)
+            disp_str("\n");
+        else
+            disp_str("  ");
+    }
+    if (i % 2 == 1) disp_str("\n");
 }
 
 void scan_mem_size() {
-  disp_str("kbud->total_mem_size=");
-  disp_int(kbud->total_mem_size);
-  disp_str("    kbud->current_mem_size=");
-  disp_int(kbud->current_mem_size);
-  disp_str("\n");
-  disp_str("kmem.total_mem_size=");
-  disp_int(kmem.total_mem_size);
-  disp_str("    kmem.current_mem_size=");
-  disp_int(kmem.current_mem_size);
-  disp_str("\ntotal_mem_size=");
-  disp_int(ubud->current_mem_size + kbud->current_mem_size +
-           kmem.current_mem_size);
-  disp_str("\n");
+    disp_str("kbud->total_mem_size=");
+    disp_int(kbud->total_mem_size);
+    disp_str("    kbud->current_mem_size=");
+    disp_int(kbud->current_mem_size);
+    disp_str("\n");
+    disp_str("kmem.total_mem_size=");
+    disp_int(kmem.total_mem_size);
+    disp_str("    kmem.current_mem_size=");
+    disp_int(kmem.current_mem_size);
+    disp_str("\ntotal_mem_size=");
+    disp_int(ubud->current_mem_size + kbud->current_mem_size +
+             kmem.current_mem_size);
+    disp_str("\n");
 }
 
 void test_kmalloc_kfree_over4k() {
-  // int vaddr1,vaddr2,vaddr3;
-  int paddr1, paddr2, paddr3;
+    // int vaddr1,vaddr2,vaddr3;
+    int paddr1, paddr2, paddr3;
 
-  disp_str("-----------initial buddy----------\n");
+    disp_str("-----------initial buddy----------\n");
 
-  Scan_free_area(kbud);
+    Scan_free_area(kbud);
 
-  disp_str("-----------initial ktable-------\n");
+    disp_str("-----------initial ktable-------\n");
 
-  scan_ktable();
+    scan_ktable();
 
-  disp_str("-----------initial malloc_table--------------\n");
+    disp_str("-----------initial malloc_table--------------\n");
 
-  scan_malloc_table();
+    scan_malloc_table();
 
-  // vaddr1=do_kmalloc(10240);//测试_kmalloc中for循环外的if分支
-  paddr1 = phy_kmalloc(10240);  // modified by mingxuan 2021-8-16
-  /*                              //即没有合适的空闲块分配4K页面并建立映射
-
-scan_mem_size();
-disp_str("-----------buddy----------\n");
-
-Scan_free_area(kbud);
-
-disp_str("-----------ktable-------\n");
-
-scan_ktable();
-
-disp_str("-----------malloc_table--------------\n");
-
-scan_malloc_table();
-*/
-
-  paddr2 = phy_kmalloc(1024);
-  scan_mem_size();
-
-  paddr3 = phy_kmalloc(20480);
+    // vaddr1=do_kmalloc(10240);//测试_kmalloc中for循环外的if分支
+    paddr1 = phy_kmalloc(10240); // modified by mingxuan 2021-8-16
+    /*                              //即没有合适的空闲块分配4K页面并建立映射
 
   scan_mem_size();
-
-  /*
   disp_str("-----------buddy----------\n");
 
   Scan_free_area(kbud);
@@ -582,179 +560,200 @@ scan_malloc_table();
   disp_str("-----------malloc_table--------------\n");
 
   scan_malloc_table();
-*/
-
-  /*
-  do_kfree(vaddr1);
-  do_kfree(vaddr2);
-  do_kfree(vaddr3);
   */
-  phy_kfree(paddr1);
-  phy_kfree(paddr2);
-  phy_kfree(paddr3);
 
-  disp_str("-----------buddy----------\n");
+    paddr2 = phy_kmalloc(1024);
+    scan_mem_size();
 
-  Scan_free_area(kbud);
+    paddr3 = phy_kmalloc(20480);
 
-  disp_str("-----------ktable-------\n");
+    scan_mem_size();
 
-  scan_ktable();
+    /*
+    disp_str("-----------buddy----------\n");
 
-  disp_str("-----------malloc_table--------------\n");
+    Scan_free_area(kbud);
 
-  scan_malloc_table();
+    disp_str("-----------ktable-------\n");
+
+    scan_ktable();
+
+    disp_str("-----------malloc_table--------------\n");
+
+    scan_malloc_table();
+  */
+
+    /*
+    do_kfree(vaddr1);
+    do_kfree(vaddr2);
+    do_kfree(vaddr3);
+    */
+    phy_kfree(paddr1);
+    phy_kfree(paddr2);
+    phy_kfree(paddr3);
+
+    disp_str("-----------buddy----------\n");
+
+    Scan_free_area(kbud);
+
+    disp_str("-----------ktable-------\n");
+
+    scan_ktable();
+
+    disp_str("-----------malloc_table--------------\n");
+
+    scan_malloc_table();
 }
 
 void test_kmalloc() {
-  // int vaddr1,vaddr2,vaddr3;
-  int paddr1, paddr2, paddr3;  // modified by mingxuan 2021-8-16
+    // int vaddr1,vaddr2,vaddr3;
+    int paddr1, paddr2, paddr3; // modified by mingxuan 2021-8-16
 
-  //    disp_str("-----------initial buddy----------\n");
+    // disp_str("-----------initial buddy----------\n");
 
-  //    Scan_free_area(kbud);
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
+    // Scan_free_area(kbud);
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
 
-  disp_str("-----------malloc_table--------------\n");
-  scan_malloc_table();
+    disp_str("-----------malloc_table--------------\n");
+    scan_malloc_table();
 
-  // vaddr1=do_kmalloc(1024);//测试_kmalloc中for循环外的if分支
-  //即没有合适的空闲块分配4K页面并建立映射
-  paddr1 = kern_kmalloc(1024);
+    // vaddr1=do_kmalloc(1024);//测试_kmalloc中for循环外的if分支
+    // 即没有合适的空闲块分配4K页面并建立映射
+    paddr1 = kern_kmalloc(1024);
 
-  //    Scan_free_area(kbud);
-  //    disp_str("-----------ktable-------\n");
+    // Scan_free_area(kbud);
+    // disp_str("-----------ktable-------\n");
 
-  //    scan_ktable();
+    // scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
+    // disp_str("-----------malloc_table--------------\n");
 
-  //    scan_malloc_table();
+    // scan_malloc_table();
 
-  // vaddr2=do_kmalloc(72);//测试kmalloc中for循环内的第一个if分支
-  //即空闲表中有合适的分区，并且分区大小大于要分配的空间
-  paddr2 = kern_kmalloc(72);
+    // vaddr2=do_kmalloc(72);//测试kmalloc中for循环内的第一个if分支
+    // 即空闲表中有合适的分区，并且分区大小大于要分配的空间
+    paddr2 = kern_kmalloc(72);
 
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 
-  // vaddr3=do_kmalloc(3000);//测试kmalloc中for循环内的第二个if分支
-  //即空闲表中有合适的分区，并且分区大小等于要分配的空间
-  //分配后要将该分区删除
-  paddr3 = kern_kmalloc(3000);
+    // vaddr3=do_kmalloc(3000);//测试kmalloc中for循环内的第二个if分支
+    // 即空闲表中有合适的分区，并且分区大小等于要分配的空间
+    // 分配后要将该分区删除
+    paddr3 = kern_kmalloc(3000);
 
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 }
 
 void test_kfree() {
-  // int vaddr1,vaddr2,vaddr3,vaddr4,vaddr5,vaddr6,vaddr7;
-  int paddr1, paddr2, paddr3, paddr4, paddr5, paddr6, paddr7;
+    // int vaddr1,vaddr2,vaddr3,vaddr4,vaddr5,vaddr6,vaddr7;
+    int paddr1, paddr2, paddr3, paddr4, paddr5, paddr6, paddr7;
 
-  //    disp_str("-----------buddy initial----------\n");
-  //    Scan_free_area(kbud);
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
+    // disp_str("-----------buddy initial----------\n");
+    // Scan_free_area(kbud);
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
-  paddr1 = kern_kmalloc(1024);
-  scan_mem_size();
-  paddr2 = kern_kmalloc(2000);
-  scan_mem_size();
-  paddr3 = kern_kmalloc(512);
-  scan_mem_size();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
+    paddr1 = kern_kmalloc(1024);
+    scan_mem_size();
+    paddr2 = kern_kmalloc(2000);
+    scan_mem_size();
+    paddr3 = kern_kmalloc(512);
+    scan_mem_size();
 
-  paddr4 = kern_kmalloc(2048);
-  scan_mem_size();
-  paddr5 = kern_kmalloc(1000);
-  scan_mem_size();
-  paddr6 = kern_kmalloc(1024);
-  scan_mem_size();
+    paddr4 = kern_kmalloc(2048);
+    scan_mem_size();
+    paddr5 = kern_kmalloc(1000);
+    scan_mem_size();
+    paddr6 = kern_kmalloc(1024);
+    scan_mem_size();
 
-  paddr7 = kern_kmalloc(3200);
-  scan_mem_size();
-  //    disp_str("after kmalloc:----------buddy free_area----------\n");
-  //    Scan_free_area(kbud);
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
+    paddr7 = kern_kmalloc(3200);
+    scan_mem_size();
+    // disp_str("after kmalloc:----------buddy free_area----------\n");
+    // Scan_free_area(kbud);
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 
-  phy_kfree(
-      paddr1);  //不属于同一页的分区即使连续也不合并,和第二页的剩余分区地址连续
-  scan_mem_size();
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    phy_kfree(
+        paddr1); // 不属于同一页的分区即使连续也不合并,和第二页的剩余分区地址连续
+    scan_mem_size();
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 
-  phy_kfree(paddr2);  //仅和前面内存块连续，合并
-  scan_mem_size();
+    phy_kfree(paddr2); // 仅和前面内存块连续，合并
+    scan_mem_size();
 
-  disp_str("-----------ktable-------\n");
-  scan_ktable();
+    disp_str("-----------ktable-------\n");
+    scan_ktable();
 
-  disp_str("-----------malloc_table--------------\n");
-  scan_malloc_table();
+    disp_str("-----------malloc_table--------------\n");
+    scan_malloc_table();
 
-  phy_kfree(paddr6);  //仅和后面内存块连续，合并
-  scan_mem_size();
+    phy_kfree(paddr6); // 仅和后面内存块连续，合并
+    scan_mem_size();
 
-  disp_str("-----------ktable-------\n");
-  scan_ktable();
+    disp_str("-----------ktable-------\n");
+    scan_ktable();
 
-  disp_str("-----------malloc_table------------\n");
-  scan_malloc_table();
+    disp_str("-----------malloc_table------------\n");
+    scan_malloc_table();
 
-  phy_kfree(paddr4);  //和前后分区都不连续，直接插入
+    phy_kfree(paddr4); // 和前后分区都不连续，直接插入
 
-  //    disp_str("-----------ktable-------\n");
-  //    scan_ktable();
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    // disp_str("-----------ktable-------\n");
+    // scan_ktable();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 
-  phy_kfree(
-      paddr3);  //和前面的内存块及后面内存块都连续，两次合并，合并后size=4K,释放页面
-                //    disp_str("----------buddy free_area----------\n");
-                //    Scan_free_area(kbud);
-                //    disp_str("-----------ktable-------\n");
-                //    scan_ktable();
+    phy_kfree(
+        paddr3); // 和前面的内存块及后面内存块都连续，两次合并，合并后size=4K,释放页面
+                 //     disp_str("----------buddy free_area----------\n");
+                 //     Scan_free_area(kbud);
+                 //     disp_str("-----------ktable-------\n");
+                 //     scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
-  //    scan_malloc_table();
+    // disp_str("-----------malloc_table--------------\n");
+    // scan_malloc_table();
 
-  //    do_kfree(vaddr5);
-  //    do_kfree(vaddr7);
-  //    disp_str("-------free_area after kmalloc/kfree--------\n");
-  //    Scan_free_area(kbud);
-  //   disp_str("-----------ktable-------\n");
+    // do_kfree(vaddr5);
+    // do_kfree(vaddr7);
+    // disp_str("-------free_area after kmalloc/kfree--------\n");
+    // Scan_free_area(kbud);
+    // disp_str("-----------ktable-------\n");
 
-  //    scan_ktable();
+    // scan_ktable();
 
-  //    disp_str("-----------malloc_table--------------\n");
+    // disp_str("-----------malloc_table--------------\n");
 
-  //    scan_malloc_table();
+    // scan_malloc_table();
 
-  /*
-  vaddr1=do_kmalloc(1200);
+    /*
+    vaddr1=do_kmalloc(1200);
 
-  disp_str("-------free_area after kmalloc/kfree--------\n");
-  Scan_free_area(kbud);
-  disp_str("-----------ktable-------\n");
+    disp_str("-------free_area after kmalloc/kfree--------\n");
+    Scan_free_area(kbud);
+    disp_str("-----------ktable-------\n");
 
-  scan_ktable();
+    scan_ktable();
 
-  disp_str("-----------malloc_table--------------\n");
+    disp_str("-----------malloc_table--------------\n");
 
-  scan_malloc_table();
-*/
+    scan_malloc_table();
+  */
 }
 #endif

@@ -17,12 +17,12 @@
 #include <klib/cmpxchg.h>
 #include <klib/spinlock.h>
 
-#define lock_log(info)                  \
-  {                                     \
-    disp_str(info);                     \
-    disp_int(p_proc_current->task.pid); \
-    disp_str(" ");                      \
-  }
+#define lock_log(info)                      \
+    {                                       \
+        disp_str(info);                     \
+        disp_int(p_proc_current->task.pid); \
+        disp_str(" ");                      \
+    }
 // extern int use_console_lock;
 
 // static inline uint
@@ -39,13 +39,13 @@
 // }
 
 static inline u32 cmpxchg(u32 *ptr, u32 old, u32 new) {
-  return (u32)__cmpxchg(ptr, old, new, __X86_CASE_L);
+    return (u32)__cmpxchg(ptr, old, new, __X86_CASE_L);
 }
 
 void initlock(struct spinlock *lock, char *name) {
-  lock->name = name;
-  lock->locked = 0;
-  lock->cpu = 0xffffffff;
+    lock->name = name;
+    lock->locked = 0;
+    lock->cpu = 0xffffffff;
 }
 
 // Acquire the lock.
@@ -53,23 +53,24 @@ void initlock(struct spinlock *lock, char *name) {
 // (Because contention is handled by spinning, must not
 // go to sleep holding any locks.)
 void acquire(struct spinlock *lock) {
-  while (cmpxchg(&lock->locked, 0, 1) == 1)
-    ;
-  lock->pcs[0] = proc2pid(p_proc_current);
+    while (cmpxchg(&lock->locked, 0, 1) == 1);
+    lock->pcs[0] = proc2pid(p_proc_current);
 }
 
 // Release the lock.
-void release(struct spinlock *lock) { lock->locked = 0; }
+void release(struct spinlock *lock) {
+    lock->locked = 0;
+}
 
 // 尝试对lock上锁，如果是锁着的状态则调用callback
 void lock_or(struct spinlock *lock, void (*callback)()) {
-  while (cmpxchg(&lock->locked, 0, 1) == 1) {
-    if (callback != NULL) {
-      callback();
+    while (cmpxchg(&lock->locked, 0, 1) == 1) {
+        if (callback != NULL) { callback(); }
     }
-  }
-  lock->pcs[0] = proc2pid(p_proc_current);
+    lock->pcs[0] = proc2pid(p_proc_current);
 }
 
 // 尝试对lock上锁，如果是锁着的状态则放弃cpu进行调度
-void lock_or_yield(struct spinlock *lock) { return lock_or(lock, sched_yield); }
+void lock_or_yield(struct spinlock *lock) {
+    return lock_or(lock, sched_yield);
+}

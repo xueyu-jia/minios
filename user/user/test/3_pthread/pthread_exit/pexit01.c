@@ -17,55 +17,57 @@ logging logger;
 const int RETURN_CODE = 100;
 static int sem = 0;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void *thread_func(void *arg) {
-  sem = 1;
-  pthread_exit((void *)RETURN_CODE);
+    sem = 1;
+    pthread_exit((void *)RETURN_CODE);
 }
 
 void run() {
-  pthread_t thread_id;
+    pthread_t thread_id;
 
-  // 创建新线程
-  int rval = pthread_create(&thread_id, NULL, thread_func, NULL);
-  if (rval != 0) {
-    error(&logger, "pthread_create return %d, thread_id: %d\n", rval,
-          thread_id);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 创建新线程
+    int rval = pthread_create(&thread_id, NULL, thread_func, NULL);
+    if (rval != 0) {
+        error(&logger, "pthread_create return %d, thread_id: %d\n", rval,
+              thread_id);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 确保线程已执行
-  while (sem == 0) {
-    sleep(10);
-  }
+    // 确保线程已执行
+    while (sem == 0) { sleep(10); }
 
-  // 等待线程结束
-  int *value_ptr = 0;
-  rval = pthread_join(thread_id, (void *)&value_ptr);
-  if (rval != 0) {
-    error(&logger, "pthread_join return %d, expected 0\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 等待线程结束
+    int *value_ptr = 0;
+    rval = pthread_join(thread_id, (void *)&value_ptr);
+    if (rval != 0) {
+        error(&logger, "pthread_join return %d, expected 0\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 比较
-  info(&logger, "value_ptr: %d, RETURN_CODE: %d\n", (int)value_ptr,
-       RETURN_CODE);
-  if ((int)value_ptr != RETURN_CODE) {
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 比较
+    info(&logger, "value_ptr: %d, RETURN_CODE: %d\n", (int)value_ptr,
+         RETURN_CODE);
+    if ((int)value_ptr != RETURN_CODE) {
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

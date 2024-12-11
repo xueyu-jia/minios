@@ -19,47 +19,49 @@ logging logger;
 const char *child_name = "child06";
 const int exp_val = 6;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void do_child() {
-  int ret = execve(child_name, NULL, NULL);
-  // execve 失败，返回 -1
-  error(&logger, "failed to execve, return %d\n", ret);
-  exit(-1);
+    int ret = execve(child_name, NULL, NULL);
+    // execve 失败，返回 -1
+    error(&logger, "failed to execve, return %d\n", ret);
+    exit(-1);
 }
 
 void run() {
-  info(&logger, "fork...\n");
-  for (int i = 0; i < N_FORKS; i++) {
-    int pid = SAFE_FORK();
-    if (pid == 0) {
-      do_child();
+    info(&logger, "fork...\n");
+    for (int i = 0; i < N_FORKS; i++) {
+        int pid = SAFE_FORK();
+        if (pid == 0) { do_child(); }
     }
-  }
 
-  info(&logger, "waiting children...\n");
-  for (int i = 0; i < N_FORKS; i++) {
-    int status;
-    wait(&status);
-    if (status == -1) {  // execve error
-      error(&logger, "execve error\n");
-      cleanup();
-      exit(TC_FAIL);
-    } else if (status != exp_val) {
-      error(&logger, "child exit %d, expected %d\n", status, exp_val);
-      cleanup();
-      exit(TC_FAIL);
+    info(&logger, "waiting children...\n");
+    for (int i = 0; i < N_FORKS; i++) {
+        int status;
+        wait(&status);
+        if (status == -1) { // execve error
+            error(&logger, "execve error\n");
+            cleanup();
+            exit(TC_FAIL);
+        } else if (status != exp_val) {
+            error(&logger, "child exit %d, expected %d\n", status, exp_val);
+            cleanup();
+            exit(TC_FAIL);
+        }
     }
-  }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

@@ -16,21 +16,25 @@ const char *child_name = "child02";
 
 const char *const para[] = {"p1", "p2", NULL};
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  // int ret = execve(child_name, para, NULL);
-  int ret = execve(child_name, para, NULL);
-  // should not return
-  error(&logger, "execve return %d\n", ret);
-  error(&logger, "failed\n");
+    // int ret = execve(child_name, para, NULL);
+    int ret = execve(child_name, para, NULL);
+    // should not return
+    error(&logger, "execve return %d\n", ret);
+    error(&logger, "failed\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_FAIL);
+    setup();
+    run();
+    cleanup();
+    exit(TC_FAIL);
 }

@@ -39,112 +39,102 @@
 // }
 
 void test_fucntion_1() {
-  if (fork() != 0) {
-    // parent
-    for (unsigned int i = 0; i < 4294; i++) {
-      printf("a ");
+    if (fork() != 0) {
+        // parent
+        for (unsigned int i = 0; i < 4294; i++) { printf("a "); }
+        exit(0);
     }
+    // child
+    for (unsigned int i = 0; i < 4294; i++) { printf("b "); }
     exit(0);
-  }
-  // child
-  for (unsigned int i = 0; i < 4294; i++) {
-    printf("b ");
-  }
-  exit(0);
 }
 
 void test_fucntion_2() {
-  if (fork() != 0) {
-    // parent
+    if (fork() != 0) {
+        // parent
 
-    for (unsigned int i = 0; i < 4294; i++) {
-      printf("a ");
+        for (unsigned int i = 0; i < 4294; i++) { printf("a "); }
+        exit(0);
     }
+    // child
+    nice(-6);
+    for (unsigned int i = 0; i < 4294; i++) { printf("b "); }
     exit(0);
-  }
-  // child
-  nice(-6);
-  for (unsigned int i = 0; i < 4294; i++) {
-    printf("b ");
-  }
-  exit(0);
 }
 
 void test_fucntion_3() {
-  if (fork() != 0) {
-    // parent
-    nice(-6);
-    int a = 0;
-    for (int j = 0; j < 10; j++)
-      for (int x = 0; x < 10; x++) {
+    if (fork() != 0) {
+        // parent
+        nice(-6);
         int a = 0;
-        for (unsigned int i = 0; i < 429400; i++) {
-          // printf("a ");
-          a++;
-        }
-      }
+        for (int j = 0; j < 10; j++)
+            for (int x = 0; x < 10; x++) {
+                int a = 0;
+                for (unsigned int i = 0; i < 429400; i++) {
+                    // printf("a ");
+                    a++;
+                }
+            }
 
-    proc_msg msg;
-    get_proc_msg(&msg);
-    print_PCB(&msg);
+        proc_msg msg;
+        get_proc_msg(&msg);
+        print_PCB(&msg);
+        exit(0);
+    }
+    // child
+    int a = 0;
+    for (unsigned int i = 0; i < 429400; i++) {
+        // printf("b ");
+        a++;
+    }
     exit(0);
-  }
-  // child
-  int a = 0;
-  for (unsigned int i = 0; i < 429400; i++) {
-    // printf("b ");
-    a++;
-  }
-  exit(0);
 }
 
 void test_fucntion_4() {
-  if (fork() == 0) {
-    // chile
-    set_rt(TRUE);
-    for (unsigned int i = 0; i < 4294; i++) {
-      printf("a ");
+    if (fork() == 0) {
+        // chile
+        set_rt(TRUE);
+        for (unsigned int i = 0; i < 4294; i++) { printf("a "); }
+        exit(0);
     }
+    // parent
+    for (unsigned int i = 0; i < 4294; i++) { printf("b "); }
     exit(0);
-  }
-  // parent
-  for (unsigned int i = 0; i < 4294; i++) {
-    printf("b ");
-  }
-  exit(0);
 }
 
 void test_fucntion_5() {
-  if (fork() != 0) {
-    // parent
-    nice(-6);
-    set_rt(TRUE);
-    int a = 0;
-    for (int j = 0; j < 10; j++)
-      for (int x = 0; x < 10; x++) {
+    if (fork() != 0) {
+        // parent
+        nice(-6);
+        set_rt(TRUE);
         int a = 0;
-        for (unsigned int i = 0; i < 429400; i++) {
-          // printf("a ");
-          a++;
-        }
-      }
+        for (int j = 0; j < 10; j++)
+            for (int x = 0; x < 10; x++) {
+                int a = 0;
+                for (unsigned int i = 0; i < 429400; i++) {
+                    // printf("a ");
+                    a++;
+                }
+            }
 
-    proc_msg msg;
-    get_proc_msg(&msg);
-    print_PCB(&msg);
+        proc_msg msg;
+        get_proc_msg(&msg);
+        print_PCB(&msg);
+        exit(0);
+    }
+    // child
+    int a = 0;
+    for (unsigned int i = 0; i < 429400; i++) {
+        // printf("b ");
+        a++;
+    }
     exit(0);
-  }
-  // child
-  int a = 0;
-  for (unsigned int i = 0; i < 429400; i++) {
-    // printf("b ");
-    a++;
-  }
-  exit(0);
 }
 
 void print_PCB(proc_msg *msg) {
-  printf("\npid = %d; nice = %d; vruntime = %d; cpu_time = %d\n", msg->pid,
-         msg->nice, msg->vruntime, msg->sum_cpu_use);
+    printf("\npid = %d; nice = %d; vruntime = %d; cpu_time = %d\n", msg->pid,
+           msg->nice, msg->vruntime, msg->sum_cpu_use);
 }
-int main() { test_fucntion_5(); }
+int main() {
+    test_fucntion_5();
+}

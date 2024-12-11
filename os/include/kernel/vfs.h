@@ -7,11 +7,11 @@
 #include <kernel/fs.h>
 #include <kernel/stat.h>
 // mark
-//#define NR_DEV 10
+// #define NR_DEV 10
 // #define NR_FS 16		//modified by mingxuan 2020-10-18
 
 // added by mingxuan 2020-10-27
-#define NO_FS_TYPE 0x0  // added by mingxuan 2020-10-30
+#define NO_FS_TYPE 0x0 // added by mingxuan 2020-10-30
 #define DEV_FS_TYPE 0x1
 #define ORANGE_TYPE 0x2
 #define FAT32_TYPE 0x3
@@ -43,8 +43,8 @@ PUBLIC int sys_opendir();
 PUBLIC int sys_mkdir();
 PUBLIC int sys_rmdir();
 PUBLIC int sys_readdir();
-PUBLIC int sys_chdir();   // added by ran
-PUBLIC int sys_getcwd();  // added by ran
+PUBLIC int sys_chdir();  // added by ran
+PUBLIC int sys_getcwd(); // added by ran
 PUBLIC int sys_stat();
 
 PUBLIC int kern_vfs_open(const char *path, int flags, int mode);

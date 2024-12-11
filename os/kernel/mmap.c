@@ -14,10 +14,10 @@ PRIVATE void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr,
  * 如果无法建立映射，返回-1
  */
 PUBLIC void *kmap(page *_page) {
-  u32 phy = pfn_to_phy(page_to_pfn(_page));
-  // disp_str("\nkmap:");
-  // disp_int(phy);
-  return (void *)kmapping_phy(phy);
+    u32 phy = pfn_to_phy(page_to_pfn(_page));
+    // disp_str("\nkmap:");
+    // disp_int(phy);
+    return (void *)kmapping_phy(phy);
 }
 
 /**
@@ -25,41 +25,41 @@ PUBLIC void *kmap(page *_page) {
  * 内核段页表不进行任何操作
  */
 PUBLIC void kunmap(page *_page) {
-  u32 phy = pfn_to_phy(page_to_pfn(_page));
-  // disp_str("\nkunmap:");
-  // disp_int(phy);
-  kunmapping_phy(phy);
+    u32 phy = pfn_to_phy(page_to_pfn(_page));
+    // disp_str("\nkunmap:");
+    // disp_int(phy);
+    kunmapping_phy(phy);
 }
 
 // addr 查找的起始线性地址, 返回地址区间与已有页面的重叠页面数
 PRIVATE u32 count_mapped_pages(LIN_MEMMAP *mmap, u32 start, u32 end) {
-  struct vmem_area *vma;
-  u32 nr_pages = 0;
-  start &= 0xFFFFF000;
-  end = UPPER_BOUND_4K(end);
-  vma = find_vma(mmap, start);
-  while (vma &&
-         end > vma->start) {  // 后面存在已映射地址，找到第一个可用的空闲区域
-    nr_pages += (min(vma->end, end) - max(vma->start, start)) >> PAGE_SHIFT;
-    vma = list_next(&mmap->vma_map, vma, vma_list);
-  }
-  return nr_pages;
+    struct vmem_area *vma;
+    u32 nr_pages = 0;
+    start &= 0xFFFFF000;
+    end = UPPER_BOUND_4K(end);
+    vma = find_vma(mmap, start);
+    while (vma &&
+           end > vma->start) { // 后面存在已映射地址，找到第一个可用的空闲区域
+        nr_pages += (min(vma->end, end) - max(vma->start, start)) >> PAGE_SHIFT;
+        vma = list_next(&mmap->vma_map, vma, vma_list);
+    }
+    return nr_pages;
 }
 
 // addr 查找的起始线性地址, succ 返回时保存后继的vma,
 PRIVATE u32 get_unmapped_addr(LIN_MEMMAP *mmap, u32 addr, u32 len,
                               struct vmem_area **succ) {
-  struct vmem_area *vma;
-  vma = find_vma(mmap, addr);
-  while (vma &&
-         addr + len >
-             vma->start) {  // 后面存在已映射地址，找到第一个可用的空闲区域
-    addr = vma->end;
-    vma = list_next(&mmap->vma_map, vma, vma_list);
-    // [addr, vma->start)为空闲区域，如果长度满足要求，那就是可用的
-  }
-  *succ = vma;
-  return addr;
+    struct vmem_area *vma;
+    vma = find_vma(mmap, addr);
+    while (vma &&
+           addr + len >
+               vma->start) { // 后面存在已映射地址，找到第一个可用的空闲区域
+        addr = vma->end;
+        vma = list_next(&mmap->vma_map, vma, vma_list);
+        // [addr, vma->start)为空闲区域，如果长度满足要求，那就是可用的
+    }
+    *succ = vma;
+    return addr;
 }
 
 /// @brief kern_mmap: mmap 核心实现 jiangfeng 2024.5
@@ -87,76 +87,74 @@ PRIVATE u32 get_unmapped_addr(LIN_MEMMAP *mmap, u32 addr, u32 len,
 /// @return 如果映射成功，返回实际映射的开始虚拟地址，否则返回-1
 PUBLIC int kern_mmap(PROCESS *p_proc, struct file_desc *file, u32 addr, u32 len,
                      u32 prot, u32 flag, u32 pgoff) {
-  len = UPPER_BOUND_4K(len);
-  if (len == 0) {
-    return -1;
-  }
-  if ((pgoff + (len >> PAGE_SHIFT)) < pgoff) {
-    return -1;  // len overflow
-  }
-  if (addr + len > KernelLinBase) {
-    return -1;
-  }
-  if (((!(flag & MAP_SHARED)) ^ (!(flag & MAP_PRIVATE))) !=
-      1) {  // MAP_SHARED MAP_PRIVATE必须二选一
-    return -1;
-  }
-  if ((flag & MAP_SHARED) && file) {
-    if ((prot & PROT_WRITE) && (!(file->fd_mode & I_W))) {
-      return -1;  // request write but file cannot write
+    len = UPPER_BOUND_4K(len);
+    if (len == 0) { return -1; }
+    if ((pgoff + (len >> PAGE_SHIFT)) < pgoff) {
+        return -1; // len overflow
     }
-    if ((prot & PROT_EXEC) && (!(file->fd_mode & I_X))) {
-      return -1;  // request exec but file cannot execute
+    if (addr + len > KernelLinBase) { return -1; }
+    if (((!(flag & MAP_SHARED)) ^ (!(flag & MAP_PRIVATE))) !=
+        1) { // MAP_SHARED MAP_PRIVATE必须二选一
+        return -1;
     }
-  }
-  LIN_MEMMAP *mmap = proc_memmap(p_proc);
-  struct vmem_area *succ = NULL, *vma = NULL;
-  lock_or_yield(&mmap->vma_lock);
-  u32 covered = count_mapped_pages(mmap, addr, addr + len);
-  // check prot flag
-  if (covered && (flag & MAP_FIXED)) {
-    release(&mmap->vma_lock);
-    kern_munmap(p_proc, addr, len);
+    if ((flag & MAP_SHARED) && file) {
+        if ((prot & PROT_WRITE) && (!(file->fd_mode & I_W))) {
+            return -1; // request write but file cannot write
+        }
+        if ((prot & PROT_EXEC) && (!(file->fd_mode & I_X))) {
+            return -1; // request exec but file cannot execute
+        }
+    }
+    LIN_MEMMAP *mmap = proc_memmap(p_proc);
+    struct vmem_area *succ = NULL, *vma = NULL;
     lock_or_yield(&mmap->vma_lock);
-  }
-  // lock_or_yield(&p_proc->task.lock);
-  u32 start_addr = get_unmapped_addr(mmap, addr, len, &succ);
-  if (start_addr + len > KernelLinBase) {  // 实际映射的区域不允许超出用户地址段
-    goto fail_lock_out;
-  }
-  if (start_addr != addr && (flag & MAP_FIXED)) {
-    disp_str("error: MAP_FIXED set but cant map param addr");
-    goto fail_lock_out;
-  }
-  // link vma
-  if (file) {
-    fget(file);
-  } else if (flag & MAP_PRIVATE) {
-    pgoff = start_addr >> PAGE_SHIFT;
-  }
-  // 所有vma必须没有重叠，按照地址顺序排列于memmap.vma_map的链表
-  // 为简化流程，mmap这里没有实现vma的merge
-  // 对于mmap,
-  // merge操作不是必要的，但是对于某些对已有vma的操作，如mprotect必须实现merge
-  vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
-  vma->start = start_addr;
-  vma->end = start_addr + len;
-  vma->pgoff = pgoff;
-  vma->file = file;
-  vma->flags = prot | flag;
-  list_init(&vma->vma_list);
-  list_add_before(&vma->vma_list, (succ) ? (&succ->vma_list) : &mmap->vma_map);
-  // 对于没有写时复制的mmap, 需要设置好物理页和页表
-  release(&mmap->vma_lock);
+    u32 covered = count_mapped_pages(mmap, addr, addr + len);
+    // check prot flag
+    if (covered && (flag & MAP_FIXED)) {
+        release(&mmap->vma_lock);
+        kern_munmap(p_proc, addr, len);
+        lock_or_yield(&mmap->vma_lock);
+    }
+    // lock_or_yield(&p_proc->task.lock);
+    u32 start_addr = get_unmapped_addr(mmap, addr, len, &succ);
+    if (start_addr + len >
+        KernelLinBase) { // 实际映射的区域不允许超出用户地址段
+        goto fail_lock_out;
+    }
+    if (start_addr != addr && (flag & MAP_FIXED)) {
+        disp_str("error: MAP_FIXED set but cant map param addr");
+        goto fail_lock_out;
+    }
+    // link vma
+    if (file) {
+        fget(file);
+    } else if (flag & MAP_PRIVATE) {
+        pgoff = start_addr >> PAGE_SHIFT;
+    }
+    // 所有vma必须没有重叠，按照地址顺序排列于memmap.vma_map的链表
+    // 为简化流程，mmap这里没有实现vma的merge
+    // 对于mmap,
+    // merge操作不是必要的，但是对于某些对已有vma的操作，如mprotect必须实现merge
+    vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+    vma->start = start_addr;
+    vma->end = start_addr + len;
+    vma->pgoff = pgoff;
+    vma->file = file;
+    vma->flags = prot | flag;
+    list_init(&vma->vma_list);
+    list_add_before(&vma->vma_list,
+                    (succ) ? (&succ->vma_list) : &mmap->vma_map);
+    // 对于没有写时复制的mmap, 需要设置好物理页和页表
+    release(&mmap->vma_lock);
 #ifndef OPT_MMU_COW
-  prepare_vma(p_proc, mmap, vma);
+    prepare_vma(p_proc, mmap, vma);
 #endif
-  // release(&p_proc->task.lock);
-  return start_addr;
+    // release(&p_proc->task.lock);
+    return start_addr;
 fail_lock_out:
-  release(&mmap->vma_lock);
-  // release(&p_proc->task.lock);
-  return -1;
+    release(&mmap->vma_lock);
+    // release(&p_proc->task.lock);
+    return -1;
 }
 
 /// @brief 为当前进程映射虚拟地址空间
@@ -177,67 +175,59 @@ fail_lock_out:
 ///     file为NULL，类型为MAP_PRIVATE, 忽略传入的offset
 /// @return 如果映射成功，返回实际映射的开始虚拟地址，否则返回-1
 PUBLIC int do_mmap(u32 addr, u32 len, u32 prot, u32 flag, int fd, u32 offset) {
-  if (offset + UPPER_BOUND_4K(len) < offset || (addr & 0xFFF)) {
-    return -1;
-  }
-  struct file_desc *file = NULL;
-  if (fd != -1) {
-    if (fd < 0) return -1;
-    file = p_proc_current->task.filp[fd];
-    if (!file) return -1;
-  }
-  return kern_mmap(p_proc_current, file, addr, len, prot, flag,
-                   offset >> PAGE_SHIFT);
+    if (offset + UPPER_BOUND_4K(len) < offset || (addr & 0xFFF)) { return -1; }
+    struct file_desc *file = NULL;
+    if (fd != -1) {
+        if (fd < 0) return -1;
+        file = p_proc_current->task.filp[fd];
+        if (!file) return -1;
+    }
+    return kern_mmap(p_proc_current, file, addr, len, prot, flag,
+                     offset >> PAGE_SHIFT);
 }
 
 PRIVATE void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr,
                        int new_below) {
-  UNUSED(mmap);
-  struct vmem_area *new =
-      (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
-  *new = *vma;
-  list_init(&new->vma_list);
-  if (new->file) fget(new->file);
-  if (new_below) {
-    new->end = addr;
-  } else {
-    new->start = addr;
-    new->pgoff += ((addr - vma->start) >> PAGE_SHIFT);
-  }
-  if (new_below) {
-    list_add_before(&new->vma_list, &vma->vma_list);
-  } else {
-    list_add_after(&new->vma_list, &vma->vma_list);
-  }
+    UNUSED(mmap);
+    struct vmem_area *new =
+        (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+    *new = *vma;
+    list_init(&new->vma_list);
+    if (new->file) fget(new->file);
+    if (new_below) {
+        new->end = addr;
+    } else {
+        new->start = addr;
+        new->pgoff += ((addr - vma->start) >> PAGE_SHIFT);
+    }
+    if (new_below) {
+        list_add_before(&new->vma_list, &vma->vma_list);
+    } else {
+        list_add_after(&new->vma_list, &vma->vma_list);
+    }
 }
 
 PUBLIC int kern_munmap(PROCESS *p_proc, u32 start, u32 len) {
-  len = UPPER_BOUND_4K(len);
-  if (len == 0) {
-    return -1;
-  }
-  LIN_MEMMAP *mmap = proc_memmap(p_proc);
-  lock_or_yield(&mmap->vma_lock);
-  struct vmem_area *vma, *next, *last;
-  UNUSED(next);
-  u32 end = start + len;
-  vma = find_vma(mmap, start);
-  if (!vma)  // no target region
-    goto out;
-  if (vma->start > end) goto out;  // no need unmap
-  if (start > vma->start) {
-    split_vma(mmap, vma, start, 1);
-  }
-  last = find_vma(mmap, end);
-  if (last && end > last->start) {
-    split_vma(mmap, last, end, 1);
-  }
-  free_vmas(p_proc, mmap, vma, last);
+    len = UPPER_BOUND_4K(len);
+    if (len == 0) { return -1; }
+    LIN_MEMMAP *mmap = proc_memmap(p_proc);
+    lock_or_yield(&mmap->vma_lock);
+    struct vmem_area *vma, *next, *last;
+    UNUSED(next);
+    u32 end = start + len;
+    vma = find_vma(mmap, start);
+    if (!vma) // no target region
+        goto out;
+    if (vma->start > end) goto out; // no need unmap
+    if (start > vma->start) { split_vma(mmap, vma, start, 1); }
+    last = find_vma(mmap, end);
+    if (last && end > last->start) { split_vma(mmap, last, end, 1); }
+    free_vmas(p_proc, mmap, vma, last);
 out:
-  release(&mmap->vma_lock);
-  return 0;
+    release(&mmap->vma_lock);
+    return 0;
 }
 
 PUBLIC int do_munmap(u32 start, u32 len) {
-  return kern_munmap(p_proc_current, start, len);
+    return kern_munmap(p_proc_current, start, len);
 }

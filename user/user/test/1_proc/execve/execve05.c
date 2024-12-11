@@ -12,21 +12,25 @@ logging logger;
 
 const char *child_name = ".";
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  int ret = execve(child_name, NULL, NULL);
-  info(&logger, "execve return %d, exepcted %d\n", ret, -1);
-  if (ret != -1) {
-    info(&logger, "failed\n");
-    exit(TC_FAIL);
-  }
-  info(&logger, "passed\n");
+    int ret = execve(child_name, NULL, NULL);
+    info(&logger, "execve return %d, exepcted %d\n", ret, -1);
+    if (ret != -1) {
+        info(&logger, "failed\n");
+        exit(TC_FAIL);
+    }
+    info(&logger, "passed\n");
 }
 
 int main(int argc, char *argv[]) {
-  run();
-  exit(TC_PASS);
+    run();
+    exit(TC_PASS);
 }

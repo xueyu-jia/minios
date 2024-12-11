@@ -15,43 +15,47 @@ const char *syscall_name = "pthread_mutex_init";
 
 logging logger;
 
-void setup() { logger_init(&logger, log_filename, test_name, LOG_INFO); }
+void setup() {
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+}
 
-void cleanup() { logger_close(&logger); }
+void cleanup() {
+    logger_close(&logger);
+}
 
 void run() {
-  pthread_mutexattr_t mta = {
-      .name = "pm_init01",
-  };
-  pthread_mutex_t mutex1, mutex2;
-  int rval;
+    pthread_mutexattr_t mta = {
+        .name = "pm_init01",
+    };
+    pthread_mutex_t mutex1, mutex2;
+    int rval;
 
-  // 初始化 mutex1，mutexattr 为 mta
-  rval = pthread_mutex_init(&mutex1, &mta);
-  if (rval != 0) {
-    error(&logger, "pthread_mutex_init failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
-  if (strcmp(mutex1.name, "pm_init01") != 0) {
-    error(&logger, "pthread_mutex_init failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 初始化 mutex1，mutexattr 为 mta
+    rval = pthread_mutex_init(&mutex1, &mta);
+    if (rval != 0) {
+        error(&logger, "pthread_mutex_init failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
+    if (strcmp(mutex1.name, "pm_init01") != 0) {
+        error(&logger, "pthread_mutex_init failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  // 初始化 mutex2，mutexattr 为 NULL
-  if ((rval = pthread_mutex_init(&mutex1, NULL)) != 0) {
-    info(&logger, "pthread_mutex_init failed, return %d\n", rval);
-    cleanup();
-    exit(TC_FAIL);
-  }
+    // 初始化 mutex2，mutexattr 为 NULL
+    if ((rval = pthread_mutex_init(&mutex1, NULL)) != 0) {
+        info(&logger, "pthread_mutex_init failed, return %d\n", rval);
+        cleanup();
+        exit(TC_FAIL);
+    }
 
-  info(&logger, "PASSED\n");
+    info(&logger, "PASSED\n");
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(0);
+    setup();
+    run();
+    cleanup();
+    exit(0);
 }

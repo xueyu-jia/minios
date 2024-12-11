@@ -21,51 +21,51 @@ char write_buf[BUF_SIZE];
 int fd;
 
 void setup() {
-  logger_init(&logger, log_filename, test_name, LOG_INFO);
-  memset(write_buf, '1', BUF_SIZE);
-  fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
-  SAFE_WRITE(fd, write_buf, BUF_SIZE);
+    logger_init(&logger, log_filename, test_name, LOG_INFO);
+    memset(write_buf, '1', BUF_SIZE);
+    fd = SAFE_OPEN(filename, O_CREAT | O_RDWR);
+    SAFE_WRITE(fd, write_buf, BUF_SIZE);
 }
 
 void run() {
-  char read_buf[BUF_SIZE];
-  memset(read_buf, 0, BUF_SIZE);
-  // TODO make write corrupt
-  // int n = write(fd, (void *)-1, -1); // bad write
-  int n = write(fd, write_buf, -1);  // bad write
-  if (n != -1) {
-    info(&logger, "failed to fail\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
-  SAFE_CLOSE(fd);
-  fd = SAFE_OPEN(filename, O_RDWR);
-  n = read(fd, read_buf, BUF_SIZE);
-  if (n != BUF_SIZE) {
-    info(&logger, "read return %d, expected %d\n", n, BUF_SIZE);
-    cleanup();
-    exit(TC_FAIL);
-  }
-  if (memcmp((void *)read_buf, (void *)write_buf, BUF_SIZE) != 0) {
-    info(&logger, "write corrupted file!\n");
-    info(&logger, "test failed\n");
-    cleanup();
-    exit(TC_FAIL);
-  }
-  info(&logger, "passed\n");
+    char read_buf[BUF_SIZE];
+    memset(read_buf, 0, BUF_SIZE);
+    // TODO make write corrupt
+    // int n = write(fd, (void *)-1, -1); // bad write
+    int n = write(fd, write_buf, -1); // bad write
+    if (n != -1) {
+        info(&logger, "failed to fail\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
+    SAFE_CLOSE(fd);
+    fd = SAFE_OPEN(filename, O_RDWR);
+    n = read(fd, read_buf, BUF_SIZE);
+    if (n != BUF_SIZE) {
+        info(&logger, "read return %d, expected %d\n", n, BUF_SIZE);
+        cleanup();
+        exit(TC_FAIL);
+    }
+    if (memcmp((void *)read_buf, (void *)write_buf, BUF_SIZE) != 0) {
+        info(&logger, "write corrupted file!\n");
+        info(&logger, "test failed\n");
+        cleanup();
+        exit(TC_FAIL);
+    }
+    info(&logger, "passed\n");
 }
 
 void cleanup() {
-  if (fd > 0) {
-    SAFE_CLOSE(fd);
-    unlink(filename);
-  }
-  logger_close(&logger);
+    if (fd > 0) {
+        SAFE_CLOSE(fd);
+        unlink(filename);
+    }
+    logger_close(&logger);
 }
 
 int main(int argc, char *argv[]) {
-  setup();
-  run();
-  cleanup();
-  exit(TC_PASS);
+    setup();
+    run();
+    cleanup();
+    exit(TC_PASS);
 }

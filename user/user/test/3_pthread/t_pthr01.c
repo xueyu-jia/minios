@@ -16,34 +16,34 @@
 #include <stdio.h>
 
 void thread_fun(void *arg) {
-  printf("pth1 print : I'm thread1, arg = %d. \n", *(int *)arg);
-  int pid = get_pid();
-  printf("pth1 print : thread1 pid = %d. \n", pid);
-  pthread_exit(NULL);
-  printf("pth1 print : exit error");
-  // return (void *)111;
+    printf("pth1 print : I'm thread1, arg = %d. \n", *(int *)arg);
+    int pid = get_pid();
+    printf("pth1 print : thread1 pid = %d. \n", pid);
+    pthread_exit(NULL);
+    printf("pth1 print : exit error");
+    // return (void *)111;
 }
 
 int main(int arg, char *argv[]) {
-  pthread_t thread1;
-  int ret1;
-  int a = 10;
-  int process = get_pid();
-  printf("main print : process = %d \n", process);
-  ret1 = pthread_create(&thread1, NULL, thread_fun, &a);
-  printf("main print : thread1 = %d \n", thread1);
+    pthread_t thread1;
+    int ret1;
+    int a = 10;
+    int process = get_pid();
+    printf("main print : process = %d \n", process);
+    ret1 = pthread_create(&thread1, NULL, thread_fun, &a);
+    printf("main print : thread1 = %d \n", thread1);
 
-  sleep(100);
-  pthread_join(thread1, NULL);
-  printf("main print : pthread_create return = %d \n", ret1);
+    sleep(100);
+    pthread_join(thread1, NULL);
+    printf("main print : pthread_create return = %d \n", ret1);
 
-  printf("main print : ----do pthread_create again, after thread exit----\n");
+    printf("main print : ----do pthread_create again, after thread exit----\n");
 
-  ret1 = pthread_create(&thread1, NULL, thread_fun, &a);
-  printf("main print : thread1 = %d \n", thread1);
-  sleep(100);
-  pthread_join(thread1, NULL);
-  printf("main print : pthread_create return = %d \n", ret1);
+    ret1 = pthread_create(&thread1, NULL, thread_fun, &a);
+    printf("main print : thread1 = %d \n", thread1);
+    sleep(100);
+    pthread_join(thread1, NULL);
+    printf("main print : pthread_create return = %d \n", ret1);
 
-  exit(0);
+    exit(0);
 }
