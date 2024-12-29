@@ -1,0 +1,128 @@
+
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                            type.h
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                                                    Forrest Yu, 2005
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+
+#ifndef _ORANGES_TYPE_H_
+#define _ORANGES_TYPE_H_
+
+#include <klib/stddef.h>
+#include <klib/stdint.h>
+#include <stdbool.h>
+
+typedef unsigned char BYTE;  // 字节
+typedef unsigned short WORD; // 双字节
+typedef unsigned long DWORD; // 四字节
+typedef unsigned int UINT;   // 无符号整型
+typedef char CHAR;           // 字符类型
+
+typedef unsigned char* PBYTE;
+typedef unsigned short* PWORD;
+typedef unsigned long* PDWORD; // 四字节指针
+typedef unsigned int* PUINT;   // 无符号整型指针
+typedef char* PCHAR;           // 字符指针
+
+typedef int pthread_t;
+
+typedef struct super_block SUPER_BLOCK;
+
+typedef void (*int_handler)();
+typedef void (*task_f)();
+typedef void (*irq_handler_t)(int irq);
+
+typedef char* va_list; // added by mingxuan 2019-5-19
+
+#define FILE_ATTR 0 // added by xyx&&wjh 2021-12-31
+#define PATH_ATTR 1 // added by xyx&&wjh 2021-12-31
+// #define DEFAULT_PATH "orange/"//added by xyx&&wjh 2021-12-31
+#define DEFAULT_PATH "fat0/" // added by xyx&&wjh 2021-12-31
+
+typedef void* system_call;
+
+// mainly used in filesystem. added by xw, 18/8/27
+/**
+ * MESSAGE mechanism is borrowed from MINIX
+ */
+struct mess1 {
+    int m1i1;
+    int m1i2;
+    int m1i3;
+    int m1i4;
+};
+
+struct mess2 {
+    void* m2p1;
+    void* m2p2;
+    void* m2p3;
+    void* m2p4;
+};
+
+struct mess3 {
+    int m3i1;
+    int m3i2;
+    int m3i3;
+    int m3i4;
+    u64 m3l1;
+    u64 m3l2;
+    void* m3p1;
+    void* m3p2;
+};
+
+typedef struct {
+    int source;
+    int type;
+    union {
+        struct mess1 m1;
+        struct mess2 m2;
+        struct mess3 m3;
+    } u;
+} MESSAGE;
+
+/**
+ * @enum msgtype
+ * @brief MESSAGE types
+ */
+enum msgtype {
+    /*
+     * when hard interrupt occurs, a msg (with type==HARD_INT) will
+     * be sent to some tasks
+     */
+    HARD_INT = 1,
+
+    /* SYS task */
+    GET_TICKS,
+
+    /// zcr added from ch9/e/include/const.h
+    /* FS */
+    OPEN,
+    CLOSE,
+    READ,
+    WRITE,
+    LSEEK,
+    STAT,
+    UNLINK,
+    CREATEDIR,
+    OPENDIR,
+    DELETEDIR,
+    SHOWDIR,
+
+    /* message type for drivers */
+    DEV_OPEN = 1001,
+    DEV_CLOSE,
+    DEV_READ,
+    DEV_WRITE,
+    DEV_IOCTL
+};
+//~xw
+
+// typedef int key_t;
+
+#if defined __GNUC__ && __GNUC__ >= 14
+#pragma GCC diagnostic warning "-Wimplicit-function-declaration"
+#pragma GCC diagnostic warning "-Wincompatible-pointer-types"
+#pragma GCC diagnostic warning "-Wint-conversion"
+#pragma GCC diagnostic warning "-Wreturn-mismatch"
+#endif
+#endif /* _ORANGES_TYPE_H_ */

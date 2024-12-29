@@ -1,0 +1,1 @@
+%define BOOTFS_BOOT "boot.@BOOTFS@.inc"

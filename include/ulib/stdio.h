@@ -1,0 +1,31 @@
+﻿#pragma once
+
+#include <fcntl.h>
+#include <syscall.h>
+#include <stdarg.h>
+
+extern int tty;
+
+#define MAX_FILENAME_LEN 12 //<! only orange limit this
+
+#define PRINT_BUF_LEN 1024
+
+#define STD_IN 0
+#define STD_OUT 1
+#define STD_ERR 2
+
+#define EOF -1
+
+int atoi(const char *nptr);
+
+int vsprintf(char *buf, const char *fmt, va_list args);
+int sprintf(char *buf, const char *fmt, ...);
+
+int fprintf(int fd, const char *fmt, ...);
+int printf(const char *fmt, ...);
+
+int scanf(char *str, ...);
+char getchar();
+char *gets(char *str);
+char fgetc(int fd);
+char *fgets(char *str, int size, int fd);

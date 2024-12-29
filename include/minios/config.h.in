@@ -1,0 +1,4 @@
+#pragma once
+
+#define ROOT_FSTYPE "@ROOTFS@"
+#define ROOT_PART @ROOTFS_PART_INDEX@

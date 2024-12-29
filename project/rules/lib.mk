@@ -1,0 +1,17 @@
+$(LIBGENERIC_FILE): $(call generic_s2o,$(GENERIC_SOURCES))
+	@mkdir -p $(dir $@)
+	@$(call enter-job,ar,$(notdir $@))
+	@$(ARCH_AR) $(ARCH_AR_FLAGS) -o $@ $^ $(ERR2LOG)
+	@$(call leave-job,done,ar,$(notdir $@))
+
+$(LIBKLIB_FILE): $(call kernel_s2o,$(filter klib/%,$(MINIOS_SOURCES)))
+	@mkdir -p $(dir $@)
+	@$(call enter-job,ar,$(notdir $@))
+	@$(ARCH_AR) $(ARCH_AR_FLAGS) -o $@ $^ $(ERR2LOG)
+	@$(call leave-job,done,ar,$(notdir $@))
+
+$(LIBULIB_FILE): $(call user_s2o,$(filter ulib/%,$(USER_SOURCES)))
+	@mkdir -p $(dir $@)
+	@$(call enter-job,ar,$(notdir $@))
+	@$(ARCH_AR) $(ARCH_AR_FLAGS) -o $@ $^ $(ERR2LOG)
+	@$(call leave-job,done,ar,$(notdir $@))
