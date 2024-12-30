@@ -18,3 +18,4 @@ int stricmp(const char *s1, const char *s2);
 
 char *strchr(const char *str, char c);
 char *strrchr(const char *s, char c);
+char *strstr(const char *s1, const char *s2);

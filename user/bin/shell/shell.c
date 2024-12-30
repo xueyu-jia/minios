@@ -137,6 +137,26 @@ int search_command_path(const char *cmd) {
 }
 
 void do_command(int argc, char **args) {
+    // shortcus for cd
+    if (argc == 1) {
+        const char *item = args[0];
+        bool matched = true;
+        do {
+            if (strcmp(item, ".") == 0 || strcmp(item, "..") == 0) { break; }
+            if (strstr(item, "/") == item || strstr(item, "./") == item ||
+                strstr(item, "../") == item) {
+                break;
+            }
+            matched = false;
+        } while (0);
+        if (matched) {
+            //! FIXME: filter regular file
+            char *args[2] = {"cd", item};
+            do_cd(2, args);
+            return;
+        }
+    }
+
     // builtin
     int cmdid = match_build_in(argc, args);
     if (cmdid != -1) {
@@ -184,23 +204,18 @@ void do_command(int argc, char **args) {
 
 int main(int arg, char *argv[], char *envp[]) {
 #define BUF_SIZE 512
-    /*
-        int stdin = open("dev_tty0",O_RDWR);
-        int stdout= open("dev_tty0",O_RDWR);
-        int stderr= open("dev_tty0",O_RDWR);
-        */
-    // printf("argc:%d\n", arg);
-    // printstring("argv:", argv);
-    // printstring("env:", envp);
+
     env = envp;
     char buf[BUF_SIZE];
     char pwd[MAX_PATH];
     int len;
     char *args[MAX_ARGC];
+
     reg_cmd("cd", do_cd);
     reg_cmd("pwd", do_pwd);
     reg_cmd("free", do_free);
     nice(1);
+
 #ifdef SHELL_TEST
 #define TEST_CMD_LEN_LIMIT 32
 
@@ -214,6 +229,7 @@ int main(int arg, char *argv[], char *envp[]) {
 
     pre = TEST_CMD_NUM;
 #endif
+
     if (arg > 1) {
         if (CMD_SCRIPT != search_command_path(argv[1])) {
             fprintf(STD_ERR, "not a script %s\n", argv[1]);
@@ -242,14 +258,10 @@ int main(int arg, char *argv[], char *envp[]) {
 #endif
         len = strlen(buf);
         if (fd != STD_IN && len == 0) {
-            // printf("%d", fd);
             close(fd);
-            break; // script shell exit
-                   // fd = STD_IN;
-                   // while(1);
+            break;
         }
         if (len != 0 && buf[0] != '#') {
-            printf("cmd: %s\n", buf);
             int argc = parse(buf, args, MAX_ARGC);
             do_command(argc, args);
         }

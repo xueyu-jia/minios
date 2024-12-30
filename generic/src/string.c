@@ -145,3 +145,15 @@ char *itoa(int num, char *str, int radix) {
     }
     return str;
 }
+
+char *strstr(const char *s1, const char *s2) {
+    const char *p = s1;
+    const size_t len = strlen(s2);
+
+    if (!len) { return (char *)s1; }
+
+    for (; (p = strchr(p, *s2)) != 0; p++) {
+        if (strncmp(p, s2, len) == 0) { return (char *)p; }
+    }
+    return NULL;
+}
