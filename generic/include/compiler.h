@@ -38,9 +38,14 @@
 #define NORETURN __attribute__((noreturn))
 #define ALIGN(n) __attribute__((aligned(n)))
 
+#define CONSTRUCTOR __attribute__((constructor))
+#define DESTRUCTOR __attribute__((destructor))
+
 #define MARK_AS_UNUSED(x) ((void)(x))
 #define UNUSED_IMPL(x) MH_EXPAND(MH_PAIR(;, MARK_AS_UNUSED(x)))
 #define UNUSED(x, ...) MARK_AS_UNUSED(x) MH_FOREACH(UNUSED_IMPL, __VA_ARGS__)
+
+#define MUST_USE_RESULT __attribute__((warn_unused_result))
 
 #if defined(__GNUC__) && __GNUC__ >= 7
 #define FALLTHROUGH __attribute__((fallthrough))

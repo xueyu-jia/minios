@@ -14,6 +14,10 @@ extern int tty;
 #define STD_OUT 1
 #define STD_ERR 2
 
+#define stdin STD_IN
+#define stdout STD_OUT
+#define stderr STD_ERR
+
 #define EOF -1
 
 int atoi(const char *nptr);
@@ -21,6 +25,7 @@ int atoi(const char *nptr);
 int vsprintf(char *buf, const char *fmt, va_list args);
 int sprintf(char *buf, const char *fmt, ...);
 
+int vfprintf(int fd, const char *fmt, va_list ap);
 int fprintf(int fd, const char *fmt, ...);
 int printf(const char *fmt, ...);
 

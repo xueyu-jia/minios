@@ -1,5 +1,7 @@
 #pragma once
 
+#include <compiler.h>
+
 struct list_node {
     struct list_node* prev;
     struct list_node* next;

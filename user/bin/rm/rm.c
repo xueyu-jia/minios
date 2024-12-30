@@ -27,7 +27,7 @@ int remove(const char* path, int rec) {
                     _path[len] = 0;
                 }
                 closedir(dirp);
-                free((uint32_t)_path);
+                free(_path);
             }
             return rmdir(path);
         }

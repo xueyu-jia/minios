@@ -8,6 +8,7 @@
 #include <stat.h>
 #include <time.h>
 #include <ushm.h>
+#include <compiler.h>
 
 enum {
     _NR_get_ticks,
@@ -171,7 +172,7 @@ struct dirent* readdir(DIR* dirp);
 int chdir(const char* path);
 char* getcwd(char* buf, int size);
 int wait(int* status);
-void exit(int status);
+NORETURN void exit(int status);
 int _signal(int sig, void* handler,
             void* _Handler); //"user/ulib/signal.c" 中提供了上层封装
 int sigsend(int pid, Sigaction* sigaction_p);

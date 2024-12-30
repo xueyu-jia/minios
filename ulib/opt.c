@@ -62,7 +62,7 @@ int getopt(int argc, char *argv[], const char *optstring) {
         int ind = optind;
         for (int i = opt_checkind; i < argc; i++) { argv[ind++] = argv[i]; }
         for (int i = 0; i < non_opt; i++) { argv[ind++] = tmp[i]; }
-        free((uint32_t)tmp);
+        free(tmp);
     }
     // exchange finished
 

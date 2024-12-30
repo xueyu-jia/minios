@@ -16,9 +16,9 @@ static void greet() {
 }
 
 int main(int arg, char *argv[]) {
-    int stdin = open("/dev/tty0", O_RDWR);
-    int stdout = open("/dev/tty0", O_RDWR);
-    int stderr = open("/dev/tty0", O_RDWR);
+    open("/dev/tty0", O_RDWR);
+    open("/dev/tty0", O_RDWR);
+    open("/dev/tty0", O_RDWR);
 
     greet();
 

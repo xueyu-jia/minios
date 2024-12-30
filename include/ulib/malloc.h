@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 #define MAX_FREE 1024   // 空闲分区表分区数量上限
 #define MAX_MBLOCK 1024 // 已分配记录表记录数量上限
@@ -53,9 +54,8 @@ typedef struct malloced {
     malloc_block mtable[MAX_MBLOCK]; // 数组每一项记录已经malloc的内存块的起始地址
 } malloced;
 
-// 供用户malloc/free的函数
-uint32_t malloc(uint32_t size); // 用户程序执行的malloc
-uint32_t free(uint32_t vaddr);  // 用户程序执行的free
+void* malloc(size_t size);
+void free(void* ptr);
 
 void scan_vtable();
 void scan_malloc_table();

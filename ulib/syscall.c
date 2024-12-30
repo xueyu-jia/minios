@@ -1,4 +1,5 @@
 #include <syscall.h>
+#include <assert.h>
 
 int get_ticks() {
     return _syscall0(_NR_get_ticks);
@@ -99,9 +100,9 @@ int wait(int* status) {
     return _syscall1(_NR_wait, status);
 }
 
-__attribute__((noreturn)) void exit(int status) {
+void exit(int status) {
     _syscall1(_NR_exit, status);
-    __builtin_unreachable();
+    unreachable();
 }
 
 // "user/ulib/signal.c" 中提供了上层封装

@@ -33,7 +33,7 @@ free_vmem vmem;
 vpage_list vplist;
 heap_ptr hp;
 
-uint32_t malloc(uint32_t size) // 为用户分配小内存
+void* malloc(size_t size) // 为用户分配小内存
 {
     if (!malloc_initialized) // malloc之前先判断是否已经初始化
     {
@@ -46,15 +46,15 @@ uint32_t malloc(uint32_t size) // 为用户分配小内存
 
     if (vaddr == 0) { printf("malloc failed!\n"); }
 
-    return vaddr;
+    return (void*)vaddr;
 }
 
-uint32_t free(uint32_t vaddr) // 用户分配的小内存的释放
-{
+void free(void* ptr) {
     uint32_t i, size;
+    uintptr_t vaddr = (uintptr_t)ptr;
 
-    for (i = 0; i < mal.count; i++) // 用vaddr从已经malloc的内存块记录表中查找
-    {
+    // 用vaddr从已经malloc的内存块记录表中查找
+    for (i = 0; i < mal.count; i++) {
         if (vaddr == mal.mtable[i].vaddr) {
             size = mal.mtable[i].size;
 
@@ -67,11 +67,10 @@ uint32_t free(uint32_t vaddr) // 用户分配的小内存的释放
         for (; i < mal.count; i++) { mal.mtable[i] = mal.mtable[i + 1]; }
     } else {
         printf("free error:memory block  didn't find\n");
-        return 0; // 查找失败
+        return; // 查找失败
     }
 
-    if (size > num_4K) // added by wang 2021.4.25
-    {
+    if (size > num_4K) {
         uint32_t size_less_4K;
 
         size_less_4K = size % num_4K;
@@ -83,10 +82,9 @@ uint32_t free(uint32_t vaddr) // 用户分配的小内存的释放
         }
 
         vfree(vaddr, size - size_less_4K);
-    } else
+    } else {
         vfree(vaddr, size);
-
-    return 0;
+    }
 }
 
 void malloc_init() {
