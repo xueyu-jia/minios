@@ -9,6 +9,6 @@ $(foreach t,$(TOOL_PROGRAM_FILES),$(eval $(call declare_tool_bin_deps,$(patsubst
 
 $(TOOL_PROGRAM_FILES):
 	@mkdir -p $(dir $@)
-	@$(call enter-job,cc,$(notdir $@))
+	@$(call enter-job,mktool,$(notdir $@))
 	@$(HOST_CC) $(HOST_CC_FLAGS) -I$(dir $@) -o $@ $^
-	@$(call leave-job,done,cc,$(notdir $@))
+	@$(call leave-job,done,mktool,$(notdir $@))
