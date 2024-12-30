@@ -95,6 +95,7 @@ SECTIONS
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
   }
+  minios_user_ctor_list_start = .;
   .init_array     :
   {
     PROVIDE_HIDDEN (__init_array_start = .);
@@ -102,6 +103,7 @@ SECTIONS
     KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
     PROVIDE_HIDDEN (__init_array_end = .);
   }
+  minios_user_dtor_list_start = .;
   .fini_array     :
   {
     PROVIDE_HIDDEN (__fini_array_start = .);
@@ -109,6 +111,7 @@ SECTIONS
     KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))
     PROVIDE_HIDDEN (__fini_array_end = .);
   }
+  minios_user_ctor_dtor_list_end = .;
   .ctors          :
   {
     /* gcc uses crtbegin.o to find the start of
