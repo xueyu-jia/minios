@@ -6,6 +6,7 @@
 #include <minios/signal.h>
 #include <minios/syscall.h>
 #include <minios/type.h>
+#include <minios/assert.h>
 
 u32 get_arg(int order) {
     stack_frame_t* syscall_esp = (stack_frame_t*)(p_proc_current->task.context.esp_save_int);
@@ -129,6 +130,7 @@ int wait() {
 
 void exit(int status) {
     _syscall1(_NR_exit, status);
+    unreachable();
 }
 
 // "user/ulib/signal.c" 中提供了上层封装

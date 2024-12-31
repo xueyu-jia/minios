@@ -52,6 +52,7 @@ void kern_exit(int exit_code) {
         if (transfer_child_proc(exit_pcb->task.pid, NR_RECY_PROC) != 0) {
             disable_int_begin();
             recy_pcb->task.stat = READY;
+            rq_insert(recy_pcb);
             disable_int_end();
         }
         release(&recy_pcb->task.lock);

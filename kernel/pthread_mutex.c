@@ -13,6 +13,7 @@ int mutex_suspend_with_cancellation(PROCESS* self,
         if (self->task.suspended == READY) // 统一PCB state 20240314
         {
             self->task.stat = READY;
+            rq_insert(self);
             mutex->owner = self->task.pthread_id;
             return 0;
         }
@@ -69,8 +70,9 @@ int kern_pthread_mutex_lock(pthread_mutex_t* mutex) {
     mutex->tail %= QUEUE_SIZE;
 
     // 该线程挂起,等待唤醒
-    p_proc_current->task.stat = SLEEPING;
     p_proc_current->task.suspended = SLEEPING;
+    p_proc_current->task.stat = SLEEPING;
+    rq_remove(p_proc_current);
 
     // release(mutex);
     release(&mutex->lock);
@@ -129,6 +131,11 @@ int kern_pthread_mutex_unlock(pthread_mutex_t* mutex) {
         for (int i = 0; i < NR_PCBS; i++) {
             if (proc_table[i].task.pthread_id == th) {
                 proc_table[i].task.suspended = READY; // 统一PCB state 20240314
+                //! FIXME: we'd better not insert a sleeping thread into the sched queue, though
+                //! it's assumed to be ready soon later
+                //! NOTE: for instance, use wakeup here, but there's still execution order issues to
+                //! be solved
+                rq_insert(&proc_table[i]);
             }
         }
     }
@@ -136,6 +143,7 @@ int kern_pthread_mutex_unlock(pthread_mutex_t* mutex) {
     release(&mutex->lock);
     return 0;
 }
+
 int sys_pthread_mutex_unlock() {
     return do_pthread_mutex_unlock((pthread_mutex_t*)get_arg(1));
 }

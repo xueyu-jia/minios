@@ -73,6 +73,7 @@ PROCESS* alloc_init_PCB() {
 }
 
 void free_PCB(PROCESS* p) {
+    p->task.pid = 0;
     p->task.stat = FREE;
 }
 
