@@ -11,7 +11,7 @@ void CTEST_notify_assertion_failure(const char *file, int line, const char *fmt,
 
 #define CTEST_PRED_OPERAND_TYPE_(type) MH_CONCAT(CTEST_PRED_OPERAND_TYPE_, type)
 #define CTEST_PRED_OPERAND_TYPE_int "%d"
-#define CTEST_PRED_OPERAND_TYPE_str "%s"
+#define CTEST_PRED_OPERAND_TYPE_str "\"%s\""
 #define CTEST_PRED_OPERAND_TYPE_f32 "%f"
 #define CTEST_PRED_OPERAND_TYPE_f64 "%lf"
 
@@ -65,8 +65,8 @@ void CTEST_notify_assertion_failure(const char *file, int line, const char *fmt,
 #define EXPECT_STRCASEEQ(s1, s2) CTEST_PRED_(EXPECT, STRCASEEQ, str, s1, s2)
 #define EXPECT_STRCASENE(s1, s2) CTEST_PRED_(EXPECT, STRCASENE, str, s1, s2)
 
-#define EXPECT_FLOAT_EQ(val1, val2) CTEST_PRED_(EXPECT, f32, FLOAT_EQ, val1, val2)
-#define EXPECT_DOUBLE_EQ(val1, val2) CTEST_PRED_(EXPECT, f64, DOUBLE_EQ, val1, val2)
+#define EXPECT_FLOAT_EQ(val1, val2) CTEST_PRED_(EXPECT, FLOAT_EQ, f32, val1, val2)
+#define EXPECT_DOUBLE_EQ(val1, val2) CTEST_PRED_(EXPECT, DOUBLE_EQ, f64, val1, val2)
 
 #define ASSERT_EQ(val1, val2) CTEST_PRED_(ASSERT, EQ, int, val1, val2)
 #define ASSERT_NE(val1, val2) CTEST_PRED_(ASSERT, NE, int, val1, val2)
