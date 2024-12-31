@@ -95,7 +95,7 @@ int validate() {
 
 void run() {
     // 新建文件
-    fd = open(filename, O_CREAT | O_RDWR);
+    fd = open(filename, O_CREAT | O_RDWR, I_RW);
     if (fd < 0) {
         error(&logger, "failed to create %s\n", filename);
         cleanup();

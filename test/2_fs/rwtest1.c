@@ -7,7 +7,7 @@ char read_buf[BUF_SIZE];
 int main(int arg, char *argv[]) {
     char filename[] = "rwtest1.txt";
     int fd;
-    fd = open(filename, O_CREAT | O_RDWR);
+    fd = open(filename, O_CREAT | O_RDWR, I_RW);
     if (fd == -1) {
         printf("open1 error!");
         exit(-1);

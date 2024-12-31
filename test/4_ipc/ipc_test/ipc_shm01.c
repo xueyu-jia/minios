@@ -46,7 +46,7 @@ void setup() {
 
     // 创建 sender.txt
     info(&logger, "prepare send.txt\n");
-    int fd = open(send_file, O_CREAT | O_RDWR);
+    int fd = open(send_file, O_CREAT | O_RDWR, I_RW);
     if (fd < 0) {
         error(&logger, "failed to create send.txt\n");
         cleanup();
@@ -133,7 +133,7 @@ void sender_func() {
     }
 
     info(&logger, "sender[%d]: attach share memory...\n", pid);
-    shm_addr = (void *)_shmat(shm_id, SHM_ADDR, 0);
+    shm_addr = (void *)_shmat(shm_id, (void*)SHM_ADDR, 0);
     if (shm_addr == (void *)-1) {
         error(&logger, "sender[%d]: failed to attach share memory\n", pid);
         exit(-1);
@@ -200,7 +200,7 @@ void receiver_func() {
     }
 
     info(&logger, "receiver[%d]: attach share memory...\n", pid);
-    shm_addr = (void *)_shmat(shm_id, SHM_ADDR, 0);
+    shm_addr = (void *)_shmat(shm_id, (void*)SHM_ADDR, 0);
     if (shm_addr == (void *)-1) {
         error(&logger, "receiver[%d]: failed to attach share memory\n", pid);
         exit(-1);
@@ -234,7 +234,7 @@ void run() {
     }
 
     info(&logger, "attach share memory...\n");
-    shm_addr = (void *)_shmat(shm_id, SHM_ADDR, 0);
+    shm_addr = (void *)_shmat(shm_id, (void*)SHM_ADDR, 0);
     if (shm_addr == (void *)-1) {
         error(&logger, "failed to attach share memory\n");
         cleanup();

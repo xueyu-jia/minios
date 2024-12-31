@@ -34,7 +34,7 @@ void setup() {
 
     // 创建 sender.txt
     info(&logger, "prepare send.txt\n");
-    int fd = open(send_file, O_CREAT | O_RDWR);
+    int fd = open(send_file, O_CREAT | O_RDWR, I_RW);
     if (fd < 0) {
         error(&logger, "failed to create send.txt\n");
         cleanup();
@@ -174,7 +174,7 @@ void run() {
         }
     }
 
-    recv_fd = open(recv_file, O_RDWR | O_CREAT);
+    recv_fd = open(recv_file, O_RDWR | O_CREAT, I_RW);
     if (recv_fd < 0) {
         error(&logger, "failed to open %s\n", recv_file);
         cleanup();

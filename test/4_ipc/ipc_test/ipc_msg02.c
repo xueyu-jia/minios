@@ -41,7 +41,7 @@ void setup() {
     // 创建 sender.txt
     // info(&logger, "prepare send.txt\n");
     printf("prepare send file: %s\n", send_filename);
-    int fd = open(send_filename, O_CREAT | O_RDWR);
+    int fd = open(send_filename, O_CREAT | O_RDWR, I_RW);
     if (fd < 0) {
         printf("failed to create %s\n", send_filename);
         // error(&logger, "failed to create send.txt\n");
@@ -228,7 +228,7 @@ void run() {
     }
 
     // 创建要写入的文件
-    recv_fd = open(recv_filename, O_RDWR | O_CREAT);
+    recv_fd = open(recv_filename, O_RDWR | O_CREAT, I_RW);
     if (recv_fd < 0) {
         printf("failed to open %s\n", recv_filename);
         // error(&logger, "failed to open %s\n", recv_filename);

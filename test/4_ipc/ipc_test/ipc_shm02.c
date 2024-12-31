@@ -44,7 +44,7 @@ void setup() {
 
     // 创建 sender.txt
     info(&logger, "prepare send.txt\n");
-    int fd = open(send_file, O_CREAT | O_RDWR);
+    int fd = open(send_file, O_CREAT | O_RDWR, I_RW);
     if (fd < 0) {
         error(&logger, "failed to create send.txt\n");
         cleanup();
