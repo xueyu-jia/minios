@@ -50,21 +50,22 @@ static void init_8259A() {
     outb(INT_S_CTLMASK, 0xff);
 }
 
+bool is_irq_masked(int irq) {
+    const uint8_t mask = 1 << (irq % 8);
+    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    return !!(inb(port) & mask);
+}
+
 void enable_irq(int irq) {
-    u8 mask = 1 << (irq % 8);
-    if (irq < 8) {
-        outb(INT_M_CTLMASK, inb(INT_M_CTLMASK) & ~mask);
-    } else {
-        outb(INT_S_CTLMASK, inb(INT_S_CTLMASK) & ~mask);
-    }
+    const uint8_t mask = 1 << (irq % 8);
+    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    outb(port, inb(port) & ~mask);
 }
 
 void disable_irq(int irq) {
-    u8 mask = 1 << (irq % 8);
-    if (irq < 8)
-        outb(INT_M_CTLMASK, inb(INT_M_CTLMASK) | mask);
-    else
-        outb(INT_S_CTLMASK, inb(INT_S_CTLMASK) | mask);
+    const uint8_t mask = 1 << (irq % 8);
+    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
+    outb(port, inb(port) | mask);
 }
 
 void spurious_irq(int irq) {
@@ -72,8 +73,10 @@ void spurious_irq(int irq) {
 }
 
 void put_irq_handler(int irq, irq_handler_t handler) {
+    const bool masked = is_irq_masked(irq);
     disable_irq(irq);
     irq_table[irq] = handler;
+    if (!masked) { enable_irq(irq); }
 }
 
 static const char *int_str_table[64] = {"#DE Divide Error",

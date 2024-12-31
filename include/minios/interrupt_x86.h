@@ -5,6 +5,7 @@
 #include <minios/type.h>
 #include <minios/x86-asm.h>
 #include <minios/protect.h>
+#include <stdbool.h>
 
 //: 8259A interrupt controller ports
 //: <Master> I/O port for interrupt controller
@@ -68,6 +69,7 @@
 
 extern irq_handler_t irq_table[NR_IRQ];
 
+bool is_irq_masked(int irq);
 void enable_irq(int irq);
 void disable_irq(int irq);
 void spurious_irq(int irq);
