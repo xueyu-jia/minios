@@ -29,7 +29,7 @@ static void stat_buddy_pages(const char *name, const buddy_t *bud) {
         if (area.free_count == 0) { continue; }
         kprintf("%s order=%02d (%02d)", name, i, area.free_count);
         const auto size = block_size[i];
-        auto node = area.free_list;
+        memory_page_t *node = area.free_list;
         while (node) {
             const auto pa = pfn_to_phy(page_to_pfn(node));
             kprintf(" 0x%p~0x%p", K_PHY2LIN(pa), K_PHY2LIN(pa + size));
