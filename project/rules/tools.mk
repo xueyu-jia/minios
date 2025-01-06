@@ -1,6 +1,6 @@
 $(call import,lib.io)
 
-TOOL_PROGRAM_FILES := $(foreach t,$(wildcard tools/*),$(patsubst tools/%,$(TOOL_OBJDIR)%, $(call map_or_else,is_dir,$(t),)))
+TOOL_PROGRAM_FILES := $(foreach t,$(wildcard tools/*),$(patsubst tools/%,$(TOOL_OBJDIR)%,$(call map_or_else,is_dir,$(t),)))
 
 define declare_tool_bin_deps
 $(TOOL_OBJDIR)$(1): $(filter tools/$(1)/%,$(TOOL_SOURCES))

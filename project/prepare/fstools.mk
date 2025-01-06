@@ -9,8 +9,8 @@ fstool_unwrap_local_deps = $(call format_list,$(if $(1),$(foreach n,$(words $(1)
 _fstool_get_tool = $(foreach t,$(2)_FS_$(call to_upper,$(1)), \
 	$(call or_else,$(call fstool_unwrap_local_deps,$(call safe_deref,$(t))),$(call safe_deref,$(t))))
 _fstool_get_tool_strict = $(call or_else,$(call _fstool_get_tool,$(1),$(2)),)
-_fstool_get = $(foreach tool,$(call _fstool_get_tool_strict,$(1),$(2)),     \
-	$(if $(tool),$(tool),$(error fs tool $(2) for $(1) is not available)))  \
+_fstool_get = $(foreach tool,$(call _fstool_get_tool_strict,$(1),$(2)),    \
+	$(if $(tool),$(tool),$(error fs tool $(2) for $(1) is not available))) \
 	$(call safe_deref,$(2)_FS_$(call to_upper,$(1))_FLAGS)
 fstool_get = $(call format_list,$(call _fstool_get,$(1),$(2)))
 

@@ -12,8 +12,8 @@ get_rootfs_part_suffix = $(if $(filter-out floppy,$(1)),p$(ROOTFS_PART_INDEX),)
 get_rootfs_part_suffix_from_flag = $(call get_rootfs_part_suffix,$(patsubst $(ARCH_FLAGS_DIR)%,%,$(1)))
 
 #! TODO: support config scripts for custom mount options
-get_user_install_dest = $(call format_list,                          \
-	$(if $(filter $(USER_OBJDIR)$(USER_TESTSUIT_ID)/%,$(1)),         \
+get_user_install_dest = $(call format_list,                              \
+	$(if $(filter $(USER_OBJDIR)$(USER_TESTSUIT_ID)/%,$(1)),             \
 		$(patsubst $(USER_OBJDIR)$(USER_TESTSUIT_ID)/%.bin,test/%,$(1)), \
 		$(patsubst $(USER_OBJDIR)%.bin,%,$(1))))
 
