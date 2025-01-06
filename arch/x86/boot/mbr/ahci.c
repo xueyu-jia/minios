@@ -59,7 +59,7 @@ bool ahci_sata_init() {
 
     ahci_info[0].is_ahci_mode = HBA->ghc >> 31;
     if (!ahci_info[0].is_ahci_mode) {
-        lprintf("error: ahci mode not supported");
+        lprintf("error: ahci mode not supported\n");
         return false;
     }
 
