@@ -35,35 +35,35 @@ TASK task_table[NR_TASKS] = {
 
 static int ldt_seg_linear(PROCESS* p, int idx);
 
-int kern_get_pid() {
+int kern_getpid() {
     return p_proc_current->task.pid;
 }
 
-// PUBLIC int do_get_pid()
+// PUBLIC int do_getpid()
 // {
-//     return kern_get_pid();
+//     return kern_getpid();
 // }
 
-// PUBLIC int sys_get_pid()
+// PUBLIC int sys_getpid()
 // {
-//     return do_get_pid();
+//     return do_getpid();
 // }
 
-int kern_get_pid_byname(char* name) {
+int kern_getpid_by_name(char* name) {
     for (PROCESS* proc = proc_table; proc < proc_table + NR_PCBS; proc++) {
         if (strcmp(proc->task.p_name, name) == 0) { return proc->task.pid; }
     }
     return -1;
 }
 
-// PUBLIC int do_get_pid_byname(char* name)
+// PUBLIC int do_getpid_by_name(char* name)
 // {
-//     return kern_get_pid_byname(name);
+//     return kern_getpid_by_name(name);
 // }
 
-// PUBLIC int sys_get_pid_byname()
+// PUBLIC int sys_getpid_by_name()
 // {
-//     return do_get_pid_byname((char*)get_arg(1));
+//     return do_getpid_by_name((char*)get_arg(1));
 // }
 
 void kern_get_proc_msg(proc_msg* msg) {

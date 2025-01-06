@@ -10,8 +10,8 @@
 #define SYSCALL_ENTRY(name) [_NR_##name] = sys_##name
 
 system_call sys_call_table[NR_SYSCALLS] = {
-    SYSCALL_ENTRY(get_ticks),
-    SYSCALL_ENTRY(get_pid),
+    SYSCALL_ENTRY(getticks),
+    SYSCALL_ENTRY(getpid),
     SYSCALL_ENTRY(malloc_4k),
     SYSCALL_ENTRY(free_4k),
     SYSCALL_ENTRY(fork),
@@ -63,7 +63,7 @@ system_call sys_call_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(pthread_cond_timewait),
     SYSCALL_ENTRY(pthread_cond_broadcast),
     SYSCALL_ENTRY(pthread_cond_destroy),
-    SYSCALL_ENTRY(get_pid_byname),
+    SYSCALL_ENTRY(getpid_by_name),
     SYSCALL_ENTRY(mount),
     SYSCALL_ENTRY(umount),
     SYSCALL_ENTRY(pthread_exit),
@@ -84,18 +84,18 @@ u32 sys_total_mem_size() {
     return do_total_mem_size();
 }
 
-int do_get_pid() {
-    return kern_get_pid();
+int do_getpid() {
+    return kern_getpid();
 }
 
-int sys_get_pid() {
-    return do_get_pid();
+int sys_getpid() {
+    return do_getpid();
 }
 
-int do_get_pid_byname(char* name) {
-    return kern_get_pid_byname(name);
+int do_getpid_by_name(char* name) {
+    return kern_getpid_by_name(name);
 }
 
-int sys_get_pid_byname() {
-    return do_get_pid_byname((char*)get_arg(1));
+int sys_getpid_by_name() {
+    return do_getpid_by_name((char*)get_arg(1));
 }

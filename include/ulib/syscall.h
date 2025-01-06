@@ -11,8 +11,8 @@
 #include <compiler.h>
 
 enum {
-    _NR_get_ticks,
-    _NR_get_pid,
+    _NR_getticks,
+    _NR_getpid,
     _NR_malloc_4k,
     _NR_free_4k,
     _NR_fork,
@@ -65,7 +65,7 @@ enum {
     _NR_pthread_cond_timewait,
     _NR_pthread_cond_broadcast,
     _NR_pthread_cond_destroy,
-    _NR_get_pid_byname,
+    _NR_getpid_by_name,
     _NR_mount,
     _NR_umount,
     _NR_pthread_exit,
@@ -148,8 +148,8 @@ typedef struct process_message {
     uint64_t sum_cpu_use;
 } proc_msg;
 
-int get_ticks();
-int get_pid();
+int getticks();
+int getpid();
 void* malloc_4k();
 int free_4k(void* AdddrLin);
 int fork();
@@ -204,7 +204,7 @@ int pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* tim
 int pthread_cond_signal(pthread_cond_t* cond);
 int pthread_cond_broadcast(pthread_cond_t* cond);
 int pthread_cond_destroy(pthread_cond_t* cond);
-int get_pid_byname(char* name);
+int getpid_by_name(char* name);
 int mount(const char* source, const char* target, const char* filesystemtype,
           unsigned long mountflags, const void* data);
 int umount(const char* target);

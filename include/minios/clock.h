@@ -11,7 +11,7 @@ extern u32 current_timestamp;
 
 void clock_handler(int irq);
 void init_clock();
-int kern_get_ticks();
-int sys_get_ticks();
+int kern_getticks();
+int sys_getticks();
 
 #endif

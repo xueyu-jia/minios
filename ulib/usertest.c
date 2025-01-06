@@ -169,7 +169,7 @@ int logger_write(logger_level current_level, logging *logger, const char *fmt, v
 }
 
 int logger_print(logger_level current_level, logging *logger, const char *fmt, va_list args) {
-    // printf("logging: pid: %d, tid: %d, logger: %d\n", get_pid(),
+    // printf("logging: pid: %d, tid: %d, logger: %d\n", getpid(),
     // pthread_self(), logger);
     if (!check_logger(logger)) {
         printf("logging: ERROR: invalid logger\n");

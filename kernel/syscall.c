@@ -28,12 +28,12 @@ u32 get_arg(int order) {
     }
 }
 
-int get_ticks() {
-    return _syscall0(_NR_get_ticks);
+int getticks() {
+    return _syscall0(_NR_getticks);
 }
 
-int get_pid() {
-    return _syscall0(_NR_get_pid);
+int getpid() {
+    return _syscall0(_NR_getpid);
 }
 void* malloc_4k() {
     return (void*)_syscall0(_NR_malloc_4k);
@@ -252,8 +252,8 @@ int pthread_cond_destroy(pthread_cond_t* cond) {
     return _syscall1(_NR_pthread_cond_destroy, cond);
 }
 
-int get_pid_byname(char* name) {
-    return _syscall1(_NR_get_pid_byname, name);
+int getpid_by_name(char* name) {
+    return _syscall1(_NR_getpid_by_name, name);
 }
 
 int mount(const char* source, const char* target, const char* filesystemtype,

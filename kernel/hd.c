@@ -610,7 +610,7 @@ static void hd_cmd_out(struct hd_cmd *cmd, int drive) {
 //	/*
 static void interrupt_wait() {
     while (hd_int_waiting_flag) {
-        // milli_delay invoke syscall get_ticks, so we can't use it here.
+        // milli_delay invoke syscall getticks, so we can't use it here.
         // for this scene, just do nothing is OK. modified by xw, 18/6/1
 
         // milli_delay(5);/// waiting for the harddisk interrupt.
@@ -643,21 +643,21 @@ hd_int_waiting_flag = 1;
  * @return One if sucess, zero if timeout.
  *****************************************************************************/
 static int waitfor(int mask, int val, int timeout) {
-    // we can't use syscall get_ticks before process run. modified by xw,
+    // we can't use syscall getticks before process run. modified by xw,
     // 18/5/31
     /*
-    int t = get_ticks();
+    int t = getticks();
 
-    while(((get_ticks() - t) * 1000 / HZ) < timeout)
+    while(((getticks() - t) * 1000 / HZ) < timeout)
             if ((inb(REG_STATUS) & mask) == val)
                     return 1;
     */
 
-    // int t = sys_get_ticks();
-    int t = kern_get_ticks(); // modified by mingxuan 2021-8-14
+    // int t = sys_getticks();
+    int t = kern_getticks(); // modified by mingxuan 2021-8-14
 
-    // while(((sys_get_ticks() - t) * 1000 / HZ) < timeout){
-    while (((kern_get_ticks() - t) * 1000 / HZ) < timeout) { // modified by mingxuan 2021-8-14
+    // while(((sys_getticks() - t) * 1000 / HZ) < timeout){
+    while (((kern_getticks() - t) * 1000 / HZ) < timeout) { // modified by mingxuan 2021-8-14
         if ((inb(REG_STATUS) & mask) == val) return 1;
     }
 

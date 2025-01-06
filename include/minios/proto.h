@@ -40,8 +40,8 @@ void initial();
 
 /*syscall.c*/ // added by zhenhao 2023.3.5
 u32 get_arg(int order);
-int get_ticks();
-int get_pid();
+int getticks();
+int getpid();
 void* malloc_4k();
 int free_4k(void* AdddrLin);
 int fork();
@@ -96,7 +96,7 @@ int pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* tim
 int pthread_cond_signal(pthread_cond_t* cond);
 int pthread_cond_broadcast(pthread_cond_t* cond);
 int pthread_cond_destroy(pthread_cond_t* cond);
-int get_pid_byname(char* name);
+int getpid_by_name(char* name);
 int mount(const char* source, const char* target, const char* filesystemtype,
           unsigned long mountflags, const void* data);
 int umount(const char* target);
@@ -104,10 +104,10 @@ void pthread_exit(void* retval);
 int pthread_join(pthread_t pthread, void** retval);
 int stat(const char* pathname, struct stat* statbuf);
 
-/* syscallc.c */     // edit by visual 2016.4.6
-int sys_get_ticks(); /* sys_call */
-int sys_get_pid();   // add by visual 2016.4.6
-int sys_get_pid_byname();
+/* syscallc.c */    // edit by visual 2016.4.6
+int sys_getticks(); /* sys_call */
+int sys_getpid();   // add by visual 2016.4.6
+int sys_getpid_by_name();
 // PUBLIC void* sys_kmalloc(int size);			//edit by visual
 // 2016.5.9
 // //deleted by mingxuan 2021-8-21 PUBLIC void* sys_kmalloc_4k();

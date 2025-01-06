@@ -181,7 +181,7 @@ void do_command(int argc, char **args) {
     }
     // CMD_ELF || (CMD_SCRIPT && args[0] is interpreter)
     int pid = fork();
-    // printf("%d: fork return %d\n", get_pid(), pid);
+    // printf("%d: fork return %d\n", getpid(), pid);
     if (pid != 0) { // father
         if (pid < 0) {
             fprintf(STD_ERR, "fork failed\n");

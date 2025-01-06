@@ -46,11 +46,11 @@ u32 kern_execve(const char* path, char* const* argv, char* const* envp) {
 
     //! ATTENTION: from here, subsequent operations will massively
     //! modify the pcb's data and page tables, and the recovery of
-    //! errors will also be extremely costly. therefore, we directly
+    //! errors will also be extremely costful. therefore, we directly
     //! mark the errors that occur in the future as unrecoverable
     //! errors. when these errors occur, execve directly panic and does
     //! not return
-    //! TODO: introduec a more advanced architecture to solve this kind
+    //! TODO: introduce a more advanced architecture to solve this kind
     //! of problem
 
     void* entry_point = exec_read_and_load(fd); // 读取并加载可执行文件的内容，并关闭文件

@@ -55,16 +55,16 @@ void init_clock() {
     enable_irq(CLOCK_IRQ); /* 让8259A可以接收时钟中断 */
 }
 /*======================================================================*
-                           get_ticks		add by visual 2016.4.6
+                           getticks		add by visual 2016.4.6
  *======================================================================*/
-int kern_get_ticks() {
+int kern_getticks() {
     return ticks;
 }
 
-int do_get_ticks() {
-    return kern_get_ticks();
+int do_getticks() {
+    return kern_getticks();
 }
 
-int sys_get_ticks() {
-    return do_get_ticks();
+int sys_getticks() {
+    return do_getticks();
 }

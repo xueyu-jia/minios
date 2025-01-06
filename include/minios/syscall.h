@@ -1,8 +1,8 @@
 #pragma once
 
 enum {
-    _NR_get_ticks,
-    _NR_get_pid,
+    _NR_getticks,
+    _NR_getpid,
     _NR_malloc_4k,
     _NR_free_4k,
     _NR_fork,
@@ -55,7 +55,7 @@ enum {
     _NR_pthread_cond_timewait,
     _NR_pthread_cond_broadcast,
     _NR_pthread_cond_destroy,
-    _NR_get_pid_byname,
+    _NR_getpid_by_name,
     _NR_mount,
     _NR_umount,
     _NR_pthread_exit,

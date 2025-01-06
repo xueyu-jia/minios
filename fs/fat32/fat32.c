@@ -481,7 +481,7 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
     }
     // 尝试达到10次仍然重复,使用tick产生随机序列
     // 事实上，现有已知的实现大多也是这么处理的
-    int rand = kern_get_ticks();
+    int rand = kern_getticks();
     itoa(rand & 0xFFFF, shortname + baselen - 4, 16);
     shortname[baselen] = '~';
     shortname[baselen + 1] = '0' + rand % 10;

@@ -141,13 +141,13 @@ int CTEST_run_all_tests() {
     };
 
     size_t total_passed = 0;
-    const size_t beg_tick = get_ticks();
+    const size_t beg_tick = getticks();
 
     printf("%s Running %zu tests from %zu test suites\n", prompt[GLOBAL], total_testcase,
            total_testsuite);
     list_for_each(&CTEST_testsuites, testsuite, self) {
         size_t skipped = 0;
-        const size_t beg_tick = get_ticks();
+        const size_t beg_tick = getticks();
         printf("%s %zu tests from %s\n", prompt[LOCAL], testsuite->total_cases, testsuite->name);
         list_for_each(&testsuite->testcases, testcase, self) {
             if (testcase->routine == NULL) {
@@ -155,19 +155,19 @@ int CTEST_run_all_tests() {
                 continue;
             }
             printf("%s %s.%s\n", prompt[RUN], testsuite->name, testcase->name);
-            const size_t beg_tick = get_ticks();
+            const size_t beg_tick = getticks();
             CTEST_run_testcase(testcase);
             printf("%s %s.%s (%zu ticks)\n", prompt[testcase->pass ? OK : FAILED], testsuite->name,
-                   testcase->name, get_ticks() - beg_tick);
+                   testcase->name, getticks() - beg_tick);
             if (testcase->pass) { ++total_passed; }
         }
         printf("%s %zu tests from %s (%zu ticks)\n\n", prompt[LOCAL], testsuite->total_cases,
-               testsuite->name, get_ticks() - beg_tick);
+               testsuite->name, getticks() - beg_tick);
         total_testcase_ran -= skipped;
         if (skipped == testsuite->total_cases) { --total_testsuite_ran; }
     }
     printf("%s %zu tests from %zu test suites ran (%zu ticks)\n", prompt[GLOBAL],
-           total_testcase_ran, total_testsuite_ran, get_ticks() - beg_tick);
+           total_testcase_ran, total_testsuite_ran, getticks() - beg_tick);
     printf("%s %zu tests\n", prompt[PASSED], total_passed);
     if (total_passed < total_testcase_ran) {
         list_for_each(&CTEST_testsuites, testsuite, self) {

@@ -139,7 +139,7 @@ void cfs_sched() {
         }
 
         if (is_rq_empty()) {
-            const int pid = kern_get_pid_byname("task_idle");
+            const int pid = kern_getpid_by_name("task_idle");
             sched_assert(pid != -1);
             auto idle = &proc_table[pid];
             idle->task.stat = READY;

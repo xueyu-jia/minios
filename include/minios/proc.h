@@ -285,7 +285,7 @@ void proc_update();
 static inline LIN_MEMMAP* proc_memmap(PROCESS* p_proc) {
     return &(proc_real(p_proc)->task.memmap);
 }
-int kern_get_pid();
+int kern_getpid();
 PROCESS* alloc_PCB();
 void free_PCB(PROCESS* p);
 void sys_yield();
@@ -300,7 +300,7 @@ void* va2la(int pid, void* va);
 void wait_for_sem(void* chan, struct spinlock* lk);
 void wakeup_for_sem(void* chan); // modified by cjj 2021-12-23
 void wait_event(void* event);
-int kern_get_pid_byname(char* name);
+int kern_getpid_by_name(char* name);
 
 void proc_backtrace();
 // void restart_restore();

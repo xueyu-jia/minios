@@ -316,7 +316,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
         case IPC_SET:
             // 复制信息
             q_list[msqid].info.msg_qbytes = (*(msqid_ds *)buf).msg_qbytes;
-            q_list[msqid].info.msg_ctime = sys_get_ticks();
+            q_list[msqid].info.msg_ctime = sys_getticks();
             ret = 0;
             break;
         default:
@@ -354,10 +354,10 @@ void rm_msg_node(int msqid, list_item *head) {
     kern_kfree((u32)target->msg.buf);
     kern_kfree((u32)target);
     // 修改队列信息
-    q_list[msqid].info.msg_lrpid = kern_get_pid();
+    q_list[msqid].info.msg_lrpid = kern_getpid();
     q_list[msqid].info.msg_qnum--;
     q_list[msqid].info.__msg_cbytes -= size;
-    q_list[msqid].info.msg_rtime = kern_get_ticks();
+    q_list[msqid].info.msg_rtime = kern_getticks();
     return;
 }
 
@@ -377,8 +377,8 @@ void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type
     q_list[msqid].num++;
     q_list[msqid].info.msg_qnum++;
     q_list[msqid].info.__msg_cbytes += msgsz;
-    q_list[msqid].info.msg_lspid = kern_get_pid();
-    q_list[msqid].info.msg_stime = kern_get_ticks();
+    q_list[msqid].info.msg_lspid = kern_getpid();
+    q_list[msqid].info.msg_stime = kern_getticks();
     node->msg.type = type_new;
     node->msg.buf = (char *)kern_kmalloc(msgsz);
     node->msgsz = msgsz;
