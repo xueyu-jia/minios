@@ -24,22 +24,28 @@ static void* exec_read_and_load(int fd);
 static const char* extract_program_name(const char* __path);
 
 u32 kern_execve(const char* path, char* const* argv, char* const* envp) {
-    int err_temp;
-    stack_frame_t* p_reg;
+    int err_code = 0;
+    stack_frame_t* stack_frame = NULL;
+    char* path_cloned = NULL;
 
-    /*******************打开文件************************/
+    //! TODO: support flag O_CLOEXEC
+
     //! TODO: allow suffixes like .exe,.com,.bin,.elf
     int fd = kern_vfs_open(path, O_RDONLY, 0);
-    if (fd == -1) goto open_file_failed;
+    if (fd == -1) { goto open_file_failed; }
+    struct inode* inode = p_proc_current->task.filp[fd]->fd_dentry->d_inode;
+    if ((inode->i_type & I_TYPE_MASK) != I_REGULAR || (inode->i_mode & I_X) == 0) {
+        goto permission_denied;
+    }
 
-    char* _path = (char*)kern_kmalloc(strlen(path) + 1);
-    strcpy(_path, path);
-    const char* proc_name = extract_program_name(_path);
+    path_cloned = (char*)kern_kmalloc(strlen(path) + 1);
+    strcpy(path_cloned, path);
+    const char* proc_name = extract_program_name(path_cloned);
 
     // update argv and envp
-    err_temp = exec_replace_argv_and_envp(proc_name, argv, envp);
+    err_code = exec_replace_argv_and_envp(proc_name, argv, envp);
 
-    if (0 != err_temp) {
+    if (0 != err_code) {
         kprintf("exec:replace argv and envp failed");
         goto close_on_error;
     }
@@ -61,14 +67,14 @@ u32 kern_execve(const char* path, char* const* argv, char* const* envp) {
     }
 
     // update eip and esp, remap the stack
-    p_reg = proc_kstacktop(p_proc_current);
-    p_reg->eip = (u32)entry_point;
-    p_reg->esp = (u32)p_proc_current->task.memmap.stack_lin_base;
-    err_temp = do_mmap(
+    stack_frame = proc_kstacktop(p_proc_current);
+    stack_frame->eip = (u32)entry_point;
+    stack_frame->esp = (u32)p_proc_current->task.memmap.stack_lin_base;
+    err_code = do_mmap(
         p_proc_current->task.memmap.stack_lin_limit,
         p_proc_current->task.memmap.stack_lin_base - p_proc_current->task.memmap.stack_lin_limit,
         PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
-    if (-1 == err_temp) {
+    if (-1 == err_code) {
         kprintf("do_mmap in exec error!\n");
         goto fatal_error;
     }
@@ -79,13 +85,18 @@ open_file_failed:
     kprintf(":sys_exec open error!\n");
     return -1;
 
+permission_denied:
+    kprintf(path);
+    kprintf(":sys_exec permission denied!\n");
+    goto close_on_error;
+
 close_on_error:
-    kern_kfree((u32)_path);
+    if (path_cloned != NULL) { kern_kfree((u32)path_cloned); }
     kern_vfs_close(fd);
     return -1;
 
 fatal_error:
-    kern_kfree((u32)_path);
+    kern_kfree((u32)path_cloned);
     do_exit(-1);
     //: can't reach
     return -1;
@@ -329,10 +340,10 @@ u32 do_execve(const char* path, char* const* argv, char* const* envp) {
     return kern_execve(path, argv, envp);
 }
 
-static const char* extract_program_name(const char* __path) {
+static const char* extract_program_name(const char* path) {
     // 找到最后一个斜杠的位置
-    const char* last_slash = strrchr(__path, '/');
+    const char* last_slash = strrchr(path, '/');
     // 根据最后一个斜杠的位置来确定程序名的起始位置
-    const char* program_name = last_slash ? last_slash + 1 : __path;
+    const char* program_name = last_slash ? last_slash + 1 : path;
     return program_name;
 }

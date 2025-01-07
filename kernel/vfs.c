@@ -313,11 +313,6 @@ static const char* strip_dir_path(const char* path, char* dir) {
     return file_name;
 }
 
-int vfs_check_exec_permission(struct inode* inode) {
-    int mode = inode->i_mode;
-    if (!(mode & I_X)) { return -1; }
-    return 0;
-}
 // 上锁规则:
 // 上层->下层目录:持有上层锁获取下层锁,已经持有下层锁的不允许获取上层锁, dir
 // lock must held, return dentry with lock 参数dir

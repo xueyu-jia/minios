@@ -1,5 +1,7 @@
 #include <syscall.h>
 #include <assert.h>
+#include <stdarg.h>
+#include <stdbool.h>
 
 int getticks() {
     return _syscall0(_NR_getticks);
@@ -38,7 +40,10 @@ void sleep(int n) {
 
 int open(const char* pathname, int flags, ...) {
     if (flags & O_CREAT) {
-        int mode = *(((char*)&flags) + 4);
+        va_list ap;
+        va_start(ap, flags);
+        int mode = va_arg(ap, int);
+        va_end(ap);
         return _syscall3(_NR_open, pathname, flags, mode);
     }
     return _syscall2(_NR_open, pathname, flags);
