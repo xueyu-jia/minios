@@ -12,8 +12,8 @@ void* malloc_4k() {
     return (void*)_syscall0(_NR_malloc_4k);
 }
 
-int free_4k(void* AdddrLin) {
-    return _syscall1(_NR_free_4k, AdddrLin);
+void free_4k(void* AdddrLin) {
+    _syscall1(_NR_free_4k, AdddrLin);
 }
 
 int fork() {
@@ -24,7 +24,7 @@ int pthread_create(int* thread, void* attr, void* entry, void* arg) {
     return _syscall4(_NR_pthread_create, thread, attr, entry, arg);
 }
 
-uint32_t execve(char* path, char* argv[], char* envp[]) {
+uint32_t execve(char* path, char* const argv[], char* const envp[]) {
     return _syscall3(_NR_execve, path, argv, envp);
 }
 

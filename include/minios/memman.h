@@ -84,7 +84,7 @@ u32 kern_kmalloc_4k();
 u32 kern_kfree_4k(u32 addr);
 u32 phy_malloc_4k();
 u32 phy_free_4k(u32 phy_addr);
-int kern_free_4k(void* AddrLin);
+void kern_free_4k(void* AddrLin);
 
 u32 kern_malloc_4k();
 memory_page_t* alloc_user_page(u32 pgoff);

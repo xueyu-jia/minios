@@ -151,10 +151,10 @@ typedef struct process_message {
 int getticks();
 int getpid();
 void* malloc_4k();
-int free_4k(void* AdddrLin);
+void free_4k(void* AdddrLin);
 int fork();
 int pthread_create(int* thread, void* attr, void* entry, void* arg);
-uint32_t execve(char* path, char* argv[], char* envp[]);
+uint32_t execve(char* path, char* const argv[], char* const envp[]);
 void yield();
 void sleep(int n);
 int open(const char* pathname, int flags, ...);

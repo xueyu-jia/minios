@@ -191,20 +191,17 @@ u32 phy_free_4k(u32 phy_addr) // 有unsigned
     return 0;
 }
 
-u32 kern_malloc_4k() // modified by mingxuan 2021-8-19
-{
-    u32 AddrLin;
-
-    AddrLin = get_heap_limit(p_proc_current->task.pid);
+u32 kern_malloc_4k() {
+    u32 va = get_heap_limit(p_proc_current->task.pid);
     update_heap_limit(p_proc_current->task.pid, 1);
-    // kern_mapping_4k(AddrLin, p_proc_current->task.pid,
-    // 	MAX_UNSIGNED_INT, PG_P | PG_USU | PG_RWW);
-    int addr = do_mmap(AddrLin, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
+    const int addr = do_mmap(va, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
     if (addr == -1) {
-        kprintf("kern_malloc_4k: error mmap addr occupied");
-        return 0x00000000;
+        update_heap_limit(p_proc_current->task.pid, -1);
+        kprintf("kern_malloc_4k: error mmap addr already occupied\n");
+        return ptr2u(NULL);
     }
-    return AddrLin;
+    assert((uintptr_t)addr == va);
+    return va;
 }
 
 // added by mingxuan 2021-8-19
@@ -217,31 +214,19 @@ u32 sys_malloc_4k() {
     return do_malloc_4k();
 }
 
-// syscall free
-//
-int kern_free_4k(void *AddrLin) // modified by mingxuan 2021-8-19
-{
-    // int phy_addr;
-
-    // phy_addr = get_page_phy_addr(p_proc_current->task.pid, (int)AddrLin);
-    // //获取物理页的物理地址
-
-    // clear_pte(p_proc_current->task.pid, (u32)AddrLin);
-
-    // update_heap_ptr(AddrLin,-1); //update heap pointer
-    update_heap_limit(p_proc_current->task.pid,
-                      -1); // update heap limit edited by wang 2021.8.26
-
-    // return phy_free_4k(phy_addr);
-    return do_munmap((u32)AddrLin, PAGE_SIZE);
+void kern_free_4k(void *va) {
+    if (va == NULL) { return; }
+    update_heap_limit(p_proc_current->task.pid, -1);
+    const int retval = do_munmap((u32)va, PAGE_SIZE);
+    assert(retval == 0);
 }
 
-int do_free_4k(void *AddrLin) {
-    return kern_free_4k(AddrLin);
+void do_free_4k(void *AddrLin) {
+    kern_free_4k(AddrLin);
 }
 
-int sys_free_4k() {
-    return do_free_4k((void *)get_arg(1));
+void sys_free_4k() {
+    do_free_4k((void *)get_arg(1));
 }
 
 // mmu for user vmem addr
@@ -308,12 +293,18 @@ int put_page(memory_page_t *_page) {
     return 0;
 }
 
-// find first vma->end > addr
-// require: pcb.memmap.vma_lock
+/*!
+ * \brief find the first overlapping vma
+ *
+ * [addr, addr+size) may covers multiple vma, we only need to find the first one, for this reason,
+ * we don't care the size of memory block here
+ *
+ * \note requires pcb.memmap.vma_lock
+ */
 struct vmem_area *find_vma(LIN_MEMMAP *mmap, u32 addr) {
     struct vmem_area *vma = NULL;
     list_for_each(&mmap->vma_map, vma, vma_list) {
-        if (vma->end > addr) { return vma; }
+        if (addr >= vma->start && addr < vma->end) { return vma; }
     }
     return NULL;
 }
@@ -442,9 +433,9 @@ static void free_vma(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
 
 // free vma [start, last)
 void free_vmas(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *start, struct vmem_area *last) {
-    struct vmem_area *vma = start, *next;
+    struct vmem_area *vma = start;
     while (vma && vma != last) {
-        next = list_next(&mmap->vma_map, vma, vma_list);
+        struct vmem_area *next = list_next(&mmap->vma_map, vma, vma_list);
         free_vma(p_proc, mmap, vma);
         vma = next;
     }

@@ -39,8 +39,8 @@ void* malloc_4k() {
     return (void*)_syscall0(_NR_malloc_4k);
 }
 
-int free_4k(void* AdddrLin) {
-    return _syscall1(_NR_free_4k, AdddrLin);
+void free_4k(void* ptr) {
+    _syscall1(_NR_free_4k, ptr);
 }
 
 int fork() {

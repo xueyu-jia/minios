@@ -43,7 +43,7 @@ u32 get_arg(int order);
 int getticks();
 int getpid();
 void* malloc_4k();
-int free_4k(void* AdddrLin);
+void free_4k(void* AdddrLin);
 int fork();
 int pthread_create(int* thread, void* attr, void* entry, void* arg);
 u32 execve(char* path, char* argv[], char* envp[]);
@@ -124,7 +124,7 @@ u32 sys_malloc_4k(); // modified by mingxuan 2021-8-13
 // PUBLIC int sys_free(void *arg);				//edit by visual
 // 2016.5.9
 // //deleted by zhenhao 2023.3.5
-int sys_free_4k(); // edit by visual 2016.5.9
+void sys_free_4k(); // edit by visual 2016.5.9
 
 u32 sys_total_mem_size(); // modified by wang 2021.8.26
 // PUBLIC void sys_test();//added by cjj 2021-12-25

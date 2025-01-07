@@ -7,7 +7,7 @@
 #include <stddef.h>
 
 void* malloc_4k();
-int free_4k(void* ptr);
+void free_4k(void* ptr);
 
 // 核心函数
 static uint32_t vmalloc(uint32_t size);               // 分配逻辑内存块

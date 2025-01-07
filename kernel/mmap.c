@@ -5,8 +5,7 @@
 #include <minios/proc.h>
 #include <minios/type.h>
 #include <minios/console.h>
-
-static void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr, int new_below);
+#include <stdbool.h>
 
 /**
  * kmap: 将page对应的物理页映射到内核，返回可访问的线性地址
@@ -175,43 +174,48 @@ int do_mmap(u32 addr, u32 len, u32 prot, u32 flag, int fd, u32 offset) {
     return kern_mmap(p_proc_current, file, addr, len, prot, flag, offset >> PAGE_SHIFT);
 }
 
-static void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr, int new_below) {
+static void split_vma(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 addr, bool split_before) {
     UNUSED(mmap);
-    struct vmem_area *new = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
-    *new = *vma;
-    list_init(&new->vma_list);
-    if (new->file) fget(new->file);
-    if (new_below) {
-        new->end = addr;
+    struct vmem_area *new_vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+    *new_vma = *vma;
+    list_init(&new_vma->vma_list);
+    if (new_vma->file) { fget(new_vma->file); }
+    if (split_before) {
+        new_vma->end = addr;
+        vma->start = addr;
+        vma->pgoff = addr >> PAGE_SHIFT;
+        list_add_before(&new_vma->vma_list, &vma->vma_list);
     } else {
-        new->start = addr;
-        new->pgoff += ((addr - vma->start) >> PAGE_SHIFT);
-    }
-    if (new_below) {
-        list_add_before(&new->vma_list, &vma->vma_list);
-    } else {
-        list_add_after(&new->vma_list, &vma->vma_list);
+        vma->end = addr;
+        new_vma->start = addr;
+        new_vma->pgoff = addr >> PAGE_SHIFT;
+        list_add_after(&new_vma->vma_list, &vma->vma_list);
     }
 }
 
-int kern_munmap(PROCESS *p_proc, u32 start, u32 len) {
-    len = UPPER_BOUND_4K(len);
-    if (len == 0) { return -1; }
-    LIN_MEMMAP *mmap = proc_memmap(p_proc);
+int kern_munmap(PROCESS *proc, u32 start, u32 len) {
+    const u32 end = start + UPPER_BOUND_4K(len);
+    if (start == end) { return -1; }
+
+    LIN_MEMMAP *mmap = proc_memmap(proc);
     lock_or_yield(&mmap->vma_lock);
-    struct vmem_area *vma, *next, *last;
-    UNUSED(next);
-    u32 end = start + len;
-    vma = find_vma(mmap, start);
-    if (!vma) // no target region
-        goto out;
-    if (vma->start > end) goto out; // no need unmap
-    if (start > vma->start) { split_vma(mmap, vma, start, 1); }
-    last = find_vma(mmap, end);
-    if (last && end > last->start) { split_vma(mmap, last, end, 1); }
-    free_vmas(p_proc, mmap, vma, last);
-out:
+    do {
+        struct vmem_area *first_vma = NULL;
+        struct vmem_area *last_vma = NULL;
+        //! NOTE: here first vma and last vma not refers to the vma-pair strictly corresponding to
+        //! the address range, but only the fully-coverred one in the mapped vmas
+        first_vma = find_vma(mmap, start);
+        if (!first_vma) { break; }
+        if (start > first_vma->start) { split_vma(mmap, first_vma, start, true); }
+        last_vma = find_vma(mmap, end - 1);
+        if (last_vma != NULL) {
+            if (end < last_vma->end) { split_vma(mmap, last_vma, end, false); }
+            last_vma = list_next(&mmap->vma_map, last_vma, vma_list);
+        }
+        free_vmas(proc, mmap, first_vma, last_vma);
+    } while (0);
     release(&mmap->vma_lock);
+
     return 0;
 }
 
