@@ -1,6 +1,0 @@
-./shmget01
-./shmget02
-./shmget03
-./shmget04
-./shmget05
-./shmget06
