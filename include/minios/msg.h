@@ -1,19 +1,19 @@
-/*************************************************************
- *         msg.h  by Li Yingchi Jiao Yuanxiang2021.12.20
- *************************************************************/
-#ifndef MSG
-#define MSG
+#pragma once
+
 #include <klib/stdint.h>
-// msgget使用
-#define IPC_CREAT 00001000
-#define IPC_EXCL 00002000
-// msgsnd和msgrcv使用
-#define IPC_NOWAIT 0x1
-#define MSG_NOERROR 0x2
-// msgctl使用
-#define IPC_RMID 0x1
-#define IPC_STAT 0x2
-#define IPC_SET 0x4
+
+#define IPC_CREAT 00001000  //<! create if key is nonexistent
+#define IPC_EXCL 00002000   //<! fail if key exists
+#define IPC_NOWAIT 00004000 //<! return error on wait
+
+#define MSG_NOERROR 010000 //<! no error if message is too big
+#define MSG_EXCEPT 020000  //<! recv any msg except of specified type
+#define MSG_COPY 040000    //<! copy (not remove) all queue messages
+
+#define IPC_RMID 0 //<! remove resource
+#define IPC_SET 1  //<! set ipc_perm options
+#define IPC_STAT 2 //<! get ipc_perm options
+#define IPC_INFO 3 //<! see ipcs
 
 // 队列属性
 #define MAX_MSQ_NUM 4
@@ -48,6 +48,11 @@ typedef struct msg_item {
     long type;
     char* buf;
 } msg_item;
+
+typedef struct {
+    long type;
+    uint8_t data[0];
+} mq_msg_t;
 
 // 队列中的元素，消息类型在内部，还有前后指针
 typedef struct list_item {
@@ -90,7 +95,6 @@ typedef struct msg_queue {
     int num;       // 队列中消息数量
     msqid_ds info; // 队列信息
                    //  block queue
-
     // end
 } msg_queue;
 
@@ -100,12 +104,3 @@ int msgget(key_t key, int msgflg);
 int msgsnd(int msqid, const void* msgp, int msgsz, int msgflg);
 int msgrcv(int msqid, void* msgp, int msgsz, long msgtyp, int msgflg);
 int msgctl(int msgqid, int cmd, msqid_ds* buf);
-
-// system call functions:
-// PUBLIC int sys_ftok(void* args);
-// PUBLIC int sys_msgget(void* args);
-// PUBLIC int sys_msgsnd(void* args);
-// PUBLIC int sys_msgrcv(void* args);
-// PUBLIC int sys_msgctl(void* args);
-
-#endif

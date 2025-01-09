@@ -1,15 +1,23 @@
 #pragma once
 
-// msgget使用
-#define IPC_CREAT 00001000
-#define IPC_EXCL 00002000
-// msgsnd和msgrcv使用
-#define IPC_NOWAIT 0x1
-#define MSG_NOERROR 0x2
-// msgctl使用
-#define IPC_RMID 0x1
-#define IPC_STAT 0x2
-#define IPC_SET 0x4
+#include <stdint.h>
+
+#define IPC_CREAT 00001000  //<! create if key is nonexistent
+#define IPC_EXCL 00002000   //<! fail if key exists
+#define IPC_NOWAIT 00004000 //<! return error on wait
+
+#define MSG_NOERROR 010000 //<! no error if message is too big
+#define MSG_EXCEPT 020000  //<! recv any msg except of specified type
+#define MSG_COPY 040000    //<! copy (not remove) all queue messages
+
+#define IPC_RMID 0 //<! remove resource
+#define IPC_SET 1  //<! set ipc_perm options
+#define IPC_STAT 2 //<! get ipc_perm options
+#define IPC_INFO 3 //<! see ipcs
+
+#define MAX_MSQ_NUM 4
+#define MAX_MSG_IN_Q 1024
+#define MAX_MSGBYTES (1 << 14)
 
 typedef int key_t;
 
@@ -29,6 +37,11 @@ typedef struct msqid_ds {
     int msg_lspid;              /* PID of last msgsnd(2) */
     int msg_lrpid;              /* PID of last msgrcv(2) */
 } msqid_ds;
+
+typedef struct {
+    long type;
+    uint8_t data[0];
+} mq_msg_t;
 
 int ftok(char* f, int key);
 int msgget(key_t key, int msgflg);

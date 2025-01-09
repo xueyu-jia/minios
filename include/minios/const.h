@@ -4,10 +4,7 @@
 #include <minios/layout.h>
 #include <klib/compiler.h>
 #include <klib/stddef.h>
-
-/*最大整数定义*/
-#define MAX_UNSIGNED_INT 0xFFFFFFFF // 最大的无符号整形
-#define MAX_INT 0x7FFFFFFF          // 最大的整形数
+#include <limits.h> // IYWU pragma: export
 
 /* Color */
 /*
