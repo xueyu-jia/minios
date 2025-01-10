@@ -1,5 +1,4 @@
-#ifndef ATOMIC_H
-#define ATOMIC_H
+#pragma once
 
 typedef struct {
     int counter;
@@ -18,5 +17,3 @@ static inline int atomic_dec_and_test(atomic_t *v) {
 
 #define atomic_set(v, i) (((v)->counter) = (i))
 #define atomic_get(v) ((v)->counter)
-
-#endif
