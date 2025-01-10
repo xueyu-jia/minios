@@ -1,5 +1,4 @@
 #include <minios/clock.h>
-#include <minios/console.h>
 #include <minios/const.h>
 #include <minios/memman.h>
 #include <minios/msg.h>
@@ -20,7 +19,7 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg);
 int kern_msgctl(int msgqid, int cmd, msqid_ds *buf);
 
 void pop_front_msg_node(int msqid, list_item *head);
-void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type_new);
+void write_msg_node(int msqid, list_item *node, int msgsz, const mq_msg_t *msg_ptr);
 int newque(int id, key_t key);
 int ipc_findkey(key_t key);
 list_item *insert_head_node(int msqid, long type_new);
@@ -122,28 +121,27 @@ int kern_msgget(key_t key, int msgflg) {
 int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg) {
     if (!(msqid >= 0 && msqid < MAX_MSQ_NUM && q_list[msqid].used)) { return -1; /* EINVAL */ }
     if (msgp == NULL) { return -1; }
+    if (msgsz < 0) { return -1; }
+
+    const mq_msg_t *msg_ptr = msgp;
+    if (msg_ptr->type <= 0) { return -1; /* EINVAL */ }
 
     //! FIXME: concurrency unsafe
 
     while (true) {
         if (q_list[msqid].info.__msg_cbytes + msgsz <= q_list[msqid].info.msg_qbytes) { break; }
-        if (msgflg & IPC_NOWAIT) { return -1; }
+        if (msgflg & IPC_NOWAIT) { return -1; /* EAGAIN */ }
         wait_event(&q_list[msqid]);
         if (!q_list[msqid].used) { return -1; /* EIDRM */ }
     }
 
-    const mq_msg_t *msg_ptr = msgp;
     list_item *new_msg_node = (list_item *)kern_kmalloc(sizeof(list_item));
-    write_msg_node(msqid, new_msg_node, msgsz, (char *)msgp, msg_ptr->type);
+    write_msg_node(msqid, new_msg_node, msgsz, msg_ptr);
     insert_head_node(msqid, msg_ptr->type);
 
-    const int rt_t = insert_type_list(msqid, new_msg_node);
-    const int rt_f = insert_full_list(msqid, new_msg_node);
-    if (rt_t < 0 || rt_f < 0) {
-        kern_kfree((u32)new_msg_node->msg.buf);
-        kern_kfree((u32)new_msg_node);
-        return -1;
-    }
+    const bool tl_inserted = insert_type_list(msqid, new_msg_node) == 0;
+    const bool fl_inserted = insert_full_list(msqid, new_msg_node) == 0;
+    assert(tl_inserted && fl_inserted);
 
     wakeup(&q_list[msqid]);
     return 0;
@@ -325,27 +323,25 @@ void pop_front_msg_node(int msqid, list_item *head) {
 }
 
 /**
- * @brief
- * 添加消息时，将消息内容写入队列中的结点，并修改队列的一些信息
+ * @brief 添加消息时，将消息内容写入队列中的结点，并修改队列的一些信息
  *
  * @param msqid 	队列ID
  * @param node 		结点指针，应分配空间后再调用此函数
  * @param msgsz 	消息长度，由用户提供
- * @param msgp 		用户提供的消息缓冲区
- * @param type_new
- * 新消息的类型（这个参数实际上是多余的，但由于之前老代码的局限性，还是不改为妙）
+ * @param msg_ptr 	消息项
  */
-void write_msg_node(int msqid, list_item *node, int msgsz, char *msgp, long type_new) {
-    int i;
-    q_list[msqid].num++;
-    q_list[msqid].info.msg_qnum++;
+void write_msg_node(int msqid, list_item *node, int msgsz, const mq_msg_t *msg_ptr) {
+    assert(msg_ptr != NULL);
+    assert(msgsz >= 0);
+    ++q_list[msqid].num;
+    ++q_list[msqid].info.msg_qnum;
     q_list[msqid].info.__msg_cbytes += msgsz;
     q_list[msqid].info.msg_lspid = kern_getpid();
     q_list[msqid].info.msg_stime = kern_getticks();
-    node->msg.type = type_new;
-    node->msg.buf = (char *)kern_kmalloc(msgsz);
+    node->msg.type = msg_ptr->type;
+    node->msg.buf = (void *)kern_kmalloc(MAX(msgsz, 1)); //<! alloc at least 1 byte for convenience
     node->msgsz = msgsz;
-    for (i = 0; i < msgsz; i++) node->msg.buf[i] = ((char *)msgp + sizeof(long))[i];
+    memcpy(node->msg.buf, msg_ptr->data, msgsz);
     return;
 }
 
