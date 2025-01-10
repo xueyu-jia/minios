@@ -136,6 +136,13 @@ int search_command_path(const char *cmd) {
     return CMD_INVAL;
 }
 
+bool might_is_regular_file(const char *pathname) {
+    int fd = open(pathname, O_RDWR);
+    if (fd < 0) { return false; }
+    close(fd);
+    return true;
+}
+
 void do_command(int argc, char **args) {
     // shortcus for cd
     if (argc == 1) {
@@ -149,8 +156,7 @@ void do_command(int argc, char **args) {
             }
             matched = false;
         } while (0);
-        if (matched) {
-            //! FIXME: filter regular file
+        if (matched && !might_is_regular_file(item)) {
             char *args[2] = {"cd", item};
             do_cd(2, args);
             return;
