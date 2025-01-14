@@ -1,43 +1,34 @@
-﻿/*****************************************************
- *			fork.c			//add by visual 2016.5.25
- *系统调用fork()功能实现部分sys_fork()
- ********************************************************/
-
-#include <minios/const.h>
-#include <minios/fork.h>
-#include <minios/fs.h>
+﻿#include <minios/fork.h>
+#include <minios/proc.h>
+#include <minios/console.h>
 #include <minios/memman.h>
 #include <minios/page.h>
-#include <minios/proc.h>
-#include <minios/proto.h>
+#include <minios/sched.h>
+#include <minios/interrupt.h>
+#include <fs/fs.h>
 #include <string.h>
 
-static int fork_pcb_info_cpy(PROCESS* p_child);
-static int fork_update_proc_tree(PROCESS* p_child);
+static int fork_pcb_info_cpy(process_t* p_child);
+static int fork_update_proc_tree(process_t* p_child);
 
-/**
- * @brief 系统调用sys_fork具体实现
- * @retval 子进程的pid
- */
 int kern_fork() {
     int retval = 0;
     // alloc a new PCB for child proc
-    PROCESS* fa = p_proc_current;
-    lock_or_yield(&fa->task.lock);
-    PROCESS* ch = alloc_PCB();
-    if (0 == ch) goto alloc_PCB_failed;
+    process_t* fa = p_proc_current;
+    spinlock_lock_or_yield(&fa->task.lock);
+    process_t* ch = alloc_pcb();
+    if (0 == ch) goto alloc_pcb_failed;
 
     // init proc page
     // disable_int();
-    if (ch->task.cr3 == 0) // 如果没有页目录，就申请 //added by mingxuan
-                           // 2021-1-11
-        retval = init_proc_page(ch->task.pid);
+    // 如果没有页目录，就申请
+    if (ch->task.cr3 == 0) { retval = init_proc_page(ch->task.pid); }
     // enable_int();
     if (retval != 0) goto init_page_failed;
 
     // cp the infomation from parent PCB
     fork_pcb_info_cpy(ch);
-    release(&ch->task.lock);
+    spinlock_release(&ch->task.lock);
 
     // disable_int();
     /**************复制线性内存，包括堆、栈、代码数据等等***********************/
@@ -53,42 +44,33 @@ int kern_fork() {
 
     // set the retval of child proc
     proc_kstacktop(ch)->eax = 0; // 设置返回值，改为使用内核栈宏 2024.05.05 jiangfeng
-    u_proc_sum += 1;
 
     // anything child need is prepared now, set its state to ready.
     // disable_int();
     ch->task.stat = READY;
-    release(&fa->task.lock);
+    spinlock_release(&fa->task.lock);
     rq_insert(ch);
     // enable_int();
     return ch->task.pid;
 
 // handle error
-alloc_PCB_failed:
-    release(&fa->task.lock);
+alloc_pcb_failed:
+    spinlock_release(&fa->task.lock);
     kprintf("ALLOC PCB NULL,fork faild!");
     return -1;
 
 init_page_failed:
-    release(&fa->task.lock);
+    spinlock_release(&fa->task.lock);
     kprintf("INIT PAGE FAILED ,fork faild!");
     return -1;
-}
-
-int do_fork() {
-    return kern_fork();
-}
-
-int sys_fork() {
-    return do_fork();
 }
 
 /**
  * @brief	复制父进程的PCB，但保留子进程独有的信息
  * @retval	0
- * @param	child's PROCESS
+ * @param	child's process_t
  */
-static int fork_pcb_info_cpy(PROCESS* p_child) {
+static int fork_pcb_info_cpy(process_t* p_child) {
     int pid;
     u32 cr3_child;
     // stack_frame_t* p_reg = proc_kstacktop(p_child);
@@ -127,7 +109,7 @@ static int fork_pcb_info_cpy(PROCESS* p_child) {
     p_child->task.cr3 = cr3_child;
 
     atomic_inc(&p_child->task.cwd->d_count); // 子进程增加父进程打开文件的引用计数 jiangfeng 2024.02
-    for (int i = 0; i < NR_FILES; i++) {
+    for (int i = 0; i < NR_FILES; ++i) {
         if (p_child->task.filp[i]) { fget(p_child->task.filp[i]); }
     }
     return 0;
@@ -135,11 +117,11 @@ static int fork_pcb_info_cpy(PROCESS* p_child) {
 
 /**
  * @brief	更新父进程和子进程的进程树信息
- * @param	child's PROCESS
+ * @param	child's process_t
  * @retval 	0
  */
 
-static int fork_update_proc_tree(PROCESS* p_child) {
+static int fork_update_proc_tree(process_t* p_child) {
     /************更新父进程的info***************/
     p_proc_current->task.tree_info.child_p_num += 1; // 子进程数量
     p_proc_current->task.tree_info.child_process[p_proc_current->task.tree_info.child_p_num - 1] =

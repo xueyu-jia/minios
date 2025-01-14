@@ -1,8 +1,12 @@
-// used for performance stat
-#ifndef BLAME_H
-#define BLAME_H
-#include <minios/clock.h>
-#include <minios/type.h>
+#pragma once
+
+#include <klib/stdint.h>
+
+#define BLAME_TYPES 4
+#define BLAME_OTHER 0
+#define BLAME_WRT 1
+#define BLAME_SYN 2
+#define BLAME_READ 3
 
 struct performance_stat {
     char info[16];
@@ -10,12 +14,7 @@ struct performance_stat {
     u32 last_record;
 };
 
-#define BLAME_TYPES 4
-#define BLAME_OTHER 0
-#define BLAME_WRT 1
-#define BLAME_SYN 2
-#define BLAME_READ 3
 extern int current_type;
+
 void stat_init();
 void stat_step(int type);
-#endif

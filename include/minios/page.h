@@ -1,19 +1,16 @@
 #pragma once
 
-#include <minios/const.h>
-#include <minios/type.h>
-#include <minios/proc.h>
-#include <minios/assert.h>
+#include <klib/stddef.h>
+#include <klib/stdint.h>
 #include <klib/size.h>
+#include <klib/sys/types.h>
 #include <stdbool.h>
 
-#define PGSIZE SZ_4K
+#define PGSHIFT 12
+#define PGSIZE (1 << PGSHIFT)
 
-#define PTSIZE (PGSIZE * NPTENTRIES)
-#define PTSHIFT 22
-
-#define PTXSHIFT 12
 #define PDXSHIFT 22
+#define PTXSHIFT 12
 
 #define PGNUM(la) (((uintptr_t)(la)) >> PTXSHIFT)
 #define PDX(la) ((((uintptr_t)(la)) >> PDXSHIFT) & 0x3ff)
@@ -41,57 +38,38 @@
 #define PTE_PS 0x080
 #define PTE_G 0x100
 
+#define phy_to_pfn(x) ((x) >> PGSHIFT)
+#define pfn_to_phy(x) ((x) << PGSHIFT)
+
 extern u32 kernel_pde_phy;
 
+void refresh_page_cache();
+
 int init_proc_page(u32 pid);
-void write_page_pde(u32 PageDirPhyAddr, u32 AddrLin, u32 TblPhyAddr, u32 Attribute);
+void write_page_pde(u32 PageDirPhyAddr, u32 va, u32 TblPhyAddr, u32 Attribute);
 int kmapping_phy(u32 phy_addr);
 int kunmapping_phy(u32 phy_addr);
-int map_laddr(u32 AddrLin, u32 phy_addr, u32 pid,
-
-              u32 pde_Attribute, u32 pte_Attribute);
-int lin_mapping_phy_nopid(u32 AddrLin, u32 phy_addr, u32 kernel_pde_addr_phy, u32 pde_Attribute,
-                          u32 pte_Attribute);
+int map_laddr(u32 va, u32 phy_addr, u32 pid, u32 pde_attr, u32 pte_attr);
+int lin_mapping_phy_nopid(u32 va, u32 pa, u32 kernel_pde_addr_phy, u32 pde_attr, u32 pte_attr);
 
 void free_all_pagetbl(u32 pid);
-void free_pagetbl(u32 pid, u32 AddrLin);
+void free_pagetbl(u32 pid, u32 va);
 void free_pagedir(u32 pid);
-u32 get_page_phy_addr(u32 pid, u32 AddrLin);
-void clear_kernel_pagepte_low();
-void clear_pte(u32 pid, u32 AddrLin);
+u32 get_page_phy_addr(u32 pid, u32 va);
+void clear_pte(u32 pid, u32 va);
 void update_heap_limit(u32 pid, int tag);
 u32 get_heap_limit(u32 pid);
 
+u32 get_pde_phy_addr(u32 pid);
+u32 get_pte_phy_addr(u32 pd_base, u32 va);
+u32 get_page_phy_addr_nopid(u32 pt_base, u32 va);
+bool pte_exist(u32 pd_base, u32 va);
+bool phy_exist(u32 pt_base, u32 va);
+
 static inline u32 get_pde_index(u32 va) {
-    return va >> 22;
+    return va >> PDXSHIFT;
 }
 
 static inline u32 get_pte_index(u32 va) {
-    return (((va) & 0x003fffff) >> 12);
-}
-
-static inline u32 get_pde_phy_addr(u32 pid) {
-    if (proc_table[pid].task.cr3 == 0) {
-        return (u32)NULL;
-    } else {
-        return ((proc_table[pid].task.cr3) & 0xfffff000);
-    }
-}
-
-static inline u32 get_pte_phy_addr(u32 pd_base, u32 va) {
-    assert(pd_base != 0 && "invalid page directory address");
-    return (*((u32 *)K_PHY2LIN(pd_base) + get_pde_index(va))) & 0xfffff000;
-}
-
-static inline u32 get_page_phy_addr_nopid(u32 pt_base, u32 va) {
-    assert(pt_base != 0 && "invalid page table address");
-    return (*((u32 *)K_PHY2LIN(pt_base) + get_pte_index(va))) & 0xfffff000;
-}
-
-static inline bool pte_exist(u32 pd_base, u32 va) {
-    return ((*((u32 *)K_PHY2LIN(pd_base) + get_pde_index(va))) & PG_P) == PG_P;
-}
-
-static inline bool phy_exist(u32 pt_base, u32 va) {
-    return ((*((u32 *)K_PHY2LIN(pt_base) + get_pte_index(va))) & PG_P) == PG_P;
+    return (((va) & 0x003fffff) >> PTXSHIFT);
 }

@@ -1,22 +1,16 @@
+#include <minios/msg.h>
 #include <minios/clock.h>
-#include <minios/const.h>
 #include <minios/memman.h>
 #include <minios/msg.h>
 #include <minios/page.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/assert.h>
+#include <minios/sched.h>
 #include <errno.h>
 #include <string.h>
 #include <limits.h>
 
 msg_queue q_list[MAX_MSQ_NUM];
-
-int kern_msgget(key_t key, int msgflg);
-int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg);
-int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg);
-int kern_msgctl(int msgqid, int cmd, msqid_ds *buf);
 
 void pop_front_msg_node(int msqid, list_item *head);
 void write_msg_node(int msqid, list_item *node, int msgsz, const mq_msg_t *msg_ptr);
@@ -35,53 +29,14 @@ void init_msgq() {
     }
 }
 
-int kern_ftok(char *f, int flag) {
-    unsigned int key = flag;
-    for (int base = 1; *f; f++) {
-        key += ((int)*f) * base;
+int kern_ftok(const char *pathname, int proj_id) {
+    unsigned int key = proj_id;
+    const char *s = pathname;
+    for (int base = 1; *s; ++s) {
+        key += ((int)*s) * base;
         base *= 233;
     }
     return (int)(key & 0xefffffff);
-}
-
-int do_ftok(char *f, int flag) {
-    return kern_ftok(f, flag);
-}
-
-int sys_ftok() {
-    return do_ftok((char *)get_arg(1), get_arg(2));
-}
-
-int do_msgget(key_t key, int msgflg) {
-    return kern_msgget(key, msgflg);
-}
-
-int sys_msgget() {
-    return do_msgget(get_arg(1), get_arg(2));
-}
-
-int do_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg) {
-    return kern_msgsnd(msqid, msgp, msgsz, msgflg);
-}
-
-int sys_msgsnd() {
-    return do_msgsnd(get_arg(1), (const void *)get_arg(2), get_arg(3), get_arg(4));
-}
-
-int do_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
-    return kern_msgrcv(msqid, msgp, msgsz, msgtyp, msgflg);
-}
-
-int sys_msgrcv() {
-    return do_msgrcv(get_arg(1), (void *)get_arg(2), get_arg(3), get_arg(4), get_arg(5));
-}
-
-int do_msgctl(int msqid, int cmd, msqid_ds *buf) {
-    return kern_msgctl(msqid, cmd, buf);
-}
-
-int sys_msgctl() {
-    return do_msgctl(get_arg(1), get_arg(2), (msqid_ds *)get_arg(3));
 }
 
 // real functions
@@ -247,10 +202,10 @@ int kern_msgrcv(int msqid, void *msgp, int msgsz, long msgtyp, int msgflg) {
  * 					MSG_INFO：?
  * 					MSG_STAT：?
  * @param buf
- * 存放队列信息结构的指针，buf应该是msqid_ds类型，这个类型还没有定义
+ * 存放队列信息结构的指针，buf 应该是 msqid_ds_t 类型，这个类型还没有定义
  * @return int 		对前三个cmd值，操作成功返回0，出错返回-1
  */
-int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
+int kern_msgctl(int msqid, int cmd, msqid_ds_t *buf) {
     if (msqid < 0 || msqid > MAX_MSQ_NUM || !q_list[msqid].used) { return -1; }
     switch (cmd) {
         case IPC_RMID: {
@@ -274,13 +229,13 @@ int kern_msgctl(int msqid, int cmd, msqid_ds *buf) {
         } break;
         case IPC_STAT: {
             if (buf == NULL) { break; }
-            *(msqid_ds *)buf = q_list[msqid].info;
+            *(msqid_ds_t *)buf = q_list[msqid].info;
             return 0;
         } break;
         case IPC_SET: {
             if (buf == NULL) { break; }
-            q_list[msqid].info.msg_qbytes = (*(msqid_ds *)buf).msg_qbytes;
-            q_list[msqid].info.msg_ctime = sys_getticks();
+            q_list[msqid].info.msg_qbytes = (*(msqid_ds_t *)buf).msg_qbytes;
+            q_list[msqid].info.msg_ctime = kern_getticks();
             return 0;
         } break;
     }
@@ -372,7 +327,7 @@ int newque(int id, key_t key) {
  */
 int ipc_findkey(key_t key) {
     int id;
-    for (id = 0; id < MAX_MSQ_NUM; id++) {
+    for (id = 0; id < MAX_MSQ_NUM; ++id) {
         if (q_list[id].key == key && q_list[id].used) return id;
     }
     return -1;

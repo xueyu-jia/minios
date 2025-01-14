@@ -1,13 +1,3 @@
-/*
- * @Author: lirong lirongleiyang@163.com
- * @Date: 2024-08-18 15:32:56
- * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-18 17:00:01
- * @FilePath: /minios/os/include/kernel/vga.h
- * @Description:
- *
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
- */
 #pragma once
 
 #include <klib/stddef.h>
@@ -36,7 +26,6 @@
 #define MAKE_CELL(clr, ch) (clr | ch)
 #define BLANK MAKE_CELL(DEFAULT_CHAR_COLOR, ' ')
 
-/* VGA */
 #define CRTC_ADDR_REG 0x3d4 //<! CRT Controller Registers - Addr Register
 #define CRTC_DATA_REG 0x3d5 //<! CRT Controller Registers - Data Register
 #define UNDERLINE_REG 0x14  //<! reg index of underline

@@ -1,31 +1,33 @@
 #include <fs/devfs/devfs.h>
-#include <minios/fs.h>
 #include <minios/hd.h>
+#include <minios/clock.h>
+#include <minios/vfs.h>
+#include <minios/console.h>
 #include <minios/memman.h>
-#include <minios/proto.h>
-#include <klib/spinlock.h>
+#include <minios/spinlock.h>
+#include <klib/size.h>
 #include <string.h>
 
 static list_head devices;
 
-static SPIN_LOCK devices_lock;
+static spinlock_t devices_lock;
 
 void init_devices() {
     list_init(&devices);
-    initlock(&devices_lock, NULL);
+    spinlock_init(&devices_lock, NULL);
 }
 
 static struct device *find_major_device(int dev) {
     struct device *dev_struct = NULL;
     int major = MAJOR(dev);
-    acquire(&devices_lock);
+    spinlock_acquire(&devices_lock);
     list_for_each(&devices, dev_struct, dev_list) {
         if (dev_struct->dev_major == major) {
-            release(&devices_lock);
+            spinlock_release(&devices_lock);
             return dev_struct;
         }
     }
-    release(&devices_lock);
+    spinlock_release(&devices_lock);
     return NULL;
 }
 
@@ -70,9 +72,9 @@ struct device *register_device(int dev, int type, struct file_operations *fop) {
         dev_struct->dev_type = type;
         dev_struct->dev_fop = fop;
         dev_struct->dev_minor_map = 0;
-        acquire(&devices_lock);
+        spinlock_acquire(&devices_lock);
         list_add_last(&dev_struct->dev_list, &devices);
-        release(&devices_lock);
+        spinlock_release(&devices_lock);
     }
     dev_struct->dev_minor_map |= (1 << MINOR(dev));
     return dev_struct;
@@ -83,9 +85,9 @@ int unregister_device(int dev) {
     if (dev_struct == NULL) { return -1; }
     dev_struct->dev_minor_map &= (~(1 << MINOR(dev)));
     if (dev_struct->dev_minor_map == 0) {
-        acquire(&devices_lock);
+        spinlock_acquire(&devices_lock);
         list_remove(&dev_struct->dev_list);
-        release(&devices_lock);
+        spinlock_release(&devices_lock);
         kern_kfree((u32)dev_struct);
     }
     return 0;
@@ -95,13 +97,13 @@ struct dentry *devfs_lookup(struct inode *dir, const char *filename) {
     struct device *dev_struct = NULL;
     int dev = 0;
     char dev_name[8];
-    acquire(&devices_lock);
+    spinlock_acquire(&devices_lock);
     list_for_each(&devices, dev_struct, dev_list) {
         memset(dev_name, 0, 8);
         dev_to_basename(dev_struct->dev_major, dev_name);
         int minor_name = strlen(dev_name);
         u32 minor_bit = dev_struct->dev_minor_map;
-        for (int i = 0; minor_bit && i < 32; i++) {
+        for (int i = 0; minor_bit && i < 32; ++i) {
             if (minor_bit & 1) {
                 if (i != 0 || dev_struct->dev_type != DEV_BLOCK_TYPE) {
                     itoa(i, dev_name + minor_name, 10);
@@ -115,7 +117,7 @@ struct dentry *devfs_lookup(struct inode *dir, const char *filename) {
         }
     }
 found:
-    release(&devices_lock);
+    spinlock_release(&devices_lock);
     if (dev) {
         struct inode *inode = vfs_get_inode(dir->i_sb, dev);
         return vfs_new_dentry(dev_name, inode);
@@ -136,13 +138,13 @@ int devfs_readdir(struct file_desc *file, unsigned int count, struct dirent *sta
     strcpy(dent->d_name, "..");
     count -= dent->d_len;
     dent = dirent_next(dent);
-    acquire(&devices_lock);
+    spinlock_acquire(&devices_lock);
     list_for_each(&devices, dev_struct, dev_list) {
         memset(dev_name, 0, 8);
         dev_to_basename(dev_struct->dev_major, dev_name);
         int minor_name = strlen(dev_name);
         u32 minor_bit = dev_struct->dev_minor_map;
-        for (int i = 0; minor_bit && i < 32; i++) {
+        for (int i = 0; minor_bit && i < 32; ++i) {
             if (minor_bit & 1) {
                 if (!(i == 0 && dev_struct->dev_type == DEV_BLOCK_TYPE)) {
                     itoa(i, dev_name + minor_name, 10);
@@ -155,7 +157,7 @@ int devfs_readdir(struct file_desc *file, unsigned int count, struct dirent *sta
             minor_bit >>= 1;
         }
     }
-    release(&devices_lock);
+    spinlock_release(&devices_lock);
     return (u32)dent - (u32)start;
 }
 
@@ -163,7 +165,7 @@ void devfs_read_inode(struct inode *inode) {
     if (inode->i_no == 1) {
         inode->i_mode = I_R | I_X;
         inode->i_type = I_DIRECTORY;
-        inode->i_size = num_4K;
+        inode->i_size = SZ_4K;
         inode->i_op = &devfs_inode_ops;
         inode->i_fop = &devfs_file_ops;
     } else {
@@ -193,7 +195,7 @@ void devfs_read_inode(struct inode *inode) {
 int devfs_fill_superblock(struct super_block *sb, int dev) {
     sb->sb_dev = dev;
     sb->sb_op = &devfs_sb_ops;
-    sb->fs_type = DEV_FS_TYPE;
+    sb->fs_type = FS_TYPE_DEV;
     struct inode *root_inode = vfs_get_inode(sb, 1);
     sb->sb_root = vfs_new_dentry("dev", root_inode);
     return 0;

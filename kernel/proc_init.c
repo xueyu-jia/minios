@@ -1,37 +1,27 @@
-/*
- * @Author: lirong lirongleiyang@163.com
- * @Date: 2024-08-16 14:30:31
- * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-19 18:32:29
- * @FilePath: /minios/os/kernel/proc_init.c
- * @Description:
- *
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
- */
 #include <minios/buffer.h>
 #include <minios/clock.h>
 #include <minios/console.h>
-#include <minios/const.h>
 #include <minios/hd.h>
+#include <minios/memman.h>
 #include <minios/mmap.h>
 #include <minios/page.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/x86.h>
+#include <minios/layout.h>
+#include <klib/size.h>
 #include <string.h>
 
-static void set_rpl(cpu_context* context, int pid, u32 rpl);
-static void init_proc_pages(PROCESS* p_proc);
-static void init_proc_page_addr(u32 low, u32 high, PROCESS* proc);
-static void init_a_PCB(PROCESS* pcb);
+static void set_rpl(cpu_context_t* context, int pid, u32 rpl);
+static void init_proc_pages(process_t* p_proc);
+static void init_proc_page_addr(u32 low, u32 high, process_t* proc);
+static void init_pcb(process_t* pcb);
 
-PROCESS* alloc_PCB() {
-    PROCESS* p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
-    for (int i = NR_K_PCBS; i < NR_PCBS; i++) {
+process_t* alloc_pcb() {
+    process_t* p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
+    for (int i = NR_K_PCBS; i < NR_PCBS; ++i) {
         if (p->task.stat == FREE) {
             // disable_int();
-            init_a_PCB(p);
+            init_pcb(p);
             p->task.stat = SLEEPING;
             // p->task.pid = i;
             // enable_int();
@@ -42,13 +32,13 @@ PROCESS* alloc_PCB() {
     return NULL;
 }
 
-PROCESS* alloc_task_PCB() {
-    PROCESS* p;
+process_t* alloc_task_pcb() {
+    process_t* p;
     // p = proc_table+NR_K_PCBS;//跳过前NR_K_PCBS个
     p = proc_table;
-    for (int i = 0; i < NR_K_PCBS + 1; i++) {
+    for (int i = 0; i < NR_K_PCBS + 1; ++i) {
         if (p->task.stat == FREE) {
-            init_a_PCB(p);
+            init_pcb(p);
             p->task.stat = SLEEPING;
             return p;
         }
@@ -57,12 +47,12 @@ PROCESS* alloc_task_PCB() {
     return NULL;
 }
 
-PROCESS* alloc_init_PCB() {
-    PROCESS* p;
+process_t* alloc_init_pcb() {
+    process_t* p;
     // p = proc_table+NR_K_PCBS;//跳过前NR_K_PCBS个
     p = &proc_table[PID_INIT];
     if (p->task.stat == FREE) {
-        init_a_PCB(p);
+        init_pcb(p);
         p->task.stat = SLEEPING;
         return p;
     }
@@ -72,14 +62,14 @@ PROCESS* alloc_init_PCB() {
     return NULL;
 }
 
-void free_PCB(PROCESS* p) {
+void free_pcb(process_t* p) {
     p->task.pid = 0;
     p->task.stat = FREE;
 }
 
 /**
  * @description: 初始化进程基本信息
- * @param {PROCESS} *proc
+ * @param {process_t} *proc
  * @param {char} name
  * @param {enum proc_stat} stat
  * @param {int} pid
@@ -88,7 +78,7 @@ void free_PCB(PROCESS* p) {
  * @return {*}
  * @note: name, pid, proc stat, realtime or not, priority or nice
  */
-void init_process(PROCESS* proc, char name[32], enum proc_stat stat, int pid, int is_rt,
+void init_process(process_t* proc, char name[32], enum proc_stat stat, int pid, int is_rt,
                   int priority_or_nice) {
     strcpy(proc->task.p_name, name);            // 名称
     proc->task.pid = pid;                       // pid
@@ -110,7 +100,7 @@ void init_process(PROCESS* proc, char name[32], enum proc_stat stat, int pid, in
 
 /**
  * @description: 初始化进程的上下文
- * @param {cpu_context} *context
+ * @param {cpu_context_t} *context
  * @param {int} pid should be correct
  * @return {*}
  * @note
@@ -118,8 +108,8 @@ void init_process(PROCESS* proc, char name[32], enum proc_stat stat, int pid, in
  this proc; cpu context switch to the "esp_save_int" whe cpu's rpl change to
  task level or kernel level (interrupt)
  */
-void init_user_cpu_context(cpu_context* context, int pid) {
-    PROCESS* pcb = pid2proc(pid);
+void init_user_cpu_context(cpu_context_t* context, int pid) {
+    process_t* pcb = pid2proc(pid);
     pcb->task.context.esp_save_int = proc_stack_frame(pcb);
     pcb->task.context.esp_save_context = proc_context_frame(pcb);
     set_rpl(context, pid, RPL_USER);
@@ -127,7 +117,7 @@ void init_user_cpu_context(cpu_context* context, int pid) {
 
 /**
  * @description: set the context's rpl
- * @param {cpu_context} *context
+ * @param {cpu_context_t} *context
  * @param {int} pid should be correct
  * @param {u32} rpl: could be RPL_USER, RPL_TASK or RPL_KERN
  * @return {*}
@@ -135,18 +125,18 @@ void init_user_cpu_context(cpu_context* context, int pid) {
             but the eip and esp in the esp_save_int will be remaind;
 
  */
-static void set_rpl(cpu_context* context, int pid, u32 rpl) {
+static void set_rpl(cpu_context_t* context, int pid, u32 rpl) {
     init_cpu_context(context, pid, context->esp_save_int->eip, context->esp_save_int->esp,
                      (u32)restart_restore, rpl);
 }
 
 int kthread_create(char* name, void* func, int is_rt, int privilege, int rtpriority_or_nice) {
     // 禁用中断
-    PROCESS* p_proc;
+    process_t* p_proc;
     if (strcmp(name, "initial") == 0)
-        p_proc = alloc_init_PCB();
+        p_proc = alloc_init_pcb();
     else
-        p_proc = alloc_task_PCB();
+        p_proc = alloc_task_pcb();
 
     if (p_proc == NULL) {
         kprintf("kthread_create: alloc PCB error\n");
@@ -176,7 +166,7 @@ int kthread_create(char* name, void* func, int is_rt, int privilege, int rtprior
 }
 
 // 调用此函数分配页表
-static void init_proc_pages(PROCESS* p_proc) {
+static void init_proc_pages(process_t* p_proc) {
     int pid = p_proc->task.pid;
     if (0 != init_proc_page(pid)) {
         kprintf("kernel_main Error:init_proc_page");
@@ -185,11 +175,10 @@ static void init_proc_pages(PROCESS* p_proc) {
     p_proc->task.memmap.heap_lin_base = HeapLinBase;
     p_proc->task.memmap.heap_lin_limit = HeapLinBase; // 堆的界限将会一直动态变化
 
-    p_proc->task.memmap.stack_child_limit = StackLinLimitMAX; // add by visual 2016.5.27
+    p_proc->task.memmap.stack_child_limit = StackLinLimitMAX;
     p_proc->task.memmap.stack_lin_base = StackLinBase;
-    p_proc->task.memmap.stack_lin_limit =
-        StackLinBase -
-        0x4000; // 栈的界限将会一直动态变化，目前赋值为16k，这个值会根据esp的位置进行调整，目前初始化为16K大小
+    // 栈的界限将会一直动态变化，目前赋值为16k，这个值会根据esp的位置进行调整，目前初始化为16K大小
+    p_proc->task.memmap.stack_lin_limit = StackLinBase - SZ_16K;
     p_proc->task.memmap.arg_lin_base = ArgLinBase; // 参数内存基址
     p_proc->task.memmap.arg_lin_limit = ArgLinLimitMAX;
     p_proc->task.memmap.kernel_lin_base = KernelLinBase;
@@ -204,12 +193,12 @@ static void init_proc_pages(PROCESS* p_proc) {
 
 // [start,end) 地址段分配页表，如果不存在分配物理页并填写页表，否则忽略
 // 固定地址start<end
-static void init_proc_page_addr(u32 low, u32 high, PROCESS* proc) {
+static void init_proc_page_addr(u32 low, u32 high, process_t* proc) {
     kern_mmap(proc, NULL, low, high - low, PROT_READ | PROT_WRITE, MAP_PRIVATE, 0);
 }
 
-static void init_a_PCB(PROCESS* pcb) {
-    memset(pcb, 0, sizeof(PROCESS));
+static void init_pcb(process_t* pcb) {
+    memset(pcb, 0, sizeof(process_t));
     pcb->task.stat = SLEEPING;
     pcb->task.pid = pcb - proc_table;
 
@@ -218,8 +207,8 @@ static void init_a_PCB(PROCESS* pcb) {
     frame -= sizeof(stack_frame_t);
     pcb->task.context.esp_save_int = (stack_frame_t*)frame;
     // 开辟中断帧的空间
-    frame -= sizeof(CONTEXT_FRAME);
-    pcb->task.context.esp_save_context = (CONTEXT_FRAME*)frame;
+    frame -= sizeof(context_frame_t);
+    pcb->task.context.esp_save_context = (context_frame_t*)frame;
     init_user_cpu_context(&pcb->task.context, pcb->task.pid);
-    for (int j = 0; j < NR_FILES; j++) { pcb->task.filp[j] = 0; }
+    for (int j = 0; j < NR_FILES; ++j) { pcb->task.filp[j] = 0; }
 }

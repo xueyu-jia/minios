@@ -1,6 +1,6 @@
-#include <minios/proto.h>
 #include <minios/uart.h>
-// port from uniform os
+#include <minios/asm.h>
+
 int init_simple_serial() {
     outb(PORT_COM1 + 1, 0x00); // Disable all interrupts
     outb(PORT_COM1 + 3, 0x80); // Enable DLAB (set baud rate divisor)
@@ -34,12 +34,12 @@ static inline int serial_received() {
     return inb(PORT_COM1 + 5) & 1;
 }
 
-char read_serial() {
+char serial_read() {
     while (serial_received() == 0) {}
     return inb(PORT_COM1);
 }
 
-void write_serial(char a) {
+void serial_write(char a) {
     while (is_transmit_empty() == 0) {}
     outb(PORT_COM1, a);
 }

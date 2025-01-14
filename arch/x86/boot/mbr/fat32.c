@@ -142,7 +142,7 @@ u32 fat32_find_file(char *filename) {
  */
 u32 fat32_find_clus_i(u32 first_clus, u32 clus_i) {
     u32 current_clus = first_clus;
-    for (u32 i = 0; i < clus_i; i++) { current_clus = get_next_clus_number(current_clus); }
+    for (u32 i = 0; i < clus_i; ++i) { current_clus = get_next_clus_number(current_clus); }
     return current_clus;
 }
 /*

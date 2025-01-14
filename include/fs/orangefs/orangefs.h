@@ -1,7 +1,7 @@
 #pragma once
 
-#include <minios/const.h>
-#include <minios/type.h>
+#include <fs/fs.h>
+#include <klib/stdint.h>
 
 /**
  * @def   MAGIC_V1

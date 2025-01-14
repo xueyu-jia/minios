@@ -1,15 +1,14 @@
-#include <driver/pci/pci.h>
-#include <driver/pci/vendor.h>
 #include <minios/ahci.h>
-#include <minios/const.h>
-#include <minios/memman.h>
+#include <minios/console.h>
 #include <minios/page.h>
-#include <minios/proc.h>
+#include <minios/memman.h>
 #include <minios/protect.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/kstate.h>
-#include <klib/stddef.h>
+#include <minios/sched.h>
+#include <minios/proc.h>
+#include <minios/layout.h>
+#include <minios/interrupt.h>
+#include <driver/pci/pci.h>
 #include <string.h>
 
 #define PCI_SUBCLS_SATA_CTRL 0x06
@@ -128,7 +127,7 @@ static void sata_handler(int irq) {
 
     // 判断是哪个端口触发的中断
     int prot_num;
-    for (prot_num = 0; prot_num <= PCI_MAX_DEV; prot_num++) {
+    for (prot_num = 0; prot_num <= PCI_MAX_DEV; ++prot_num) {
         if (port_bitmap & (1 << prot_num)) break;
     }
     // 中断处理
@@ -264,7 +263,7 @@ void port_rebase(HBA_PORT *port) {
     HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER *)K_PHY2LIN(port->clb);
     u32 CT_BASE[32];
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; ++i) {
         cmdheader[i].prdtl = 8; // 8 prdt entries per command table
                                 // 256 bytes per command table, 64+16+48+16*8
         CT_BASE[i] = phy_kmalloc(sizeof(HBA_CMD_TBL));
@@ -345,7 +344,7 @@ u32 identity_SATA(HBA_PORT *port, u8 *buf) {
 int find_cmdslot(HBA_PORT *port) {
     // If not set in SACT and CI, the slot is free
     u32 slots = (port->sact | port->ci);
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; ++i) {
         if ((slots & 1) == 0) return i;
         slots >>= 1;
     }

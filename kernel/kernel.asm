@@ -64,7 +64,7 @@ extern 	process_signal	;added by mingxuan 2021-2-28
 extern	gdt_ptr
 extern	idt_ptr
 extern	tss
-extern	sys_call_table
+extern	syscall_table
 extern 	cr3_ready
 extern  p_proc_current
 extern	p_proc_next			;added by xw, 18/4/26
@@ -624,7 +624,7 @@ sys_call:
     call	save_syscall	;save registers and some other things. modified by xw, 17/12/11
     sti
     ; push 	ebx							;push the argument the syscall need
-    call    [sys_call_table + eax * 4]	;将参数压入堆栈后再调用函数			add by visual 2016.4.6
+    call    [syscall_table + eax * 4]	;将参数压入堆栈后再调用函数			add by visual 2016.4.6
     ; add		esp, 4						;clear the argument in the stack, modified by xw, 17/12/11
     cli
     mov		edx, [p_proc_current]

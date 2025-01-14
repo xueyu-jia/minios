@@ -1,30 +1,14 @@
-/**********************************************************
- *	signal.h       //added by mingxuan 2021-2-28
- ***********************************************************/
+#pragma once
 
-#ifndef SIGNAL_H
-#define SIGNAL_H
+#include <uapi/minios/signal.h>
+#include <klib/stdint.h>
 
-#define SIG_DFL ((void*)1)
-#define SIG_IGN ((void*)0)
-#define SIGINT 2
-
-#include <minios/type.h>
 typedef struct Sigaction {
-    int sig;       // 信号的编号
-    void* handler; // 该类型信号对应的handler函数指针
-                   // 每种类型的信号都会对应一个handler函数,
-                   // 最多只有32个handler函数, mingxuan 2021-2-27
-
-    u32 arg; // 传给handler的参数
+    int sig;
+    void* handler;
+    u32 arg;
 } Sigaction;
 
-void Handler(Sigaction sigaction);
-
-int kill(int pid, int sig, ...);
-
-int signal(int sig, void* handler);
-
-#define HANDLER Handler
-
-#endif
+int kern_signal(int sig, void* handler, void* _Handler);
+int kern_sigsend(int pid, Sigaction* action);
+void kern_sigreturn(int ebp);

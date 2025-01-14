@@ -1,7 +1,7 @@
 #pragma once
 
-#include <klib/compiler.h>
 #include <klib/stdint.h>
+#include <compiler.h>
 #include <stdbool.h>
 
 #define GDT_SIZE 128

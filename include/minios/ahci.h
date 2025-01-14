@@ -1,8 +1,7 @@
-#ifndef _AHCI_H
-#define _AHCI_H
+#pragma once
 
-#include <minios/const.h>
-#include <minios/type.h>
+#include <klib/stdint.h>
+#include <stdbool.h>
 
 #define HBA_PxCMD_ST 0x0001
 #define HBA_PxCMD_FRE 0x0010
@@ -237,8 +236,7 @@ typedef struct tagahci_info {
 /*
         Port Registers (one set per port)
         Offset 10h: PxIS – Port x Interrupt Status
-        请参考 《 Serial ATA Advanced Host Controller Interface (AHCI)1.3.1
-   》 3.3.5节
+        请参考 《 Serial ATA Advanced Host Controller Interface (AHCI)1.3.1 》 3.3.5节
         https://www.intel.cn/content/www/cn/zh/io/serial-ata/serial-ata-ahci-tech-proposal-rev1_3_1.html
 
         lirong
@@ -294,8 +292,7 @@ void tf_err_rec(HBA_PORT *port);
 
 extern HBA_MEM *HBA;
 
-extern AHCI_INFO ahci_info
-    [MAX_AHCI_NUM]; // 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+// 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
+extern AHCI_INFO ahci_info[MAX_AHCI_NUM];
 extern volatile int sata_wait_flag;
 extern volatile int sata_error_flag;
-#endif /* ACHI_H */

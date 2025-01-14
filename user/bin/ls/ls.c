@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stddef.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     char* path = "."; // default
     if (argc > 2) {
         printf("usage: ls [%%path]\n");

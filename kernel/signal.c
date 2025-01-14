@@ -1,11 +1,10 @@
-#include <errno.h> // IWYU pragma: keep
-#include <minios/interrupt_x86.h>
-#include <minios/ksignal.h>
+#include <minios/signal.h>
+#include <minios/interrupt.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/assert.h>
-#include <klib/compiler.h>
+#include <minios/syscall.h>
+#include <compiler.h>
+#include <errno.h> // IWYU pragma: keep
 #include <string.h>
 
 int kern_signal(int sig, void* handler, void* _Handler) {
@@ -14,10 +13,6 @@ int kern_signal(int sig, void* handler, void* _Handler) {
     proc->task.sig_handler[sig] = handler;
     proc->task._Handler = _Handler;
     return 0;
-}
-
-int do_signal(int sig, void* handler, void* _Handler) {
-    return kern_signal(sig, handler, _Handler);
 }
 
 int kern_sigsend(int pid, Sigaction* action) {
@@ -33,10 +28,6 @@ int kern_sigsend(int pid, Sigaction* action) {
     return 0;
 }
 
-int do_sigsend(int pid, Sigaction* sigaction_p) {
-    return kern_sigsend(pid, sigaction_p);
-}
-
 void kern_sigreturn(int ebp) {
     auto user_regs = p_proc_current->task.context.esp_save_int;
     //! NOTE: see process_signal(), here old_esp refers to the `saved context
@@ -45,22 +36,6 @@ void kern_sigreturn(int ebp) {
     //! _Handler
     const u32 old_esp = ebp + 4 + 4 + sizeof(Sigaction);
     memcpy(user_regs, (void*)old_esp, sizeof(stack_frame_t));
-}
-
-void do_sigreturn(int ebp) {
-    kern_sigreturn(ebp);
-}
-
-int sys_signal() {
-    return do_signal(get_arg(1), (void*)get_arg(2), (void*)get_arg(3));
-}
-
-int sys_sigsend() {
-    return do_sigsend(get_arg(1), (Sigaction*)get_arg(2));
-}
-
-void sys_sigreturn() {
-    do_sigreturn(get_arg(1));
 }
 
 void process_signal() {

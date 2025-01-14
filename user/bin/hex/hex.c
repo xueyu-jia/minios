@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stddef.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
 #define MAX_HEX 512
 #define print_hex(c) (((c) >= ' ' && (c) < 0x7F) ? (c) : '.')
     char buf[MAX_HEX];
@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
     cnt = read(fd, buf, total);
     for (int i = 0; i < cnt;) {
         len = MIN(line_len, cnt - i);
-        for (int j = 0; j < len; j++) { printf("%02x ", (uint8_t)buf[i + j]); }
-        for (int j = 0; j < len; j++) { printf("%c", print_hex(buf[i + j])); }
+        for (int j = 0; j < len; ++j) { printf("%02x ", (uint8_t)buf[i + j]); }
+        for (int j = 0; j < len; ++j) { printf("%c", print_hex(buf[i + j])); }
         i += len;
         printf("\n");
     }

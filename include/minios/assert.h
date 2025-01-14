@@ -1,6 +1,6 @@
 #pragma once
 
-#include <klib/compiler.h>
+#include <compiler.h>
 #include <macro_helper.h>
 
 NORETURN void _abort(const char* file, const char* func, int line, const char* fmt, ...);

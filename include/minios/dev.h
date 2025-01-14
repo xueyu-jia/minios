@@ -1,8 +1,4 @@
-#ifndef DEV_H
-#define DEV_H
-#include <minios/const.h>
-#include <minios/type.h>
-#include <list.h>
+#pragma once
 
 /* major device numbers (corresponding to kernel/global.c::dd_map[]) */
 #define NO_DEV 0
@@ -10,6 +6,7 @@
 #define DEV_CDROM 2
 #define DEV_HD_BASE 3
 #define DEV_HD_LIMIT 11
+
 // DEV_HD drive   hd dev = DEV_HD_BASE + drive
 #define IDE_BASE 0
 #define IDE_LIMIT 4
@@ -27,5 +24,3 @@
 /* separate major and minor numbers from device number */
 #define MAJOR(x) ((x >> MAJOR_SHIFT) & 0x0FFF)
 #define MINOR(x) (x & 0x0FFFFF)
-
-#endif

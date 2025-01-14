@@ -1,15 +1,20 @@
-#include <minios/buddy.h> //added by mingxuan 2021-3-8
-#include <minios/fs.h>
-#include <minios/kmalloc.h>
 #include <minios/memman.h>
+#include <minios/buddy.h>
+#include <minios/kmalloc.h>
 #include <minios/mempage.h>
-#include <minios/mmap.h>
 #include <minios/page.h>
-#include <minios/proto.h>
+#include <minios/mmap.h>
+#include <minios/console.h>
 #include <minios/shm.h>
-#include <minios/slab.h>
+#include <minios/layout.h>
 #include <minios/assert.h>
+#include <minios/spinlock.h>
+#include <minios/syscall.h>
+#include <fs/fs.h>
+#include <klib/fmi.h>
+#include <klib/stddef.h>
 #include <klib/size.h>
+#include <klib/atomic.h>
 #include <string.h>
 
 bool big_kernel = 0;
@@ -21,7 +26,7 @@ list_head page_inactive = {
     .next = &page_inactive,
     .prev = &page_inactive,
 };
-static struct spinlock page_inactive_lock;
+static spinlock_t page_inactive_lock;
 
 static void stat_buddy_pages(const char *name, const buddy_t *bud) {
     for (int i = 0; i < BUDDY_ORDER_LIMIT; ++i) {
@@ -81,7 +86,7 @@ void memory_init() {
 u32 phy_kmalloc(u32 size) {
     if (size <= (1 << MAX_BUFF_ORDER)) {
         return (u32)kmalloc(size);
-    } else if (size == num_4K) {
+    } else if (size == SZ_4K) {
         return phy_kmalloc_4k();
     }
     return kmalloc_over4k(size);
@@ -99,7 +104,7 @@ u32 kern_kzalloc(u32 size) {
 
 u32 phy_kfree(u32 phy_addr) {
     assert((!big_kernel && phy_addr < KUWALL1) || (big_kernel && phy_addr < KUWALL2));
-    u32 size = get_kmalloc_size(phy_addr);
+    size_t size = get_kmalloc_size(phy_addr);
     if (size <= (1 << MAX_BUFF_ORDER)) {
         return kfree(phy_addr);
     } else {
@@ -121,16 +126,13 @@ u32 phy_kmalloc_4k() // 无参数，从内核线性地址空间申请一页内�
     return res;
 }
 
-// added by mingxuan 2021-8-17
 u32 kern_kmalloc_4k() {
     return ptr2u(K_PHY2LIN(phy_kmalloc_4k()));
 }
 
-// modified by mingxuan 2021-8-16
-u32 phy_kfree_4k(u32 phy_addr) // 有unsigned
-                               //  int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
-{
-    if (phy_addr % num_4K) {
+// 有unsigned int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
+u32 phy_kfree_4k(u32 phy_addr) {
+    if (phy_addr % SZ_4K) {
         kprintf("phy_free_4k: addr Error");
         return 0;
     }
@@ -170,7 +172,7 @@ u32 phy_malloc_4k() // 无参数，从用户线性地址空间堆中申请一页
 u32 phy_free_4k(u32 phy_addr) // 有unsigned
                               //  int型参数addr，释放掉起始地址为addr的一段内存，大小由内存管理决定
 {
-    if (phy_addr % num_4K != 0) {
+    if (phy_addr % SZ_4K != 0) {
         kprintf("phy_free_4k: addr Error1");
         return 0;
     }
@@ -194,7 +196,7 @@ u32 phy_free_4k(u32 phy_addr) // 有unsigned
 u32 kern_malloc_4k() {
     u32 va = get_heap_limit(p_proc_current->task.pid);
     update_heap_limit(p_proc_current->task.pid, 1);
-    const int addr = do_mmap(va, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
+    const int addr = kern_mmap_safe(va, PGSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
     if (addr == -1) {
         update_heap_limit(p_proc_current->task.pid, -1);
         kprintf("kern_malloc_4k: error mmap addr already occupied\n");
@@ -204,49 +206,31 @@ u32 kern_malloc_4k() {
     return va;
 }
 
-// added by mingxuan 2021-8-19
-u32 do_malloc_4k() {
-    return kern_malloc_4k();
-}
-
-// added by mingxuan 2021-8-11
-u32 sys_malloc_4k() {
-    return do_malloc_4k();
-}
-
 void kern_free_4k(void *va) {
     if (va == NULL) { return; }
     update_heap_limit(p_proc_current->task.pid, -1);
-    const int retval = do_munmap((u32)va, PAGE_SIZE);
+    const int retval = kern_munmap(p_proc_current, (u32)va, PGSIZE);
     assert(retval == 0);
-}
-
-void do_free_4k(void *AddrLin) {
-    kern_free_4k(AddrLin);
-}
-
-void sys_free_4k() {
-    do_free_4k((void *)get_arg(1));
 }
 
 // mmu for user vmem addr
 
 void get_page(memory_page_t *_page) {
     if (atomic_get(&_page->count) == 0) {
-        acquire(&page_inactive_lock);
+        spinlock_acquire(&page_inactive_lock);
         list_remove(&_page->pg_lru);
-        release(&page_inactive_lock);
+        spinlock_release(&page_inactive_lock);
     }
     atomic_inc(&_page->count);
 }
 
 static int drop_page(memory_page_t *_page) {
     int ret = 0;
-    struct address_space *mapping = _page->pg_mapping;
+    address_space_t *mapping = _page->pg_mapping;
     if (mapping) {
-        lock_or_yield(&mapping->lock);
+        spinlock_lock_or_yield(&mapping->lock);
         ret = free_mem_page(_page);
-        release(&mapping->lock);
+        spinlock_release(&mapping->lock);
     } else {
         ret = free_pages(ubud, _page, 0);
     }
@@ -254,10 +238,10 @@ static int drop_page(memory_page_t *_page) {
 }
 
 static memory_page_t *get_and_remove_inactive_page() {
-    acquire(&page_inactive_lock);
+    spinlock_acquire(&page_inactive_lock);
     memory_page_t *_page = list_back(&page_inactive, memory_page_t, pg_lru);
     list_remove(&_page->pg_lru);
-    release(&page_inactive_lock);
+    spinlock_release(&page_inactive_lock);
     return _page;
 }
 
@@ -281,9 +265,9 @@ int put_page(memory_page_t *_page) {
                 break;
             case MEMPAGE_CACHED: // 通常是文件映射的页面，将_page插入RLU,
                                  // 此页面暂时不再使用，可能在未来内存不足时释放
-                acquire(&page_inactive_lock);
+                spinlock_acquire(&page_inactive_lock);
                 list_add_first(&_page->pg_lru, &page_inactive);
-                release(&page_inactive_lock);
+                spinlock_release(&page_inactive_lock);
             case MEMPAGE_SAVE: // 此页面暂时不再使用，由其他组件手动释放
             default:
                 break;
@@ -301,7 +285,7 @@ int put_page(memory_page_t *_page) {
  *
  * \note requires pcb.memmap.vma_lock
  */
-struct vmem_area *find_vma(LIN_MEMMAP *mmap, u32 addr) {
+struct vmem_area *find_vma(memmap_t *mmap, u32 addr) {
     struct vmem_area *vma = NULL;
     list_for_each(&mmap->vma_map, vma, vma_list) {
         if (addr >= vma->start && addr < vma->end) { return vma; }
@@ -326,14 +310,14 @@ memory_page_t *alloc_user_page(u32 pgoff) {
 static void copy_page(memory_page_t *dst, memory_page_t *src) {
     u32 dst_vaddr = ptr2u(kpage_lin(dst));
     u32 src_vaddr = ptr2u(kpage_lin(src));
-    memcpy((void *)dst_vaddr, (void *)src_vaddr, PAGE_SIZE);
+    memcpy((void *)dst_vaddr, (void *)src_vaddr, PGSIZE);
 }
 
 // req. ring 0
 void zero_page(memory_page_t *_page) {
     u32 dst_vaddr = ptr2u(kpage_lin(_page));
     // dst_vaddr = kmap(_page);
-    memset((void *)dst_vaddr, 0, PAGE_SIZE);
+    memset((void *)dst_vaddr, 0, PGSIZE);
 }
 
 void copy_from_page(memory_page_t *_page, void *buf, u32 len, u32 offset) {
@@ -350,8 +334,8 @@ void copy_to_page(memory_page_t *_page, const void *buf, u32 len, u32 offset) {
     // kunmap(_page);
 }
 
-static struct address_space *get_mapping(LIN_MEMMAP *mmap, struct vmem_area *vma) {
-    struct address_space *mapping = NULL;
+static address_space_t *get_mapping(memmap_t *mmap, struct vmem_area *vma) {
+    address_space_t *mapping = NULL;
     if (vma->file) { // file mapped memory MEMPAGE_CACHED
         mapping = vma->file->fd_mapping;
     } else if (vma->flags & MAP_PRIVATE) { // process private allocated memory MEMPAGE_AUTO
@@ -362,16 +346,16 @@ static struct address_space *get_mapping(LIN_MEMMAP *mmap, struct vmem_area *vma
     return mapping;
 }
 
-static memory_page_t *find_or_create_page(LIN_MEMMAP *mmap, struct vmem_area *vma, u32 pgoff) {
-    struct address_space *mapping = get_mapping(mmap, vma);
-    lock_or_yield(&mapping->lock);
+static memory_page_t *find_or_create_page(memmap_t *mmap, struct vmem_area *vma, u32 pgoff) {
+    address_space_t *mapping = get_mapping(mmap, vma);
+    spinlock_lock_or_yield(&mapping->lock);
     memory_page_t *_page = find_mem_page(mapping, pgoff);
     if (_page == NULL) {
         _page = alloc_user_page(pgoff);
         if (vma->file) {
-            lock_or_yield(&mapping->host->lock);
+            spinlock_lock_or_yield(&mapping->host->lock);
             generic_file_readpage(mapping, _page);
-            release(&mapping->host->lock);
+            spinlock_release(&mapping->host->lock);
         } else {
             zero_page(_page);
         }
@@ -379,38 +363,38 @@ static memory_page_t *find_or_create_page(LIN_MEMMAP *mmap, struct vmem_area *vm
     } else {
         get_page(_page);
     }
-    release(&mapping->lock);
+    spinlock_release(&mapping->lock);
     return _page;
 }
 
-static void free_vma_pages(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
+static void free_vma_pages(process_t *p_proc, memmap_t *mmap, struct vmem_area *vma) {
     UNUSED(mmap);
-    u32 nr_pages = (vma->end - vma->start) >> PAGE_SHIFT;
+    u32 nr_pages = phy_to_pfn(vma->end - vma->start);
     u32 addr = vma->start;
-    for (u32 i = 0; i < nr_pages; i++) {
+    for (u32 i = 0; i < nr_pages; ++i) {
         u32 phy = get_page_phy_addr(proc2pid(p_proc), addr);
         if (phy) {
             memory_page_t *_page = pfn_to_page(phy_to_pfn(phy));
             put_page(_page);
             clear_pte(proc2pid(p_proc), addr);
         }
-        addr += PAGE_SIZE;
+        addr += PGSIZE;
     }
 }
 
 // 直接为vma申请内存并设置页表, 没有写时复制
 // require: pcb.memmap.vma_lock
-void prepare_vma(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
+void prepare_vma(process_t *p_proc, memmap_t *mmap, struct vmem_area *vma) {
     memory_page_t *_page = NULL;
     u32 pgoff = vma->pgoff;
     // 页面权限
     u32 pte_attr = PG_P | PG_USU | ((vma->flags & PROT_WRITE) ? PG_RWW : PG_RWR);
-    for (u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE, pgoff++) {
+    for (u32 addr = vma->start; addr < vma->end; addr += PGSIZE, pgoff++) {
         memory_page_t *content_page = find_or_create_page(mmap, vma, pgoff);
         // 已经增加物理页的引用计数
         // 对于可写的私有文件映射，不能修改文件，所以做一份复制
         if ((vma->file) && (vma->flags & PROT_WRITE) && (vma->flags & MAP_PRIVATE)) {
-            _page = alloc_user_page(addr >> PAGE_SHIFT);
+            _page = alloc_user_page(phy_to_pfn(addr));
             copy_page(_page, content_page);
             put_page(content_page);
             add_mem_page(&mmap->anon_pages, _page);
@@ -423,7 +407,7 @@ void prepare_vma(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
     }
 }
 
-static void free_vma(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
+static void free_vma(process_t *p_proc, memmap_t *mmap, struct vmem_area *vma) {
     list_remove(&vma->vma_list);
     // clear arch pgtable and free
     free_vma_pages(p_proc, mmap, vma);
@@ -432,7 +416,7 @@ static void free_vma(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *vma) {
 }
 
 // free vma [start, last)
-void free_vmas(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *start, struct vmem_area *last) {
+void free_vmas(process_t *p_proc, memmap_t *mmap, struct vmem_area *start, struct vmem_area *last) {
     struct vmem_area *vma = start;
     while (vma && vma != last) {
         struct vmem_area *next = list_next(&mmap->vma_map, vma, vma_list);
@@ -451,14 +435,14 @@ void free_vmas(PROCESS *p_proc, LIN_MEMMAP *mmap, struct vmem_area *start, struc
 /// 	由处理程序复制物理页内容到新匿名页面完成COW处理
 /// 写时复制(OPT_MMU_COW)关闭时:
 /// 	fork的过程中不改变父进程的页表，根据权限判断引用父进程的物理页或者复制父进程的物理页，并设置好子进程的页表项
-void memmap_copy(PROCESS *p_parent, PROCESS *p_child) {
-    LIN_MEMMAP *old_mmap = proc_memmap(p_parent);
-    LIN_MEMMAP *new_mmap = proc_memmap(p_child);
+void memmap_copy(process_t *p_parent, process_t *p_child) {
+    memmap_t *old_mmap = proc_memmap(p_parent);
+    memmap_t *new_mmap = proc_memmap(p_child);
     *new_mmap = *old_mmap;
     init_mem_page(&new_mmap->anon_pages, MEMPAGE_AUTO);
     list_init(&new_mmap->vma_map);
     struct vmem_area *vma, *vm;
-    lock_or_yield(&old_mmap->vma_lock);
+    spinlock_lock_or_yield(&old_mmap->vma_lock);
     list_for_each(&old_mmap->vma_map, vma, vma_list) {
         vm = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
         *vm = *vma;
@@ -466,7 +450,7 @@ void memmap_copy(PROCESS *p_parent, PROCESS *p_child) {
         if (vm->file) { fget(vm->file); }
         list_add_last(&vm->vma_list, &new_mmap->vma_map);
         u32 pte_attr = PG_P | PG_USU | ((vma->flags & PROT_WRITE) ? PG_RWW : PG_RWR);
-        for (u32 addr = vma->start; addr < vma->end; addr += PAGE_SIZE) {
+        for (u32 addr = vma->start; addr < vma->end; addr += PGSIZE) {
             u32 phy = get_page_phy_addr(proc2pid(p_parent), addr);
             if (phy) {
                 memory_page_t *pte_page = pfn_to_page(phy_to_pfn(phy));
@@ -482,7 +466,7 @@ void memmap_copy(PROCESS *p_parent, PROCESS *p_child) {
                 // 根据权限决定，只读的页面共享，可写的私有页面申请新页面并复制
                 memory_page_t *_page = NULL;
                 if ((vma->flags & MAP_PRIVATE) && (vma->flags & PROT_WRITE)) {
-                    _page = alloc_user_page(addr >> PAGE_SHIFT);
+                    _page = alloc_user_page(phy_to_pfn(addr));
                     copy_page(_page, pte_page);
                     add_mem_page(&new_mmap->anon_pages, _page);
                 } else {
@@ -496,22 +480,22 @@ void memmap_copy(PROCESS *p_parent, PROCESS *p_child) {
             }
         }
     }
-    release(&old_mmap->vma_lock);
+    spinlock_release(&old_mmap->vma_lock);
 }
 
-void memmap_clear(PROCESS *p_proc) {
-    LIN_MEMMAP *mmap = proc_memmap(p_proc);
+void memmap_clear(process_t *p_proc) {
+    memmap_t *mmap = proc_memmap(p_proc);
     free_vmas(p_proc, mmap, list_front(&mmap->vma_map, struct vmem_area, vma_list), NULL);
 }
 
 // handle generic mm fault, return 0 if handle normal ok, -1 for error
-int handle_mm_fault(LIN_MEMMAP *mmap, u32 vaddr, int flag) {
+int handle_mm_fault(memmap_t *mmap, u32 vaddr, int flag) {
 #ifndef OPT_MMU_COW
     kprintf("error: no cow, this handler is unreachable!");
 #endif
     struct vmem_area *vma = find_vma(mmap, vaddr);
     if (vma && vaddr >= vma->start) {
-        u32 pgoff = vma->pgoff + ((vaddr - vma->start) >> PAGE_SHIFT);
+        u32 pgoff = vma->pgoff + phy_to_pfn(vaddr - vma->start);
         memory_page_t *_page = NULL;
         u32 attr = PG_P | PG_USU; // 这里目前没有做架构分离
         u32 phy = get_page_phy_addr(proc2pid(p_proc_current), vaddr);
@@ -534,7 +518,7 @@ int handle_mm_fault(LIN_MEMMAP *mmap, u32 vaddr, int flag) {
         } else if ((flag & FAULT_WRITE) && (vma->flags & PROT_WRITE)) {
             if (pte_page == NULL) { kprintf("error: no page for page present fault"); } // error
             if (vma->flags & MAP_PRIVATE) { // file private RW: COW now
-                _page = alloc_user_page(vaddr >> PAGE_SHIFT);
+                _page = alloc_user_page(phy_to_pfn(vaddr));
                 copy_page(_page, pte_page);
                 put_page(pte_page);
                 add_mem_page(&mmap->anon_pages, _page);

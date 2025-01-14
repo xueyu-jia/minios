@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
 #define MAX_CAT 128
     char buf[MAX_CAT];
     if (argc != 2) {

@@ -1,7 +1,6 @@
-#ifndef CLOCK_H
-#define CLOCK_H
+#pragma once
 
-#include <minios/const.h>
+#include <klib/stdint.h>
 
 //! NOTE: make PIT clock ms interval
 #define HZ 100
@@ -11,7 +10,5 @@ extern u32 current_timestamp;
 
 void clock_handler(int irq);
 void init_clock();
-int kern_getticks();
-int sys_getticks();
 
-#endif
+int kern_getticks();

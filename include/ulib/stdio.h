@@ -1,10 +1,8 @@
 ﻿#pragma once
 
-#include <fcntl.h>
-#include <syscall.h>
+#include <sys/syscall.h>
 #include <stdarg.h>
-
-extern int tty;
+#include <io.h> // IWYU pragma: export
 
 #define MAX_FILENAME_LEN 12 //<! only orange limit this
 

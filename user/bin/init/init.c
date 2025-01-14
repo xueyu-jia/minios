@@ -1,8 +1,9 @@
+#include <stdlib.h>
 #include <malloc.h>
 #include <stdio.h>
-#include <syscall.h>
 #include <time.h>
 #include <stdbool.h>
+#include <sys/wait.h>
 #include <stddef.h>
 
 static void greet() {

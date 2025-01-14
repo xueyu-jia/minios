@@ -20,7 +20,7 @@
  * SOFTWARE.
  */
 
-#include <klib/compiler.h>
+#include <compiler.h>
 
 #ifdef CLANG_COMPILER
 #pragma clang diagnostic push
@@ -309,7 +309,7 @@ static int gdb_strtol(const char *str, unsigned int len, int base, const char **
 
     if (base == 0) { base = 10; }
 
-    for (; (pos < len) && (str[pos] != '\x00'); pos++) {
+    for (; (pos < len) && (str[pos] != '\x00'); ++pos) {
         tmp = gdb_get_val(str[pos], base);
         if (tmp == GDB_EOF) { break; }
 
@@ -433,7 +433,7 @@ static int gdb_send_packet(struct gdb_state *state, const char *pkt_data, unsign
     {
         unsigned int p;
         GDB_PRINT("-> ");
-        for (p = 0; p < pkt_len; p++) {
+        for (p = 0; p < pkt_len; ++p) {
             if (gdb_is_printable_char(pkt_data[p])) {
                 GDB_PRINT("%c", pkt_data[p]);
             } else {
@@ -511,7 +511,7 @@ static int gdb_recv_packet(struct gdb_state *state, char *pkt_buf, unsigned int 
     {
         unsigned int p;
         GDB_PRINT("<- ");
-        for (p = 0; p < *pkt_len; p++) {
+        for (p = 0; p < *pkt_len; ++p) {
             if (gdb_is_printable_char(pkt_buf[p])) {
                 GDB_PRINT("%c", pkt_buf[p]);
             } else {
@@ -561,7 +561,7 @@ static int gdb_enc_hex(char *buf, unsigned int buf_len, const char *data, unsign
         return GDB_EOF;
     }
 
-    for (pos = 0; pos < data_len; pos++) {
+    for (pos = 0; pos < data_len; ++pos) {
         *buf++ = gdb_get_digit((data[pos] >> 4) & 0xf);
         *buf++ = gdb_get_digit((data[pos]) & 0xf);
     }
@@ -585,7 +585,7 @@ static int gdb_dec_hex(const char *buf, unsigned int buf_len, char *data, unsign
         return GDB_EOF;
     }
 
-    for (pos = 0; pos < data_len; pos++) {
+    for (pos = 0; pos < data_len; ++pos) {
         /* Decode high nibble */
         tmp = gdb_get_val(*buf++, 16);
         if (tmp == GDB_EOF) {
@@ -619,7 +619,7 @@ static int gdb_dec_hex(const char *buf, unsigned int buf_len, char *data, unsign
 static int gdb_enc_bin(char *buf, unsigned int buf_len, const char *data, unsigned int data_len) {
     unsigned int buf_pos, data_pos;
 
-    for (buf_pos = 0, data_pos = 0; data_pos < data_len; data_pos++) {
+    for (buf_pos = 0, data_pos = 0; data_pos < data_len; ++data_pos) {
         if (data[data_pos] == '$' || data[data_pos] == '#' || data[data_pos] == '}' ||
             data[data_pos] == '*') {
             if (buf_pos + 1 >= buf_len) {
@@ -650,7 +650,7 @@ static int gdb_enc_bin(char *buf, unsigned int buf_len, const char *data, unsign
 static int gdb_dec_bin(const char *buf, unsigned int buf_len, char *data, unsigned int data_len) {
     unsigned int buf_pos, data_pos;
 
-    for (buf_pos = 0, data_pos = 0; buf_pos < buf_len; buf_pos++) {
+    for (buf_pos = 0, data_pos = 0; buf_pos < buf_len; ++buf_pos) {
         if (data_pos >= data_len) {
             /* Output buffer overflow */
             GDB_ASSERT(0);
@@ -693,7 +693,7 @@ static int gdb_mem_read(struct gdb_state *state, char *buf, unsigned int buf_len
     if (len > sizeof(data)) { return GDB_EOF; }
 
     /* Read from system memory */
-    for (pos = 0; pos < len; pos++) {
+    for (pos = 0; pos < len; ++pos) {
         if (gdb_sys_mem_readb(state, addr + pos, &data[pos])) {
             /* Failed to read */
             return GDB_EOF;
@@ -718,7 +718,7 @@ static int gdb_mem_write(struct gdb_state *state, const char *buf, unsigned int 
     if (dec(buf, buf_len, data, len) == GDB_EOF) { return GDB_EOF; }
 
     /* Write to system memory */
-    for (pos = 0; pos < len; pos++) {
+    for (pos = 0; pos < len; ++pos) {
         if (gdb_sys_mem_writeb(state, addr + pos, data[pos])) {
             /* Failed to write */
             return GDB_EOF;
@@ -1291,7 +1291,7 @@ static void gdb_x86_init_gates(void) {
     uint16_t cs;
 
     cs = gdb_x86_get_cs();
-    for (i = 0; i < NUM_IDT_ENTRIES; i++) {
+    for (i = 0; i < NUM_IDT_ENTRIES; ++i) {
         gdb_idt_gates[i].flags = 0x8E00;
         gdb_idt_gates[i].segment = cs;
         gdb_idt_gates[i].offset_low = ((uint32_t)gdb_x86_int_handlers[i]) & 0xffff;

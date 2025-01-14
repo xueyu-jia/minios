@@ -1,17 +1,7 @@
-/*
- * @Author: lirong lirongleiyang@163.com
- * @Date: 2024-08-18 15:32:07
- * @LastEditors: lirong lirongleiyang@163.com
- * @LastEditTime: 2024-08-19 22:08:23
- * @FilePath: /minios/os/kernel/vga.c
- * @Description:
- *
- * Copyright (c) 2024 by ${git_name_email}, All Rights Reserved.
- */
 #include <minios/vga.h>
-#include <minios/const.h>
-#include <minios/x86.h>
-#include <minios/interrupt_x86.h>
+#include <minios/layout.h>
+#include <minios/interrupt.h>
+#include <minios/asm.h>
 #include <string.h>
 
 static void vga_wait_for_vrs() {

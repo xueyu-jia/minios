@@ -178,7 +178,7 @@ void port_rebase(HBA_PORT *port) {
     HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER *)(port->clb);
     u32 CT_BASE[32];
 
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; ++i) {
         cmdheader[i].prdtl = 8; // 8 prdt entries per command table
                                 // 256 bytes per command table, 64+16+48+16*8
         CT_BASE[i] = phy_kmalloc(sizeof(HBA_CMD_TBL));
@@ -328,7 +328,7 @@ int sata_read(int dev, u16 *buf, u64 sect, u32 count) {
 int find_cmdslot(HBA_PORT *port) {
     // If not set in SACT and CI, the slot is free
     u32 slots = (port->sact | port->ci);
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; ++i) {
         if ((slots & 1) == 0) return i;
         slots >>= 1;
     }

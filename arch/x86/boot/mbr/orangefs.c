@@ -19,11 +19,11 @@ static int search_file(char *filename) {
     memcpy(&root_inode, (void *)BUF_ADDR, INODE_SIZE);
     // lprintf("i_size %d i_start_sect %d i_nr_sects
     // %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
-    for (unsigned int i = 0; i < root_inode.i_nr_blocks * (BLOCK_SIZE / SECT_SIZE); i++) {
+    for (unsigned int i = 0; i < root_inode.i_nr_blocks * (BLOCK_SIZE / SECT_SIZE); ++i) {
         readsect((void *)BUF_ADDR,
                  bootPartStartSector + root_inode.i_start_block * (BLOCK_SIZE / SECT_SIZE) + i);
         dir_entry *de = (dir_entry *)(BUF_ADDR);
-        for (unsigned int j = 0; j < SECTSIZE / DIR_ENTRY_SIZE; j++) {
+        for (unsigned int j = 0; j < SECTSIZE / DIR_ENTRY_SIZE; ++j) {
             /*             lprintf(de->name);
                         lprintf("\n"); */
             if (strcmp(de->name, filename) == 0) { return de->inode_nr; }

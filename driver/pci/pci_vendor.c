@@ -1,5 +1,5 @@
 #include <driver/pci/vendor.h>
-#include <klib/compiler.h>
+#include <compiler.h>
 
 struct vendor_info {
     bool is_device;

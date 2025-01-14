@@ -1,23 +1,14 @@
 #pragma once
 
-struct tm {
-    int tm_sec;   /* Seconds.	[0-60] (1 leap second) */
-    int tm_min;   /* Minutes.	[0-59] */
-    int tm_hour;  /* Hours.	[0-23] */
-    int tm_mday;  /* Day.		[1-31] */
-    int tm_mon;   /* Month.	[0-11] */
-    int tm_year;  /* Year	- 1900.  */
-    int tm_wday;  /* Day of week.	[0-6] */
-    int tm_yday;  /* Days in year.[0-365]	*/
-    int tm_isdst; /* DST.		[-1/0/1]*/
-
-    long int __tm_gmtoff;  /* Seconds east of UTC.  */
-    const char* __tm_zone; /* Timezone abbreviation.  */
-};
+#include <uapi/minios/time.h>
+#include <stdint.h>
 
 #define UTC 0
-#define LOCAL_TIMEZONE +8 // timestamp use UTC， localtime UTC+8
+#define LOCAL_TIMEZONE +8
 
-struct tm* gmtime(unsigned int timestamp, struct tm* tm_time);
-struct tm* localtime(unsigned int timestamp, struct tm* tm_time);
+struct tm* gmtime(uint32_t timestamp, struct tm* tm_time);
+struct tm* localtime(uint32_t timestamp, struct tm* tm_time);
 int strftime(char* s, int max, const char* fmt, struct tm* tm_time);
+
+int getticks();
+int get_time(struct tm* time);

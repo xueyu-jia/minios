@@ -2,14 +2,18 @@
 #include <minios/proc.h>
 #include <minios/layout.h>
 #include <minios/kstate.h>
-#include <minios/proto.h>
 #include <minios/layout.h>
 #include <minios/vga.h>
 #include <minios/page.h>
 #include <minios/assert.h>
 #include <minios/memman.h>
+#include <minios/console.h>
+#include <minios/interrupt.h>
+#include <minios/asm.h>
 #include <klib/stddef.h>
 #include <string.h>
+
+extern void refresh_gdt();
 
 static void init_gdt() {
     init_descriptor(&gdt[INDEX_DUMMY], 0, 0, 0);

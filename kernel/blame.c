@@ -1,4 +1,6 @@
 #include <minios/blame.h>
+#include <minios/clock.h>
+
 struct performance_stat blame_dash[BLAME_TYPES] = {
     [BLAME_OTHER] = {"other", 0, 0},
     [BLAME_WRT] = {"wrt", 0, 0},

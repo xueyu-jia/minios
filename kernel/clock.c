@@ -1,32 +1,24 @@
-
-/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                               clock.c
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-                                                    Forrest Yu, 2005
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
-
 #include <minios/clock.h>
-#include <minios/const.h>
+#include <minios/time.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/kstate.h>
+#include <minios/asm.h>
+#include <minios/sched.h>
+#include <minios/interrupt.h>
 
-//: 8253/8254 PIT (Programmable Interval Timer)
-//: I/O port for timer channel 0
+//! 8253/8254 PIT (Programmable Interval Timer)
+//! I/O port for timer channel 0
 #define TIMER0 0x40
-//: I/O port for timer mode control
+//! I/O port for timer mode control
 #define TIMER_MODE 0x43
-//: 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
+//! 00-11-010-0 : Counter0 - LSB then MSB - rate generator - binary
 #define RATE_GENERATOR 0x34
-//: clock frequency for timer in PC and AT
+//! clock frequency for timer in PC and AT
 #define TIMER_FREQ 1193182L
 
 int ticks;
 u32 current_timestamp;
-/*======================================================================*
-                           clock_handler
- *======================================================================*/
+
 void clock_handler(int irq) {
     UNUSED(irq);
 
@@ -54,17 +46,7 @@ void init_clock() {
     current_timestamp = get_init_rtc_timestamp();
     enable_irq(CLOCK_IRQ); /* 让8259A可以接收时钟中断 */
 }
-/*======================================================================*
-                           getticks		add by visual 2016.4.6
- *======================================================================*/
+
 int kern_getticks() {
     return ticks;
-}
-
-int do_getticks() {
-    return kern_getticks();
-}
-
-int sys_getticks() {
-    return do_getticks();
 }

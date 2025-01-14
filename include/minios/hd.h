@@ -1,9 +1,79 @@
-#ifndef _ORANGES_HD_H_
-#define _ORANGES_HD_H_
-#include <minios/const.h>
-#include <minios/dev.h>
+#pragma once
+
 #include <minios/proc.h>
-#include <minios/type.h>
+#include <klib/stdint.h>
+
+struct mess1 {
+    int m1i1;
+    int m1i2;
+    int m1i3;
+    int m1i4;
+};
+
+struct mess2 {
+    void *m2p1;
+    void *m2p2;
+    void *m2p3;
+    void *m2p4;
+};
+
+struct mess3 {
+    int m3i1;
+    int m3i2;
+    int m3i3;
+    int m3i4;
+    u64 m3l1;
+    u64 m3l2;
+    void *m3p1;
+    void *m3p2;
+};
+
+typedef struct {
+    int source;
+    int type;
+    union {
+        struct mess1 m1;
+        struct mess2 m2;
+        struct mess3 m3;
+    } u;
+} hd_messge_t;
+
+/**
+ * @enum msgtype
+ * @brief hd_messge_t types
+ */
+enum msgtype {
+    /*
+     * when hard interrupt occurs, a msg (with type==HARD_INT) will
+     * be sent to some tasks
+     */
+    HARD_INT = 1,
+
+    /* SYS task */
+    GET_TICKS,
+
+    /// zcr added from ch9/e/include/const.h
+    /* FS */
+    OPEN,
+    CLOSE,
+    READ,
+    WRITE,
+    LSEEK,
+    STAT,
+    UNLINK,
+    CREATEDIR,
+    OPENDIR,
+    DELETEDIR,
+    SHOWDIR,
+
+    /* message type for drivers */
+    DEV_OPEN = 1001,
+    DEV_CLOSE,
+    DEV_READ,
+    DEV_WRITE,
+    DEV_IOCTL
+};
+
 /**
  * @struct part_ent
  * @brief  Partition Entry struct.
@@ -190,60 +260,59 @@ struct fs_flags {
 #define STATUS_IDX 0x02
 #define STATUS_ERR 0x01
 
-#define REG_CMD                \
-    REG_STATUS /*	Command				O \
-                */
-               /*
-                       +--------+---------------------------------+-----------------+
-                       | Command| Command Description             | Parameters Used |
-                       | Code   |                                 | PC SC SN CY DH  |
-                       +--------+---------------------------------+-----------------+
-                       | ECh  @ | Identify Drive                  |             D   |
-                       | 91h    | Initialize Drive Parameters     |    V        V   |
-                       | 20h    | Read Sectors With Retry         |    V  V  V  V   |
-                       | E8h  @ | Write Buffer                    |             D   |
-                       +--------+---------------------------------+-----------------+
-               
-                       KEY FOR SYMBOLS IN THE TABLE:
-                       ===========================================-----=========================================================================
-                       PC    Register 1F1: Write Precompensation	@     These commands                are
-                  optional and may not be supported by some drives.              SC    Register
-                  1F2: Sector
-                  Count		D     Only DRIVE parameter is valid, HEAD parameter is
-                  ignored.
-                       SN    Register 1F3: Sector Number		D+    Both drives
-                  execute this command regardless of the DRIVE parameter.              CY
-                  Register
-                  1F4+1F5: Cylinder low + high	V     Indicates that the register contains a
-                  valid paramterer.              DH    Register 1F6: Drive / Head
-               */
+#define REG_CMD REG_STATUS
+/*!
+ *    +--------+---------------------------------+-----------------+
+ *    | Command| Command Description             | Parameters Used |
+ *    | Code   |                                 | PC SC SN CY DH  |
+ *    +--------+---------------------------------+-----------------+
+ *    | ECh  @ | Identify Drive                  |             D   |
+ *    | 91h    | Initialize Drive Parameters     |    V        V   |
+ *    | 20h    | Read Sectors With Retry         |    V  V  V  V   |
+ *    | E8h  @ | Write Buffer                    |             D   |
+ *    +--------+---------------------------------+-----------------+
+ *
+ *    KEY FOR SYMBOLS IN THE TABLE:
+ *    PC    Register 1F1: Write Precompensation
+ *    @     These commands are optional and may not be supported by some drives.
+ *    SC    Register
+ *    1F2:  Sector Count
+ *    D     Only DRIVE parameter is valid, HEAD parameter is ignored.
+ *    SN    Register 1F3: Sector Number
+ *    D+    Both drives execute this command regardless of the DRIVE parameter.
+ *    CY    Register
+ *    1F4+1F5  Cylinder low + high
+ *    V     Indicates that the register contains a valid paramterer.
+ *    DH    Register 1F6: Drive / Head
+ */
 
 /* Control Block Registers */
 /*	MACRO		PORT			DESCRIPTION
  * INPUT/OUTPUT	*/
 /*	-----		----			-----------
  * ------------	*/
-#define REG_DEV_CTRL 0x3F6          /*	Device Control			O		*/
-                                    /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
-                                            +-----+-----+-----+-----+-----+-----+-----+-----+
-                                            | HOB |  -  |  -  |  -  |  -  |SRST |-IEN |  0  |
-                                            +-----+-----+-----+-----+-----+-----+-----+-----+
-                                               |                             |     |
-                                               |                             |     `--------- Interrupt Enable.
-                                               |                             |                  - IEN=0, and the
-                                       drive is selected,         |                             |         drive
-                                       interrupts         to the host will be enabled.         |         |         -
-                                       IEN=1,         or the drive is not selected,         |         |                            drive
-                                       interrupts to         the host will be disabled.         |                                     `---------------                                     Software Reset.                                     |                                     -
-                                       The drive         is held         reset when RST=1.         |         Setting
-                                       RST=0         re-enables         the         drive.         |         -                                     The                                     host must set                                     RST=1
-                                       and         wait         for at         least                            |                                     5                                     microsecondsbefore
-                                       setting         RST=0,         to         ensure                            |                                     that the drive
-                                       recognizes         the         reset.
-                                               `--------------------------------------------- HOB (High Order Byte)
-                                                                                                - defined by 48-bit
-                                       Address feature set.
-                                    */
+#define REG_DEV_CTRL 0x3F6
+/*	Device Control			O		*/
+/*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
+        +-----+-----+-----+-----+-----+-----+-----+-----+
+        | HOB |  -  |  -  |  -  |  -  |SRST |-IEN |  0  |
+        +-----+-----+-----+-----+-----+-----+-----+-----+
+           |                             |     |
+           |                             |     `--------- Interrupt Enable.
+           |                             |                  - IEN=0, and the
+   drive is selected,         |                             |         drive
+   interrupts         to the host will be enabled.         |         |         -
+   IEN=1,         or the drive is not selected,         |         |                            drive
+   interrupts to         the host will be disabled.         | `--------------- Software Reset. | -
+   The drive         is held         reset when RST=1.         |         Setting
+   RST=0         re-enables         the         drive.         |         - The host must set RST=1
+   and         wait         for at         least                            | 5 microsecondsbefore
+   setting         RST=0,         to         ensure                            | that the drive
+   recognizes         the         reset.
+           `--------------------------------------------- HOB (High Order Byte)
+                                                            - defined by 48-bit
+   Address feature set.
+*/
 #define REG_ALT_STATUS REG_DEV_CTRL /*	Alternate Status		I		*/
 /*	This register contains the same information as the Status Register.
         The only difference is that reading this register does not imply
@@ -252,7 +321,7 @@ struct fs_flags {
 
 #define REG_DRV_ADDR 0x3F7 /*	Drive Address			I		*/
 
-struct hd_cmd {
+typedef struct hd_cmd {
     u8 features;
     u8 count;
     u8 count_LBA48; // LBA48,要读写的扇区数的高8位,LBA48模式下写两次端口寄存器，先写高位,地址也是先写高位
@@ -265,7 +334,7 @@ struct hd_cmd {
     u8 lba_high_LBA48; // LBA48,40~47位
     u8 device;
     u8 command;
-};
+} hd_cmd_t;
 
 /* macros for messages */
 #define FD u.m3.m3i1
@@ -287,10 +356,6 @@ struct hd_cmd {
 /* #define	STATUS		u.m3.m3i1 */
 
 #define DIOCTL_GET_GEO 1
-/* Hard Drive */
-#define SECTOR_SIZE 512
-#define SECTOR_BITS (SECTOR_SIZE * 8)
-#define SECTOR_SIZE_SHIFT 9
 
 #define MAX_DRIVES 2
 #define NR_PART_PER_DRIVE 4 // 每块硬盘(驱动器)只能有4个主分区, mingxuan
@@ -337,9 +402,6 @@ struct hd_info {
     // *4 =64
 };
 
-/***************/
-/* DEFINITIONS */
-/***************/
 #define HD_TIMEOUT 10000 /* in millisec */
 #define PARTITION_TABLE_OFFSET 0x1BE
 #define ATA_IDENTIFY 0xEC
@@ -347,23 +409,23 @@ struct hd_info {
 #define ATA_READ_EXT 0x24 // LBA48,by qianglong 2022.4.25
 #define ATA_WRITE 0x30
 #define ATA_WRITE_EXT 0x34 // LBA48,by qianglong 2022.4.25
+
 /* for DEVICE register. */
 #define MAKE_DEVICE_REG(lba, drv, lba_highest) \
     (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xF) | 0xA0)
 
 #define HDQUE_MAXSIZE 64
 
-// added by xw, 18/8/26
-typedef struct rdwt_info {
-    MESSAGE *msg;
-    PROCESS *proc;
-    struct rdwt_info *next;
-} RWInfo;
+typedef struct hd_rdwt_info {
+    hd_messge_t *msg;
+    process_t *proc;
+    struct hd_rdwt_info *next;
+} hd_rwinfo_t;
 
 typedef struct {
-    RWInfo *front;
-    RWInfo *rear;
-} HDQueue;
+    hd_rwinfo_t *front;
+    hd_rwinfo_t *rear;
+} hd_queue_t;
 
 extern struct hd_info hd_infos[12];
 
@@ -376,29 +438,21 @@ int get_hd_dev(int drive, u32 fs_type);
 u32 get_hd_fstype(int dev);
 void hd_service();
 
-void hd_rdwt(MESSAGE *p);
-void hd_rdwt_sched(MESSAGE *p);
-void hd_ioctl(MESSAGE *p);
+void hd_rdwt(hd_messge_t *p);
+void hd_rdwt_sched(hd_messge_t *p);
+void hd_ioctl(hd_messge_t *p);
 int orangefs_identify(int drive, u32 _sect_nr);
 int fat32_identify(int drive, u32 _sect_nr);
 
-// add by sundong 2023.6.3 将读写扇区函数的封装由文件系统层放在了驱动层
-// int rw_sector(int io_type, int dev, u64 pos, int bytes, int proc_nr, void
-// *buf); int rw_sector_sched(int io_type, int dev, u64 pos, int bytes, int
-// proc_nr, void *buf);
-
-// add by sundong 2023.5.26 读取数据块
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 
-//~xw
 // 硬盘中数据块的读写
-// added by sundong 2023.5.26
 #define RD_BLOCK_SCHED(dev, block_nr, fsbuf)                                                      \
     rw_blocks_sched(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* read one block */ \
                     proc2pid(p_proc_current),                                /*current task id*/  \
                     fsbuf);
-// added by sundong 2023.5.26
+
 #define WR_BLOCK_SCHED(dev, block_nr, fsbuf)                      \
     rw_blocks_sched(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, \
                     BLOCK_SIZE, /* write one block */             \
@@ -408,9 +462,7 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
     rw_blocks(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* read one block */ \
               proc2pid(p_proc_current),                                /*current task id*/  \
               fsbuf);
-// added by sundong 2023.5.26
+
 #define WR_BLOCK(dev, block_nr, fsbuf)                                                        \
     rw_blocks(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* write one block */ \
               proc2pid(p_proc_current), fsbuf);
-
-#endif /* _ORANGES_HD_H_ */

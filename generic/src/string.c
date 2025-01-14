@@ -58,7 +58,7 @@ int strlen(const char *p_str) {
 char *strncpy(char *dest, const char *src, int n) {
     if ((dest == 0) || (src == 0)) { return dest; }
     int i;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n; ++i) {
         dest[i] = src[i];
         if (!src[i]) { break; }
     }
@@ -81,7 +81,7 @@ int strcmp(const char *s1, const char *s2) {
 int strncmp(const char *s1, const char *s2, int n) {
     if (!s1 || !s2) { return s1 - s2; }
     int i;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n; ++i) {
         if (s1[i] != s2[i]) { return s1[i] - s2[i]; }
     }
     return 0;
@@ -138,7 +138,7 @@ char *itoa(int num, char *str, int radix) {
     } while (unum);
     str[i] = '\0';
     char temp;
-    for (j = k; j <= (i - 1) / 2; j++) {
+    for (j = k; j <= (i - 1) / 2; ++j) {
         temp = str[j];
         str[j] = str[i - 1 + k - j];
         str[i - 1 + k - j] = temp;
@@ -152,7 +152,7 @@ char *strstr(const char *s1, const char *s2) {
 
     if (!len) { return (char *)s1; }
 
-    for (; (p = strchr(p, *s2)) != 0; p++) {
+    for (; (p = strchr(p, *s2)) != 0; ++p) {
         if (strncmp(p, s2, len) == 0) { return (char *)p; }
     }
     return NULL;

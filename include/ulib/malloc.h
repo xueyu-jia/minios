@@ -6,23 +6,12 @@
 #define MAX_FREE 1024   // 空闲分区表分区数量上限
 #define MAX_MBLOCK 1024 // 已分配记录表记录数量上限
 #define MAX_VPAGE 128   // 空闲页面表页面数量上限
-// #define page_size 4096
-// #define Heap_Base  0x48000000
-// #define Heap_Limit 0x88000000
 
 typedef struct heap_ptr // 堆指针，base表示堆底部，limit表示堆顶
 {
     uint32_t heap_lin_base;
     uint32_t heap_lin_limit;
 } heap_ptr;
-
-/*
-typedef struct vpage //4k的逻辑页
-{
-    uint32_t vaddr;
-    struct vpage_t *next;
-}vpage;
-*/
 
 typedef struct vpage_list // 4k逻辑页线性表
 {
@@ -54,8 +43,9 @@ typedef struct malloced {
     malloc_block mtable[MAX_MBLOCK]; // 数组每一项记录已经malloc的内存块的起始地址
 } malloced;
 
+size_t total_mem_size();
+void* malloc_4k();
+void free_4k(void* ptr);
+
 void* malloc(size_t size);
 void free(void* ptr);
-
-void scan_vtable();
-void scan_malloc_table();

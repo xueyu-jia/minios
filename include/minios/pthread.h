@@ -1,8 +1,10 @@
-#ifndef PTHREAD_H
-#define PTHREAD_H
+#pragma once
 
-#include <minios/type.h>
-#include <klib/spinlock.h>
+#include <minios/spinlock.h>
+#include <klib/stdint.h>
+
+typedef int pthread_t;
+typedef void* (*pthread_entry_t)(void*);
 
 /* detachstate-线程分离状态 */
 #define PTHREAD_CREATE_DETACHED 0
@@ -13,6 +15,8 @@
 #define SCHED_RR 1
 #define SCHED_OTHER 2
 
+#define QUEUE_SIZE 20
+
 /* schedparam-线程调度参数 */
 
 /*
@@ -21,10 +25,9 @@ schedparam需要涉及到对timespec定义，
 所以就仅仅建立一个结构体代表schedparam
 */
 
-typedef struct p_sched_param {
-    /* DATA */
-    int sched_priority; // added by dongzhangqi 2023.5.8
-} SCHED_PARAM;
+typedef struct sched_param {
+    int sched_priority;
+} sched_param_t;
 
 /* inheritsched-线程的继承性 */
 #define PTHREAD_INHERIT_SCHED 0
@@ -37,7 +40,7 @@ typedef struct p_sched_param {
 typedef struct p_pthread_attr_t {
     int detachstate;
     int schedpolicy;
-    SCHED_PARAM schedparam;
+    sched_param_t schedparam;
     int inheritsched;
     int scope;
     u32 guardsize;
@@ -47,33 +50,44 @@ typedef struct p_pthread_attr_t {
 } pthread_attr_t;
 
 typedef struct {
-    SPIN_LOCK lock; // 自旋锁:在获取锁之前一直处于忙等(自旋)阻塞状态 值为1
-    uint nusers;    // 记录当前有多少线程需要这个互斥锁
-    uint owner; // 用来记录持有当前mutex的线程id，如果没有线程持有，这个值为0
-    // 等待该互斥变量的线程队列
+    spinlock_t lock;
+    uint nusers;
+    uint owner;
     int queue_wait[QUEUE_SIZE];
     int head;
     int tail;
-    // For debugging:
-    char* name; // 锁的名称
+    char* name;
 } pthread_mutex_t;
 
 typedef struct {
     char* name;
-    // char size[256];
-    //   long int align;
 } pthread_mutexattr_t;
 
-int do_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr);
-int sys_pthread_mutex_lock();
-int do_pthread_mutex_lock(pthread_mutex_t* mutex);
+typedef struct {
+    spinlock_t lock;
+    int head;
+    int tail;
+    int queue[QUEUE_SIZE];
+    char* name;
+} pthread_cond_t;
+
+typedef struct {
+    char* name;
+} pthread_condattr_t;
+
 pthread_t kern_pthread_self();
-int do_pthread_mutex_trylock(pthread_mutex_t* mutex);
-int sys_pthread_mutex_trylock();
-int sys_pthread_mutex_unlock();
-int do_pthread_mutex_unlock(pthread_mutex_t* mutex);
-int sys_pthread_mutex_destroy();
-int do_pthread_mutex_destroy(pthread_mutex_t* mutex);
-int kern_pthread_mutex_unlock(pthread_mutex_t* mutex);
+int kern_pthread_create(pthread_t* thread, const pthread_attr_t* attr,
+                        pthread_entry_t start_routine, void* arg);
+int kern_pthread_join(pthread_t thread, void** retval);
+void kern_pthread_exit(void* retval);
+int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* attr);
+int kern_pthread_cond_destroy(pthread_cond_t* cond);
+int kern_pthread_cond_signal(pthread_cond_t* cond);
+int kern_pthread_cond_broadcast(pthread_cond_t* cond);
+int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex);
+int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout);
+int kern_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* attr);
+int kern_pthread_mutex_destroy(pthread_mutex_t* mutex);
 int kern_pthread_mutex_lock(pthread_mutex_t* mutex);
-#endif
+int kern_pthread_mutex_trylock(pthread_mutex_t* mutex);
+int kern_pthread_mutex_unlock(pthread_mutex_t* mutex);

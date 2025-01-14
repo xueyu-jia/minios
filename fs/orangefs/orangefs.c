@@ -1,12 +1,8 @@
 #include <fs/orangefs/orangefs.h>
 #include <minios/buffer.h>
-#include <minios/const.h>
-#include <minios/fs.h>
 #include <minios/hd.h>
 #include <minios/mount.h>
 #include <minios/protect.h>
-#include <minios/proto.h>
-#include <minios/type.h>
 #include <minios/vfs.h>
 #include <string.h>
 
@@ -14,10 +10,10 @@ static int orangefs_alloc_bitmap(int dev, int blk_base, int blk_nr, int cnt, int
     int index = -1, i, j, total = cnt;
     u8 c, *buf = NULL;
     buf_head *bh = NULL;
-    for (int blk = 0; blk < blk_nr; blk++) {
+    for (int blk = 0; blk < blk_nr; ++blk) {
         bh = bread(dev, blk_base + blk);
         buf = bh->buffer;
-        for (i = 0; i < BLOCK_SIZE; i++) {
+        for (i = 0; i < BLOCK_SIZE; ++i) {
             if (buf[i] != 0xFF) {
                 c = buf[i];
                 j = 0;
@@ -61,40 +57,6 @@ finish:
  * @return  I-node nr.
  *****************************************************************************/
 static int orange_alloc_imap_bit(struct super_block *sb) {
-    // 	int inode_nr = 0;
-    // 	int i, j, k;
-    // 	int imap_blk0_nr = 1 + 1;
-    // 	char *fsbuf = NULL;
-    // 	buf_head *bh = NULL;
-    // 	for (i = 0; i < ORANGE_SB(sb)->nr_imap_blocks; i++)
-    // 	{
-    // 		bh = bread(sb->sb_dev, imap_blk0_nr + i);
-    // 		fsbuf = bh->buffer;
-    // 		for (j = 0; j < BLOCK_SIZE; j++)
-    // 		{
-    // 			/* skip `11111111' bytes */
-    // 			// if (fsbuf[j] == 0xFF)
-    // 			if (fsbuf[j] == '\xFF') // modified by xw, 18/12/28
-    // 				continue;
-
-    // 			/* skip `1' bits */
-    // 			for (k = 0; ((fsbuf[j] >> k) & 1) != 0; k++)
-    // 			{
-    // 			}
-
-    // 			/* i: sector index; j: byte index; k: bit index */
-    // 			inode_nr = (i * BLOCK_SIZE + j) * 8 + k;
-    // 			fsbuf[j] |= (1 << k);
-    // 			mark_buff_dirty(bh);
-    // 			break;
-    // 		}
-    // 		brelse(bh);
-    // 		if(inode_nr)goto alloc_end;
-
-    // 	}
-    // alloc_end:
-    // 	if(!inode_nr)kprintf("Panic: inode-map is probably full.\n");/* no free
-    // bit in imap */ 	return inode_nr;
     int index;
     if (orangefs_alloc_bitmap(sb->sb_dev, 2, ORANGE_SB(sb)->nr_imap_blocks, 1, &index) == 1) {
         return index;
@@ -113,57 +75,6 @@ static int orange_alloc_imap_bit(struct super_block *sb) {
  * @return  The 1st sector nr allocated.
  *****************************************************************************/
 static int orange_alloc_smap_bit(struct super_block *sb, struct orange_inode_info *pin) {
-    /* int nr_sects_to_alloc = NR_DEFAULT_FILE_SECTS; */
-
-    // int i; /* sector index */
-    // int j; /* byte index */
-    // int k; /* bit index */
-    // int smap_blk0_nr = 1 + 1 + ORANGE_SB(sb)->nr_imap_blocks;
-    // int free_sect_nr = 0;
-    // char* fsbuf = NULL;
-    // buf_head *bh = NULL;
-    // int block_end = ORANGE_SB(sb)->nr_blocks;
-    // for (i = 0; i < ORANGE_SB(sb)->nr_smap_blocks; i++)
-    // {
-    // 	bh = bread(sb->sb_dev, smap_blk0_nr + i);
-    // 	fsbuf = bh->buffer;
-
-    // 	/* byte offset in current sect */
-    // 	for (j = 0; j < BLOCK_SIZE && nr_sects_to_alloc > 0; j++)
-    // 	{
-    // 		k = 0;
-    // 		if (!free_sect_nr)
-    // 		{
-    // 			/* loop until a free bit is found */
-    // 			// if (fsbuf[j] == 0xFF) continue;
-    // 			if (fsbuf[j] != '\xFF'){
-    // 				block_end -= 8;
-    // 				continue; // modified by xw, 18/12/28
-    // 			}
-    // 			for (; ((fsbuf[j] >> k) & 1) != 0; k++)
-    // 			{
-    // 			}
-    // 			free_sect_nr = (i * BLOCK_SIZE + j) * 8 +
-    // 						   k - 1 +
-    // ORANGE_SB(sb)->n_1st_block;
-    // 		}
-
-    // 		for (; k < 8 && ((fsbuf[j] >> k)&1); k++)
-    // 		{ /* repeat till enough bits are set */
-    // 			// assert(((fsbuf[j] >> k) & 1) == 0);
-    // 			fsbuf[j] |= (1 << k);
-    // 			if (--nr_sects_to_alloc == 0)
-    // 				break;
-    // 		}
-    // 	}
-
-    // 	if (free_sect_nr)mark_buff_dirty(bh);
-    // 	brelse(bh);
-    // 	if (nr_sects_to_alloc == 0)
-    // 		break;
-    // }
-
-    // return free_sect_nr;
     int index;
     pin->i_nr_blocks =
         orangefs_alloc_bitmap(sb->sb_dev, 2 + ORANGE_SB(sb)->nr_imap_blocks,
@@ -189,10 +100,6 @@ static int orange_free_imap_bit(struct super_block *sb, int inode_nr) {
 
     int imap_blk0_nr = 1 + 1; /* 1 boot sector & 1 super block */
 
-    // char fsbuf[SECTOR_SIZE]; // local array, to substitute global fsbuf.
-    // added by xw, 18/12/27 char* fsbuf = kern_kmalloc(BLOCK_SIZE); // local
-    // array, to substitute global fsbuf. added by xw, 18/12/27 (i * SECTOR_SIZE
-    // + j) * 8 + k = inode_nr ;
     k = inode_nr % 8;
     j = ((inode_nr - k) / 8) % BLOCK_SIZE;
     i = (((inode_nr - k) / 8) - j) / BLOCK_SIZE;
@@ -234,7 +141,7 @@ static int orange_free_smap_bit(struct super_block *sb, int start_sect_nr, int n
     j = ((start_sect_nr - ORANGE_SB(sb)->n_1st_block + 1 - k) / 8) % BLOCK_SIZE;
     i = (((start_sect_nr - ORANGE_SB(sb)->n_1st_block + 1 - k) / 8) - j) / BLOCK_SIZE;
 
-    for (; i < ORANGE_SB(sb)->nr_smap_blocks; i++) { /* smap_blk0_nr + i :
+    for (; i < ORANGE_SB(sb)->nr_smap_blocks; ++i) { /* smap_blk0_nr + i :
                                            current sect nr. */
         // RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw,
         // 18/12/27
@@ -244,8 +151,8 @@ static int orange_free_smap_bit(struct super_block *sb, int start_sect_nr, int n
         fsbuf = bh->buffer;
 
         /* byte offset in current sect */
-        for (; j < BLOCK_SIZE && nr_sects_to_free > 0; j++) {
-            for (; k < 8; k++) { /* repeat till enough bits are set */
+        for (; j < BLOCK_SIZE && nr_sects_to_free > 0; ++j) {
+            for (; k < 8; ++k) { /* repeat till enough bits are set */
 
                 fsbuf[j] &= (~(1 << k));
                 if (--nr_sects_to_free == 0) break;
@@ -280,7 +187,7 @@ static int lookup_inode_in_dir(struct inode *dir, const char *filename) {
     unsigned int i, j, m = 0;
     char *fsbuf = NULL;
     buf_head *bh = NULL;
-    for (i = 0; i < nr_dir_blks; i++) {
+    for (i = 0; i < nr_dir_blks; ++i) {
         bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
         fsbuf = bh->buffer;
         pde = (struct dir_entry *)fsbuf;
@@ -313,7 +220,7 @@ static int remove_name_in_dir(struct inode *dir, int nr_inode) {
     unsigned int i, j, m = 0;
     char *fsbuf = NULL;
     buf_head *bh = NULL;
-    for (i = 0; i < nr_dir_blks; i++) {
+    for (i = 0; i < nr_dir_blks; ++i) {
         bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
         fsbuf = bh->buffer;
         pde = (struct dir_entry *)fsbuf;
@@ -347,7 +254,7 @@ static int orange_check_dir_empty(struct inode *dir) {
     unsigned int i, j, m = 0;
     char *fsbuf = NULL;
     buf_head *bh = NULL;
-    for (i = 0; i < nr_dir_blks; i++) {
+    for (i = 0; i < nr_dir_blks; ++i) {
         bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
         fsbuf = bh->buffer;
         pde = (struct dir_entry *)fsbuf;
@@ -379,7 +286,7 @@ int orange_readdir(struct file_desc *file, unsigned int count, struct dirent *st
     char *fsbuf = NULL;
     buf_head *bh = NULL;
     struct dirent *dent = start;
-    for (i = 0; i < nr_dir_blks; i++) {
+    for (i = 0; i < nr_dir_blks; ++i) {
         bh = bread(dir->i_sb->sb_dev, dir_blk0_nr + i);
         fsbuf = bh->buffer;
         pde = (struct dir_entry *)fsbuf;
@@ -685,9 +592,9 @@ int orange_fill_superblock(struct super_block *sb, int dev) {
     struct orange_sb_info *psb = (struct orange_sb_info *)bh->buffer;
     *(ORANGE_SB(sb)) = *psb;
     sb->sb_dev = dev;
-    sb->fs_type = ORANGE_TYPE;
+    sb->fs_type = FS_TYPE_ORANGE;
     sb->sb_op = &orange_sb_ops;
-    sb->sb_blocksize = num_4K;
+    sb->sb_blocksize = SZ_4K;
     struct inode *orange_root = vfs_get_inode(sb, ORANGE_SB(sb)->root_inode);
     sb->sb_root = vfs_new_dentry("/", orange_root);
     brelse(bh);

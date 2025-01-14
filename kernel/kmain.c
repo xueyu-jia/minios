@@ -1,24 +1,26 @@
-#include <driver/pci/pci.h>
-#include <driver/pci/vendor.h>
-#include <fs/devfs/devfs.h>
 #include <minios/ahci.h>
+#include <minios/asm.h>
+#include <minios/assert.h>
 #include <minios/blame.h>
 #include <minios/buddy.h>
-#include <minios/protect.h>
 #include <minios/clock.h>
 #include <minios/console.h>
-#include <minios/const.h>
 #include <minios/dev.h>
 #include <minios/hd.h>
 #include <minios/keyboard.h>
+#include <minios/kstate.h>
+#include <minios/layout.h>
 #include <minios/mmap.h>
+#include <minios/msg.h>
 #include <minios/page.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
+#include <minios/protect.h>
+#include <minios/sched.h>
 #include <minios/shm.h>
-#include <minios/type.h>
-#include <minios/kstate.h>
-#include <minios/assert.h>
+#include <minios/vfs.h>
+#include <driver/pci/pci.h>
+#include <driver/pci/vendor.h>
+#include <fs/devfs/devfs.h>
 
 #ifdef GDBSTUB
 #ifdef OPT_DISP_SERIAL
@@ -31,17 +33,18 @@
 #endif
 
 static bool init_proc() {
-    for (int i = 0; i < NR_TASKS; i++) {
+    for (int i = 0; i < NR_TASKS; ++i) {
         int pid = kthread_create(task_table[i].name, (void *)task_table[i].initial_eip,
                                  task_table[i].rt, task_table[i].rpl, task_table[i].priority_nice);
         rq_insert(&proc_table[pid]);
     }
 
+    extern void initial();
     int initial_pid = kthread_create("initial", initial, false, RPL_TASK, 0);
     assert(initial_pid == PID_INIT && "unexpected pid for initial process");
     rq_insert(&proc_table[initial_pid]);
 
-    PROCESS *init = &proc_table[PID_INIT];
+    process_t *init = &proc_table[PID_INIT];
     init->task.tree_info.type = TYPE_PROCESS;         // 当前是进程还是线程
     init->task.tree_info.real_ppid = -1;              // 亲父进程，创建它的那个进程
     init->task.tree_info.ppid = -1;                   // 当前父进程
@@ -119,7 +122,7 @@ int kernel_main() {
 
     kprintf("info: init ttys\n");
     init_ttys();
-    initlock(&video_mem_lock, "vmem");
+    spinlock_init(&video_mem_lock, "vmem");
 
     {
         const size_t msize = kern_total_mem_size();

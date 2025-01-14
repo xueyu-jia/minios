@@ -1,11 +1,13 @@
 #pragma once
 
-#include <minios/type.h>
-#include <klib/spinlock.h>
+#include <fs/fs.h>
+#include <minios/spinlock.h>
+#include <klib/stdint.h>
+#include <compiler.h>
 
 struct inode;
 
-struct __attribute__((packed)) fat32_bpb {
+struct fat32_bpb {
     char jmp[3];
     char OEM[8];
     u16 BytsPerSec; // 512/1024/.../4096
@@ -35,7 +37,7 @@ struct __attribute__((packed)) fat32_bpb {
     u32 VolId;
     char VolLab[11];
     char FilSysType[8];
-};
+} PACKED;
 
 #define FS_INFO_SECTOR_OFFSET 0x1e0
 

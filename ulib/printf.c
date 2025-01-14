@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <fmt.h>
 
-int tty;
-
 typedef struct {
     int fd;
     int count;

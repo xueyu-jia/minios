@@ -1,23 +1,20 @@
-#include <minios/clock.h>
 #include <minios/console.h>
-#include <minios/const.h>
-#include <minios/proto.h>
 #include <minios/tty.h>
-#include <minios/type.h>
 #include <minios/vga.h>
-#include <minios/kstate.h>
-#include <klib/spinlock.h>
-#include <string.h>
+#include <minios/interrupt.h>
+#include <minios/layout.h>
 #include <minios/uart.h>
-#include <fmt.h>
+#include <minios/spinlock.h>
+#include <stdarg.h>
+#include <string.h>
 #include <ctype.h>
+#include <fmt.h>
 
 int disp_pos;
-CONSOLE console_table[NR_CONSOLES];
-SPIN_LOCK video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
-#define __TTY_DEBUG__
+console_t console_table[NR_CONSOLES];
+spinlock_t video_mem_lock; // 用于 disp调用与tty_write互斥,内核初始化完成后生效
 
-static void flush(CONSOLE* con);
+static void flush(console_t* con);
 static void w_copy(unsigned int dst, const unsigned int src, int size);
 static void clear_screen(int pos, int len);
 
@@ -29,7 +26,7 @@ static void clear_screen(int pos, int len);
  *
  * @param tty  Whose console is to be initialized.
  *****************************************************************************/
-void init_screen(TTY* tty) {
+void init_screen(tty_t* tty) {
     int nr_tty = tty - tty_table;
 
     tty->console = console_table + nr_tty;
@@ -51,7 +48,7 @@ void init_screen(TTY* tty) {
     const char prompt[] = "[TTY #?]\n";
 
     const char* p = prompt;
-    for (; *p; p++) {
+    for (; *p; ++p) {
         // kprintf("a");
         // tty->console->cursor = disp_pos / 2;
         out_char(tty->console, *p == '?' ? nr_tty + '0' : *p);
@@ -70,8 +67,8 @@ void init_screen(TTY* tty) {
  * @param ch   The char to print.
  *****************************************************************************/
 
-void out_char(CONSOLE* con, char ch) {
-    // acquire(&video_mem_lock);
+void out_char(console_t* con, char ch) {
+    // spinlock_acquire(&video_mem_lock);
     disable_int_begin();
 
     // u8* pch = (u8*)(V_MEM_BASE + con->cursor * 2);
@@ -135,7 +132,7 @@ void out_char(CONSOLE* con, char ch) {
     flush(con);
 
     disable_int_end();
-    // release(&video_mem_lock);
+    // spinlock_release(&video_mem_lock);
 }
 
 /*****************************************************************************
@@ -165,7 +162,7 @@ static void clear_screen(int pos, int len) {
  *
  * @return   TRUE if con is the current console.
  *****************************************************************************/
-int is_current_console(CONSOLE* con) {
+int is_current_console(console_t* con) {
     return (con == &console_table[current_console]);
 }
 
@@ -202,7 +199,7 @@ void select_console(int nr_console) {
  * @param dir   SCR_UP : scroll the screen upwards;
  *              SCR_DN : scroll the screen downwards
  *****************************************************************************/
-void scroll_screen(CONSOLE* con, int dir) {
+void scroll_screen(console_t* con, int dir) {
     /*
      * variables below are all in-console-offsets (based on con->orig)
      */
@@ -243,7 +240,7 @@ void scroll_screen(CONSOLE* con, int dir) {
     flush(con);
 }
 
-void reset_screen(CONSOLE* con) {
+void reset_screen(console_t* con) {
     int latest_start = (con->cursor - con->orig) / SCR_WIDTH * SCR_WIDTH + SCR_WIDTH - SCR_SIZE;
     if (latest_start < 0) { latest_start = 0; }
     con->crtc_start = con->orig + latest_start;
@@ -259,26 +256,11 @@ void reset_screen(CONSOLE* con) {
  *
  * @param con  The console to be set.
  *****************************************************************************/
-static void flush(CONSOLE* con) {
+static void flush(console_t* con) {
     if (is_current_console(con)) {
         vga_set_cursor(con->cursor);
         vga_set_video_start_addr(con->crtc_start);
     }
-    /*
-    #ifdef __TTY_DEBUG__
-            int lineno = 0;
-            for (lineno = 0; lineno < con->con_size / SCR_WIDTH; lineno++) {
-                    u8 * pch = (u8*)(V_MEM_BASE +
-                                       (con->orig + (lineno + 1) * SCR_WIDTH) *
-    2
-                                       - 4);
-                    *pch++ = lineno / 10 + '0';
-                    *pch++ = RED_CHAR;
-                    *pch++ = lineno % 10 + '0';
-                    *pch++ = RED_CHAR;
-            }
-    #endif
-    */
 }
 
 /*****************************************************************************
@@ -301,7 +283,7 @@ static void w_copy(unsigned int dst, const unsigned int src, int size) {
 
 static inline bool do_putch(char ch) {
     const bool accepted = isprint(ch) || ch == '\n' || ch == '\t';
-    if (accepted) { write_serial(ch); }
+    if (accepted) { serial_write(ch); }
     return accepted;
 }
 

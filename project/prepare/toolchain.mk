@@ -45,6 +45,7 @@ ULIB_INCDIRS    += include
 USER_INCDIRS    :=
 USER_INCDIRS    += include/ulib
 USER_INCDIRS    += $(LIBGENERIC_INTERFACE_DIR)
+USER_INCDIRS    += include
 
 GENERIC_CFLAGS :=
 BOOT_CFLAGS    :=

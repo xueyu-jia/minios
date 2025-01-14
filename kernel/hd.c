@@ -1,41 +1,42 @@
-#include <minios/ahci.h>
-#include <minios/blame.h>
-#include <minios/const.h>
-#include <minios/fs.h>
-#include <minios/fs_const.h>
 #include <minios/hd.h>
+#include <minios/ahci.h>
+#include <minios/dev.h>
 #include <minios/memman.h>
+#include <minios/console.h>
 #include <minios/proc.h>
-#include <minios/protect.h>
-#include <minios/proto.h>
+#include <minios/sched.h>
+#include <minios/interrupt.h>
 #include <minios/semaphore.h>
-#include <minios/type.h>
+#include <minios/clock.h>
 #include <minios/kstate.h>
 #include <minios/assert.h>
+#include <minios/asm.h>
+#include <minios/vfs.h>
+#include <minios/layout.h>
+#include <fs/fs.h>
 #include <string.h>
 
-// added by xw, 18/8/28
-static HDQueue hdque;
+static hd_queue_t hdque;
 static volatile int hd_int_waiting_flag = 1;
 static u8 hd_status;
 static u8 hdbuf[SECTOR_SIZE * 2];
 static u8 *satabuf = NULL;
 static u8 hd_LBA48_sup[4] = {0};
 struct hd_info hd_infos[12]; // modified by xiaofeng 2022-8-6
-static struct Semaphore hdque_mutex;
-static struct Semaphore hdque_empty;
-static struct Semaphore hdque_full;
+static semaphore_t hdque_mutex;
+static semaphore_t hdque_empty;
+static semaphore_t hdque_full;
 
-static void init_hd_queue(HDQueue *hdq);
-static void in_hd_queue(HDQueue *hdq, RWInfo *p);
-static void out_hd_queue(HDQueue *hdq, RWInfo **p);
-static void hd_rdwt_real(RWInfo *p);
+static void init_hd_queue(hd_queue_t *hdq);
+static void in_hd_queue(hd_queue_t *hdq, hd_rwinfo_t *p);
+static void out_hd_queue(hd_queue_t *hdq, hd_rwinfo_t **p);
+static void hd_rdwt_real(hd_rwinfo_t *p);
 
 static void read_part_table_sector(int drive, int sect_nr, void *sector_buf);
 static void partition(int device, int style);
 static void hd_identify(int drive);
 static void print_identify_info(u16 *hdinfo);
-static void hd_cmd_out(struct hd_cmd *cmd, int drive);
+static void hd_cmd_out(hd_cmd_t *cmd, int drive);
 
 static void inform_int();
 static void interrupt_wait();
@@ -133,7 +134,7 @@ void hd_close(int device) {
 }
 
 void init_open_hd() {
-    for (u32 dev_index = 0; dev_index < ahci_info[0].satadrv_num; dev_index++) {
+    for (u32 dev_index = 0; dev_index < ahci_info[0].satadrv_num; ++dev_index) {
         hd_open(SATA_BASE + dev_index);
     }
 }
@@ -147,7 +148,7 @@ int get_hd_dev(int drive, u32 fs_type) {
     }
 
     // added by mingxuan 2020-10-29
-    for (i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; i++) {
+    for (i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; ++i) {
         if (hd_infos[drive].part[i].fs_type == fs_type) return MAKE_DEV(DEV_HD_BASE + drive, i);
     }
     assert(0);
@@ -189,7 +190,7 @@ int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) {
  *
  * @param p Message ptr.
  *****************************************************************************/
-void hd_rdwt(MESSAGE *p) {
+void hd_rdwt(hd_messge_t *p) {
     int drive = DRV_OF_DEV(p->DEVICE);
     u64 pos = p->POSITION;
     struct part_info *info = &hd_infos[drive].part[p->DEVICE & 0x0F];
@@ -208,8 +209,8 @@ void hd_rdwt(MESSAGE *p) {
 
 // added by xw, 18/8/26
 void hd_service() {
-    RWInfo *rwinfo;
-    PROCESS *proc;
+    hd_rwinfo_t *rwinfo;
+    process_t *proc;
     int wait;
     UNUSED(wait);
     UNUSED(proc);
@@ -235,12 +236,12 @@ void hd_service() {
     }
 }
 
-static void hd_rdwt_real(RWInfo *p) {
+static void hd_rdwt_real(hd_rwinfo_t *p) {
     hd_rdwt(p->msg);
 }
 
-void hd_rdwt_sched(MESSAGE *p) {
-    RWInfo *rwinfo = (RWInfo *)kern_kmalloc(sizeof(RWInfo));
+void hd_rdwt_sched(hd_messge_t *p) {
+    hd_rwinfo_t *rwinfo = (hd_rwinfo_t *)kern_kmalloc(sizeof(hd_rwinfo_t));
     int size = p->CNT;
     UNUSED(size);
 
@@ -263,11 +264,11 @@ void hd_rdwt_sched(MESSAGE *p) {
     // kern_kfree((u32)rwinfo);
 }
 
-void init_hd_queue(HDQueue *hdq) {
+void init_hd_queue(hd_queue_t *hdq) {
     hdq->front = hdq->rear = NULL;
 }
 
-static void in_hd_queue(HDQueue *hdq, RWInfo *p) {
+static void in_hd_queue(hd_queue_t *hdq, hd_rwinfo_t *p) {
     ksem_wait(&hdque_empty, 1);
     ksem_wait(&hdque_mutex, 1);
 
@@ -283,7 +284,7 @@ static void in_hd_queue(HDQueue *hdq, RWInfo *p) {
     ksem_post(&hdque_full, 1);
 }
 
-static void out_hd_queue(HDQueue *hdq, RWInfo **p) {
+static void out_hd_queue(hd_queue_t *hdq, hd_rwinfo_t **p) {
     ksem_wait(&hdque_full, 1);
     ksem_wait(&hdque_mutex, 1);
 
@@ -305,9 +306,9 @@ static void out_hd_queue(HDQueue *hdq, RWInfo **p) {
 /**
  * <Ring 1> This routine handles the DEV_IOCTL message.
  *
- * @param p  Ptr to the MESSAGE.
+ * @param p  Ptr to the hd_messge_t.
  *****************************************************************************/
-void hd_ioctl(MESSAGE *p) {
+void hd_ioctl(hd_messge_t *p) {
     int part_num = p->DEVICE & 0x0FFFFF;
     int drive = DRV_OF_DEV(p->DEVICE);
 
@@ -346,12 +347,12 @@ static void read_part_table_sector(int drive, int _sect_nr, void *sect_buf) {
 }
 
 static int partition_get_fstype(int drive, int start_sect) {
-    for (int type = 1; type < NR_FS_TYPE; type++) {
+    for (int type = 1; type < NR_FS_TYPE; ++type) {
         if (fstype_table[type].identify) {
             if (fstype_table[type].identify(drive, (u32)start_sect) == 1) { return type; }
         }
     }
-    return NO_FS_TYPE;
+    return FS_TYPE_NONE;
 }
 
 /*****************************************************************************
@@ -381,7 +382,8 @@ static void partition(int device, int style) {
     if (style == P_PRIMARY) {
         read_part_table_sector(drive, 0, sector_buf);
         int nr_prim_parts = 0;
-        for (i = 0; i < NR_PART_PER_DRIVE; i++) { /* 0~3 */
+        UNUSED(nr_prim_parts);
+        for (i = 0; i < NR_PART_PER_DRIVE; ++i) { /* 0~3 */
             if (part_tbl[i].sys_id == NO_PART) {
                 no_part_count++;
                 continue;
@@ -399,7 +401,7 @@ static void partition(int device, int style) {
             // hdi->part[dev_nr].base+BLOCK_SIZE/SECTOR_SIZE, fs_flags_buf);
             // //hdi->primary[dev_nr].base + 1 beacause of orange and fat32 is
             // in 2nd sector, mingxuan if(fs_flags_buf->orange_flag == 0x11)
-            // // Orange's Magic 	hdi->part[dev_nr].fs_type = ORANGE_TYPE;
+            // // Orange's Magic 	hdi->part[dev_nr].fs_type = FS_TYPE_ORANGE;
 
             // comment added by ran 2021-01-15
             // 这里的逻辑是判断分区的1号扇区是否有FAT32文件系统的标记，
@@ -416,13 +418,13 @@ static void partition(int device, int style) {
             // deleted by ran
             // else if(fs_flags_buf->fat32_flag1 == 0x534f4453 &&
             // fs_flags_buf->fat32_flag2 == 0x302e35) // FAT32 flags
-            // 	hdi->primary[dev_nr].fs_type = FAT32_TYPE;
+            // 	hdi->primary[dev_nr].fs_type = FS_TYPE_FAT32;
             // added end, mingxuan 2020-10-27
 
             // added by ran
             // else if (is_fat32_part(drive, hdi->part[dev_nr].base))
             // {
-            // 	hdi->part[dev_nr].fs_type = FAT32_TYPE;
+            // 	hdi->part[dev_nr].fs_type = FS_TYPE_FAT32;
             // }
 
             if (part_tbl[i].sys_id == EXT_PART) /* extended */
@@ -434,7 +436,7 @@ static void partition(int device, int style) {
         int s = ext_start_sect;
         int nr_1st_sub = 5; /* 扩展分区第一个分区号是5 */
 
-        for (i = 0; i < NR_SUB_PER_PART; i++) {
+        for (i = 0; i < NR_SUB_PER_PART; ++i) {
             int dev_nr = nr_1st_sub + i; /* 5~*/
 
             read_part_table_sector(drive, s, sector_buf);
@@ -478,7 +480,7 @@ static void partition(int device, int style) {
  * @param drive  Drive Nr.
  *****************************************************************************/
 static void hd_identify(int drive) {
-    struct hd_cmd cmd;
+    hd_cmd_t cmd;
     cmd.device = MAKE_DEVICE_REG(0, drive, 0);
     cmd.command = ATA_IDENTIFY;
     hd_cmd_out(&cmd, drive);
@@ -511,7 +513,7 @@ static void hd_identify(int drive) {
  *
  * @param hdinfo  The buffer read from the disk i/o port.
  *****************************************************************************/
-MAYBE_UNUSED PRIVATE void print_identify_info(u16 *hdinfo) {
+MAYBE_UNUSED void print_identify_info(u16 *hdinfo) {
     int i;
     char s[64];
 
@@ -522,9 +524,9 @@ MAYBE_UNUSED PRIVATE void print_identify_info(u16 *hdinfo) {
     } iinfo[] = {{10, 20, "HD SN"}, /* Serial number in ASCII */
                  {27, 40, "HD Model"} /* Model number in ASCII */};
 
-    for (size_t k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); k++) {
+    for (size_t k = 0; k < sizeof(iinfo) / sizeof(iinfo[0]); ++k) {
         char *p = (char *)&hdinfo[iinfo[k].idx];
-        for (i = 0; i < iinfo[k].len / 2; i++) {
+        for (i = 0; i < iinfo[k].len / 2; ++i) {
             s[i * 2 + 1] = *p++;
             s[i * 2] = *p++;
         }
@@ -560,7 +562,7 @@ MAYBE_UNUSED PRIVATE void print_identify_info(u16 *hdinfo) {
  *
  * @param cmd  The command struct ptr.
  *****************************************************************************/
-static void hd_cmd_out(struct hd_cmd *cmd, int drive) {
+static void hd_cmd_out(hd_cmd_t *cmd, int drive) {
     /**
      * For all commands, the host must first check if BSY=1,
      * and should proceed no further unless and until BSY=0
@@ -643,20 +645,8 @@ hd_int_waiting_flag = 1;
  * @return One if sucess, zero if timeout.
  *****************************************************************************/
 static int waitfor(int mask, int val, int timeout) {
-    // we can't use syscall getticks before process run. modified by xw,
-    // 18/5/31
-    /*
-    int t = getticks();
-
-    while(((getticks() - t) * 1000 / HZ) < timeout)
-            if ((inb(REG_STATUS) & mask) == val)
-                    return 1;
-    */
-
-    // int t = sys_getticks();
     int t = kern_getticks(); // modified by mingxuan 2021-8-14
 
-    // while(((sys_getticks() - t) * 1000 / HZ) < timeout){
     while (((kern_getticks() - t) * 1000 / HZ) < timeout) { // modified by mingxuan 2021-8-14
         if ((inb(REG_STATUS) & mask) == val) return 1;
     }
@@ -706,7 +696,7 @@ static void inform_int() {
  * 读写IDE
  */
 static void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
-    struct hd_cmd cmd;
+    hd_cmd_t cmd;
     u32 n = (count + SECTOR_SIZE - 1) / SECTOR_SIZE;
     cmd.features = 0;
     // cmd.count	= (p->msg->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
@@ -810,7 +800,7 @@ static int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
     memset(cmdtbl, 0, sizeof(HBA_CMD_TBL) + (cmdheader->prdtl - 1) * sizeof(HBA_PRDT_ENTRY));
 
     int i = 0;
-    for (i = 0; i < cmdheader->prdtl - 1; i++) {
+    for (i = 0; i < cmdheader->prdtl - 1; ++i) {
         cmdtbl->prdt_entry[i].dba = (u32)(K_LIN2PHY(satabuf));
         cmdtbl->prdt_entry[i].dbc = 8 * 1024 - 1; // 8K bytes (this value should always be set to 1
                                                   // less than the actual value)
@@ -874,7 +864,7 @@ static int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
 // add by sundong 2023.5.26
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
-    MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
+    hd_messge_t *driver_msg = (hd_messge_t *)kern_kmalloc(sizeof(hd_messge_t));
     driver_msg->type = io_type;
     // driver_msg.DEVICE	= MINOR(dev);
     driver_msg->DEVICE = dev;
@@ -896,8 +886,8 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) 
 // add by sundong 2023.5.26
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
     // driver_msg will be used in hd_service(another process) why use stack
-    // memory??? jiangfeng 20240323 MESSAGE driver_msg;
-    MESSAGE *driver_msg = (MESSAGE *)kern_kmalloc(sizeof(MESSAGE));
+    // memory??? jiangfeng 20240323 hd_messge_t driver_msg;
+    hd_messge_t *driver_msg = (hd_messge_t *)kern_kmalloc(sizeof(hd_messge_t));
     driver_msg->type = io_type;
     // driver_msg.DEVICE	= MINOR(dev);
     driver_msg->DEVICE = dev;

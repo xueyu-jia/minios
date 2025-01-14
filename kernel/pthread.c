@@ -1,146 +1,91 @@
-﻿/******************************************************************
- *			pthread.c //add by visual 2016.5.26
- *系统调用pthread()
- *******************************************************************/
-
-#include <minios/const.h>
-#include <minios/fs.h>
+﻿#include <minios/pthread.h>
 #include <minios/memman.h>
 #include <minios/mmap.h>
 #include <minios/proc.h>
-#include <minios/proto.h>
+#include <minios/console.h>
+#include <minios/interrupt.h>
 #include <minios/pthread.h>
-#include <minios/type.h>
+#include <minios/sched.h>
+#include <fs/fs.h>
+#include <klib/size.h>
 #include <string.h>
 
-static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent);
-static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent);
-static int pthread_stack_init(PROCESS *p_child, PROCESS *p_parent, pthread_attr_t *attr);
-static int pthread_heap_init(PROCESS *p_child, PROCESS *p_parent);
+static int pthread_pcb_cpy(process_t *p_child, process_t *p_parent);
+static int pthread_update_info(process_t *p_child, process_t *p_parent);
+static int pthread_stack_init(process_t *p_child, process_t *p_parent, pthread_attr_t *attr);
+static int pthread_heap_init(process_t *p_child, process_t *p_parent);
 
-/**********************************************************
- *		sys_pthread			//add by visual 2016.5.25
- *系统调用sys_pthread的具体实现部分
- *************************************************************/
-// PUBLIC int sys_pthread(void *entry)
-// PUBLIC int do_pthread(void *entry)	//modified by mingxuan 2021-8-11
-int kern_pthread_create(pthread_t *thread, pthread_attr_t *attr, void *entry,
-                        void *arg) // modified by mingxuan 2021-8-14
-{
-    PROCESS *p_child;
-    PROCESS *p_parent;
+int kern_pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                        pthread_entry_t start_routine, void *arg) {
+    process_t *p_child;
+    process_t *p_parent;
 
     p_parent = proc_real(p_proc_current);
-    /*****************如若attr为null，新建一默认attr**********************/
 
-    pthread_attr_t true_attr;
+    pthread_attr_t th_attr = {};
     if (attr == NULL) {
-        // true_attr.detachstate		= PTHREAD_CREATE_DETACHED;
-        true_attr.detachstate =
-            PTHREAD_CREATE_JOINABLE; // modified by dongzhangqi 2023.5.4
-                                     // Detachstate的默认设置应为joinable，允许调用pthread_join
-        true_attr.schedpolicy = SCHED_FIFO;
-        true_attr.inheritsched = PTHREAD_INHERIT_SCHED;
-        true_attr.scope = PTHREAD_SCOPE_PROCESS;
-        true_attr.guardsize = 0;
-        true_attr.stackaddr_set = 0;
-        true_attr.stackaddr = (void *)(p_parent->task.memmap.stack_child_limit + 0x4000);
-        true_attr.stacksize = 0x4000;
+        th_attr.detachstate = PTHREAD_CREATE_JOINABLE;
+        th_attr.schedpolicy = SCHED_FIFO;
+        th_attr.inheritsched = PTHREAD_INHERIT_SCHED;
+        th_attr.scope = PTHREAD_SCOPE_PROCESS;
+        th_attr.guardsize = 0;
+        th_attr.stackaddr_set = 0;
+        th_attr.stacksize = SZ_16K;
+        th_attr.stackaddr = (void *)(p_parent->task.memmap.stack_child_limit + th_attr.stacksize);
     } else {
-        true_attr = *attr;
+        th_attr = *attr;
     }
 
     /*****************申请空白PCB表**********************/
-    p_child = alloc_PCB();
+    p_child = alloc_pcb();
     if (0 == p_child) {
         kprintf("PCB NULL,pthread faild!");
         return -1;
     } else {
-        lock_or_yield(&p_parent->task.lock);
+        spinlock_lock_or_yield(&p_parent->task.lock);
         /************复制父进程的PCB部分内容（保留了自己的标识信息,但cr3使用的是父进程的）**************/
         pthread_pcb_cpy(p_child, p_parent);
-        release(&p_child->task.lock);
-        /**************更新进程树标识info信息************************/
+        spinlock_release(&p_child->task.lock);
         pthread_update_info(p_child, p_parent); // 此步骤先完成，mmap由此直接找到父进程的memmap
-                                                //  jiangfeng 2024.05
-        /************在父进程的栈中分配子线程的栈（从进程栈的低地址分配8M,注意方向）**********************/
-        pthread_stack_init(p_child, p_parent, &true_attr);
-
+        pthread_stack_init(p_child, p_parent, &th_attr);
         /**************初始化子线程的堆（此时的这两个变量已经变成了指针）***********************/
         pthread_heap_init(p_child, p_parent);
 
-        /********************设置线程的执行入口**********************************************/
-        // p_child->task.regs.eip = (u32)entry;
+        //! TODO: ensures the thread terminates with exit or pthread_exit
         stack_frame_t *p_reg = proc_kstacktop(p_child);
-        // p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-        //*((u32*)(p_reg + EIPREG - P_STACKTOP)) = p_child->task.regs.eip;
-        ////added
-        // by xw, 17/12/11
-        // *((u32*)(p_reg + EIPREG - P_STACKTOP)) = (u32)entry;
-        p_reg->eip = (u32)entry;
+        p_reg->eip = (u32)start_routine;
         p_reg->esp = p_child->task.memmap.stack_lin_base;
 
         /**************修改子线程的线程属性************************/
-        p_child->task.attr = true_attr; // added by dongzhangqi 2023.5.7
+        p_child->task.attr = th_attr;
         p_child->task.who_wait_flag = -1;
 
         /************修改子进程的名字***************/
         strcpy(p_child->task.p_name, "pthread"); // 所有的子进程都叫pthread
 
-        /*************子进程返回值在其eax寄存器***************/
-        // p_child->task.regs.eax = 0;//return child with 0
-        // p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-        //*((u32*)(p_reg + EAXREG - P_STACKTOP)) = p_child->task.regs.eax;
-        ////added
-        // by xw, 17/12/11
-        // *((u32*)(p_reg + EAXREG - P_STACKTOP)) = 0;
-
         p_reg->eax = 0;
         /*************子进程参数***************/
-        /*
-        p_child->task.regs.esp -= num_4B;
-        *((u32*)(p_child->task.regs.esp)) = (u32*)arg;
-        p_child->task.regs.esp -= num_4B;
-        *((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;*/ //deleted by lcy 2023.10.25
-        // u32 reg_esp= *((u32*)(p_reg + ESPREG - P_STACKTOP));
         u32 reg_esp = p_reg->esp;
-        reg_esp -= num_4B;
+        reg_esp -= SZ_4;
         *((u32 *)reg_esp) = (u32)arg;
-        // *((u32*)(p_reg + ESPREG - P_STACKTOP)) -= num_4B*2;
-        p_reg->esp -= num_4B * 2;
+        // *((u32*)(p_reg + ESPREG - P_STACKTOP)) -= SZ_4*2;
+        p_reg->esp -= SZ_4 * 2;
 
-        /****************用户进程数+1****************************/
-        u_proc_sum += 1;
-
-        // anything child need is prepared now, set its state to ready. added by
-        // xw, 17/12/11
         p_child->task.stat = READY;
-        p_child->task.pthread_id =
-            p_parent->task.tree_info.child_t_num + 1; // Add By ZengHao & MaLinhan 21.12.22
+        p_child->task.pthread_id = p_parent->task.tree_info.child_t_num + 1;
         rq_insert(p_child);
-        release(&p_child->task.lock);
-        release(&p_parent->task.lock);
+        spinlock_release(&p_child->task.lock);
+        spinlock_release(&p_parent->task.lock);
     }
     *thread = p_child->task.pid;
     return 0;
-}
-
-// added by mingxuan 2021-8-14
-int do_pthread_create(int *thread, void *attr, void *entry, void *arg) {
-    return kern_pthread_create(thread, attr, entry, arg);
-}
-
-// added by mingxuan 2021-8-11
-int sys_pthread_create() {
-    return do_pthread_create((int *)get_arg(1), (void *)get_arg(2), (void *)get_arg(3),
-                             (void *)get_arg(4));
 }
 
 /**********************************************************
  *		pthread_pcb_cpy			//add by visual 2016.5.26
  *复制父进程PCB表，但是又马上恢复了子进程的标识信息
  *************************************************************/
-static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent) {
+static int pthread_pcb_cpy(process_t *p_child, process_t *p_parent) {
     u32 eflags, cr3_child;
     UNUSED(eflags);
     UNUSED(cr3_child);
@@ -152,7 +97,7 @@ static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent) {
     //  the parent use different kernel stack! And these two are importent to
     //  the child's initial running. Added by xw, 18/4/21
     stack_frame_t *esp_save_int = p_child->task.context.esp_save_int;
-    CONTEXT_FRAME *esp_save_context = p_child->task.context.esp_save_context;
+    context_frame_t *esp_save_context = p_child->task.context.esp_save_context;
 
     UNUSED(esp_save_int);
     UNUSED(esp_save_context);
@@ -173,19 +118,13 @@ static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent) {
     p_child->task.stat = SLEEPING; // 统一PCB state jiangfeng 20240314
     disable_int_end();
 
-    init_mem_page(&p_child->task.memmap.anon_pages,
-                  MEMPAGE_AUTO); // 线程使用父进程的mmap 链表，此两项直接重置为空
-                                 //  jiangfeng 202405
+    // 线程使用父进程的mmap 链表，此两项直接重置为空
+    init_mem_page(&p_child->task.memmap.anon_pages, MEMPAGE_AUTO);
     list_init(&p_child->task.memmap.vma_map);
     // p_child->task.esp_save_context = esp_save_context;	//same above
-    memcpy((char *)proc_kstacktop(p_child), proc_kstacktop(p_parent),
-           P_STACKTOP); // changed by lcy 2023.10.26 19*4
-    // modified end
+    memcpy((char *)proc_kstacktop(p_child), proc_kstacktop(p_parent), P_STACKTOP);
     p_child->task.pid = pid;
     init_user_cpu_context(&p_child->task.context, p_child->task.pid);
-    // proc_init_ldt_kstack(p_child, RPL_USER);
-    // proc_init_context(p_child);
-    // 恢复标识信息
 
     return 0;
 }
@@ -194,7 +133,7 @@ static int pthread_pcb_cpy(PROCESS *p_child, PROCESS *p_parent) {
  *		pthread_update_info			//add by visual
  *2016.5.26 更新父进程和子线程程的进程树标识info
  *************************************************************/
-static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent) {
+static int pthread_update_info(process_t *p_child, process_t *p_parent) {
     /************更新父进程的info***************/ // 注意 父进程 父进程 父进程
     if (p_parent != p_proc_current) { // 只有在线程创建线程的时候才会执行
                                       // ，p_parent事实上是父进程
@@ -203,23 +142,14 @@ static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent) {
             p_child->task.pid; // 子线程列表
     }
     /************更新父线程的info**************/
-    // p_proc_current->task.tree_info.type;		//当前是进程还是线程
-    // p_proc_current->task.tree_info.real_ppid;  //亲父进程，创建它的那个进程
-    // p_proc_current->task.tree_info.ppid;		//当前父进程
-    // p_proc_current->task.tree_info.child_p_num += 1; //子进程数量
-    // p_proc_current->task.tree_info.child_process[p_proc_current->task.tree_info.child_p_num-1]
-    // = p_child->task.pid;//子进程列表
     p_proc_current->task.tree_info.child_t_num += 1; // 子线程数量
     p_proc_current->task.tree_info.child_thread[p_proc_current->task.tree_info.child_t_num - 1] =
         p_child->task.pid; // 子线程列表
-    // p_proc_current->task.text_hold;			//是否拥有代码
-    // p_proc_current->task.data_hold;			//是否拥有数据
 
     /************更新子线程的info***************/
-    p_child->task.tree_info.type = TYPE_THREAD; // 这是一个线程
-    p_child->task.tree_info.real_ppid =
-        p_proc_current->task
-            .pid; // 亲父进程，创建它的那个线程，注意，这个是创建它的那个线程p_proc_current
+    p_child->task.tree_info.type = TYPE_THREAD;
+    // 亲父进程，创建它的那个线程，注意，这个是创建它的那个线程p_proc_current
+    p_child->task.tree_info.real_ppid = p_proc_current->task.pid;
     p_child->task.tree_info.ppid = p_parent->task.pid; // 当前父进程
     p_child->task.tree_info.child_p_num = 0;           // 子进程数量
     // p_child->task.tree_info.child_process[NR_CHILD_MAX] = pid;//子进程列表
@@ -235,7 +165,7 @@ static int pthread_update_info(PROCESS *p_child, PROCESS *p_parent) {
  *		pthread_stack_init			//add by visual
  *2016.5.26 申请子线程的栈，并重置其esp
  *************************************************************/
-static int pthread_stack_init(PROCESS *p_child, PROCESS *p_parent, pthread_attr_t *attr) {
+static int pthread_stack_init(process_t *p_child, process_t *p_parent, pthread_attr_t *attr) {
     int addr_lin;
     char *p_reg; // point to a register in the new kernel stack, added by xw,
     UNUSED(p_reg);
@@ -245,106 +175,50 @@ static int pthread_stack_init(PROCESS *p_child, PROCESS *p_parent, pthread_attr_
     p_parent->task.memmap.stack_child_limit += attr->stacksize;                      // 分配16K
     p_child->task.memmap.stack_lin_base = (u32)attr->stackaddr; // 子线程的基址
 
-    // for( addr_lin=p_child->task.memmap.stack_lin_base ;
-    // addr_lin>p_child->task.memmap.stack_lin_limit ;
-    // addr_lin-=num_4K)//申请物理地址
-    // {
-    // 	//kprintf("#");
-    // 	//lin_mapping_phy(addr_lin, MAX_UNSIGNED_INT, p_child->task.pid, PG_P  |
-    // PG_USU | PG_RWW,PG_P  | PG_USU | PG_RWW);
-    // 	ker_umalloc_4k(addr_lin,p_child->task.pid,PG_P  | PG_USU | PG_RWW);
-    // //edited by wang 2021.8.29
-    // }
     kern_mmap(p_child, NULL, p_child->task.memmap.stack_lin_limit, attr->stacksize,
               PROT_READ | PROT_WRITE, MAP_PRIVATE, 0);
-
-    // p_child->task.regs.esp = p_child->task.memmap.stack_lin_base;
-    // //调整esp
-    // p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-    //*((u32*)(p_reg + ESPREG - P_STACKTOP)) = p_child->task.regs.esp;	//added
-    // by xw, 17/12/11
-    // *((u32*)(p_reg + ESPREG - P_STACKTOP)) =
-    // p_child->task.memmap.stack_lin_base;
     proc_kstacktop(p_child)->esp = p_child->task.memmap.stack_lin_base;
-
-    // p_child->task.regs.ebp = p_child->task.memmap.stack_lin_base;
-    // //调整ebp
-    // p_reg = (char*)(p_child + 1);	//added by xw, 17/12/11
-    //*((u32*)(p_reg + EBPREG - P_STACKTOP)) = p_child->task.regs.ebp;	//added
-    // by xw, 17/12/11
-    // *((u32*)(p_reg + EBPREG - P_STACKTOP)) =
-    // p_child->task.memmap.stack_lin_base;
     proc_kstacktop(p_child)->ebp = p_child->task.memmap.stack_lin_base;
 
     return 0;
 }
-/**********************************************************
- *		pthread_stack_init			//add by visual
- *2016.5.26 子线程使用父进程的堆
- *************************************************************/
-static int pthread_heap_init(PROCESS *p_child, PROCESS *p_parent) {
+
+static int pthread_heap_init(process_t *p_child, process_t *p_parent) {
+    //! 子线程使用父进程的堆
     p_child->task.memmap.heap_lin_base = (u32) & (p_parent->task.memmap.heap_lin_base);
     p_child->task.memmap.heap_lin_limit = (u32) & (p_parent->task.memmap.heap_lin_limit);
     return 0;
 }
 
-/* added by ZengHao & MaLinhan 2021.12.23  */
 pthread_t kern_pthread_self() {
     return p_proc_current->task.pthread_id;
 }
-pthread_t do_pthread_self() {
-    return kern_pthread_self();
-}
-pthread_t sys_pthread_self() {
-    return do_pthread_self();
-}
-
-/* 				end added  				   */
-
-/**********************************************************
- *		pthread_exit			//add by dongzhangqi 2023.5.4
- *
- *************************************************************/
 
 void kern_pthread_exit(void *retval) {
-    PROCESS *p_proc = p_proc_current;
+    process_t *p_proc = p_proc_current;
 
     if (p_proc->task.who_wait_flag != (u32)(-1)) { // 有进程正在等待自己
-        PROCESS *p_father = pid2proc(p_proc->task.who_wait_flag);
+        process_t *p_father = pid2proc(p_proc->task.who_wait_flag);
         p_proc->task.who_wait_flag = (u32)-1;
         wakeup(p_father);
     }
 
-    // 设置返回值
     p_proc->task.retval = retval;
     p_proc->task.stat = ZOMBY;
+
     rq_remove(p_proc);
     sched_yield();
-    return;
 }
-
-void do_pthread_exit(void *retval) {
-    return kern_pthread_exit(retval);
-}
-
-void sys_pthread_exit() {
-    return do_pthread_exit((void *)get_arg(1));
-}
-
-/**********************************************************
- *		pthread_join			//add by dongzhangqi 2023.5.4
- *
- *************************************************************/
 
 int kern_pthread_join(pthread_t thread, void **retval) {
-    PROCESS *p_proc_father = p_proc_current; // 发起等待的进程
+    process_t *p_proc_father = p_proc_current; // 发起等待的进程
 
     if (p_proc_father->task.tree_info.child_t_num == 0) {
         kprintf("no child_pthread!! error\n");
         return -1;
     }
 
-    PROCESS *p_proc_child = &proc_table[thread]; // 要等待的目标子线程
+    process_t *p_proc_child = &proc_table[thread]; // 要等待的目标子线程
 
     // 子线程不是joinable的
     if (p_proc_child->task.attr.detachstate != PTHREAD_CREATE_JOINABLE) {
@@ -352,16 +226,16 @@ int kern_pthread_join(pthread_t thread, void **retval) {
         return -1;
     }
     while (1) {
-        lock_or_yield(&p_proc_father->task.lock);
+        spinlock_lock_or_yield(&p_proc_father->task.lock);
         if (p_proc_child->task.stat != ZOMBY) {
             // 挂起，并告知被等待的线程，线程退出时再唤醒
-            lock_or_yield(&p_proc_child->task.lock);
+            spinlock_lock_or_yield(&p_proc_child->task.lock);
             p_proc_child->task.who_wait_flag = p_proc_father->task.pid;
-            release(&p_proc_child->task.lock);
-            release(&p_proc_father->task.lock);
+            spinlock_release(&p_proc_child->task.lock);
+            spinlock_release(&p_proc_father->task.lock);
             wait_event(p_proc_father);
         } else {
-            lock_or_yield(&p_proc_child->task.lock);
+            spinlock_lock_or_yield(&p_proc_child->task.lock);
             // 获取返回值
             if (retval != NULL) { *retval = p_proc_child->task.retval; }
 
@@ -374,22 +248,14 @@ int kern_pthread_join(pthread_t thread, void **retval) {
 
             // 释放栈页表
             //  free_seg_pagetbl(p_proc_child->task.pid, MEMMAP_STACK);
-            release(&p_proc_child->task.lock);
+            spinlock_release(&p_proc_child->task.lock);
             // 释放PCB
-            free_PCB(p_proc_child);
+            free_pcb(p_proc_child);
 
-            release(&p_proc_father->task.lock);
+            spinlock_release(&p_proc_father->task.lock);
             break;
         }
     }
 
     return 0;
-}
-
-int do_pthread_join(pthread_t thread, void **retval) {
-    return kern_pthread_join(thread, retval);
-}
-
-int sys_pthread_join() {
-    return do_pthread_join(get_arg(1), (void **)get_arg(2));
 }

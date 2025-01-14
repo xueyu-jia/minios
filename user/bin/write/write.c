@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     char buf[512];
     int fd = open(argv[1], O_WRONLY | O_CREAT, I_R | I_W);
     if (fd < 0) {

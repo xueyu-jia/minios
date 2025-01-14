@@ -1,7 +1,7 @@
 #pragma once
 
-#include <minios/type.h>
-#include <klib/spinlock.h>
+#include <klib/stdint.h>
+#include <minios/spinlock.h>
 
 typedef enum slab_type { EMPTY, PARTIAL, FULL } slab_type_t; // slab的类型
 typedef struct kmem_cache kmem_cache_t;
@@ -19,16 +19,12 @@ typedef unsigned char bitmap_entry_t; // 位图每块的类型
 #define MAX_BUFF_ORDER 11       // 最大对象的order，2048B
 #define MAX_EMPTY 2             // metpy链中最大slab数目
 #define CACHE_NAME_LEN 32       // Cache 名字长度
-#define BLOCK_SIZE 4096         // page大小
+#define SLAB_BLOCK_SIZE 4096    // page大小
 #define KMEM_CACHES_NUM 9       // Cache的数目
-
-#define LEFTSHIFT(n) (1 << (n))
-// 将address向上(高地址)对齐,对齐标准为(2^n)
-#define POW2_ROUNDUP(address, n) (((address) + LEFTSHIFT(n) - 1) & ~(LEFTSHIFT(n) - 1))
 
 struct kmem_list {
     kmem_slab_t *head;
-    SPIN_LOCK lock;
+    spinlock_t lock;
 };
 
 /*

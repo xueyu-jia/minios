@@ -1,5 +1,4 @@
 #include <ctest/internal.h>
-#include <ctest/internal.h>
 #include <compiler.h>
 #include <stdio.h>
 #include <list.h>
@@ -8,8 +7,8 @@
 #include <string.h>
 #include <malloc.h>
 #include <assert.h>
-#include <syscall.h>
 #include <stdarg.h>
+#include <time.h>
 
 struct CTEST_testsuite_entry;
 

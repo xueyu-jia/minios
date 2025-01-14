@@ -1,6 +1,6 @@
 #include <minios/assert.h>
 #include <minios/console.h>
-#include <minios/x86-asm.h>
+#include <minios/asm.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <fmt.h>

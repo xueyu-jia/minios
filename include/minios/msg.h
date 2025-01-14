@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sys/types.h>
 #include <klib/stdint.h>
 
 #define IPC_CREAT 00001000  //<! create if key is nonexistent
@@ -24,8 +25,6 @@
 #define SND_TO_FULL 0x1
 #define RCV_FROM_NULL 0x2
 
-typedef int key_t;
-
 // message queue types
 // 队列信息类型
 typedef struct msqid_ds {
@@ -41,7 +40,7 @@ typedef struct msqid_ds {
                                    allowed in queue */
     int msg_lspid;              /* PID of last msgsnd(2) */
     int msg_lrpid;              /* PID of last msgrcv(2) */
-} msqid_ds;
+} msqid_ds_t;
 
 // 消息类型
 typedef struct msg_item {
@@ -91,16 +90,17 @@ typedef struct block_proc {
 typedef struct msg_queue {
     int key;
     list_item* head;
-    int used;      // 是否占用
-    int num;       // 队列中消息数量
-    msqid_ds info; // 队列信息
-                   //  block queue
+    int used;        // 是否占用
+    int num;         // 队列中消息数量
+    msqid_ds_t info; // 队列信息
+                     //  block queue
     // end
 } msg_queue;
 
-// user API:
-int ftok(char* f, int key);
-int msgget(key_t key, int msgflg);
-int msgsnd(int msqid, const void* msgp, int msgsz, int msgflg);
-int msgrcv(int msqid, void* msgp, int msgsz, long msgtyp, int msgflg);
-int msgctl(int msgqid, int cmd, msqid_ds* buf);
+void init_msgq();
+
+int kern_ftok(const char* pathname, int proj_id);
+int kern_msgget(key_t key, int msgflg);
+int kern_msgsnd(int msqid, const void* msgp, int msgsz, int msgflg);
+int kern_msgrcv(int msqid, void* msgp, int msgsz, long msgtyp, int msgflg);
+int kern_msgctl(int msgqid, int cmd, msqid_ds_t* buf);

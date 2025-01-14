@@ -1,31 +1,29 @@
 #include <fs/fat32/fat32.h>
 #include <minios/buffer.h>
 #include <minios/clock.h>
-#include <minios/const.h>
 #include <minios/memman.h>
 #include <minios/time.h>
-#include <minios/type.h>
 #include <minios/vfs.h>
 #include <minios/console.h>
-#include <klib/compiler.h>
+#include <compiler.h>
 #include <string.h>
 
 static void uni2char(u16* uni_name, char* norm_name, int max_len) {
     u16 c;
-    for (int i = 0; (c = *(uni_name++)) && i < max_len; i++) { *(norm_name++) = c & 0xFF; }
+    for (int i = 0; (c = *(uni_name++)) && i < max_len; ++i) { *(norm_name++) = c & 0xFF; }
     *norm_name = 0;
 }
 
 static void char2uni(u16* uni_name, const char* norm_name, int max_len) {
     char c;
-    for (int i = 0; (c = *(norm_name++)) && i < max_len; i++) { *(uni_name++) = c; }
+    for (int i = 0; (c = *(norm_name++)) && i < max_len; ++i) { *(uni_name++) = c; }
     *uni_name = 0;
 }
 
 static u8 fat_chksum(const char* shortname) {
     u8 sum = 0;
     int i;
-    for (sum = 0, i = 0; i < 11; i++) {
+    for (sum = 0, i = 0; i < 11; ++i) {
         sum = (((sum & 1) << 7) | ((sum & 0xfe) >> 1)) + shortname[i];
         // 两部分的name实际是连续的，所以get entry 中传入de->name没问题
     }
@@ -57,7 +55,7 @@ static inline int fat_replace_char(char c) {
     return (strchr("+,;=[]", c) != NULL);
 }
 
-MAYBE_UNUSED PRIVATE char fat_shortname_char(char c) {
+MAYBE_UNUSED char fat_shortname_char(char c) {
     if (c >= 'a' && c <= 'z') { c = c - 'a' + 'A'; }
     if (fat_replace_char(c)) { c = '_'; }
     return c;
@@ -65,7 +63,7 @@ MAYBE_UNUSED PRIVATE char fat_shortname_char(char c) {
 
 static int fat_badname(const char* name) {
     if (NULL == name) return 1;
-    for (const char* s = name; *s; s++) {
+    for (const char* s = name; *s; ++s) {
         if (fat_bad_char(*s)) { return 1; }
     }
     return 0;
@@ -142,11 +140,11 @@ static int read_write_fat(struct super_block* sb, int cluster, int value) {
         ((u32*)(buf))[(fat_offset & (sb->sb_blocksize - 1)) >> 2] = value;
         mark_buff_dirty(bh);
         // fat copy
-        for (int fat = 1; fat < FAT_SB(sb)->fat_num; fat++) {
+        for (int fat = 1; fat < FAT_SB(sb)->fat_num; ++fat) {
             fat_block = FAT_SB(sb)->fat_start_block + (fat * FAT_SB(sb)->fat_size) +
                         (fat_offset / sb->sb_blocksize);
             fat_bread(sb, fat_block, &bh2);
-            memcpy(bh2->buffer, bh->buffer, num_4K);
+            memcpy(bh2->buffer, bh->buffer, SZ_4K);
             mark_buff_dirty(bh2);
             brelse(bh2);
         }
@@ -157,24 +155,24 @@ static int read_write_fat(struct super_block* sb, int cluster, int value) {
 
 static int add_new_cluster(struct super_block* sb, int tail) {
     if (FAT_SB(sb)->fsinfo.cluster_free_count <= 0) { return -1; }
-    acquire(&sb->lock);
+    spinlock_acquire(&sb->lock);
     int i, clus, next_free = FAT_SB(sb)->fsinfo.cluster_next_free,
                  total = FAT_SB(sb)->max_cluster - 1;
     buf_head* bh = NULL;
-    for (i = 0; i < total; i++) { // we must check before use,(linux dont use fsinfo.nextfree)
+    for (i = 0; i < total; ++i) { // we must check before use,(linux dont use fsinfo.nextfree)
         clus = 2 + (next_free - 2 + i) % total;
         if (read_write_fat(sb, clus, -1) == 0) break;
     }
     if (i >= total) {
         FAT_SB(sb)->fsinfo.cluster_free_count = 0;
         kprintf("error: no space");
-        release(&sb->lock);
+        spinlock_release(&sb->lock);
         return -1;
     }
     read_write_fat(sb, clus, FAT_END);
     FAT_SB(sb)->fsinfo.cluster_free_count--;
     // update fsinfo
-    for (i = 2; i <= total + 1; i++) {
+    for (i = 2; i <= total + 1; ++i) {
         if (read_write_fat(sb, i, -1) == 0) break;
     }
     FAT_SB(sb)->fsinfo.cluster_next_free = i;
@@ -184,7 +182,7 @@ static int add_new_cluster(struct super_block* sb, int tail) {
     mark_buff_dirty(bh);
     brelse(bh);
     if (tail) { read_write_fat(sb, tail, clus); }
-    release(&sb->lock);
+    spinlock_release(&sb->lock);
     return clus;
 }
 
@@ -197,7 +195,7 @@ static int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_i
         return 0; // according to FAT doc, cluster in entry will be 0 for empty
                   // file;
     }
-    acquire(&sb->lock);
+    spinlock_acquire(&sb->lock);
     while (cluster != FAT_END) {
         next = read_write_fat(sb, cluster, -1);
         if (next == cluster + 1) {
@@ -210,7 +208,7 @@ static int fill_fat_info(struct super_block* sb, int cluster_start, struct fat_i
         cluster = next;
         count++;
     }
-    release(&sb->lock);
+    spinlock_release(&sb->lock);
     return count;
 }
 
@@ -380,7 +378,7 @@ static int fat_find_free(struct inode* dir, int num) {
     buf_head* bh = NULL;
     struct fat_dir_slot* ds;
     int start, count = 0, res = -1, end_flag = 0;
-    for (start = 0;; start++) {
+    for (start = 0;; ++start) {
         ds = fat_get_slot(dir, start, &bh, 1);
         if (end_flag || (ds->order == DIR_DELETE) || (ds->order == 0) ||
             ((u64)start * FAT_ENTRY_SIZE >= dir->i_size)) {
@@ -402,7 +400,7 @@ static int fat_check_short(struct inode* dir, const char* name) {
     buf_head* bh = NULL;
     struct fat_dir_slot* ds;
     int start, res = 0;
-    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; start++) {
+    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
         ds = fat_get_slot(dir, start, &bh, 0);
         if (ds->order == DIR_DELETE) {
             continue;
@@ -422,7 +420,7 @@ static int fat_check_empty(struct inode* dir) {
     buf_head* bh = NULL;
     struct fat_dir_slot* ds;
     int start, res = 0;
-    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; start++) {
+    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
         ds = fat_get_slot(dir, start, &bh, 0);
         if (ds->order == DIR_DELETE) {
             continue;
@@ -453,7 +451,7 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
     }
     // ext_start: 最后一个.
     // type: 0忽略的前缀字符;1 文件名(8); 2 扩展名(3)
-    for (int i = 0; i < len; i++) {
+    for (int i = 0; i < len; ++i) {
         c = fullname[i];
         if (type == 0) { // skipped start
             if (!(c == '.' || c == ' ')) { type = 1; }
@@ -475,7 +473,7 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
     if (!fat_check_short(dir, shortname)) return 0;
     if (baselen > 6) { baselen = 6; }
     shortname[baselen] = '~';
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; ++i) {
         shortname[baselen + 1] = '0' + i;
         if (!fat_check_short(dir, shortname)) { return 0; }
     }
@@ -625,7 +623,7 @@ void fat32_delete_inode(struct inode* inode) {
         return;
     }
     while (ent) {
-        for (int clus_in_ent = 0; clus_in_ent < ent->length; clus_in_ent++) {
+        for (int clus_in_ent = 0; clus_in_ent < ent->length; ++clus_in_ent) {
             read_write_fat(inode->i_sb, ent->cluster_start + clus_in_ent, 0);
         }
         ent = ent->next;
@@ -641,7 +639,7 @@ struct dentry* fat32_lookup(struct inode* dir, const char* filename) {
     struct fat_dir_entry* de = NULL;
     buf_head* bh = NULL;
     struct dentry* dentry = NULL;
-    for (; (u64)entry * FAT_ENTRY_SIZE < dir->i_size; entry++) {
+    for (; (u64)entry * FAT_ENTRY_SIZE < dir->i_size; ++entry) {
         de = fat_get_entry(dir, &entry, &bh, full_name);
         if (!de) break;
         if (!stricmp(filename, full_name)) {
@@ -799,7 +797,7 @@ int fat32_readdir(struct file_desc* file, unsigned int count, struct dirent* sta
         count -= dent->d_len;
         dent = dirent_next(dent);
     }
-    for (; (u64)entry * FAT_ENTRY_SIZE < dir->i_size; entry++) {
+    for (; (u64)entry * FAT_ENTRY_SIZE < dir->i_size; ++entry) {
         de = fat_get_entry(dir, &entry, &bh, full_name);
         if (!de) break;
         if (count < dirent_len(strlen(full_name))) { break; }
@@ -856,9 +854,9 @@ int fat32_fill_superblock(struct super_block* sb, int dev) {
     }
     if (fsinfo_blk) { brelse(fs_info_buf); }
     brelse(bh);
-    initlock(&sb->lock, "FAT");
+    spinlock_init(&sb->lock, "FAT");
     sb->sb_dev = dev;
-    sb->fs_type = FAT32_TYPE;
+    sb->fs_type = FS_TYPE_FAT32;
     sb->sb_op = &fat32_sb_ops;
     struct inode* fat32_root = vfs_get_inode(sb, FAT_ROOT_INO);
     sb->sb_root = vfs_new_dentry("/", fat32_root);
@@ -905,46 +903,3 @@ struct file_operations fat32_file_ops = {
 #endif
     .readdir = fat32_readdir,
 };
-// unit test
-
-#ifdef FAT_TEST
-#include <stdio.h>
-int fat_gen_shortname(const char* fullname, char* shortname) {
-    int len = strlen(fullname);
-    int type = 0, offset = 0, ext_start = -1;
-    char c;
-    for (ext_start = len; ext_start >= 0; ext_start--) {
-        if (fullname[ext_start] == '.') {
-            ext_start++;
-            break;
-        }
-    }
-    for (int i = 0; i < len; i++) {
-        c = fullname[i];
-        if (type == 0) { // skipped start
-            if (!(c == '.' || c == ' ')) { type = 1; }
-            if (i == ext_start) { ext_start = -1; }
-        } else if (type == 1 && ext_start != -1 && i >= ext_start) {
-            type = 2;
-            offset = 8;
-        }
-        if (!((type == 1 && offset < 8 && ((ext_start == -1) || (i < ext_start - 1))) ||
-              (type == 2 && offset < 11)))
-            continue;
-        if (c >= 'a' && c <= 'z') { c = c - 'a' + 'A'; }
-        shortname[offset++] = c;
-    }
-    shortname[11] = 0;
-}
-
-int main(int argc, char* argv[]) {
-    char buf[256];
-    char out[256];
-    while (1) {
-        memset(out, ' ', 256);
-        gets(buf);
-        fat_gen_shortname(buf, out);
-        puts(out);
-    }
-}
-#endif

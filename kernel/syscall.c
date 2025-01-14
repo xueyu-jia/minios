@@ -1,308 +1,196 @@
-#include <minios/const.h>
-#include <minios/msg.h>
-#include <minios/proc.h>
-#include <minios/protect.h>
-#include <minios/proto.h>
-#include <minios/signal.h>
 #include <minios/syscall.h>
-#include <minios/type.h>
-#include <minios/assert.h>
+#include <minios/asm.h>
+#include <stdbool.h>
+#include <macro_helper.h>
 
-u32 get_arg(int order) {
-    stack_frame_t* syscall_esp = (stack_frame_t*)(p_proc_current->task.context.esp_save_int);
-    switch (order) {
-        case 1:
-            return syscall_esp->ebx;
-        case 2:
-            return syscall_esp->ecx;
-        case 3:
-            return syscall_esp->edx;
-        case 4:
-            return syscall_esp->esi;
-        case 5:
-            return syscall_esp->edi;
-        default:
-            kprintf("invalid order!");
-            while (1) {};
-            return -1;
+#define __SYSCALL_ARGOUT_LIST_IMPL0(...)
+#define __SYSCALL_ARGOUT_LIST_IMPL1(N, type, ...) ((type)syscall_get_arg(N))
+#define __SYSCALL_ARGOUT_LIST_IMPL2(N, type, ...) \
+    ((type)syscall_get_arg(N)), __SYSCALL_ARGOUT_LIST_IMPL1(MH_NEXT_INT(N), __VA_ARGS__)
+#define __SYSCALL_ARGOUT_LIST_IMPL3(N, type, ...) \
+    ((type)syscall_get_arg(N)), __SYSCALL_ARGOUT_LIST_IMPL2(MH_NEXT_INT(N), __VA_ARGS__)
+#define __SYSCALL_ARGOUT_LIST_IMPL4(N, type, ...) \
+    ((type)syscall_get_arg(N)), __SYSCALL_ARGOUT_LIST_IMPL3(MH_NEXT_INT(N), __VA_ARGS__)
+#define __SYSCALL_ARGOUT_LIST_IMPL5(N, type, ...) \
+    ((type)syscall_get_arg(N)), __SYSCALL_ARGOUT_LIST_IMPL4(MH_NEXT_INT(N), __VA_ARGS__)
+#define __SYSCALL_ARGOUT_LIST_IMPL(N, ...) \
+    MH_EXPAND(MH_CONCAT(__SYSCALL_ARGOUT_LIST_IMPL, N)(0, __VA_ARGS__))
+#define __SYSCALL_ARGOUT_LIST(...) \
+    MH_EXPAND(__SYSCALL_ARGOUT_LIST_IMPL(MH_EXPAND(MH_NARG(__VA_ARGS__)), __VA_ARGS__))
+
+#define SYSCALL_IMPL_MAKE_PARAM(index, type) MH_COMMA type MH_CONCAT(_, index)
+#define SYSCALL_IMPL_MAKE_ARGIN(index, ...) MH_COMMA MH_CONCAT(_, index)
+#define SYSCALL_IMPL_MAKE_ARGSEQ_BUILD(type, ...) \
+    dummy MH_FOREACH_PRED2_ITER(MH_NEXT_INT, MH_CONCAT(SYSCALL_IMPL_MAKE_, type), 1, __VA_ARGS__)
+#define SYSCALL_IMPL_MAKE_ARGSEQ(type, ...) \
+    MH_INVOKE(MH_CDR, SYSCALL_IMPL_MAKE_ARGSEQ_BUILD(type, __VA_ARGS__))
+
+#define SYSCALL_IMPL_PROTO(name, ret_type, ...) \
+    ret_type MH_CONCAT(do_, name)(SYSCALL_IMPL_MAKE_ARGSEQ(PARAM, __VA_ARGS__))
+#define SYSCALL_IMPL_ARGLIST(...) SYSCALL_IMPL_MAKE_ARGSEQ(ARGIN, __VA_ARGS__)
+
+#define SYSCALL_IMPL_RET_AS(name, ret_type, ...) SYSCALL_IMPL_PROTO(name, ret_type, __VA_ARGS__)
+#define SYSCALL_IMPL_NORET_AS(name, ...) SYSCALL_IMPL_PROTO(name, void, __VA_ARGS__)
+
+#define SYSCALL_IMPL_RET(name, ret_type, ...)                             \
+    SYSCALL_IMPL_RET_AS(name, ret_type, __VA_ARGS__) {                    \
+        return MH_CONCAT(kern_, name)(SYSCALL_IMPL_ARGLIST(__VA_ARGS__)); \
     }
-}
 
-int getticks() {
-    return _syscall0(_NR_getticks);
-}
-
-int getpid() {
-    return _syscall0(_NR_getpid);
-}
-void* malloc_4k() {
-    return (void*)_syscall0(_NR_malloc_4k);
-}
-
-void free_4k(void* ptr) {
-    _syscall1(_NR_free_4k, ptr);
-}
-
-int fork() {
-    return _syscall0(_NR_fork);
-}
-
-int pthread_create(int* thread, void* attr, void* entry, void* arg) {
-    return _syscall4(_NR_pthread_create, thread, attr, entry, arg);
-}
-
-u32 execve(char* path, char* argv[], char* envp[]) {
-    return _syscall3(_NR_execve, path, argv, envp);
-}
-
-void yield() {
-    _syscall0(_NR_yield);
-}
-
-void sleep(int n) {
-    _syscall1(_NR_sleep, n);
-}
-
-int open(const char* pathname, int flags, ...) {
-    // syscall_log2("op ", pathname);
-    if (flags & O_CREAT) {
-        int mode = *(((char*)&flags) + 4);
-        return _syscall3(_NR_open, pathname, flags, mode);
+#define SYSCALL_IMPL_NORET(name, ...)                              \
+    SYSCALL_IMPL_NORET_AS(name, __VA_ARGS__) {                     \
+        MH_CONCAT(kern_, name)(SYSCALL_IMPL_ARGLIST(__VA_ARGS__)); \
     }
-    return _syscall2(_NR_open, pathname, flags);
+
+#define DECLARE_SYSCALL(name, ret_type, ...)                                       \
+    SYSCALL_IMPL_RET(name, ret_type, __VA_ARGS__)                                  \
+    static ret_type MH_CONCAT(sys_, name)() {                                      \
+        return (ret_type)MH_CONCAT(do_, name)(__SYSCALL_ARGOUT_LIST(__VA_ARGS__)); \
+    }
+
+#define DECLARE_SYSCALL_NORET(name, ...)                          \
+    SYSCALL_IMPL_NORET(name, __VA_ARGS__)                         \
+    static u32 MH_CONCAT(sys_, name)() {                          \
+        MH_CONCAT(do_, name)(__SYSCALL_ARGOUT_LIST(__VA_ARGS__)); \
+        return 0;                                                 \
+    }
+
+#define DECLARE_SYSCALL_AS(name, ret_type, ...)                                    \
+    SYSCALL_IMPL_PROTO(name, ret_type, __VA_ARGS__);                               \
+    static ret_type MH_CONCAT(sys_, name)() {                                      \
+        return (ret_type)MH_CONCAT(do_, name)(__SYSCALL_ARGOUT_LIST(__VA_ARGS__)); \
+    }                                                                              \
+    SYSCALL_IMPL_RET_AS(name, ret_type, __VA_ARGS__)
+
+#define DECLARE_SYSCALL_NORET_AS(name, ...)                       \
+    SYSCALL_IMPL_PROTO(name, void, __VA_ARGS__);                  \
+    static u32 MH_CONCAT(sys_, name)() {                          \
+        MH_CONCAT(do_, name)(__SYSCALL_ARGOUT_LIST(__VA_ARGS__)); \
+        return 0;                                                 \
+    }                                                             \
+    SYSCALL_IMPL_NORET_AS(name, __VA_ARGS__)
+
+u32 syscall_get_arg(int index) {
+    stack_frame_t* frame = (void*)p_proc_current->task.context.esp_save_int;
+    switch (index) {
+        case 0: {
+            return frame->ebx;
+        } break;
+        case 1: {
+            return frame->ecx;
+        } break;
+        case 2: {
+            return frame->edx;
+        } break;
+        case 3: {
+            return frame->esi;
+        } break;
+        case 4: {
+            return frame->edi;
+        } break;
+        case 5: {
+            return frame->ebp;
+        } break;
+    }
+    while (true) { halt(); }
 }
 
-int close(int fd) {
-    return _syscall1(_NR_close, fd);
+DECLARE_SYSCALL(getticks, int);
+DECLARE_SYSCALL(get_time, int, struct tm*);
+DECLARE_SYSCALL(getpid, int);
+DECLARE_SYSCALL(getpid_by_name, int, const char*);
+DECLARE_SYSCALL(total_mem_size, u32);
+DECLARE_SYSCALL(malloc_4k, u32);
+DECLARE_SYSCALL_NORET(free_4k, void*);
+DECLARE_SYSCALL(fork, int);
+DECLARE_SYSCALL_NORET(exit, int);
+DECLARE_SYSCALL(execve, int, const char*, char* const*, char* const*);
+DECLARE_SYSCALL(wait, int, int*);
+DECLARE_SYSCALL_NORET(sleep, int);
+DECLARE_SYSCALL_NORET(yield);
+DECLARE_SYSCALL(signal, int, int, void*, void*);
+DECLARE_SYSCALL_NORET(sigreturn, u32);
+DECLARE_SYSCALL(sigsend, int, int, Sigaction*);
+DECLARE_SYSCALL_AS(open, int, const char*, int, int) {
+    return kern_vfs_open(_1, _2, _3);
 }
-
-int read(int fd, void* buf, int count) {
-    return _syscall3(_NR_read, fd, buf, count);
+DECLARE_SYSCALL_AS(close, int, int) {
+    return kern_vfs_close(_1);
 }
-
-int write(int fd, const void* buf, int count) {
-    return _syscall3(_NR_write, fd, buf, count);
+DECLARE_SYSCALL_AS(read, int, int, void*, int) {
+    return kern_vfs_read(_1, _2, _3);
 }
-
-int lseek(int fd, int offset, int whence) {
-    return _syscall3(_NR_lseek, fd, offset, whence);
+DECLARE_SYSCALL_AS(write, int, int, const void*, int) {
+    return kern_vfs_write(_1, _2, _3);
 }
-
-int unlink(const char* pathname) {
-    return _syscall1(_NR_unlink, pathname);
+DECLARE_SYSCALL_AS(unlink, int, const char*) {
+    return kern_vfs_unlink(_1);
 }
-
-int creat(const char* pathname) {
-    return _syscall1(_NR_creat, pathname);
+DECLARE_SYSCALL_AS(lseek, int, int, int, int) {
+    return kern_vfs_lseek(_1, _2, _3);
 }
-
-int closedir(DIR* dirp) {
-    return _syscall1(_NR_closedir, dirp);
+DECLARE_SYSCALL_AS(creat, int, const char*) {
+    return kern_vfs_creat(_1, I_RWX);
 }
-
-DIR* opendir(const char* dirname) {
-    return (DIR*)_syscall1(_NR_opendir, dirname);
+DECLARE_SYSCALL_AS(mkdir, int, const char*, int) {
+    return kern_vfs_mkdir(_1, _2);
 }
-
-int mkdir(const char* dirname, int mode) {
-    return _syscall2(_NR_mkdir, dirname, mode);
+DECLARE_SYSCALL_AS(opendir, DIR*, const char*) {
+    return kern_vfs_opendir(_1);
 }
-
-int rmdir(const char* dirname) {
-    return _syscall1(_NR_rmdir, dirname);
+DECLARE_SYSCALL_AS(closedir, int, DIR*) {
+    return kern_vfs_closedir(_1);
 }
-
-struct dirent* readdir(DIR* dirp) {
-    return (struct dirent*)_syscall1(_NR_readdir, dirp);
+DECLARE_SYSCALL_AS(readdir, struct dirent*, DIR*) {
+    return kern_vfs_readdir(_1);
 }
-
-int chdir(const char* path) {
-    return _syscall1(_NR_chdir, path);
+DECLARE_SYSCALL_AS(rmdir, int, const char*) {
+    return kern_vfs_rmdir(_1);
 }
-
-char* getcwd(char* buf, int size) {
-    return (char*)_syscall2(_NR_getcwd, buf, size);
+DECLARE_SYSCALL_AS(chdir, int, const char*) {
+    return kern_vfs_chdir(_1);
 }
-
-int wait() {
-    return _syscall0(_NR_wait);
+DECLARE_SYSCALL_AS(getcwd, char*, char*, int) {
+    return kern_vfs_getcwd(_1, _2);
 }
-
-void exit(int status) {
-    _syscall1(_NR_exit, status);
-    unreachable();
+DECLARE_SYSCALL_AS(mount, int, const char*, const char*, const char*, int, const void*) {
+    return kern_vfs_mount(_1, _2, _3, _4, _5);
 }
-
-// "user/ulib/signal.c" 中提供了上层封装
-int _signal(int sig, void* handler, void* _Handler) {
-    return _syscall3(_NR_signal, sig, handler, _Handler);
+DECLARE_SYSCALL_AS(umount, int, const char*) {
+    return kern_vfs_umount(_1);
 }
-
-int sigsend(int pid, Sigaction* sigaction_p) {
-    return _syscall2(_NR_sigsend, pid, sigaction_p);
+DECLARE_SYSCALL_AS(stat, int, const char*, struct stat*) {
+    return kern_vfs_stat(_1, _2);
 }
+DECLARE_SYSCALL_NORET(nice, int);
+DECLARE_SYSCALL_NORET(rt_prio, int);
+DECLARE_SYSCALL_NORET(set_rt, bool);
+DECLARE_SYSCALL_NORET(get_proc_msg, proc_msg*);
+DECLARE_SYSCALL(ftok, int, const char*, int);
+DECLARE_SYSCALL(msgctl, int, int, int, msqid_ds_t*);
+DECLARE_SYSCALL(msgget, int, key_t, int);
+DECLARE_SYSCALL(msgsnd, int, int, const void*, int, int);
+DECLARE_SYSCALL(msgrcv, int, int, void*, int, long, int);
+DECLARE_SYSCALL(shmctl, shm_t*, int, int, shm_t*);
+DECLARE_SYSCALL(shmget, int, int, int, int);
+DECLARE_SYSCALL(shmat, void*, int, const void*, int);
+DECLARE_SYSCALL(shmdt, int, const void*);
+DECLARE_SYSCALL_NORET(shmcpy, void*, const void*, size_t);
+DECLARE_SYSCALL(pthread_self, pthread_t);
+DECLARE_SYSCALL(pthread_create, int, pthread_t*, const pthread_attr_t*, pthread_entry_t, void*);
+DECLARE_SYSCALL(pthread_join, int, pthread_t, void**);
+DECLARE_SYSCALL_NORET(pthread_exit, void*);
+DECLARE_SYSCALL(pthread_cond_init, int, pthread_cond_t*, const pthread_condattr_t*);
+DECLARE_SYSCALL(pthread_cond_destroy, int, pthread_cond_t*);
+DECLARE_SYSCALL(pthread_cond_signal, int, pthread_cond_t*);
+DECLARE_SYSCALL(pthread_cond_broadcast, int, pthread_cond_t*);
+DECLARE_SYSCALL(pthread_cond_wait, int, pthread_cond_t*, pthread_mutex_t*);
+DECLARE_SYSCALL(pthread_cond_timewait, int, pthread_cond_t*, pthread_mutex_t*, int*);
+DECLARE_SYSCALL(pthread_mutex_init, int, pthread_mutex_t*, pthread_mutexattr_t*);
+DECLARE_SYSCALL(pthread_mutex_destroy, int, pthread_mutex_t*);
+DECLARE_SYSCALL(pthread_mutex_lock, int, pthread_mutex_t*);
+DECLARE_SYSCALL(pthread_mutex_trylock, int, pthread_mutex_t*);
+DECLARE_SYSCALL(pthread_mutex_unlock, int, pthread_mutex_t*);
 
-void sigreturn(int ebp) {
-    _syscall1(_NR_sigreturn, ebp);
-}
-
-u32 total_mem_size() {
-    return _syscall0(_NR_total_mem_size);
-}
-
-int shmget(int key, int size, int shmflg) {
-    return _syscall3(_NR_shmget, key, size, shmflg);
-}
-
-// "user/ulib/ushm.c" 中提供了上层封装
-void* _shmat(int shmid, char* shmaddr, int shmflg) {
-    return (void*)_syscall3(_NR_shmat, shmid, shmaddr, shmflg);
-}
-
-// "user/ulib/ushm.c" 中提供了上层封装
-void _shmdt(char* shmaddr) {
-    _syscall1(_NR_shmdt, shmaddr);
-}
-
-struct ipc_shm* shmctl(int shmid, int cmd, struct ipc_shm* buf) {
-    return (struct ipc_shm*)_syscall3(_NR_shmctl, shmid, cmd, buf);
-}
-
-void* shmmemcpy(void* dst, const void* src, long unsigned int len) {
-    return (void*)_syscall3(_NR_shmmemcpy, dst, src, len);
-}
-
-int ftok(char* f, int key) {
-    return _syscall2(_NR_ftok, f, key);
-}
-
-int msgget(key_t key, int msgflg) {
-    return _syscall2(_NR_msgget, key, msgflg);
-}
-
-int msgsnd(int msqid, const void* msgp, int msgsz, int msgflg) {
-    return _syscall4(_NR_msgsnd, msqid, msgp, msgsz, msgflg);
-}
-
-int msgrcv(int msqid, void* msgp, int msgsz, long msgtyp, int msgflg) {
-    return _syscall5(_NR_msgrcv, msqid, msgp, msgsz, msgtyp, msgflg);
-}
-
-int msgctl(int msgqid, int cmd, msqid_ds* buf) {
-    return _syscall3(_NR_msgctl, msgqid, cmd, buf);
-}
-
-void test(int no) {
-    _syscall1(_NR_test, no);
-}
-
-u32 execvp(char* file, char* argv[]) {
-    return _syscall2(_NR_execvp, file, argv);
-}
-
-u32 execv(char* path, char* argv[]) {
-    return _syscall2(_NR_execv, path, argv);
-}
-
-pthread_t pthread_self() {
-    return _syscall0(_NR_pthread_self);
-}
-
-int pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* mutexattr) {
-    return _syscall2(_NR_pthread_mutex_init, mutex, mutexattr);
-}
-
-int pthread_mutex_destroy(pthread_mutex_t* mutex) {
-    return _syscall1(_NR_pthread_mutex_destroy, mutex);
-}
-
-int pthread_mutex_lock(pthread_mutex_t* mutex) {
-    return _syscall1(_NR_pthread_mutex_lock, mutex);
-}
-
-int pthread_mutex_unlock(pthread_mutex_t* mutex) {
-    return _syscall1(_NR_pthread_mutex_unlock, mutex);
-}
-
-int pthread_mutex_trylock(pthread_mutex_t* mutex) {
-    return _syscall1(_NR_pthread_mutex_trylock, mutex);
-}
-
-int pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr) {
-    return _syscall2(_NR_pthread_cond_init, cond, cond_attr);
-}
-
-int pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
-    return _syscall2(_NR_pthread_cond_wait, cond, mutex);
-}
-
-int pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout) {
-    return _syscall3(_NR_pthread_cond_timewait, cond, mutex, timeout);
-}
-
-int pthread_cond_signal(pthread_cond_t* cond) {
-    return _syscall1(_NR_pthread_cond_signal, cond);
-}
-
-int pthread_cond_broadcast(pthread_cond_t* cond) {
-    return _syscall1(_NR_pthread_cond_broadcast, cond);
-}
-
-int pthread_cond_destroy(pthread_cond_t* cond) {
-    return _syscall1(_NR_pthread_cond_destroy, cond);
-}
-
-int getpid_by_name(char* name) {
-    return _syscall1(_NR_getpid_by_name, name);
-}
-
-int mount(const char* source, const char* target, const char* filesystemtype,
-          unsigned long mountflags, const void* data) {
-    return _syscall5(_NR_mount, source, target, filesystemtype, mountflags, data);
-}
-
-int umount(const char* target) {
-    return _syscall1(_NR_umount, target);
-}
-
-// int init_block_dev(int drive) {
-// 	return _syscall1(_NR_init_block_dev, drive);
-// }
-
-void pthread_exit(void* retval) {
-    _syscall1(_NR_pthread_exit, retval);
-}
-
-int pthread_join(pthread_t thread, void** retval) {
-    return _syscall2(_NR_pthread_join, thread, retval);
-}
-// add by sundong 2023.5.19 初始化块设备的系统调用
-// drive
-// 是根文件系统所在的硬盘编号，该系统调用会创建3个字符设备类型的文件（/dev/tty0~2）
-// int init_char_dev(int drive){
-// 	return _syscall1(_NR_init_char_dev,drive);
-// }
-
-void get_time(struct tm* time) {
-    _syscall1(_NR_get_time, time);
-}
-
-int stat(const char* pathname, struct stat* statbuf) {
-    return _syscall2(_NR_stat, pathname, statbuf);
-}
-
-void nice(int val) {
-    _syscall1(_NR_nice, val);
-}
-
-void set_rt(int turn_rt) {
-    _syscall1(_NR_set_rt, turn_rt);
-}
-
-void rt_prio(int prio) {
-    _syscall1(_NR_rt_prio, prio);
-}
-
-void get_proc_msg(proc_msg* msg) {
-    _syscall1(_NR_get_proc_msg, msg);
-}
+#define SYSCALL_ENTRY_COMPLETED
+#include "syscall_table.inl"

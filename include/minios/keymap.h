@@ -1,11 +1,5 @@
-#ifndef _ORANGES_KEYMAP_H_
-#define _ORANGES_KEYMAP_H_
-// #include <minios/keyboard.h>
-#include <klib/stdint.h>
+#pragma once
 
-/************************************************************************/
-/*                          Macros Declaration                          */
-/************************************************************************/
 #define MAP_COLS 3         /* Number of columns in keymap */
 #define NR_SCAN_CODES 0x80 /* Number of scan codes (rows in keymap) */
 
@@ -19,11 +13,11 @@
 #define FLAG_ALT_R 0x4000   /* Alternate key		*/
 #define FLAG_PAD 0x8000     /* keys in num pad		*/
 
-#define MASK_RAW                                            \
-    0x01FF /* raw key value = code_passed_to_tty & MASK_RAW \
-            * the value can be found either in the keymap   \
-            * column 0 or in the list below                 \
-            */
+/* raw key value = code_passed_to_tty & MASK_RAW
+ * the value can be found either in the keymap
+ * column 0 or in the list below
+ */
+#define MASK_RAW 0x01FF
 
 /* Special keys */
 #define ESC (0x01 + FLAG_EXT)       /* Esc		*/
@@ -196,5 +190,3 @@ WWW Stop        E0, 68          E0, E8
 WWW Refresh     E0, 67          E0, E7
 WWW Favorites   E0, 66          E0, E6
 *=====================================================================================*/
-
-#endif /* _ORANGES_KEYMAP_H_ */

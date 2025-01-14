@@ -2,7 +2,7 @@
 
 #include <klib/stddef.h>
 #include <klib/stdint.h>
-#include <klib/compiler.h>
+#include <compiler.h>
 #include <stdbool.h>
 #include <macro_helper.h>
 

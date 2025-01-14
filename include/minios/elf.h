@@ -1,6 +1,5 @@
 #pragma once
 
-#include <klib/stdint.h>
 #include <klib/stddef.h>
 #include <sys/elf.h>
 

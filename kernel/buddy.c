@@ -1,14 +1,10 @@
-/*************************************************************
- * 内存管理-buddy系统相关代码     add by wang   2021.3.3
- **************************************************************/
-
 #include <minios/buddy.h>
 #include <minios/kmalloc.h>
-#include <minios/proto.h>
 #include <minios/assert.h>
 #include <minios/memman.h>
-#include <klib/compiler.h>
+#include <klib/fmi.h>
 #include <klib/size.h>
+#include <compiler.h>
 #include <string.h>
 
 //! FIXME: 当前 buddy 中存在若干不严格的地方以及漏洞，断言并不能全程通过，因此暂时屏蔽掉
@@ -124,7 +120,7 @@ memory_page_t *alloc_pages(buddy_t *bud, u32 order) {
 }
 
 static void fragmentUse(u32 addr, u32 size) {
-    malloced_insert(addr, size);
+    insert_used_memblk(addr, size);
     kmem.total_mem_size += size;
     phy_kfree(addr);
 }

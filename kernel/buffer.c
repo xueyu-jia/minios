@@ -1,23 +1,16 @@
 #include <minios/buffer.h>
-#include <minios/clock.h>
-#include <minios/const.h>
-#include <minios/fs_const.h>
 #include <minios/hd.h>
 #include <minios/memman.h>
-#include <minios/proc.h>
 #include <minios/semaphore.h>
-#include <minios/vfs.h>
+#include <minios/console.h>
+#include <minios/clock.h>
 #include <minios/kstate.h>
+#include <klib/size.h>
+#include <fs/fs.h>
 #include <string.h>
 
-/*用于记录LRU链表的数据结构*/
-// struct buf_lru_list
-// {
-//     struct buf_head *lru_head; // buffer head组成的双向链表的头
-//     struct buf_head *lru_tail; // buffer head组成的双向链表的尾
-// };
 #define NR_HASH 19
-// 计算hash值
+
 #define HASH_CODE(dev, block) ((block ^ dev) % NR_HASH)
 #define BUFFER_FREE -1
 #define BUFFER_CLEAN 0
@@ -28,25 +21,17 @@
 #define BUF_SYNC_DELAY_TICK 5
 #define BUF_SYNC_RATELIMIT 20
 #define BUF_SYNC_CYCLE_TICK 20
-/* struct buf_hash_head
-{
-    struct buf_head *lru_head; // buffer head组成的双向链表的头
-    struct buf_head *lru_tail; // buffer head组成的双向链表的尾
-}; */
-// static struct buf_lru_list buf_lru_list;
-// static struct buf_head *buf_hash_table[NR_HASH];
+
 static list_head buf_lru_list[NR_BUFFER_STATE];
 static int buf_lru_cnt[NR_BUFFER_STATE] = {0};
-static SPIN_LOCK buf_lru_lock;
-static SPIN_LOCK buf_lock;
+static spinlock_t buf_lru_lock;
+static spinlock_t buf_lock;
 
 static list_head buf_free_list;
-// static list_head dirty_list;
 static list_head buf_hash_table[NR_HASH];
 static int buf_dirty_nfrac = 20;
 static int buf_block_cnt;
-// static SPIN_LOCK buf_dirty_lock;
-static struct Semaphore buf_dirty_sem;
+static semaphore_t buf_dirty_sem;
 
 /*****************************************************************************
  *                                rm_bh_lru
@@ -79,12 +64,12 @@ static inline buf_head *get_bh_lru() {
     // buf_head *bh = lru_list.lru_head;
     // lru_list.lru_head = bh->nxt_lru;
     // retry:
-    // acquire(&buf_lru_lock);
+    // spinlock_acquire(&buf_lru_lock);
     buf_head *bh = list_front(&buf_free_list, struct buf_head, b_lru);
     if (bh && bh->count) { bh = NULL; }
     if (bh == NULL) { bh = list_front(&buf_lru_list[BUFFER_CLEAN], struct buf_head, b_lru); }
     if (bh && bh->count) { bh = NULL; }
-    // release(&buf_lru_lock);
+    // spinlock_release(&buf_lru_lock);
     if (bh == NULL) {
         // sync_buffers(0);
         // goto retry;
@@ -149,20 +134,20 @@ void init_buffer(int num_block) {
     // 申请buffe head和buffer block的内存，初始化lru 双向链表
     buf_head *bh = NULL;
     (void)bh;
-    initlock(&buf_lru_lock, "buf_lru_lock");
-    // initlock(&buf_dirty_lock,"buf_dirty_lock");
+    spinlock_init(&buf_lru_lock, "buf_lru_lock");
+    // spinlock_init(&buf_dirty_lock,"buf_dirty_lock");
     ksem_init(&buf_dirty_sem, 0);
     buf_block_cnt = num_block;
     list_init(&buf_free_list);
-    for (int i = 0; i < NR_BUFFER_STATE; i++) { list_init(&buf_lru_list[i]); }
+    for (int i = 0; i < NR_BUFFER_STATE; ++i) { list_init(&buf_lru_list[i]); }
     // list_init(&dirty_list);
-    for (int i = 0; i < NR_HASH; i++) { list_init(&buf_hash_table[i]); }
-    for (int i = 0; i < num_block; i++) {
+    for (int i = 0; i < NR_HASH; ++i) { list_init(&buf_hash_table[i]); }
+    for (int i = 0; i < num_block; ++i) {
         bh = (buf_head *)kern_kzalloc(sizeof(buf_head));
         bh->buffer = (void *)kern_kzalloc(BLOCK_SIZE);
         bh->b_state = BUFFER_FREE;
         bh->b_size = BLOCK_SIZE;
-        initlock(&bh->lock, NULL);
+        spinlock_init(&bh->lock, NULL);
         list_init(&bh->b_lru);
         list_init(&bh->b_hash);
         list_add_last(&bh->b_lru, &buf_free_list);
@@ -233,9 +218,9 @@ void sync_buffers(int flush_delay) {
                 update_bh_lru(bh, bh->b_state);
                 continue;
             }
-            lock_or_yield(&bh->lock);
+            spinlock_lock_or_yield(&bh->lock);
             sync_buff(bh);
-            release(&bh->lock);
+            spinlock_release(&bh->lock);
             nr_dirty++;
         }
     }
@@ -245,21 +230,21 @@ void sync_buffers(int flush_delay) {
 static void try_sync_buffers(int background) {
     UNUSED(background);
 
-    lock_or_yield(&buf_lock);
+    spinlock_lock_or_yield(&buf_lock);
     // buffer写回条件: dirty buffer数超过buffer总量的buf_dirty_nfrac% (20%)
     // 或者存在dirty buffer且距离上一次将dirty buffer同步操作的时间超过20ticks
     if ((buf_lru_cnt[BUFFER_DIRTY] > buf_dirty_nfrac * buf_block_cnt / 100) ||
         ((ticks > flush_tick + BUF_SYNC_CYCLE_TICK) && buf_lru_cnt[BUFFER_DIRTY])) {
 #ifdef BUFFER_SYNC_TASK
         if (background) {
-            release(&buf_lock);
+            spinlock_release(&buf_lock);
             ksem_post(&buf_dirty_sem, 1); // wake up sync task
             return;
         }
 #endif
         sync_buffers(0);
     }
-    release(&buf_lock);
+    spinlock_release(&buf_lock);
 }
 /*****************************************************************************
  *                                getblk
@@ -276,7 +261,7 @@ static void try_sync_buffers(int background) {
  *
  *****************************************************************************/
 buf_head *getblk(u32 dev, u32 block) {
-    lock_or_yield(&buf_lock);
+    spinlock_lock_or_yield(&buf_lock);
     buf_head *bh = find_buffer_hash(dev, block);
     // 如果在hash table中能找到，则直接返回
     if (!bh) {
@@ -284,107 +269,54 @@ buf_head *getblk(u32 dev, u32 block) {
         bh = get_bh_lru();
         if (bh->count) { kprintf("warning: still used blk\n"); }
         // 如果是脏块就立即写回硬盘
-        lock_or_yield(&bh->lock); // race with bsync
+        spinlock_lock_or_yield(&bh->lock); // race with bsync
         if (bh->b_state == BUFFER_DIRTY) { sync_buff(bh); }
         // 如果它被用过则，从hash表中删掉它
         if (bh->used) {
             rm_bh_hashtbl(bh);
             bh->used = 0;
             // 缓冲区重新初始化为0
-            memset(bh->buffer, 0, num_4K);
+            memset(bh->buffer, 0, SZ_4K);
         }
         bh->dev = dev;
         bh->block = block;
         // 放到hash 表中
-        release(&bh->lock);
+        spinlock_release(&bh->lock);
         put_bh_hashtbl(bh);
         update_bh_lru(bh, BUFFER_CLEAN);
     }
     // 更新 lru
     update_bh_lru(bh, bh->b_state);
-    release(&buf_lock);
+    spinlock_release(&buf_lock);
     return bh;
 }
-
-/* int buf_read_block(int dev, int block, int pid, void *buf)
-{
-    buf_head *bh = getblk(dev, block);
-    // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
-    if (bh->used)
-    {
-        memcpy(buf, bh->buffer, BLOCK_SIZE);
-        // 从lru双向链表中删除
-        //rm_bh_lru(bh);
-    }
-    else
-    {
-        // 该buf head是一个新分配的，此时应该从硬盘读数据进来
-        RD_BLOCK_SCHED(dev, block, bh->buffer);
-        memcpy(buf, bh->buffer, BLOCK_SIZE);
-        // 标记为已被使用
-        bh->used = 1;
-        // 把它放进hash tbl中
-        put_bh_hashtbl(bh);
-    }
-    // 把它放进lru的尾部，表示刚被用过
-    put_bh_lru(bh);
-    return 0;
-} */
-/* int buf_write_block(int dev, int block, int pid, void *buf)
-{
-    buf_head *bh = getblk(dev, block);
-    memcpy(bh->buffer, buf, BLOCK_SIZE);
-    bh->dirty = 1;
-    if (bh->used)
-    {
-        // 把它从lru中删除，本函数执行结束时再加到lru尾部
-        //rm_bh_lru(bh);
-    }
-    else
-    {
-        // 标记未被用过
-        bh->used = 1;
-        // 放进hash tbl中
-        put_bh_hashtbl(bh);
-    }
-    // 把它放进lru的尾部，表示刚被用过
-    put_bh_lru(bh);
-    return 0;
-} */
 
 buf_head *bread(u32 dev, u32 block) {
     buf_head *bh = getblk(dev, block);
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
-    lock_or_yield(&bh->lock);
+    spinlock_lock_or_yield(&bh->lock);
     if (!bh->used) {
-        // 该buf head是一个新分配的，此时应该从硬盘读数据进来
-        // if(kstate_on_init){
-        // 	RD_BLOCK(dev, block, bh->buffer);
-        // }else{
-        // 	RD_BLOCK_SCHED(dev, block, bh->buffer);
-        // }
         rw_buffer(DEV_READ, bh, bh->b_size);
-        // 标记为已被使用
         bh->used = 1;
         bh->count = 1;
     } else {
         bh->count++;
     }
-    release(&bh->lock);
+    spinlock_release(&bh->lock);
     return bh;
 }
 
 void mark_buff_dirty(buf_head *bh) {
-    lock_or_yield(&buf_lock);
+    spinlock_lock_or_yield(&buf_lock);
     update_bh_lru(bh, BUFFER_DIRTY);
-    release(&buf_lock);
+    spinlock_release(&buf_lock);
 }
 
 void brelse(buf_head *bh) {
-    lock_or_yield(&buf_lock);
+    spinlock_lock_or_yield(&buf_lock);
     update_bh_lru(bh, bh->b_state);
-    release(&buf_lock);
-    lock_or_yield(&bh->lock);
+    spinlock_release(&buf_lock);
+    spinlock_lock_or_yield(&bh->lock);
     if (bh->b_state == BUFFER_DIRTY) {
         int new_flush = ticks + BUF_SYNC_DELAY_TICK;
         if (new_flush > bh->b_flush) { bh->b_flush = new_flush; }
@@ -394,7 +326,7 @@ void brelse(buf_head *bh) {
     if (bh->count > 0) { bh->count--; }
 
     if (bh->b_state == BUFFER_DIRTY && bh->count == 0) {
-        release(&bh->lock);
+        spinlock_release(&bh->lock);
 #ifdef BUFFER_SYNC_TASK
         try_sync_buffers(1);
 #else
@@ -402,15 +334,15 @@ void brelse(buf_head *bh) {
 #endif
         return;
     }
-    release(&bh->lock);
+    spinlock_release(&bh->lock);
 }
 
 void bsync_service() {
     while (1) {
         ksem_wait(&buf_dirty_sem, 1);
-        lock_or_yield(&buf_lock);
+        spinlock_lock_or_yield(&buf_lock);
         sync_buffers(1);
-        release(&buf_lock);
+        spinlock_release(&buf_lock);
     }
 }
 

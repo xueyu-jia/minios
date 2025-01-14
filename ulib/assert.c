@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <fmt.h>
-#include <syscall.h>
+#include <stdlib.h>
 
 typedef struct fmtinfo_args {
     const char *slevel;

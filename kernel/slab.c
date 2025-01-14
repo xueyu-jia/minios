@@ -1,6 +1,11 @@
-#include <minios/buddy.h>
-#include <minios/proto.h>
 #include <minios/slab.h>
+#include <minios/buddy.h>
+#include <minios/memman.h>
+#include <minios/layout.h>
+
+#define LEFTSHIFT(n) (1 << (n))
+// 将address向上(高地址)对齐,对齐标准为(2^n)
+#define POW2_ROUNDUP(address, n) (((address) + LEFTSHIFT(n) - 1) & ~(LEFTSHIFT(n) - 1))
 
 // cache数组下标从0开始，对应对象是8B。
 // 该系统最大可存储2048B大小的字节，更大的直接分配一个页。所以 KMEM_CACHES_NUM
@@ -20,14 +25,11 @@ static int freeObjectToSlab(kmem_slab_t *slab, u32 obj);
 static void moveSlab(kmem_slab_t *slab);
 static int get_index(int objsize);
 
-/*
-        系统初始化，针对cache数组
-*/
 void init_cache() {
     unsigned int order;
     char name[CACHE_NAME_LEN] = "Buffer_";
 
-    for (order = MIN_BUFF_ORDER; order <= MAX_BUFF_ORDER; order++) {
+    for (order = MIN_BUFF_ORDER; order <= MAX_BUFF_ORDER; ++order) {
         int index = 7, temp = order;
         // 计算temp的位数
         int digits = 1;
@@ -49,15 +51,6 @@ void init_cache() {
     }
 }
 
-/*
-        分配size大小的对象
-
-        传入参数：
-                size：要分配的对象大小
-
-        输出：
-                对象地址
-*/
 void *kmalloc(u32 size) {
     void *buff = NULL;
     kmem_cache_t *cache = selectCache(size);
@@ -65,13 +58,6 @@ void *kmalloc(u32 size) {
     return (void *)K_LIN2PHY(buff);
 }
 
-/*
-        释放对象
-
-        传入参数：
-                object ：要释放的对象的地址
-
-*/
 int kfree(u32 object) {
     kmem_slab_t *slab = NULL;
     memory_page_t *page = pfn_to_page(phy_to_pfn(object));
@@ -84,11 +70,11 @@ int kfree(u32 object) {
     kmem_cache_t *cache = &kmem_caches[order];
     object = ptr2u(K_PHY2LIN(object));
     while (!flag) { // 对象所在的链表可能还没有添加到新的链表，循环查找
-        for (int i = PARTIAL; i <= FULL && !flag; i++) { // 依次查找partial链和full链
-            acquire(&(cache->list[i].lock));             // 先对每一个链上锁
+        for (int i = PARTIAL; i <= FULL && !flag; ++i) { // 依次查找partial链和full链
+            spinlock_acquire(&(cache->list[i].lock));    // 先对每一个链上锁
             kmem_slab_t *temp = cache->list[i].head;
             while (temp) {
-                if ((object >= (u32)temp) && (object < (u32)temp + BLOCK_SIZE)) {
+                if ((object >= (u32)temp) && (object < (u32)temp + SLAB_BLOCK_SIZE)) {
                     slab = temp;
                     move = freeObjectToSlab(temp, object);
                     flag = 1; // 找到
@@ -96,7 +82,7 @@ int kfree(u32 object) {
                 }
                 temp = temp->next;
             }
-            release(&(cache->list[i].lock)); // 释放锁
+            spinlock_release(&(cache->list[i].lock)); // 释放锁
         }
     }
 
@@ -131,14 +117,6 @@ static u32 bitmap_check_avail(kmem_slab_t *slab) {
     return obj_index;
 }
 
-/*
-        从 slab 中分配对象
-
-        传入参数：
-                slab ： slab结构指针。从指针指向的slab所管理的page中分配对象
-
-        返回值：分配的对象的地址
-*/
 static void *slab_alloc_object(kmem_slab_t *slab) {
     u32 obj_index;
 
@@ -191,7 +169,7 @@ static void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder)
     int obj_size = pow(objorder);
     u32 bitmap_size, free;
     unsigned int obj_count;
-    free = BLOCK_SIZE - sizeof(kmem_slab_t);
+    free = SLAB_BLOCK_SIZE - sizeof(kmem_slab_t);
 
     // bitmap_size： 位图占用字节数
     // obj_count：对象个数
@@ -205,18 +183,18 @@ static void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder)
     // 给cache命名
     char *temp = cache->name;
     while ((*temp++ = *name++));
-    //: 等价于
-    //: for (; *temp != '\0'; temp++, name++) {
-    //: *temp = *name;
+    //! 等价于
+    //! for (; *temp != '\0'; temp++, name++) {
+    //! *temp = *name;
     //:} // 师兄的写法有些难懂
 
     cache->objsize = obj_size;
     cache->bitmap_length = bitmap_size / sizeof(bitmap_entry_t); // 位图块数
     cache->obj_per_slab = obj_count;                             // 每个slab中对象个数
     // 初始化链表和锁
-    for (int i = EMPTY; i <= FULL; i++) {
+    for (int i = EMPTY; i <= FULL; ++i) {
         cache->list[i].head = NULL;
-        initlock(&(cache->list[i].lock), NULL);
+        spinlock_init(&(cache->list[i].lock), NULL);
     }
     cache->slab_count[EMPTY] = cache->slab_count[PARTIAL] = cache->slab_count[FULL] =
         0; // 统计slab数目
@@ -297,7 +275,7 @@ static void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
     int flag = 0;
     kmem_slab_t *slab;
     // 首先从partial类型的slab分配
-    acquire(&(cache->list[PARTIAL].lock)); // 先加锁，再判断
+    spinlock_acquire(&(cache->list[PARTIAL].lock)); // 先加锁，再判断
     if (cache->slab_count[PARTIAL] > 0) {
         slab = cache->list[PARTIAL].head;
         obj = slab_alloc_object(slab); // 分配一个对象
@@ -307,14 +285,14 @@ static void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
             slab->type = FULL;       // 修改当前的slab的类型
             move = 1;                // 表示之后要将slab插入新的链表中
         }
-        release(&(cache->list[PARTIAL].lock)); // 分配成功，释放锁
+        spinlock_release(&(cache->list[PARTIAL].lock)); // 分配成功，释放锁
     } else {
-        release(&(cache->list[PARTIAL].lock)); // 没有 PARTIAL 链表，释放锁
+        spinlock_release(&(cache->list[PARTIAL].lock)); // 没有 PARTIAL 链表，释放锁
     }
 
     // 没有partial类型的slab，就从empty类型的slab分配
     if (!flag) {
-        acquire(&(cache->list[EMPTY].lock));
+        spinlock_acquire(&(cache->list[EMPTY].lock));
         if (cache->slab_count[EMPTY] > 0) {
             slab = cache->list[EMPTY].head;
             obj = slab_alloc_object(slab);
@@ -322,9 +300,9 @@ static void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
             slab->type = PARTIAL;
             move = 1;
             flag = 1;
-            release(&(cache->list[EMPTY].lock));
+            spinlock_release(&(cache->list[EMPTY].lock));
         } else {
-            release(&(cache->list[EMPTY].lock));
+            spinlock_release(&(cache->list[EMPTY].lock));
         }
     }
 
@@ -412,13 +390,13 @@ static void moveSlab(kmem_slab_t *slab) {
         }
     }
 
-    acquire(&(cache->list[type].lock)); // 对要移动的链上锁
+    spinlock_acquire(&(cache->list[type].lock)); // 对要移动的链上锁
     // 头插法
     slab->next = cache->list[type].head;
     cache->list[type].head = slab;
 
     cache->slab_count[type]++;
-    release(&(cache->list[type].lock));
+    spinlock_release(&(cache->list[type].lock));
 }
 
 /*

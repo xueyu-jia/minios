@@ -23,7 +23,7 @@ static void report_system_memory_map(const ards_t *ards_list, size_t total_ards)
             arch_hex_width);
 
     lprintf("info: report system memory map\n");
-    for (size_t i = 0; i < total_ards; i++) {
+    for (size_t i = 0; i < total_ards; ++i) {
         const ards_t *ards = &ards_list[i];
         const size_t size = ((u64)ards->size_hi << 32) | ards->size_lo;
         const phyaddr_t base = ((u64)ards->base_hi << 32) | ards->base_lo;
@@ -67,7 +67,7 @@ NORETURN static void load_kernel(size_t total_memory) {
         //! NOTE: the assertion is not that accurate, but it's enough here
         assert((size_t)K_LIN2PHY(max_elf_va) < total_memory && "no enough memory for kernel elf");
 
-        for (int i = 0; i < eh.e_phnum; i++) {
+        for (int i = 0; i < eh.e_phnum; ++i) {
             if (ph[i].p_type != PT_LOAD) { continue; }
             lprintf("load segment %d: va=0x%p, offset=0x%p, filesz=0x%x, memsz=0x%x\n", i,
                     ph[i].p_vaddr, ph[i].p_offset, ph[i].p_filesz, ph[i].p_memsz);

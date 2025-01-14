@@ -1,8 +1,8 @@
 #include <malloc.h>
-#include <opt.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <string.h>
-#include <syscall.h>
+#include <sys/stat.h>
 
 struct stat statbuf;
 int remove(const char* path, int rec) {
@@ -35,7 +35,7 @@ int remove(const char* path, int rec) {
     return -1;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     int recursicve = 0, opt;
     while ((opt = getopt(argc, argv, "r")) != -1) {
         switch (opt) {

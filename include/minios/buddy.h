@@ -1,8 +1,7 @@
 #pragma once
 
-#include <minios/const.h>
-#include <minios/memman.h>
-#include <minios/type.h>
+#include <minios/mempage.h>
+#include <klib/stdint.h>
 
 #define BUDDY_ORDER_LIMIT 11 // 页块链表数目
 

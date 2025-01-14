@@ -1,11 +1,8 @@
-#include <minios/const.h>
-#include <minios/fs.h>
-#include <minios/ksignal.h>
-#include <minios/proto.h>
-#include <minios/type.h>
-#include <minios/assert.h>
+#include <minios/syscall.h>
+#include <minios/asm.h>
+#include <stdbool.h>
 
 void initial() {
-    execve("/bin/init", NULL, NULL);
-    while (1);
+    syscall(NR_execve, "/bin/init", NULL, NULL);
+    while (true) { halt(); }
 }

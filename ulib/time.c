@@ -1,6 +1,7 @@
-#include <stdio.h>
 #include <time.h>
+#include <stdio.h>
 #include <compiler.h>
+#include <sys/syscall.h>
 
 static struct tm* _gmtime(uint32_t timestamp, struct tm* tm_time) {
     static int days_four_year = 1461;
@@ -55,7 +56,7 @@ int strftime(char* s, int max, const char* fmt, struct tm* tm_time) {
     UNUSED(max);
     char* p;
     int d, alignz;
-    for (p = s; *fmt; fmt++) {
+    for (p = s; *fmt; ++fmt) {
         if (*fmt != '%') {
             *p++ = *fmt;
             continue;
@@ -106,4 +107,12 @@ int strftime(char* s, int max, const char* fmt, struct tm* tm_time) {
         p += sprintf(p, "%0*d", alignz, d);
     }
     return (p) - (s);
+}
+
+int getticks() {
+    return syscall(NR_getticks);
+}
+
+int get_time(struct tm* time) {
+    return syscall(NR_get_time, time);
 }

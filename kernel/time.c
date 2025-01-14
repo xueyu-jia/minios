@@ -1,13 +1,11 @@
-#include <minios/clock.h>
-#include <minios/const.h>
-#include <minios/protect.h>
-#include <minios/proto.h>
 #include <minios/time.h>
+#include <minios/clock.h>
+#include <minios/asm.h>
 
 #define RTC_ADDR 0x70
 #define RTC_DATA 0x71
 
-u8 readRTC(int addr) {
+u8 read_rtc(int addr) {
     //:** must disable int and ***
     outb(RTC_ADDR, addr);
     return inb(RTC_DATA);
@@ -18,7 +16,6 @@ int bcd2byte(u8 x) {
 }
 
 // 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的Gauss算法, copy自linux
-// kernel
 u32 mktime(struct tm* time) {
     unsigned int mon = time->tm_mon + 1, year = time->tm_year + 1900, day = time->tm_mday,
                  hour = time->tm_hour, min = time->tm_min, sec = time->tm_sec;
@@ -87,18 +84,18 @@ struct tm* localtime(u32 timestamp, struct tm* tm_time) {
     return tm_time;
 }
 
-// ** must ** disable int
 static void get_rtc_datetime(struct tm* time) {
+    //! ATTENTION: \b MUST disable int
     int year, mon, day, hour, min, sec;
     do {
-        year = readRTC(0x9);
-        mon = readRTC(0x8);
-        day = readRTC(0x7);
-        hour = readRTC(0x4);
-        min = readRTC(0x2);
-        sec = readRTC(0);
-    } while (sec != readRTC(0));
-    if (!(readRTC(0xB) & 0x4)) {
+        year = read_rtc(0x9);
+        mon = read_rtc(0x8);
+        day = read_rtc(0x7);
+        hour = read_rtc(0x4);
+        min = read_rtc(0x2);
+        sec = read_rtc(0);
+    } while (sec != read_rtc(0));
+    if (!(read_rtc(0xB) & 0x4)) {
         year = bcd2byte(year);
         mon = bcd2byte(mon);
         day = bcd2byte(day);
@@ -126,12 +123,4 @@ u32 get_init_rtc_timestamp() {
 int kern_get_time(struct tm* time) {
     localtime(current_timestamp, time);
     return 0;
-}
-
-int do_get_time(struct tm* time) {
-    return kern_get_time(time);
-}
-
-int sys_get_time() {
-    return do_get_time((struct tm*)get_arg(1));
 }

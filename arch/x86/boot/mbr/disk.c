@@ -37,7 +37,7 @@ static int ide_read(void *dst, u32 offset, int count) {
         return FALSE;
     }
     int ret = 1;
-    for (int i = 0; i < count; i++) { ret &= ide_readsect(dst + i * SECTSIZE, offset + i); }
+    for (int i = 0; i < count; ++i) { ret &= ide_readsect(dst + i * SECTSIZE, offset + i); }
     return ret;
 }
 

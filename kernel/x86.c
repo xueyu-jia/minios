@@ -1,14 +1,13 @@
-#include <minios/const.h>
 #include <minios/x86.h>
 #include <minios/regs.h>
 #include <minios/assert.h>
 
-void init_context_frame(CONTEXT_FRAME *context_frame, u32 eip, u32 eflags) {
+void init_context_frame(context_frame_t *context_frame, u32 eip, u32 eflags) {
     context_frame->eip = eip;
     context_frame->eflags = eflags;
 }
 
-static void assign_ldt(int pid, cpu_context *context, u8 rpl) {
+static void assign_ldt(int pid, cpu_context_t *context, u8 rpl) {
     context->ldt_sel = MAKE_SELECTOR(INDEX_LDT_FIRST + pid);
     context->ldts[INDEX_LDT_C] = gdt[SELECTOR_GET_INDEX(SELECTOR_KERNEL_CS)];
     context->ldts[INDEX_LDT_C].attr0 = DA_C | (rpl << 5);
@@ -16,7 +15,7 @@ static void assign_ldt(int pid, cpu_context *context, u8 rpl) {
     context->ldts[INDEX_LDT_RW].attr0 = DA_DRW | (rpl << 5);
 }
 
-void init_cpu_context(cpu_context *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip,
+void init_cpu_context(cpu_context_t *context, int pid, u32 int_eip, u32 int_esp, u32 context_eip,
                       u8 rpl) {
     assert(is_rpl_supported(rpl));
 

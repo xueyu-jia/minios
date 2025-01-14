@@ -1,8 +1,7 @@
 #include <stdio.h>
-#include <syscall.h>
 #include <stddef.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
     if (argc != 4) {
         printf("usage: mount %%dev %%target %%fstype\n");
         return -1;

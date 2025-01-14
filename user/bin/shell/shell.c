@@ -1,7 +1,10 @@
-#include <env.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+
 #define MAX_ARGC 8
 #define NUM_BUILTIN_CMD 3
 #define CMD_LEN 8
@@ -9,8 +12,6 @@
 #define CMD_ELF 0
 #define CMD_SCRIPT 1
 #define CMD_INVAL -1
-
-// #define SHELL_TEST
 
 struct cmd {
     char cmd_name[CMD_LEN];
@@ -54,7 +55,7 @@ int parse(char *buf, char **argv, int limit) {
     if (!buf) return 0;
     int start = 0, cnt = 0;
     char *p = buf;
-    for (; *p && *p != '\n'; p++) {
+    for (; *p && *p != '\n'; ++p) {
         if (*p == ' ' && start == 1) {
             *p = 0;
             start = 0;
@@ -71,7 +72,7 @@ int parse(char *buf, char **argv, int limit) {
 
 int match_build_in(int argc, char **argv) {
     // printf("%s", argv[0]);
-    for (int i = 0; i < NUM_BUILTIN_CMD; i++) {
+    for (int i = 0; i < NUM_BUILTIN_CMD; ++i) {
         // printf("%s\n", cmds[i].cmd_name);
         if (argc && (!strcmp(argv[0], cmds[i].cmd_name))) {
             // printf("match %s\n", cmds[i].cmd_name);

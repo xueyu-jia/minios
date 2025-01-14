@@ -1,5 +1,5 @@
 #include <driver/pci/pci.h>
-#include <minios/x86-asm.h>
+#include <minios/asm.h>
 
 uint8_t pci_io_r8(int id, int reg) {
     const uint32_t addr = PCI_MAKE_ADDR(id, reg);

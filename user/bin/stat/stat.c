@@ -1,7 +1,7 @@
 #include <malloc.h>
-#include <stat.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/stat.h>
 
 void print_time(uint32_t timestamp) {
     char buf[32] = {0};

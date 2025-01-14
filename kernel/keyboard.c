@@ -1,13 +1,42 @@
-#include <minios/console.h>
-#include <minios/const.h>
 #include <minios/keyboard.h>
 #include <minios/keymap.h>
-#include <minios/protect.h>
-#include <minios/proto.h>
-#include <minios/tty.h>
+#include <minios/interrupt.h>
 
-static KB_INPUT kb_in;
-static MOUSE_INPUT mouse_in;
+/* AT keyboard */
+/* 8042 ports */
+/*!
+ *  I/O port for keyboard data
+ *	Read : Read Output Buffer
+ *	Write: Write Input Buffer (8042 Data & 8048 Command)
+ */
+#define KB_DATA 0x60
+/*!
+ * I/O port for keyboard command
+ * Read : Read Status Register
+ * Write: Write Input Buffer (8042 Command)
+ */
+#define KB_CMD 0x64
+
+#define KB_STA 0x64
+#define KEYSTA_SEND_NOTREADY 0x02
+#define KBSTATUS_IBF 0x02
+#define KBSTATUS_OBF 0x01
+
+#define wait_KB_write() while (inb(KB_STA) & KBSTATUS_IBF)
+#define wait_KB_read() while (inb(KB_STA) & KBSTATUS_OBF)
+
+#define KEYCMD_WRITE_MODE 0x60
+#define KBC_MODE 0x47
+
+#define KEYCMD_SENDTO_MOUSE 0xd4
+#define MOUSECMD_ENABLE 0xf4
+#define KBCMD_EN_MOUSE_INTFACE 0xa8
+
+#define LED_CODE 0xed
+#define KB_ACK 0xfa
+
+static kb_inbuf_t kb_in;
+static mouse_inbuf_t mouse_in;
 static int mouse_init;
 
 /* Keymap for US MF-2 keyboard. */
@@ -46,22 +75,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x09 - '8'           */ '8',
     '*',
     0,
-    /* 0x0A - '9'           */ '9',
+    /* 0x0a - '9'           */ '9',
     '(',
     0,
-    /* 0x0B - '0'           */ '0',
+    /* 0x0b - '0'           */ '0',
     ')',
     0,
-    /* 0x0C - '-'           */ '-',
+    /* 0x0c - '-'           */ '-',
     '_',
     0,
-    /* 0x0D - '='           */ '=',
+    /* 0x0d - '='           */ '=',
     '+',
     0,
-    /* 0x0E - BS            */ BACKSPACE,
+    /* 0x0e - BS            */ BACKSPACE,
     BACKSPACE,
     0,
-    /* 0x0F - TAB           */ TAB,
+    /* 0x0f - TAB           */ TAB,
     TAB,
     0,
     /* 0x10 - 'q'           */ 'q',
@@ -94,22 +123,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x19 - 'p'           */ 'p',
     'P',
     0,
-    /* 0x1A - '['           */ '[',
+    /* 0x1a - '['           */ '[',
     '{',
     0,
-    /* 0x1B - ']'           */ ']',
+    /* 0x1b - ']'           */ ']',
     '}',
     0,
-    /* 0x1C - CR/LF         */ ENTER,
+    /* 0x1c - CR/LF         */ ENTER,
     ENTER,
     PAD_ENTER,
-    /* 0x1D - l. Ctrl       */ CTRL_L,
+    /* 0x1d - l. Ctrl       */ CTRL_L,
     CTRL_L,
     CTRL_R,
-    /* 0x1E - 'a'           */ 'a',
+    /* 0x1e - 'a'           */ 'a',
     'A',
     0,
-    /* 0x1F - 's'           */ 's',
+    /* 0x1f - 's'           */ 's',
     'S',
     0,
     /* 0x20 - 'd'           */ 'd',
@@ -142,22 +171,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x29 - '`'           */ '`',
     '~',
     0,
-    /* 0x2A - l. SHIFT      */ SHIFT_L,
+    /* 0x2a - l. SHIFT      */ SHIFT_L,
     SHIFT_L,
     0,
-    /* 0x2B - '\'           */ '\\',
+    /* 0x2b - '\'           */ '\\',
     '|',
     0,
-    /* 0x2C - 'z'           */ 'z',
+    /* 0x2c - 'z'           */ 'z',
     'Z',
     0,
-    /* 0x2D - 'x'           */ 'x',
+    /* 0x2d - 'x'           */ 'x',
     'X',
     0,
-    /* 0x2E - 'c'           */ 'c',
+    /* 0x2e - 'c'           */ 'c',
     'C',
     0,
-    /* 0x2F - 'v'           */ 'v',
+    /* 0x2f - 'v'           */ 'v',
     'V',
     0,
     /* 0x30 - 'b'           */ 'b',
@@ -190,22 +219,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x39 - ' '           */ ' ',
     ' ',
     0,
-    /* 0x3A - CapsLock      */ CAPS_LOCK,
+    /* 0x3a - CapsLock      */ CAPS_LOCK,
     CAPS_LOCK,
     0,
-    /* 0x3B - F1            */ F1,
+    /* 0x3b - F1            */ F1,
     F1,
     0,
-    /* 0x3C - F2            */ F2,
+    /* 0x3c - F2            */ F2,
     F2,
     0,
-    /* 0x3D - F3            */ F3,
+    /* 0x3d - F3            */ F3,
     F3,
     0,
-    /* 0x3E - F4            */ F4,
+    /* 0x3e - F4            */ F4,
     F4,
     0,
-    /* 0x3F - F5            */ F5,
+    /* 0x3f - F5            */ F5,
     F5,
     0,
     /* 0x40 - F6            */ F6,
@@ -238,22 +267,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x49 - PgUp          */ PAD_PAGEUP,
     '9',
     PAGEUP,
-    /* 0x4A - '-'           */ PAD_MINUS,
+    /* 0x4a - '-'           */ PAD_MINUS,
     '-',
     0,
-    /* 0x4B - Left          */ PAD_LEFT,
+    /* 0x4b - Left          */ PAD_LEFT,
     '4',
     LEFT,
-    /* 0x4C - MID           */ PAD_MID,
+    /* 0x4c - MID           */ PAD_MID,
     '5',
     0,
-    /* 0x4D - Right         */ PAD_RIGHT,
+    /* 0x4d - Right         */ PAD_RIGHT,
     '6',
     RIGHT,
-    /* 0x4E - '+'           */ PAD_PLUS,
+    /* 0x4e - '+'           */ PAD_PLUS,
     '+',
     0,
-    /* 0x4F - End           */ PAD_END,
+    /* 0x4f - End           */ PAD_END,
     '1',
     END,
     /* 0x50 - Down          */ PAD_DOWN,
@@ -286,22 +315,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x59 - ???           */ 0,
     0,
     0,
-    /* 0x5A - ???           */ 0,
+    /* 0x5a - ???           */ 0,
     0,
     0,
-    /* 0x5B - ???           */ 0,
+    /* 0x5b - ???           */ 0,
     0,
     GUI_L,
-    /* 0x5C - ???           */ 0,
+    /* 0x5c - ???           */ 0,
     0,
     GUI_R,
-    /* 0x5D - ???           */ 0,
+    /* 0x5d - ???           */ 0,
     0,
     APPS,
-    /* 0x5E - ???           */ 0,
+    /* 0x5e - ???           */ 0,
     0,
     0,
-    /* 0x5F - ???           */ 0,
+    /* 0x5f - ???           */ 0,
     0,
     0,
     /* 0x60 - ???           */ 0,
@@ -334,22 +363,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x69 - ???           */ 0,
     0,
     0,
-    /* 0x6A - ???           */ 0,
+    /* 0x6a - ???           */ 0,
     0,
     0,
-    /* 0x6B - ???           */ 0,
+    /* 0x6b - ???           */ 0,
     0,
     0,
-    /* 0x6C - ???           */ 0,
+    /* 0x6c - ???           */ 0,
     0,
     0,
-    /* 0x6D - ???           */ 0,
+    /* 0x6d - ???           */ 0,
     0,
     0,
-    /* 0x6E - ???           */ 0,
+    /* 0x6e - ???           */ 0,
     0,
     0,
-    /* 0x6F - ???           */ 0,
+    /* 0x6f - ???           */ 0,
     0,
     0,
     /* 0x70 - ???           */ 0,
@@ -382,22 +411,22 @@ u32 keymap[NR_SCAN_CODES * MAP_COLS] = {
     /* 0x78 - ???           */ 0,
     0,
     0,
-    /* 0x7A - ???           */ 0,
+    /* 0x7a - ???           */ 0,
     0,
     0,
-    /* 0x7B - ???           */ 0,
+    /* 0x7b - ???           */ 0,
     0,
     0,
-    /* 0x7C - ???           */ 0,
+    /* 0x7c - ???           */ 0,
     0,
     0,
-    /* 0x7D - ???           */ 0,
+    /* 0x7d - ???           */ 0,
     0,
     0,
-    /* 0x7E - ???           */ 0,
+    /* 0x7e - ???           */ 0,
     0,
     0,
-    /* 0x7F - ???           */ 0,
+    /* 0x7f - ???           */ 0,
     0,
     0};
 
@@ -445,31 +474,31 @@ void mouse_handler(int irq) {
     mouse_in.buf[mouse_in.count] = scan_code;
     mouse_in.count++;
     if (mouse_in.count == 3) {
-        TTY* p_tty;
-        for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++) {
-            if (p_tty->console == &console_table[current_console]) {
-                p_tty->mouse_left_button = mouse_in.buf[0] & 0x01;
+        tty_t* tty;
+        for (tty = TTY_FIRST; tty < TTY_END; ++tty) {
+            if (tty->console == &console_table[current_console]) {
+                tty->mouse_left_button = mouse_in.buf[0] & 0x01;
 
                 u8 mid_button = mouse_in.buf[0] & 0x4;
                 if (mid_button == 0x4) {
-                    p_tty->mouse_mid_button = 1;
+                    tty->mouse_mid_button = 1;
                 } else {
-                    p_tty->mouse_mid_button = 0;
+                    tty->mouse_mid_button = 0;
                 }
 
-                if (p_tty->mouse_left_button) {
+                if (tty->mouse_left_button) {
                     u8 dir_Y = mouse_in.buf[0] & 0x20;
                     u8 dir_X = mouse_in.buf[0] & 0x10;
                     if (dir_Y == 0x20) { // down
-                        p_tty->mouse_Y -= 1;
+                        tty->mouse_Y -= 1;
                     } else { // up
-                        p_tty->mouse_Y += 1;
+                        tty->mouse_Y += 1;
                     }
 
                     if (dir_X == 0x10) { // left
-                        p_tty->mouse_X -= 1;
+                        tty->mouse_X -= 1;
                     } else { // right
-                        p_tty->mouse_X += 1;
+                        tty->mouse_X += 1;
                     }
                 }
             }
@@ -508,7 +537,7 @@ void init_kb() {
     set_mouse_leds();
 }
 
-void keyboard_read(TTY* p_tty) {
+void keyboard_read(tty_t* tty) {
     u8 scan_code;
 
     /**
@@ -535,25 +564,25 @@ void keyboard_read(TTY* p_tty) {
         scan_code = get_byte_from_kb_buf();
 
         /* parse the scan code below */
-        if (scan_code == 0xE1) {
+        if (scan_code == 0xe1) {
             int i;
-            u8 pausebreak_scan_code[] = {0xE1, 0x1D, 0x45, 0xE1, 0x9D, 0xC5};
+            u8 pausebreak_scan_code[] = {0xe1, 0x1d, 0x45, 0xe1, 0x9d, 0xc5};
             int is_pausebreak = 1;
-            for (i = 1; i < 6; i++) {
+            for (i = 1; i < 6; ++i) {
                 if (get_byte_from_kb_buf() != pausebreak_scan_code[i]) {
                     is_pausebreak = 0;
                     break;
                 }
             }
             if (is_pausebreak) { key = PAUSEBREAK; }
-        } else if (scan_code == 0xE0) {
+        } else if (scan_code == 0xe0) {
             code_with_E0 = 1;
             scan_code = get_byte_from_kb_buf();
 
             /* PrintScreen is pressed */
-            if (scan_code == 0x2A) {
+            if (scan_code == 0x2a) {
                 code_with_E0 = 0;
-                if ((scan_code = get_byte_from_kb_buf()) == 0xE0) {
+                if ((scan_code = get_byte_from_kb_buf()) == 0xe0) {
                     code_with_E0 = 1;
                     if ((scan_code = get_byte_from_kb_buf()) == 0x37) {
                         key = PRINTSCREEN;
@@ -561,12 +590,12 @@ void keyboard_read(TTY* p_tty) {
                     }
                 }
             }
-            /* PrintScreen is released */
-            else if (scan_code == 0xB7) {
+            /* PrintScreen is spinlock_released */
+            else if (scan_code == 0xb7) {
                 code_with_E0 = 0;
-                if ((scan_code = get_byte_from_kb_buf()) == 0xE0) {
+                if ((scan_code = get_byte_from_kb_buf()) == 0xe0) {
                     code_with_E0 = 1;
-                    if ((scan_code = get_byte_from_kb_buf()) == 0xAA) {
+                    if ((scan_code = get_byte_from_kb_buf()) == 0xaa) {
                         key = PRINTSCREEN;
                         make = 0;
                     }
@@ -580,7 +609,7 @@ void keyboard_read(TTY* p_tty) {
             /* make or break */
             make = (scan_code & FLAG_BREAK ? 0 : 1);
 
-            keyrow = &keymap[(scan_code & 0x7F) * MAP_COLS];
+            keyrow = &keymap[(scan_code & 0x7f) * MAP_COLS];
 
             column = 0;
 
@@ -715,7 +744,7 @@ void keyboard_read(TTY* p_tty) {
             key |= alt_r ? FLAG_ALT_R : 0;
             key |= pad ? FLAG_PAD : 0;
 
-            in_process(p_tty, key);
+            in_process(tty, key);
         }
     }
 }
@@ -764,7 +793,7 @@ static void kb_wait() /* 等待 8042 的输入缓冲区空 */
  * Read from the keyboard controller until a KB_ACK is received.
  *
  *****************************************************************************/
-MAYBE_UNUSED PRIVATE void kb_ack() {
+MAYBE_UNUSED void kb_ack() {
     u8 kb_read;
 
     do { kb_read = inb(KB_DATA); } while (kb_read != KB_ACK);

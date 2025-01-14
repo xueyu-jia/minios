@@ -1,132 +1,84 @@
 #pragma once
 
-enum {
-    _NR_getticks,
-    _NR_getpid,
-    _NR_malloc_4k,
-    _NR_free_4k,
-    _NR_fork,
-    _NR_pthread_create,
-    _NR_execve,
-    _NR_yield,
-    _NR_sleep,
-    _NR_open,
-    _NR_close,
-    _NR_read,
-    _NR_write,
-    _NR_lseek,
-    _NR_unlink,
-    _NR_creat,
-    _NR_closedir,
-    _NR_opendir,
-    _NR_mkdir,
-    _NR_rmdir,
-    _NR_readdir,
-    _NR_chdir,
-    _NR_getcwd,
-    _NR_wait,
-    _NR_exit,
-    _NR_signal,
-    _NR_sigsend,
-    _NR_sigreturn,
-    _NR_total_mem_size,
-    _NR_shmget,
-    _NR_shmat,
-    _NR_shmdt,
-    _NR_shmctl,
-    _NR_shmmemcpy,
-    _NR_ftok,
-    _NR_msgget,
-    _NR_msgsnd,
-    _NR_msgrcv,
-    _NR_msgctl,
-    _NR_test,
-    _NR_execvp,
-    _NR_execv,
-    _NR_pthread_self,
-    _NR_pthread_mutex_init,
-    _NR_pthread_mutex_destroy,
-    _NR_pthread_mutex_lock,
-    _NR_pthread_mutex_unlock,
-    _NR_pthread_mutex_trylock,
-    _NR_pthread_cond_init,
-    _NR_pthread_cond_wait,
-    _NR_pthread_cond_signal,
-    _NR_pthread_cond_timewait,
-    _NR_pthread_cond_broadcast,
-    _NR_pthread_cond_destroy,
-    _NR_getpid_by_name,
-    _NR_mount,
-    _NR_umount,
-    _NR_pthread_exit,
-    _NR_pthread_join,
-    _NR_get_time,
-    _NR_stat,
-    _NR_nice,
-    _NR_set_rt,
-    _NR_rt_prio,
-    _NR_get_proc_msg,
-    NR_SYSCALLS,
-};
+#include <uapi/minios/syscall.h>
 
-#define INT_VECTOR_SYS_CALL 0x90
+u32 syscall_get_arg(int index);
 
-/* 无参数的系统调用 */
-#define _syscall0(NR_syscall)                                                         \
-    ({                                                                                \
-        int _retval;                                                                  \
-        asm volatile("int $0x90" : "=a"(_retval) : "a"(NR_syscall) : "cc", "memory"); \
-        _retval;                                                                      \
-    })
+#include <minios/clock.h>
+#include <minios/time.h>
+#include <minios/proc.h>
+#include <minios/memman.h>
+#include <minios/fork.h>
+#include <minios/exit.h>
+#include <minios/exec.h>
+#include <minios/wait.h>
+#include <minios/sched.h>
+#include <minios/signal.h>
+#include <minios/vfs.h>
+#include <minios/msg.h>
+#include <minios/shm.h>
+#include <minios/pthread.h>
 
-/* 一个参数的系统调用 */
-#define _syscall1(NR_syscall, ARG1)                                                              \
-    ({                                                                                           \
-        int _retval;                                                                             \
-        asm volatile("int $0x90" : "=a"(_retval) : "a"(NR_syscall), "b"(ARG1) : "cc", "memory"); \
-        _retval;                                                                                 \
-    })
-
-/* 两个参数的系统调用 */
-#define _syscall2(NR_syscall, ARG1, ARG2)                    \
-    ({                                                       \
-        int _retval;                                         \
-        asm volatile("int $0x90"                             \
-                     : "=a"(_retval)                         \
-                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2) \
-                     : "cc", "memory");                      \
-        _retval;                                             \
-    })
-
-/* 三个参数的系统调用 */
-#define _syscall3(NR_syscall, ARG1, ARG2, ARG3)                         \
-    ({                                                                  \
-        int _retval;                                                    \
-        asm volatile("int $0x90"                                        \
-                     : "=a"(_retval)                                    \
-                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3) \
-                     : "cc", "memory");                                 \
-        _retval;                                                        \
-    })
-
-/* 四个参数的系统调用 */
-#define _syscall4(NR_syscall, ARG1, ARG2, ARG3, ARG4)                              \
-    ({                                                                             \
-        int _retval;                                                               \
-        asm volatile("int $0x90"                                                   \
-                     : "=a"(_retval)                                               \
-                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), "S"(ARG4) \
-                     : "cc", "memory");                                            \
-        _retval;                                                                   \
-    })
-
-/* 五个参数的系统调用 */
-#define _syscall5(NR_syscall, ARG1, ARG2, ARG3, ARG4, ARG5)                                   \
-    ({                                                                                        \
-        int _retval;                                                                          \
-        asm volatile("int $0x90"                                                              \
-                     : "=a"(_retval)                                                          \
-                     : "a"(NR_syscall), "b"(ARG1), "c"(ARG2), "d"(ARG3), "S"(ARG4), "D"(ARG5) \
-                     : "cc", "memory");                                                       \
-        _retval;                                                                              \
-    })
+int do_getticks();
+int do_get_time(struct tm* time);
+int do_getpid();
+int do_getpid_by_name(const char* name);
+u32 do_total_mem_size();
+u32 do_malloc_4k();
+void do_free_4k(void* va);
+int do_fork();
+void do_exit(int status);
+int do_execve(const char* path, char* const* argv, char* const* envp);
+int do_wait(int* wstatus);
+void do_sleep(int ms);
+void do_yield();
+int do_signal(int sig, void* handler, void* _Handler);
+void do_sigreturn(u32 ebp);
+int do_sigsend(int pid, Sigaction* action);
+int do_open(const char* path, int flags, int mode);
+int do_close(int fd);
+int do_read(int fd, void* buf, int count);
+int do_write(int fd, const void* buf, int count);
+int do_unlink(const char* path);
+int do_lseek(int fd, int offset, int whence);
+int do_creat(const char* path);
+int do_mkdir(const char* path, int mode);
+DIR* do_opendir(const char* path);
+int do_closedir(DIR* dir);
+struct dirent* do_readdir(DIR* dir);
+int do_rmdir(const char* path);
+int do_chdir(const char* path);
+char* do_getcwd(char* buf, int size);
+int do_mount(const char* src, const char* dst, const char* fs_type, int flags, const void* data);
+int do_umount(const char* dst);
+int do_stat(const char* path, struct stat* stat_buf);
+void do_nice(int inc);
+void do_rt_prio(int prio);
+void do_set_rt(bool is_realtime);
+void do_get_proc_msg(proc_msg* msg);
+int do_ftok(const char* pathname, int proj_id);
+int do_msgctl(int mq_id, int cmd, msqid_ds_t* buf);
+int do_msgget(key_t key, int flags);
+int do_msgsnd(int mq_id, const void* msg, int size, int flags);
+int do_msgrcv(int mq_id, void* msg, int size, long type, int flags);
+shm_t* do_shmctl(int shmid, int cmd, shm_t* buf);
+int do_shmget(int shmid, int size, int flags);
+void* do_shmat(int shmid, const void* addr, int flags);
+int do_shmdt(const void* addr);
+void do_shmcpy(void* dst, const void* src, size_t size);
+pthread_t do_pthread_self();
+int do_pthread_create(pthread_t* thread, const pthread_attr_t* attr, pthread_entry_t start_routine,
+                      void* arg);
+int do_pthread_join(pthread_t thread, void** retval);
+void do_pthread_exit(void* retval);
+int do_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* attr);
+int do_pthread_cond_destroy(pthread_cond_t* cond);
+int do_pthread_cond_signal(pthread_cond_t* cond);
+int do_pthread_cond_broadcast(pthread_cond_t* cond);
+int do_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex);
+int do_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout);
+int do_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* attr);
+int do_pthread_mutex_destroy(pthread_mutex_t* mutex);
+int do_pthread_mutex_lock(pthread_mutex_t* mutex);
+int do_pthread_mutex_trylock(pthread_mutex_t* mutex);
+int do_pthread_mutex_unlock(pthread_mutex_t* mutex);
