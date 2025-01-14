@@ -6,8 +6,8 @@
 #include <string.h>
 
 char *getenv(const char *key) {
-    static const char **envp = (void *)0xbffff008;
-    const char **pp = envp;
+    static const char ***p_envp = (void *)0xbffff008;
+    const char **pp = *p_envp;
     while (*pp != NULL) {
         const char *q = strchr(*pp, '=');
         if (q != NULL && strncmp(key, *pp, q - *pp) == 0) { return (char *)&q[1]; }
