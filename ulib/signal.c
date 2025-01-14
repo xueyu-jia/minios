@@ -12,7 +12,11 @@ static void signal_handler_wrapper(Sigaction sigaction) {
     syscall(NR_sigreturn, ebp);
 }
 
-int kill(int pid, int sig, ...) {
+int sigsend(pid_t pid, Sigaction* action) {
+    return syscall(NR_sigsend, pid, action);
+}
+
+int kill(pid_t pid, int sig, ...) {
     va_list ap;
     va_start(ap, sig);
     uint32_t arg = va_arg(ap, uint32_t);
@@ -23,7 +27,7 @@ int kill(int pid, int sig, ...) {
         .handler = NULL,
         .arg = arg,
     };
-    return syscall(NR_sigsend, pid, &sigaction);
+    return sigsend(pid, &sigaction);
 }
 
 int signal(int sig, void* handler) {
