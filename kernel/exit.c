@@ -127,9 +127,10 @@ static void exit_handle_child_thread(u32 pid, bool lock_recy) {
     UNUSED(recy_pcb);
 
     for (int i = 0; i < pcb->task.tree_info.child_t_num; ++i) {
-        process_t* child_pcb = (process_t*)pid2proc(pcb->task.tree_info.child_thread[i]);
-        child_pcb->task.stat = ZOMBY;
-        free_pcb(child_pcb);
+        process_t* ch = (process_t*)pid2proc(pcb->task.tree_info.child_thread[i]);
+        rq_remove(ch);
+        ch->task.stat = ZOMBY;
+        free_pcb(ch);
     }
     pcb->task.tree_info.child_t_num = 0;
     return;
