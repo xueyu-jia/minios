@@ -863,10 +863,10 @@ int kern_vfs_read(int fd, char* buf, int count) {
         return -1;
     }
     struct inode* inode = file->fd_dentry->d_inode;
-    int cnt = -1;
+    int cnt = 0;
     spinlock_lock_or_yield(&inode->lock);
     if (inode->i_fop && inode->i_fop->read) { cnt = inode->i_fop->read(file, count, buf); }
-    if (cnt) { inode->i_atime = current_timestamp; }
+    if (cnt > 0) { inode->i_atime = current_timestamp; }
     spinlock_release(&inode->lock);
     return cnt;
 }
