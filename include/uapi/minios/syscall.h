@@ -65,7 +65,6 @@ enum {
     NR_write,
     NR_unlink,
     NR_lseek,
-    NR_creat,
     NR_mkdir,
     NR_opendir,
     NR_closedir,

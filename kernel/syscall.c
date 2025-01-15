@@ -129,9 +129,6 @@ DECLARE_SYSCALL_AS(unlink, int, const char*) {
 DECLARE_SYSCALL_AS(lseek, int, int, int, int) {
     return kern_vfs_lseek(_1, _2, _3);
 }
-DECLARE_SYSCALL_AS(creat, int, const char*) {
-    return kern_vfs_creat(_1, I_RWX);
-}
 DECLARE_SYSCALL_AS(mkdir, int, const char*, int) {
     return kern_vfs_mkdir(_1, _2);
 }

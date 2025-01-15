@@ -29,7 +29,6 @@ DIR *kern_vfs_opendir(const char *path);
 int kern_vfs_chdir(const char *path);
 int kern_vfs_close(int fd);
 int kern_vfs_closedir(DIR *dirp);
-int kern_vfs_creat(const char *path, int mode);
 int kern_vfs_lseek(int fd, int offset, int whence);
 int kern_vfs_mkdir(const char *path, int mode);
 int kern_vfs_mount(const char *source, const char *target, const char *filesystemtype,

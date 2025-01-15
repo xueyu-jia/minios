@@ -1,17 +1,21 @@
 #include <io.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <stdarg.h>
 
-int creat(const char *path) {
-    return syscall(NR_creat, path);
+int creat(const char *path, mode_t mode) {
+    return open(path, O_CREAT | O_TRUNC | O_WRONLY, mode);
 }
 
 int open(const char *path, int oflag, ...) {
-    va_list ap;
-    va_start(ap, oflag);
-    mode_t mode = va_arg(ap, mode_t);
-    va_end(ap);
+    mode_t mode = 0;
+    if (oflag & O_CREAT) {
+        va_list ap;
+        va_start(ap, oflag);
+        mode = va_arg(ap, mode_t);
+        va_end(ap);
+    }
     return syscall(NR_open, path, oflag, mode);
 }
 

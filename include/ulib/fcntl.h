@@ -11,6 +11,5 @@ struct dirent {
 
 typedef struct dirstream DIR;
 
-//! FIXME: proto -> int creat(const char * path, mode_t mode)
-int creat(const char *path);
+int creat(const char *path, mode_t mode);
 int open(const char *path, int oflag, ...);

@@ -888,10 +888,6 @@ int kern_vfs_write(int fd, const char* buf, int count) {
     return cnt;
 }
 
-int kern_vfs_creat(const char* path, int mode) {
-    return kern_vfs_open(path, O_CREAT | O_TRUNC | O_WRONLY, mode);
-}
-
 int kern_vfs_unlink(const char* path) {
     char dir_path[MAX_PATH] = {0};
     if ((!path) || strlen(path) == 0) { return -1; }

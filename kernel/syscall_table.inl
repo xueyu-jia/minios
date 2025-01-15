@@ -28,7 +28,6 @@ syscall_entry_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(write),
     SYSCALL_ENTRY(unlink),
     SYSCALL_ENTRY(lseek),
-    SYSCALL_ENTRY(creat),
     SYSCALL_ENTRY(mkdir),
     SYSCALL_ENTRY(opendir),
     SYSCALL_ENTRY(closedir),

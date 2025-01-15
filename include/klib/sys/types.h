@@ -1,9 +1,9 @@
 #pragma once
 
+#include <sys/types.h>
 #include <stdint.h>
 #include <stddef.h>
 
-typedef ssize_t pid_t;
 typedef size_t clock_t;
 typedef void* handle_t;
 
