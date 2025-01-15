@@ -2,7 +2,7 @@
 
 #include <klib/stdint.h>
 
-typedef struct spinlock {
+typedef struct {
     uint locked; // Is the lock held?
 
     // For debugging:

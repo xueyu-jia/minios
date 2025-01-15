@@ -1,8 +1,12 @@
 #pragma once
 
-#include <minios/spinlock.h>
-#include <klib/stdint.h>
+#include <stddef.h>
 #include <compiler.h>
+
+typedef struct {
+    unsigned int locked;
+    char resvered[28];
+} pthread_spinlock_t;
 
 typedef int pthread_t;
 typedef void* (*pthread_entry_t)(void*);
@@ -44,33 +48,53 @@ typedef struct p_pthread_attr_t {
     sched_param_t schedparam;
     int inheritsched;
     int scope;
-    u32 guardsize;
+    size_t guardsize;
     int stackaddr_set;
     void* stackaddr;
-    u32 stacksize;
+    size_t stacksize;
 } pthread_attr_t;
 
 typedef struct {
-    spinlock_t lock;
-    uint nusers;
-    uint owner;
+    pthread_spinlock_t lock;
+    size_t nusers;
+    size_t owner;
     int queue_wait[QUEUE_SIZE];
     int head;
     int tail;
     char* name;
 } pthread_mutex_t;
 
+#define PTHREAD_MUTEX_INITIALIZER \
+    {                             \
+        .lock = {},               \
+        .nusers = 0,              \
+        .owner = 0,               \
+        .queue_wait = {},         \
+        .head = 0,                \
+        .tail = 0,                \
+        .name = "pthread.mutex",  \
+    }
+
 typedef struct {
     char* name;
 } pthread_mutexattr_t;
 
 typedef struct {
-    spinlock_t lock;
+    pthread_spinlock_t lock;
     int head;
     int tail;
     int queue[QUEUE_SIZE];
     char* name;
 } pthread_cond_t;
+
+#define PTHREAD_COND_INITIALIZER \
+    {                            \
+        .lock = {},              \
+        .head = 0,               \
+        .tail = 0,               \
+        .queue = {},             \
+        .name = "pthread.cond",  \
+    }
 
 typedef struct {
     char* name;
