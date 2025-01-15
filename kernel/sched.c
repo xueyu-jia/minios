@@ -259,74 +259,75 @@ static sched_entity* find_new_sched_entity(sched_entity* array) {
 }
 
 void rq_insert(process_t* proc) {
-    int is_rt = proc->task.is_rt;
-    sched_entity* _rq_head = (is_rt) ? rt_rq : rq;
-    sched_entity* _rq_tail = (is_rt) ? rt_rq_tail : rq_tail;
-    sched_entity* _rq_arr = (is_rt) ? rt_rq_array : rq_array;
-    sched_entity* new_entity = find_new_sched_entity(_rq_arr);
-    if (new_entity == NULL) {
+    sched_entity* head = proc->task.is_rt ? rt_rq : rq;
+    sched_entity* tail = proc->task.is_rt ? rt_rq_tail : rq_tail;
+    sched_entity* queue = proc->task.is_rt ? rt_rq_array : rq_array;
+    sched_entity* new_ent = find_new_sched_entity(queue);
+    if (new_ent == NULL) {
         kprintf("in_rq error1: cannot find a rq_array\n");
         return; // mark 这里没做错误处理和提示，之后要加上
     }
-    new_entity->pid = proc->task.pid;
-    new_entity->p_process = proc;
-    new_entity->next = NULL;
-    new_entity->prev = NULL;
+    new_ent->pid = proc->task.pid;
+    new_ent->p_process = proc;
+    new_ent->next = NULL;
+    new_ent->prev = NULL;
 
     // new_entity.pri=p_in->task.rt_priority;
-    if (_rq_head == _rq_tail) // rq is empty
+    if (head == tail) // rq is empty
     {
-        _rq_head->next = new_entity;
-        new_entity->prev = _rq_head;
-        _rq_tail = new_entity;
+        head->next = new_ent;
+        new_ent->prev = head;
+        tail = new_ent;
     } else // not empty,find propery position
     {
-        sched_entity* pos = _rq_head;
+        sched_entity* pos = head;
         // avoid re_in_rq
-        if (is_rt) {
-            while (pos->next != NULL && pos->next->p_process->task.rt_priority >
-                                            new_entity->p_process->task.rt_priority) {
+        if (proc->task.is_rt) {
+            while (pos->next != NULL &&
+                   pos->next->p_process->task.rt_priority > new_ent->p_process->task.rt_priority) {
                 pos = pos->next;
             }
         } else {
             while (pos->next != NULL &&
-                   pos->next->p_process->task.vruntime <= new_entity->p_process->task.vruntime) {
+                   pos->next->p_process->task.vruntime <= new_ent->p_process->task.vruntime) {
                 pos = pos->next;
             }
         }
         if (pos->next == NULL) {
-            pos->next = new_entity;
-            new_entity->prev = pos;
-            _rq_tail = new_entity;
+            pos->next = new_ent;
+            new_ent->prev = pos;
+            tail = new_ent;
         } else {
-            new_entity->prev = pos;
-            new_entity->next = pos->next;
-            pos->next->prev = new_entity;
-            pos->next = new_entity;
+            new_ent->prev = pos;
+            new_ent->next = pos->next;
+            pos->next->prev = new_ent;
+            pos->next = new_ent;
         }
     }
-    if (is_rt) {
-        rt_rq_tail = _rq_tail;
+    if (proc->task.is_rt) {
+        rt_rq_tail = tail;
     } else {
-        rq_tail = _rq_tail;
+        rq_tail = tail;
     }
 }
 
 void rq_remove(process_t* proc) {
-    auto ent = proc->task.is_rt ? rt_rq_front() : rq_front();
-    while (ent != NULL && ent->pid != proc->task.pid) { ent = ent->next; }
-    if (ent == NULL) { return; }
-    ent->prev->next = ent->next;
-    if (ent->next != NULL) {
-        ent->next->prev = ent->prev;
-    } else if (proc->task.is_rt) {
-        rt_rq_tail = ent->prev;
-    } else {
-        rq_tail = ent->prev;
+    while (!(proc->task.is_rt ? is_rt_rq_empty() : is_rq_empty())) {
+        auto ent = proc->task.is_rt ? rt_rq_front() : rq_front();
+        while (ent != NULL && ent->pid != proc->task.pid) { ent = ent->next; }
+        if (ent == NULL) { break; }
+        ent->prev->next = ent->next;
+        if (ent->next != NULL) {
+            ent->next->prev = ent->prev;
+        } else if (proc->task.is_rt) {
+            rt_rq_tail = ent->prev;
+        } else {
+            rq_tail = ent->prev;
+        }
+        ent->next = NULL;
+        ent->prev = NULL;
+        ent->pid = PID_NO_PROC;
     }
-    ent->next = NULL;
-    ent->prev = NULL;
-    ent->pid = PID_NO_PROC;
 }
 
 void kern_yield() {
