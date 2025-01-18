@@ -28,12 +28,12 @@ void CTEST_notify_assertion_failure(const char *file, int line, const char *fmt,
 
 #define CTEST_PRED_(type, op, val_type, val1, val2)                                                \
     do {                                                                                           \
-        auto lhs = (val1);                                                                         \
-        auto rhs = (val2);                                                                         \
-        if (CTEST_PRED_EVALUATE_(op, val1, val2)) { break; }                                       \
+        const auto lhs = (val1);                                                                   \
+        const auto rhs = (val2);                                                                   \
+        if (CTEST_PRED_EVALUATE_(op, lhs, rhs)) { break; }                                         \
         CTEST_notify_assertion_failure(__FILE__, __LINE__,                                         \
                                        CTEST_PRED_FAILURE_MSG_FMT(op, val_type), MH_STRINGIFY(op), \
-                                       MH_STRINGIFY(val1), val1, MH_STRINGIFY(val2), val2);        \
+                                       MH_STRINGIFY(val1), lhs, MH_STRINGIFY(val2), rhs);          \
         CTEST_PRED_ENDAS_(type);                                                                   \
     } while (0)
 
