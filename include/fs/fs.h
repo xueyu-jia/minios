@@ -1,5 +1,6 @@
 #pragma once
 
+#include <uapi/minios/fs.h>
 #include <fs/fs_const.h>
 #include <minios/spinlock.h>
 #include <minios/cache.h>

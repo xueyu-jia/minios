@@ -441,8 +441,9 @@ void hd_service();
 void hd_rdwt(hd_messge_t *p);
 void hd_rdwt_sched(hd_messge_t *p);
 void hd_ioctl(hd_messge_t *p);
-int orangefs_identify(int drive, u32 _sect_nr);
-int fat32_identify(int drive, u32 _sect_nr);
+int orangefs_identify(int drive, u32 nr_sect);
+int fat32_identify(int drive, u32 nr_sect);
+int ext4_identify(int drive, u32 nr_sect);
 
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);

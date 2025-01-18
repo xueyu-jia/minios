@@ -10,8 +10,9 @@
 #include <minios/tty.h>
 #include <minios/assert.h>
 #include <fs/devfs/devfs.h>
-#include <fs/fat32/fat32.h>
 #include <fs/orangefs/orangefs.h>
+#include <fs/fat32/fat32.h>
+#include <fs/ext4/ext4.h>
 #include <compiler.h>
 #include <list.h>
 #include <string.h>
@@ -626,12 +627,12 @@ static void init_fsroot() {
 void register_fs_types() {
     register_fs_type("devfs", FS_TYPE_DEV, &devfs_file_ops, &devfs_inode_ops, NULL, &devfs_sb_ops,
                      NULL);
-
     register_fs_type("orangefs", FS_TYPE_ORANGE, &orange_file_ops, &orange_inode_ops, NULL,
                      &orange_sb_ops, orangefs_identify);
-
     register_fs_type("fat32", FS_TYPE_FAT32, &fat32_file_ops, &fat32_inode_ops, &fat32_dentry_ops,
                      &fat32_sb_ops, fat32_identify);
+    register_fs_type("ext4", FS_TYPE_EXT4, &ext4_file_ops, &ext4_inode_ops, &ext4_dentry_ops,
+                     &ext4_sb_ops, ext4_identify);
 }
 
 void init_fs(int drive) {

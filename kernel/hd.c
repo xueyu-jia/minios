@@ -341,8 +341,8 @@ void hd_ioctl(hd_messge_t *p) {
  * @param sect_nr The sector at which the partition table is located.
  * @param entry   Ptr to part_ent struct.
  *****************************************************************************/
-static void read_part_table_sector(int drive, int _sect_nr, void *sect_buf) {
-    hd_rdwt_base(drive, DEV_READ, (u32)_sect_nr, SECTOR_SIZE, sect_buf);
+static void read_part_table_sector(int drive, int nr_sect, void *sect_buf) {
+    hd_rdwt_base(drive, DEV_READ, (u32)nr_sect, SECTOR_SIZE, sect_buf);
     return;
 }
 
@@ -905,17 +905,28 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
 
 // added by mingxuan 2020-10-27
 // refact 20240328
-int orangefs_identify(int drive, u32 _sect_nr) {
+int orangefs_identify(int drive, u32 nr_sect) {
     struct fs_flags fs_flags_real;
-    hd_rdwt_base(drive, DEV_READ, (u32)(_sect_nr + 8), sizeof(struct fs_flags), &fs_flags_real);
+    hd_rdwt_base(drive, DEV_READ, (u32)(nr_sect + 8), sizeof(struct fs_flags), &fs_flags_real);
     return fs_flags_real.orange_flag == 0x11;
 }
 
 // added by ran
 // is_fat32_part函数的功能是判断分区是否为FAT32文件系统
-int fat32_identify(int drive, u32 _sect_nr) {
+int fat32_identify(int drive, u32 nr_sect) {
     char sect_buf[SECTOR_SIZE];
-    hd_rdwt_base(drive, DEV_READ, _sect_nr, SECTOR_SIZE, sect_buf);
+    hd_rdwt_base(drive, DEV_READ, nr_sect, SECTOR_SIZE, sect_buf);
     const char *fat32_flag = (void *)(sect_buf + 0x52);
     return strncmp(fat32_flag, "FAT32   ", 8) == 0;
+}
+
+int ext4_identify(int drive, u32 nr_sect) {
+    char sect_buf[SECTOR_SIZE];
+    unsigned short magic;
+    // 这里要 +2 因为前 1024 字节是填充 0
+    hd_rdwt_base(drive, DEV_READ, nr_sect + 2, SECTOR_SIZE, sect_buf);
+
+    magic = *(unsigned short *)(sect_buf + 0x38);
+
+    return magic == 0xef53;
 }
