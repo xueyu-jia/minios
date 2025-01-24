@@ -75,19 +75,35 @@ typedef struct {
     char* name;
 } pthread_condattr_t;
 
+typedef struct {
+    int atomic;
+    char* name;
+} pthread_rwlock_t;
+
+typedef struct {
+} pthread_rwlockattr_t;
+
 pthread_t kern_pthread_self();
-int kern_pthread_create_internal(pthread_t* thread, const pthread_attr_t* attr,
-                                 pthread_entry_t wrapped_start_routine, void* arg);
 int kern_pthread_join(pthread_t thread, void** retval);
 void kern_pthread_exit(void* retval);
+
 int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* attr);
 int kern_pthread_cond_destroy(pthread_cond_t* cond);
 int kern_pthread_cond_signal(pthread_cond_t* cond);
 int kern_pthread_cond_broadcast(pthread_cond_t* cond);
 int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex);
 int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout);
+
 int kern_pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* attr);
 int kern_pthread_mutex_destroy(pthread_mutex_t* mutex);
 int kern_pthread_mutex_lock(pthread_mutex_t* mutex);
 int kern_pthread_mutex_trylock(pthread_mutex_t* mutex);
 int kern_pthread_mutex_unlock(pthread_mutex_t* mutex);
+
+int kern_pthread_rwlock_init(pthread_rwlock_t* rwlock, const pthread_rwlockattr_t* attr);
+int kern_pthread_rwlock_destroy(pthread_rwlock_t* rwlock);
+int kern_pthread_rwlock_rdlock(pthread_rwlock_t* rwlock);
+int kern_pthread_rwlock_tryrdlock(pthread_rwlock_t* rwlock);
+int kern_pthread_rwlock_wrlock(pthread_rwlock_t* rwlock);
+int kern_pthread_rwlock_trywrlock(pthread_rwlock_t* rwlock);
+int kern_pthread_rwlock_unlock(pthread_rwlock_t* rwlock);

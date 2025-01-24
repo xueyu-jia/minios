@@ -82,3 +82,31 @@ int pthread_mutex_trylock(pthread_mutex_t* mutex) {
 int pthread_mutex_unlock(pthread_mutex_t* mutex) {
     return syscall(NR_pthread_mutex_unlock, mutex);
 }
+
+int pthread_rwlock_init(pthread_rwlock_t* rwlock, const pthread_rwlockattr_t* attr) {
+    return syscall(NR_pthread_rwlock_init, rwlock, attr);
+}
+
+int pthread_rwlock_destroy(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_destroy, rwlock);
+}
+
+int pthread_rwlock_rdlock(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_rdlock, rwlock);
+}
+
+int pthread_rwlock_tryrdlock(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_tryrdlock, rwlock);
+}
+
+int pthread_rwlock_wrlock(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_wrlock, rwlock);
+}
+
+int pthread_rwlock_trywrlock(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_trywrlock, rwlock);
+}
+
+int pthread_rwlock_unlock(pthread_rwlock_t* rwlock) {
+    return syscall(NR_pthread_rwlock_unlock, rwlock);
+}

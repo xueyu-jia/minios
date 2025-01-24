@@ -67,6 +67,13 @@ syscall_entry_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(pthread_mutex_lock),
     SYSCALL_ENTRY(pthread_mutex_trylock),
     SYSCALL_ENTRY(pthread_mutex_unlock),
+    SYSCALL_ENTRY(pthread_rwlock_init),
+    SYSCALL_ENTRY(pthread_rwlock_destroy),
+    SYSCALL_ENTRY(pthread_rwlock_rdlock),
+    SYSCALL_ENTRY(pthread_rwlock_tryrdlock),
+    SYSCALL_ENTRY(pthread_rwlock_wrlock),
+    SYSCALL_ENTRY(pthread_rwlock_trywrlock),
+    SYSCALL_ENTRY(pthread_rwlock_unlock),
 };
 
 #endif

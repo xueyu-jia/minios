@@ -175,6 +175,8 @@ DECLARE_SYSCALL(shmdt, int, const void*);
 DECLARE_SYSCALL_NORET(shmcpy, void*, const void*, size_t);
 DECLARE_SYSCALL(pthread_self, pthread_t);
 DECLARE_SYSCALL_AS(pthread_create, int, pthread_t*, const pthread_attr_t*, pthread_entry_t, void*) {
+    extern int kern_pthread_create_internal(pthread_t * thread, const pthread_attr_t* attr,
+                                            pthread_entry_t wrapped_start_routine, void* arg);
     return kern_pthread_create_internal(_1, _2, _3, _4);
 }
 DECLARE_SYSCALL(pthread_join, int, pthread_t, void**);
@@ -190,6 +192,13 @@ DECLARE_SYSCALL(pthread_mutex_destroy, int, pthread_mutex_t*);
 DECLARE_SYSCALL(pthread_mutex_lock, int, pthread_mutex_t*);
 DECLARE_SYSCALL(pthread_mutex_trylock, int, pthread_mutex_t*);
 DECLARE_SYSCALL(pthread_mutex_unlock, int, pthread_mutex_t*);
+DECLARE_SYSCALL(pthread_rwlock_init, int, pthread_rwlock_t*, const pthread_rwlockattr_t*);
+DECLARE_SYSCALL(pthread_rwlock_destroy, int, pthread_rwlock_t*);
+DECLARE_SYSCALL(pthread_rwlock_rdlock, int, pthread_rwlock_t*);
+DECLARE_SYSCALL(pthread_rwlock_tryrdlock, int, pthread_rwlock_t*);
+DECLARE_SYSCALL(pthread_rwlock_wrlock, int, pthread_rwlock_t*);
+DECLARE_SYSCALL(pthread_rwlock_trywrlock, int, pthread_rwlock_t*);
+DECLARE_SYSCALL(pthread_rwlock_unlock, int, pthread_rwlock_t*);
 
 #define SYSCALL_ENTRY_COMPLETED
 #include "syscall_table.inl"

@@ -104,5 +104,12 @@ enum {
     NR_pthread_mutex_lock,
     NR_pthread_mutex_trylock,
     NR_pthread_mutex_unlock,
+    NR_pthread_rwlock_init,
+    NR_pthread_rwlock_destroy,
+    NR_pthread_rwlock_rdlock,
+    NR_pthread_rwlock_tryrdlock,
+    NR_pthread_rwlock_wrlock,
+    NR_pthread_rwlock_trywrlock,
+    NR_pthread_rwlock_unlock,
     NR_SYSCALLS,
 };
