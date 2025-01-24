@@ -165,8 +165,8 @@ typedef struct {
     int ticks;             /* remained ticks */
     int priority;
 
-    u32 pid;              /* process id passed in from MM */
-    pthread_t pthread_id; // 线程id Add By ZengHao & MaLinhan 21.12.22
+    u32 pid;       /* process id passed in from MM */
+    pthread_t tid; // 线程id Add By ZengHao & MaLinhan 21.12.22
 
     char p_name[16]; /* name of the process */
 

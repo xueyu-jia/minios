@@ -10,7 +10,7 @@ int mutex_suspend_with_cancellation(process_t* self, pthread_mutex_t* mutex) {
         if (self->task.suspended == READY) {
             self->task.stat = READY;
             rq_insert(self);
-            mutex->owner = self->task.pthread_id;
+            mutex->owner = self->task.tid;
             return 0;
         }
     }
@@ -92,7 +92,7 @@ int kern_pthread_mutex_unlock(pthread_mutex_t* mutex) {
 
         // 唤醒队首元素对应的线程
         for (int i = 0; i < NR_PCBS; ++i) {
-            if (proc_table[i].task.pthread_id == th) {
+            if (proc_table[i].task.tid == th) {
                 proc_table[i].task.suspended = READY; // 统一PCB state 20240314
                 //! FIXME: we'd better not insert a sleeping thread into the sched queue, though
                 //! it's assumed to be ready soon later

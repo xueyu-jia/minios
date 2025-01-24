@@ -140,7 +140,7 @@ int kern_pthread_cond_signal(pthread_cond_t* cond) {
     cond->head %= QUEUE_SIZE;
 
     for (int i = 0; i < NR_PCBS; ++i) {
-        if (proc_table[i].task.pthread_id == th) {
+        if (proc_table[i].task.tid == th) {
             proc_table[i].task.suspended = READY; // 统一PCB state 20240314
         }
     }
@@ -156,7 +156,7 @@ int kern_pthread_cond_broadcast(pthread_cond_t* cond) {
     // 取出一个被被阻塞的线程:默认排列顺序取出
     for (int i = cond->head; i != cond->tail; i = (i + 1) % QUEUE_SIZE) {
         for (int j = 0; j < NR_PCBS; ++j) {
-            if (proc_table[j].task.pthread_id == cond->queue[i]) {
+            if (proc_table[j].task.tid == cond->queue[i]) {
                 proc_table[j].task.suspended = READY; // 统一PCB state 20240314
             }
         }

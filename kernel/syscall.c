@@ -174,7 +174,9 @@ DECLARE_SYSCALL(shmat, void*, int, const void*, int);
 DECLARE_SYSCALL(shmdt, int, const void*);
 DECLARE_SYSCALL_NORET(shmcpy, void*, const void*, size_t);
 DECLARE_SYSCALL(pthread_self, pthread_t);
-DECLARE_SYSCALL(pthread_create, int, pthread_t*, const pthread_attr_t*, pthread_entry_t, void*);
+DECLARE_SYSCALL_AS(pthread_create, int, pthread_t*, const pthread_attr_t*, pthread_entry_t, void*) {
+    return kern_pthread_create_internal(_1, _2, _3, _4);
+}
 DECLARE_SYSCALL(pthread_join, int, pthread_t, void**);
 DECLARE_SYSCALL_NORET(pthread_exit, void*);
 DECLARE_SYSCALL(pthread_cond_init, int, pthread_cond_t*, const pthread_condattr_t*);

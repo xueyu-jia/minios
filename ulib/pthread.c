@@ -1,6 +1,22 @@
 #include <pthread.h>
 #include <sys/syscall.h>
+#include <malloc.h>
 #include <assert.h>
+
+typedef struct {
+    pthread_entry_t start_routine;
+    void* arg;
+} wrapped_arg_t;
+
+static void* pthread_routine_wrapper(void* wrapped_arg) {
+    wrapped_arg_t* d = wrapped_arg;
+    pthread_entry_t start_routine = d->start_routine;
+    void* arg = d->arg;
+    //! NOTE: here wrapped arg is allocated in caller th and free in callee th
+    free(wrapped_arg);
+    pthread_exit(start_routine(arg));
+    unreachable();
+}
 
 pthread_t pthread_self() {
     return syscall(NR_pthread_self);
@@ -8,7 +24,10 @@ pthread_t pthread_self() {
 
 int pthread_create(pthread_t* thread, const pthread_attr_t* attr, pthread_entry_t start_routine,
                    void* arg) {
-    return syscall(NR_pthread_create, thread, attr, start_routine, arg);
+    wrapped_arg_t* d = malloc(sizeof(wrapped_arg_t));
+    d->start_routine = start_routine;
+    d->arg = arg;
+    return syscall(NR_pthread_create, thread, attr, pthread_routine_wrapper, d);
 }
 
 int pthread_join(pthread_t thread, void** retval) {

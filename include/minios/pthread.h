@@ -76,8 +76,8 @@ typedef struct {
 } pthread_condattr_t;
 
 pthread_t kern_pthread_self();
-int kern_pthread_create(pthread_t* thread, const pthread_attr_t* attr,
-                        pthread_entry_t start_routine, void* arg);
+int kern_pthread_create_internal(pthread_t* thread, const pthread_attr_t* attr,
+                                 pthread_entry_t wrapped_start_routine, void* arg);
 int kern_pthread_join(pthread_t thread, void** retval);
 void kern_pthread_exit(void* retval);
 int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* attr);
