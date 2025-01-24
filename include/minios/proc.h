@@ -8,7 +8,9 @@
 #include <minios/pthread.h>
 #include <uapi/minios/signal.h>
 #include <klib/stdint.h>
+#include <sys/types.h>
 #include <list.h>
+#include <stdbool.h>
 
 /* Used to find saved registers in the new kernel stack,
  * for there is no variable name you can use in C.
@@ -86,15 +88,15 @@ enum proc_stat {
 
 // 进程树记录，包括父进程，子进程，子线程
 typedef struct tree_info {
-    int type;                        // 当前是进程还是线程
-    int real_ppid;                   // 亲父进程，创建它的那个进程
-    int ppid;                        // 当前父进程
-    int child_p_num;                 // 子进程数量
-    int child_process[NR_CHILD_MAX]; // 子进程列表
-    int child_t_num;                 // 子线程数量
-    int child_thread[NR_CHILD_MAX];  // 子线程列表
-    int text_hold;                   // 是否拥有代码
-    int data_hold;                   // 是否拥有数据
+    int type;                          // 当前是进程还是线程
+    pid_t real_ppid;                   // 亲父进程，创建它的那个进程/线程
+    pid_t ppid;                        // 当前父进程
+    int child_p_num;                   // 子进程数量
+    pid_t child_process[NR_CHILD_MAX]; // 子进程列表
+    int child_t_num;                   // 子线程数量
+    pid_t child_thread[NR_CHILD_MAX];  // 子线程列表
+    bool text_hold;                    // 是否拥有代码
+    bool data_hold;                    // 是否拥有数据
 } tree_info_t;
 
 struct vmem_area {
@@ -117,29 +119,38 @@ enum {
     MEMMAP_KERNEL,
 };
 
-typedef struct {        // 线性地址分布结构体
-    u32 text_lin_base;  // 代码段基址
-    u32 text_lin_limit; // 代码段界限
+typedef struct {              // 线性地址分布结构体
+    uintptr_t text_lin_base;  // 代码段基址
+    uintptr_t text_lin_limit; // 代码段界限
 
-    u32 data_lin_base;  // 数据段基址
-    u32 data_lin_limit; // 数据段界限
+    uintptr_t data_lin_base;  // 数据段基址
+    uintptr_t data_lin_limit; // 数据段界限
 
-    u32 vpage_lin_base;  // 保留内存基址
-    u32 vpage_lin_limit; // 保留内存界限
+    uintptr_t vpage_lin_base;  // 保留内存基址
+    uintptr_t vpage_lin_limit; // 保留内存界限
 
-    u32 heap_lin_base;  // 堆基址
-    u32 heap_lin_limit; // 堆界限
+    union {
+        struct {
+            uintptr_t heap_lin_base;  // 堆基址
+            uintptr_t heap_lin_limit; // 堆界限
+        };
+        struct {
+            //! NOTE: used by thread, ref to fa heap info
+            uintptr_t* heap_lin_base_ref;
+            uintptr_t* heap_lin_limit_ref;
+        };
+    };
 
-    u32 stack_lin_base;  // 栈基址
-    u32 stack_lin_limit; // 栈界限（使用时注意栈的生长方向）
+    uintptr_t stack_lin_base;  // 栈基址
+    uintptr_t stack_lin_limit; // 栈界限（使用时注意栈的生长方向）
 
-    u32 arg_lin_base;  // 参数内存基址
-    u32 arg_lin_limit; // 参数内存界限
+    uintptr_t arg_lin_base;  // 参数内存基址
+    uintptr_t arg_lin_limit; // 参数内存界限
 
-    u32 kernel_lin_base;  // 内核基址
-    u32 kernel_lin_limit; // 内核界限
+    uintptr_t kernel_lin_base;  // 内核基址
+    uintptr_t kernel_lin_limit; // 内核界限
 
-    u32 stack_child_limit; // 分给子线程的栈的界限
+    uintptr_t stack_child_limit; // 分给子线程的栈的界限
     address_space_t anon_pages;
 
     list_head vma_map; // list of vmem_area

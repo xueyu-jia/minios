@@ -1,6 +1,6 @@
 #pragma once
 
-#include_next <stdlib.h>
+#include_next <stdlib.h> // IWYU pragma: export
 #include <sys/types.h>
 #include <compiler.h>
 #include <unistd.h> // IWYU pragma: export

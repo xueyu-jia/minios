@@ -359,23 +359,13 @@ void free_all_pagetbl(u32 pid) {
     //  free_seg_pagetbl(pid, MEMMAP_KERNEL);
 }
 
-void update_heap_limit(u32 pid, int tag)
-
-{
-    if (tag == 1) // heap_limit加上4K
-    {
-        if (proc_table[pid].task.tree_info.type == TYPE_PROCESS) {
-            p_proc_current->task.memmap.heap_lin_limit += SZ_4K;
-        } else {
-            *(u32 *)(p_proc_current->task.memmap.heap_lin_limit) += SZ_4K;
-        }
-    } else if (tag == -1) // heap_limit减去4K
-    {
-        if (proc_table[pid].task.tree_info.type == TYPE_PROCESS) {
-            p_proc_current->task.memmap.heap_lin_limit -= SZ_4K;
-        } else {
-            *(u32 *)(p_proc_current->task.memmap.heap_lin_limit) -= SZ_4K;
-        }
+void update_heap_limit(u32 pid, int tag) {
+    assert(tag == 1 || tag == -1);
+    const ssize_t diff = tag == 1 ? SZ_4K : -SZ_4K;
+    if (proc_table[pid].task.tree_info.type == TYPE_PROCESS) {
+        p_proc_current->task.memmap.heap_lin_limit += diff;
+    } else {
+        *p_proc_current->task.memmap.heap_lin_limit_ref += diff;
     }
 }
 
@@ -383,7 +373,7 @@ u32 get_heap_limit(u32 pid) {
     if (proc_table[pid].task.tree_info.type == TYPE_PROCESS) {
         return proc_table[pid].task.memmap.heap_lin_limit;
     } else {
-        return *(u32 *)(proc_table[pid].task.memmap.heap_lin_limit);
+        return *proc_table[pid].task.memmap.heap_lin_limit_ref;
     }
 }
 

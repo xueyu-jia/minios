@@ -274,8 +274,8 @@ static int exec_pcb_init(const char* proc_name) {
     list_init(&p_proc_current->task.memmap.vma_map);
     init_mem_page(&p_proc_current->task.memmap.anon_pages, MEMPAGE_AUTO);
 
-    p_proc_current->task.tree_info.text_hold = 1; // 是否拥有代码
-    p_proc_current->task.tree_info.data_hold = 1; // 是否拥有数据
+    p_proc_current->task.tree_info.text_hold = true;
+    p_proc_current->task.tree_info.data_hold = true;
 
     p_proc_current->task.nice = 0;
     p_proc_current->task.weight = nice_to_weight[p_proc_current->task.nice + 20];

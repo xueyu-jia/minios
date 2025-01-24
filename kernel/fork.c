@@ -133,8 +133,8 @@ static int fork_update_proc_tree(process_t* p_child) {
     p_child->task.tree_info.ppid = p_proc_current->task.pid; // 当前父进程
     p_child->task.tree_info.child_p_num = 0;                 // 子进程数量
     p_child->task.tree_info.child_t_num = 0;                 // 子线程数量
-    p_child->task.tree_info.text_hold = 0; // 是否拥有代码，子进程不拥有代码
-    p_child->task.tree_info.data_hold = 1; // 是否拥有数据，子进程拥有数据
+    p_child->task.tree_info.text_hold = false; // 是否拥有代码，子进程不拥有代码
+    p_child->task.tree_info.data_hold = true;  // 是否拥有数据，子进程拥有数据
 
     return 0;
 }

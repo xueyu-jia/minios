@@ -17,6 +17,7 @@ static void init_proc_page_addr(u32 low, u32 high, process_t* proc);
 static void init_pcb(process_t* pcb);
 
 process_t* alloc_pcb() {
+    //! FIXME: concurrency unsafe
     process_t* p = proc_table + NR_K_PCBS; // 跳过前NR_K_PCBS个
     for (int i = NR_K_PCBS; i < NR_PCBS; ++i) {
         if (p->task.stat == FREE) {
@@ -157,8 +158,8 @@ int kthread_create(char* name, void* func, int is_rt, int privilege, int rtprior
     p_proc->task.tree_info.ppid = -1;           // 当前父进程
     p_proc->task.tree_info.child_p_num = 0;     // 子进程数量
     p_proc->task.tree_info.child_t_num = 0;     // 子线程数量
-    p_proc->task.tree_info.text_hold = 1;       // 是否拥有代码
-    p_proc->task.tree_info.data_hold = 1;       // 是否拥有数据
+    p_proc->task.tree_info.text_hold = true;    // 是否拥有代码
+    p_proc->task.tree_info.data_hold = true;    // 是否拥有数据
 
     // 恢复中断
     //  intr_restore(intr);
