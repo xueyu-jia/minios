@@ -16,6 +16,7 @@
 #include <compiler.h>
 #include <list.h>
 #include <string.h>
+#include <stdbool.h>
 
 // PUBLIC struct file_desc f_desc_table[NR_FILE_DESC];
 struct dentry* vfs_root;
@@ -252,11 +253,14 @@ static int delete_dentry(struct dentry* dentry, struct dentry* dir) {
     return 0;
 }
 
-static void vfs_get_path(struct dentry* dir, char* buf, int size) {
-    if (!buf) { return; }
+/*!
+ * \return whether truncated or not
+ */
+static bool vfs_get_path(struct dentry* dir, char* buf, int size) {
+    if (!buf) { return false; }
     if (dir == vfs_root) {
         strncpy(buf, "/", size);
-        return;
+        return size <= 1;
     }
     char path[MAX_PATH];
     char* p = path + MAX_PATH;
@@ -273,6 +277,7 @@ static void vfs_get_path(struct dentry* dir, char* buf, int size) {
         dir = dir->d_parent;
     }
     strncpy(buf, p, size);
+    return size <= strlen(p);
 }
 
 static void register_fs_type(char* fstype_name, int fs_type, struct file_operations* f_op,
@@ -522,11 +527,10 @@ static struct super_block* vfs_read_super(int dev, u32 fstype) {
     const int sb_private_size = file_sys->fs_size_info.sb_size;
     assert(sb_private_size >= 0);
     const int sb_impl_size = sizeof(struct super_block) + sb_private_size;
-    super_blocks[sb_index] = (void*)kern_kmalloc(sb_impl_size);
-    auto sb = super_blocks[sb_index];
+    struct super_block* sb = (void*)kern_kmalloc(sb_impl_size);
+    memset(sb, 0, sb_impl_size);
 
     list_init(&sb->sb_inode_list);
-
     int state = file_sys->fs_sop->fill_superblock(sb, dev);
     if (state != 0) {
         kern_kfree((uint32_t)sb);
@@ -535,8 +539,10 @@ static struct super_block* vfs_read_super(int dev, u32 fstype) {
         kprintf("error: fs fill_superblock failed\n");
         return NULL;
     }
-
     sb->used = true;
+
+    super_blocks[sb_index] = sb;
+
     spinlock_release(&superblock_lock);
     return sb;
 }
@@ -590,10 +596,11 @@ static struct dentry* vfs_mount_dev(int dev, u32 fstype, const char* dev_name, s
     struct super_block* sb = vfs_get_super(dev, fstype);
     if (!sb) { return NULL; }
     if (sb->sb_vfsmount) {
-        kprintf("device already mounted");
+        kprintf("device already mounted\n");
         return NULL;
     }
-    sb->sb_vfsmount = sb->sb_root->d_vfsmount = add_vfsmount(dev_name, mnt, sb->sb_root, sb);
+    sb->sb_root->d_vfsmount = add_vfsmount(dev_name, mnt, sb->sb_root, sb);
+    sb->sb_vfsmount = sb->sb_root->d_vfsmount;
     if (mnt) { mnt->d_mounted = true; }
     return sb->sb_root;
 }
@@ -674,46 +681,57 @@ int kern_vfs_mount(const char* source, const char* target, const char* filesyste
     vfs_put_dentry(block_dev);
     if (dev == -1) { return -1; }
     struct dentry* dir_d = vfs_lookup(target);
-    if (!dir_d) {
-        kprintf("mountpoint dir not exist\n");
-        return -1;
-    }
-    if (dir_d->d_mounted) {
-        kprintf("mountpoint has already be mountted\n");
-        return -1;
-    }
-    int fstype = get_fstype_by_name(filesystemtype);
-    char dev_name[MNT_DEVNAME_LEN];
-    vfs_get_path(block_dev, dev_name, MNT_DEVNAME_LEN);
-    struct dentry* mnt_root = vfs_mount_dev(dev, fstype, dev_name, dir_d);
-    if (!mnt_root) {
-        vfs_put_dentry(dir_d);
-        return -1;
-    }
-    dir_d->d_mounted = 1;
+    int retval = -1;
+    do {
+        if (!dir_d) {
+            kprintf("mountpoint dir not exist\n");
+            return -1;
+        }
+        if (dir_d->d_inode->i_type != I_DIRECTORY) {
+            kprintf("mountpoint is not a dir\n");
+            break;
+        }
+        if (dir_d->d_mounted) {
+            kprintf("mountpoint has already be mountted\n");
+            break;
+        }
+        int fstype = get_fstype_by_name(filesystemtype);
+        char dev_name[MNT_DEVNAME_LEN] = {};
+        vfs_get_path(block_dev, dev_name, MNT_DEVNAME_LEN);
+        struct dentry* mnt_root = vfs_mount_dev(dev, fstype, dev_name, dir_d);
+        if (!mnt_root) { break; }
+        dir_d->d_mounted = true;
+        retval = 0;
+    } while (0);
     vfs_put_dentry(dir_d);
-    return 0;
+    return retval;
 }
 
 int kern_vfs_umount(const char* target) {
-    struct dentry *mnt = vfs_lookup(target), *mountpoint;
-    if (!mnt) { return -1; }
-    struct super_block* sb = mnt->d_inode->i_sb;
-    vfs_put_dentry(mnt);
+    struct dentry* mnt_root = vfs_lookup(target);
+    if (!mnt_root) { return -1; }
+    assert(!mnt_root->d_mounted && mnt_root->d_vfsmount != NULL);
+    struct super_block* sb = mnt_root->d_inode->i_sb;
+    vfs_put_dentry(mnt_root);
+
+    //! ATTENTION: fs impl is expected to alloc dentry "/" as root on mount registry, so "/" i.e.
+    //! mnt_root will always has at least one ref, put once again here to kill the initial ref or
+    //! else the sb will be reported busy and reject the umount request
+    vfs_put_dentry(mnt_root);
+
     // clean inode
     int state = vfs_clear_super(sb);
     // 如果存在正在使用的目录项，或者存在嵌套的下级挂载点
     // 则报busy不予卸载
     if (state) { return -1; }
 
-    mountpoint = remove_vfsmnt(mnt);
-    if (!mountpoint) { return -1; }
+    struct dentry* mount_point = remove_vfsmnt(mnt_root);
+    if (!mount_point) { return -1; }
     spinlock_lock_or_yield(&superblock_lock);
-    sb->used = 0;
+    sb->used = false;
     spinlock_release(&superblock_lock);
-    mountpoint->d_mounted = 0;
-    // mnt->
-    vfs_put_dentry(mountpoint);
+    mount_point->d_mounted = false;
+    vfs_put_dentry(mount_point);
     return 0;
 }
 
@@ -864,6 +882,7 @@ int kern_vfs_read(int fd, char* buf, int count) {
         return -1;
     }
     struct inode* inode = file->fd_dentry->d_inode;
+    if (inode->i_type == I_DIRECTORY) { return -1; /* -EISDIR */ }
     int cnt = 0;
     spinlock_lock_or_yield(&inode->lock);
     if (inode->i_fop && inode->i_fop->read) { cnt = inode->i_fop->read(file, count, buf); }
@@ -1092,8 +1111,8 @@ int kern_vfs_chdir(const char* path) {
 char* kern_vfs_getcwd(char* buf, int size) {
     if (NULL == buf || (-1 == (int)buf)) { return NULL; }
     process_t* p_proc = proc_real(p_proc_current);
-    vfs_get_path(p_proc->task.cwd, buf, size);
-    return buf;
+    const bool truncated = vfs_get_path(p_proc->task.cwd, buf, size);
+    return truncated ? NULL : buf;
 }
 
 int kern_vfs_stat(const char* path, struct stat* statbuf) {
