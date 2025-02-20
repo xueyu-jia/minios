@@ -47,10 +47,10 @@ void in_process(tty_t* tty, u32 key) {
                 put_key(tty, '\b');
             } break;
             case UP: {
-                scroll_screen(tty->console, SCR_UP);
+                scroll_screen(tty->console, SCR_DN);
             } break;
             case DOWN: {
-                scroll_screen(tty->console, SCR_DN);
+                scroll_screen(tty->console, SCR_UP);
             } break;
             case F1:
                 FALLTHROUGH;
