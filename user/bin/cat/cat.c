@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 
 int main(int argc, char* argv[]) {
 #define MAX_CAT 128
@@ -12,12 +13,24 @@ int main(int argc, char* argv[]) {
         printf("open error");
         return -1;
     }
-    int cnt;
+    bool failed = false;
     do {
-        cnt = read(fd, buf, MAX_CAT);
-        write(STD_OUT, buf, cnt);
-    } while (cnt == MAX_CAT);
-    printf("\n");
+        int cnt = 0;
+        do {
+            cnt = read(fd, buf, MAX_CAT);
+            if (cnt < 0) {
+                failed = true;
+                break;
+            }
+            write(STD_OUT, buf, cnt);
+        } while (cnt == MAX_CAT);
+        if (failed) {
+            //! TODO: might perm denied rather than is-dir
+            fprintf(stderr, "cat: %s: is a directory\n", argv[1]);
+            break;
+        }
+        printf("\n");
+    } while (0);
     close(fd);
     return 0;
 }
