@@ -61,7 +61,7 @@ syscall_entry_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(pthread_cond_signal),
     SYSCALL_ENTRY(pthread_cond_broadcast),
     SYSCALL_ENTRY(pthread_cond_wait),
-    SYSCALL_ENTRY(pthread_cond_timewait),
+    SYSCALL_ENTRY(pthread_cond_timedwait),
     SYSCALL_ENTRY(pthread_mutex_init),
     SYSCALL_ENTRY(pthread_mutex_destroy),
     SYSCALL_ENTRY(pthread_mutex_lock),

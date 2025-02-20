@@ -98,7 +98,7 @@ enum {
     NR_pthread_cond_signal,
     NR_pthread_cond_broadcast,
     NR_pthread_cond_wait,
-    NR_pthread_cond_timewait,
+    NR_pthread_cond_timedwait,
     NR_pthread_mutex_init,
     NR_pthread_mutex_destroy,
     NR_pthread_mutex_lock,

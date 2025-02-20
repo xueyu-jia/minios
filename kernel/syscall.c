@@ -186,7 +186,7 @@ DECLARE_SYSCALL(pthread_cond_destroy, int, pthread_cond_t*);
 DECLARE_SYSCALL(pthread_cond_signal, int, pthread_cond_t*);
 DECLARE_SYSCALL(pthread_cond_broadcast, int, pthread_cond_t*);
 DECLARE_SYSCALL(pthread_cond_wait, int, pthread_cond_t*, pthread_mutex_t*);
-DECLARE_SYSCALL(pthread_cond_timewait, int, pthread_cond_t*, pthread_mutex_t*, int*);
+DECLARE_SYSCALL(pthread_cond_timedwait, int, pthread_cond_t*, pthread_mutex_t*, int*);
 DECLARE_SYSCALL(pthread_mutex_init, int, pthread_mutex_t*, pthread_mutexattr_t*);
 DECLARE_SYSCALL(pthread_mutex_destroy, int, pthread_mutex_t*);
 DECLARE_SYSCALL(pthread_mutex_lock, int, pthread_mutex_t*);

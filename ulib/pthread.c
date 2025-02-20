@@ -59,8 +59,8 @@ int pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
     return syscall(NR_pthread_cond_wait, cond, mutex);
 }
 
-int pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout) {
-    return syscall(NR_pthread_cond_timewait, cond, mutex, timeout);
+int pthread_cond_timedwait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout) {
+    return syscall(NR_pthread_cond_timedwait, cond, mutex, timeout);
 }
 
 int pthread_mutex_init(pthread_mutex_t* mutex, pthread_mutexattr_t* attr) {

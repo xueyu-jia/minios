@@ -4,9 +4,8 @@
 #include <minios/proc.h>
 #include <limits.h>
 
-// 挂起等待条件满足后被唤醒
-int suspend_with_cancellation(process_t* self, int timeout) {
-    int ticks0 = ticks;
+static int suspend_with_cancellation(process_t* self, int timeout) {
+    const int ticks0 = ticks;
     while (ticks - ticks0 < timeout) {
         if (self->task.suspended == READY) {
             self->task.stat = READY;
@@ -15,12 +14,11 @@ int suspend_with_cancellation(process_t* self, int timeout) {
         }
         wait_event(&ticks);
     }
-    // timeout
-    return -1;
+    return -1; //<! timeout
 }
 
 int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_attr) {
-    cond->lock.locked = 0; // 自旋锁状态置0
+    cond->lock.locked = 0;
     cond->head = 0;
     cond->tail = 0; // 等待队列初始化
     if (cond_attr != NULL) { cond->name = cond_attr->name; }
@@ -28,8 +26,6 @@ int kern_pthread_cond_init(pthread_cond_t* cond, const pthread_condattr_t* cond_
 }
 
 int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
-    // 条件量 加锁操作
-    //  spinlock_acquire(&cond->mutex);
     spinlock_acquire(&cond->lock);
 
     // 条件量 插入条件的等待队列
@@ -47,11 +43,8 @@ int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
     //  spinlock_release(&cond->mutex);
     spinlock_release(&cond->lock);
 
-    // 释放互斥变量，否则别的线程无法操作资源，导致条件一直无法满足
     kern_pthread_mutex_unlock(mutex);
-    // 挂起等待条件满足后被唤醒
     int sign_timeout = suspend_with_cancellation(p_proc_current, MAX_INT);
-    // 线程唤醒之后就需要重新持有原来的锁
     kern_pthread_mutex_lock(mutex);
 
     // 取消点，等待期间被取消了
@@ -77,7 +70,7 @@ int kern_pthread_cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
     return sign_timeout;
 }
 
-int kern_pthread_cond_timewait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout) {
+int kern_pthread_cond_timedwait(pthread_cond_t* cond, pthread_mutex_t* mutex, int* timeout) {
     // 条件量 加锁操作
     //  spinlock_acquire(&cond->mutex);
     spinlock_acquire(&cond->lock);
