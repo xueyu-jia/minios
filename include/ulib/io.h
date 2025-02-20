@@ -10,7 +10,7 @@ ssize_t write(int fd, const void *buf, size_t count);
 off_t lseek(int fd, off_t offset, int whence);
 int unlink(const char *path);
 
-char *getcwd(char *buf, size_t size);
+char *getcwd(char *buf, ssize_t size);
 int chdir(const char *path);
 int mkdir(const char *path, mode_t mode);
 int rmdir(const char *path);

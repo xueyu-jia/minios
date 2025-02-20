@@ -39,7 +39,7 @@ int unlink(const char *path) {
     return syscall(NR_unlink, path);
 }
 
-char *getcwd(char *buf, size_t size) {
+char *getcwd(char *buf, ssize_t size) {
     return (char *)syscall(NR_getcwd, buf, size);
 }
 
