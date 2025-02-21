@@ -20,6 +20,7 @@ u32 syscall_get_arg(int index);
 #include <minios/pthread.h>
 
 int do_getticks();
+clock_t do_clock();
 int do_get_time(struct tm* time);
 int do_getpid();
 int do_getpid_by_name(const char* name);

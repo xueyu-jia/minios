@@ -7,6 +7,7 @@
 
 syscall_entry_t syscall_table[NR_SYSCALLS] = {
     SYSCALL_ENTRY(getticks),
+    SYSCALL_ENTRY(clock),
     SYSCALL_ENTRY(get_time),
     SYSCALL_ENTRY(getpid),
     SYSCALL_ENTRY(getpid_by_name),

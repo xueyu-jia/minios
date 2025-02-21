@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 struct tm {
     int tm_sec;   /* Seconds.	[0-60] (1 leap second) */
     int tm_min;   /* Minutes.	[0-59] */
@@ -14,3 +16,7 @@ struct tm {
     long int __tm_gmtoff;  /* Seconds east of UTC.  */
     const char* __tm_zone; /* Timezone abbreviation.  */
 };
+
+typedef ssize_t clock_t;
+
+#define CLOCKS_PER_SEC 1000

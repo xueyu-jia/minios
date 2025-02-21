@@ -1,6 +1,7 @@
 #pragma once
 
 #include <compiler.h>
+#include <stddef.h>
 #include <klib/stdint.h>
 
 #ifdef GCC_COMPILER
@@ -170,10 +171,8 @@ ASMCALL u32 read_esp() {
     return esp;
 }
 
-ASMCALL u64 read_tsc() {
-    u64 tsc;
-    __asm__ volatile("rdtsc" : "=A"(tsc));
-    return tsc;
+ASMCALL u64 rdtsc() {
+    return __builtin_ia32_rdtsc();
 }
 
 ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
@@ -201,6 +200,34 @@ ASMCALL void enable_int() {
 
 ASMCALL void halt() {
     __asm__ volatile("hlt");
+}
+
+ASMCALL void cpuid(u32 id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx) {
+    asm volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx) : "a"(id), "c"(0));
+}
+
+ASMCALL u32 cpuid_eax(u32 id) {
+    u32 eax = 0;
+    asm volatile("cpuid" : "=a"(eax) : "a"(id), "c"(0));
+    return eax;
+}
+
+ASMCALL u32 cpuid_ebx(u32 id) {
+    u32 ebx = 0;
+    asm volatile("cpuid" : "=b"(ebx) : "a"(id), "c"(0));
+    return ebx;
+}
+
+ASMCALL u32 cpuid_ecx(u32 id) {
+    u32 ecx = 0;
+    asm volatile("cpuid" : "=c"(ecx) : "a"(id), "c"(0));
+    return ecx;
+}
+
+ASMCALL u32 cpuid_edx(u32 id) {
+    u32 edx = 0;
+    asm volatile("cpuid" : "=d"(edx) : "a"(id), "c"(0));
+    return edx;
 }
 
 #undef ASMCALL

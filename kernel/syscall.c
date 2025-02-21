@@ -96,6 +96,7 @@ u32 syscall_get_arg(int index) {
 }
 
 DECLARE_SYSCALL(getticks, int);
+DECLARE_SYSCALL(clock, clock_t);
 DECLARE_SYSCALL(get_time, int, struct tm*);
 DECLARE_SYSCALL(getpid, int);
 DECLARE_SYSCALL(getpid_by_name, int, const char*);

@@ -108,6 +108,8 @@ int kernel_main() {
     //! ATTENTION: order matters
     kprintf("info: init jiffies clock\n");
     init_clock();
+    early_clock_sync();
+    kprintf("info: init tsc ns freq: %lf\n", tsc_ns_freq);
 
     kprintf("info: init fs\n");
     enable_int();

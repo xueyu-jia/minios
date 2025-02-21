@@ -113,6 +113,10 @@ int getticks() {
     return syscall(NR_getticks);
 }
 
+clock_t clock() {
+    return syscall(NR_clock);
+}
+
 int get_time(struct tm* time) {
     return syscall(NR_get_time, time);
 }

@@ -44,6 +44,7 @@
 
 enum {
     NR_getticks,
+    NR_clock,
     NR_get_time,
     NR_getpid,
     NR_getpid_by_name,

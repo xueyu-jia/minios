@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-typedef size_t clock_t;
 typedef void* handle_t;
 
 typedef ptrdiff_t offset_t;
