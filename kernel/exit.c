@@ -6,6 +6,7 @@
 #include <minios/interrupt.h>
 #include <minios/assert.h>
 #include <minios/spinlock.h>
+#include <minios/console.h>
 #include <compiler.h>
 
 static void exit_file(process_t* p_proc);
@@ -25,6 +26,8 @@ void kern_exit(int status) {
     // 可能触发文件同步和硬盘IO,在上锁之前完成
     exit_file(exit_pcb);
     spinlock_lock_or_yield(&exit_pcb->task.lock);
+
+    //! FIXME: fa proc may exit before the child proc
 
     spinlock_lock_or_yield(&fa_pcb->task.lock);
     assert(exit_pcb->task.tree_info.ppid >= 0 && exit_pcb->task.tree_info.ppid < NR_PCBS);
