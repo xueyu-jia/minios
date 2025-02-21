@@ -9,22 +9,27 @@
 #define NUM_BUILTIN_CMD 3
 #define CMD_LEN 8
 
-#define CMD_ELF 0
-#define CMD_SCRIPT 1
-#define CMD_INVAL -1
+enum {
+    CMD_ELF,
+    CMD_SCRIPT,
+    CMD_INVAL,
+};
 
 struct cmd {
     char cmd_name[CMD_LEN];
     int (*handler)(int, char **);
 };
 
-struct cmd cmds[NUM_BUILTIN_CMD];
-int num_cmd;
-int fd = STD_IN;
-char **env;
-// 全局便于使用，每条命令解析时更新
-char disk_cmd_path[MAX_PATH];
-char *current_cmd; // 实际内存位于栈(main.buff)
+const char *path_to_shell = NULL;
+char **env = NULL;
+
+int num_cmd = 0;
+struct cmd cmds[NUM_BUILTIN_CMD] = {};
+
+int last_exit_code = 0;
+
+char disk_cmd_path[MAX_PATH] = {};
+char *cur_cmd = NULL;
 
 int do_cd(int argc, char **argv) {
     char *path = argv[1];
@@ -34,13 +39,14 @@ int do_cd(int argc, char **argv) {
 int do_pwd(int argc, char **argv) {
     char path[MAX_PATH];
     getcwd(path, MAX_PATH);
-    printf("%s\n", path);
+    printf("%s", path);
     return 0;
 }
 
 int do_free(int argc, char **argv) {
-    uint32_t free_mem = total_mem_size();
-    printf("free_mem:%x\n", free_mem);
+    const size_t total_mem = total_mem_size();
+    printf("available memory: %d %.3fKiB %.3fMiB", total_mem, total_mem,
+           total_mem * 1.0 / (1 << 10), total_mem * 1.0 / (1 << 20));
     return 0;
 }
 
@@ -52,7 +58,7 @@ void reg_cmd(char *name, int (*handler)(int, char **)) {
 }
 
 int parse(char *buf, char **argv, int limit) {
-    if (!buf) return 0;
+    if (!buf) { return 0; }
     int start = 0, cnt = 0;
     char *p = buf;
     for (; *p && *p != '\n'; ++p) {
@@ -60,7 +66,7 @@ int parse(char *buf, char **argv, int limit) {
             *p = 0;
             start = 0;
         } else if (start == 0 && (*p != ' ') && cnt < limit) {
-            *(argv++) = p;
+            *argv++ = p;
             cnt++;
             start = 1;
         }
@@ -71,38 +77,25 @@ int parse(char *buf, char **argv, int limit) {
 }
 
 int match_build_in(int argc, char **argv) {
-    // printf("%s", argv[0]);
     for (int i = 0; i < NUM_BUILTIN_CMD; ++i) {
-        // printf("%s\n", cmds[i].cmd_name);
-        if (argc && (!strcmp(argv[0], cmds[i].cmd_name))) {
-            // printf("match %s\n", cmds[i].cmd_name);
-            return i;
-        }
+        if (argc && (!strcmp(argv[0], cmds[i].cmd_name))) { return i; }
     }
     return -1;
 }
 
-void printstring(char *prompt, char **p) {
-    char *pstr = NULL;
-    printf("%s", prompt);
-    if (*p) {
-        while (((pstr) = (*p++), pstr)) { printf("\n%s", pstr); }
-    }
-    printf("\n");
-}
-
 int check_disk_command(const char *path) {
-    struct stat statbuf;
-    int status, _fd;
+    struct stat statbuf = {};
+    int status = 0;
+    int fd = -1;
     char sample_buff[MAX_PATH];
     status = stat(path, &statbuf);
     if (status == 0 && statbuf.st_type == I_REGULAR) {
         char *extname = strrchr(path, '.');
         if (strcmp(extname, ".sh") == 0) { return CMD_SCRIPT; }
-        _fd = open(path, O_RDONLY);
-        lseek(_fd, 0, SEEK_SET);
-        fgets(sample_buff, MAX_PATH, _fd);
-        close(_fd);
+        fd = open(path, O_RDONLY);
+        lseek(fd, 0, SEEK_SET);
+        fgets(sample_buff, MAX_PATH, fd);
+        close(fd);
         if (sample_buff[1] == 'E' && sample_buff[2] == 'L' && sample_buff[3] == 'F') {
             return CMD_ELF;
         }
@@ -110,18 +103,15 @@ int check_disk_command(const char *path) {
     return CMD_INVAL;
 }
 
-// 搜索cmd并更新可执行文件的路径至disk_cmd_path
 int search_command_path(const char *cmd) {
-    current_cmd = cmd;
+    cur_cmd = cmd;
     char *path = getenv("PATH"), *pstr;
     char *completed = disk_cmd_path;
     int result;
-    // 存在'/',直接传递路径，VFS会处理相对cwd和绝对路径两种情况
     if (strchr(cmd, '/') != NULL) {
         strcpy(completed, cmd);
         return check_disk_command(cmd);
     }
-    // 路径只有文件名，要从PATH搜索，并拼接路径
     while (path != NULL) {
         pstr = strchr(path, ';');
         if (pstr == 0) pstr = path + strlen(path);
@@ -145,7 +135,7 @@ bool might_is_regular_file(const char *pathname) {
 }
 
 void do_command(int argc, char **args) {
-    // shortcus for cd
+    //! cd command shortcut
     if (argc == 1) {
         const char *item = args[0];
         bool matched = true;
@@ -159,119 +149,105 @@ void do_command(int argc, char **args) {
         } while (0);
         if (matched && !might_is_regular_file(item)) {
             char *args[2] = {"cd", item};
-            do_cd(2, args);
+            int retval = do_cd(2, args);
+            if (retval != 0) { printf("error: no such file or directory: %s", item); }
+            last_exit_code = retval;
             return;
         }
     }
 
-    // builtin
+    //! builtin var to get last error code
+    if (argc == 1 && strcmp(args[0], "$?") == 0) {
+        printf("%d", last_exit_code);
+        last_exit_code = 0;
+        return;
+    }
+
+    //! builtin command
     int cmdid = match_build_in(argc, args);
     if (cmdid != -1) {
         int ret = cmds[cmdid].handler(argc, args);
-        if (ret != 0) { printf("%s exit %d", cmds[cmdid].cmd_name, ret); }
+        if (ret != 0) { printf("error: %s exited with status %d", cmds[cmdid].cmd_name, ret); }
+        last_exit_code = ret;
         return;
     }
-    // test cmd exec file
-    // 此函数根据PATH环境变量查找得到真正的可执行文件的类型和实际路径(cmd)
-    int cmd_type = search_command_path(args[0]);
-    if (CMD_INVAL == cmd_type) {
-        fprintf(STD_ERR, "command not found:%s\n", args[0]);
-        return;
-    } else if (CMD_SCRIPT == cmd_type) {
-        // 此命令是脚本类型，cmd实际是interpreter的参数
-        args[1] = args[0];
-        args[0] = "/bin/shell";
-        if (CMD_ELF != search_command_path(args[0])) {
-            fprintf(STD_ERR, "%s:script interpreter not executable!\n", args[0]);
+
+    //! detect command type and preprocess
+    const int cmd_type = search_command_path(args[0]);
+    switch (cmd_type) {
+        case CMD_SCRIPT: {
+            args[1] = args[0];
+            args[0] = path_to_shell;
+        } break;
+        case CMD_ELF: {
+        } break;
+        default: {
+            fprintf(stderr, "error: command not found: %s\n", args[0]);
+            last_exit_code = -1;
             return;
-        }
+        } break;
     }
-    // CMD_ELF || (CMD_SCRIPT && args[0] is interpreter)
-    int pid = fork();
-    // printf("%d: fork return %d\n", getpid(), pid);
-    if (pid != 0) { // father
-        if (pid < 0) {
-            fprintf(STD_ERR, "fork failed\n");
-            return;
-        }
-        int exit_status;
-        wait(&exit_status); // modified by dongzhangqi 2023.4.20
-                            // 因wait的调整而修改
-        if (CMD_ELF == cmd_type) {
-            printf("%s(pid:%d): exit_status:%d\n", current_cmd, pid, exit_status);
-        }
-    } else { // child
-        if (execve(disk_cmd_path, args, env) != 0) {
-            fprintf(STD_ERR, "%s: exec failed!\n", disk_cmd_path);
-            exit(-1);
-        }
-        fprintf(STD_ERR, "unreachable area\n");
+
+    //! run executable
+    const pid_t pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "error: ran out of process");
+        last_exit_code = -1;
+        return;
+    }
+    if (pid > 0) {
+        int exit_status = 0;
+        wait(&exit_status);
+        last_exit_code = exit_status;
+    } else if (execve(disk_cmd_path, args, env) != 0) {
+        fprintf(stderr, "error: failed to spawn process: %s", disk_cmd_path);
+        exit(-1);
+    } else {
+        fprintf(stderr, "error: unknown error");
+        exit(-1);
     }
 }
 
-int main(int arg, char *argv[], char *envp[]) {
+int main(int argc, char *argv[], char *envp[]) {
 #define BUF_SIZE 512
 
     env = envp;
-    char buf[BUF_SIZE];
-    char pwd[MAX_PATH];
-    int len;
-    char *args[MAX_ARGC];
+    path_to_shell = argv[0];
+
+    char cmdbuf[BUF_SIZE] = {};
+    char cwdbuf[MAX_PATH] = {};
+    char *exec_argv[MAX_ARGC] = {};
 
     reg_cmd("cd", do_cd);
     reg_cmd("pwd", do_pwd);
     reg_cmd("free", do_free);
     nice(1);
 
-#ifdef SHELL_TEST
-#define TEST_CMD_LEN_LIMIT 32
-
-#define TEST_CMD_NUM 2
-    int pre = 0;
-    char pre_test_cmds[TEST_CMD_NUM][TEST_CMD_LEN_LIMIT] = {
-        "mkdir test", "rm -r test",
-        // "cd ora",
-        // "/t_xv6.bin",
-    };
-
-    pre = TEST_CMD_NUM;
-#endif
-
-    if (arg > 1) {
+    int fd_in = stdin;
+    if (argc > 1) {
         if (CMD_SCRIPT != search_command_path(argv[1])) {
-            fprintf(STD_ERR, "not a script %s\n", argv[1]);
+            fprintf(stderr, "error: file is not a shell script: %s\n", argv[1]);
             return -1;
         }
-        fd = open(argv[1], O_RDONLY);
-        if (fd < 0) {
-            fprintf(STD_ERR, "fail to open script %s\n", argv[1]);
+        fd_in = open(argv[1], O_RDONLY);
+        if (fd_in < 0) {
+            fprintf(stderr, "error: failed to open script: %s\n", argv[1]);
             return -1;
         }
     }
-    while (1) {
-        if (fd == STD_IN) { printf("\nminiOS:%s $ ", getcwd(pwd, MAX_PATH)); }
 
-#ifdef SHELL_TEST
-        if (pre) {
-            strcpy(buf, pre_test_cmds[TEST_CMD_NUM - pre]);
-            printf("%s\n", buf);
-            pre--;
-        } else {
-#endif
-
-            fgets(buf, BUF_SIZE, fd);
-#ifdef SHELL_TEST
-        }
-#endif
-        len = strlen(buf);
-        if (fd != STD_IN && len == 0) {
-            close(fd);
+    while (true) {
+        if (fd_in == stdin) { printf("\nminiOS:%s $ ", getcwd(cwdbuf, MAX_PATH)); }
+        fgets(cmdbuf, BUF_SIZE, fd_in);
+        const size_t len = strlen(cmdbuf);
+        if (fd_in != stdin && len == 0) {
+            close(fd_in);
             break;
         }
-        if (len != 0 && buf[0] != '#') {
-            int argc = parse(buf, args, MAX_ARGC);
-            do_command(argc, args);
-        }
+        if (len == 0) { continue; }
+        if (cmdbuf[0] == '#') { continue; }
+        const int argc = parse(cmdbuf, exec_argv, MAX_ARGC);
+        do_command(argc, exec_argv);
     }
     return 0;
 }
