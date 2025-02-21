@@ -13,6 +13,7 @@
 #include <fs/orangefs/orangefs.h>
 #include <fs/fat32/fat32.h>
 #include <fs/ext4/ext4.h>
+#include <stddef.h>
 #include <compiler.h>
 #include <list.h>
 #include <string.h>
@@ -736,13 +737,17 @@ int kern_vfs_umount(const char* target) {
 }
 
 static struct file_desc* vfs_file_open(const char* path, int flags, int mode) {
+    if (path == NULL) { return NULL; }
+    const size_t sz_path = strlen(path);
+    if (sz_path == 0 || sz_path + 1 > MAX_PATH) { return NULL; }
+
     char dir_path[MAX_PATH] = {0};
-    if ((!path) || strlen(path) == 0) { return NULL; }
     const char* file_name = strip_dir_path(path, dir_path);
     struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
     struct inode* inode = NULL;
     struct file_desc* file = NULL;
     if (!dir) { return NULL; }
+
     dentry = _do_lookup(dir, file_name, 0);
     if (!dentry && (flags & O_CREAT)) {
         // create regular file
@@ -752,8 +757,10 @@ static struct file_desc* vfs_file_open(const char* path, int flags, int mode) {
         insert_sub_dentry(dir, dentry);
     }
     if (!dentry) { goto no_dentry_out; }
+
     inode = dentry->d_inode;
     spinlock_lock_or_yield(&inode->lock);
+
     if ((flags & O_DIRECTORY) && inode->i_type != I_DIRECTORY) {
         kprintf("error: not a dir");
         goto err;
@@ -778,10 +785,12 @@ static struct file_desc* vfs_file_open(const char* path, int flags, int mode) {
     file->fd_mapping = dentry->d_inode->i_mapping;
     file->fd_mode = rmode; // fd_mode: bit 0:read 1:write
     file->fd_pos = ((flags & O_APPEND) ? inode->i_size : 0);
+
     spinlock_release(&inode->lock);
     spinlock_release(&dentry->lock);
     vfs_put_dentry(dir);
     return file;
+
 err:
     spinlock_release(&inode->lock);
     vfs_put_dentry(dentry);
@@ -847,10 +856,9 @@ int kern_vfs_lseek(int fd, int offset, int whence) {
     struct file_desc* file = p_proc->task.filp[fd];
     if (!file) { return -1; }
     struct inode* inode = file->fd_dentry->d_inode;
-    u64 size;
     spinlock_lock_or_yield(&inode->lock);
     if (!inode_allow_lseek(inode->i_type)) { return -1; }
-    size = inode->i_size;
+    ssize_t size = inode->i_size;
     spinlock_release(&inode->lock);
     u64 _offset = -1;
     switch (whence) {
@@ -874,13 +882,16 @@ int kern_vfs_lseek(int fd, int offset, int whence) {
 }
 
 int kern_vfs_read(int fd, char* buf, int count) {
-    process_t* p_proc = proc_real(p_proc_current);
-    struct file_desc* file = p_proc->task.filp[fd];
-    if (!file || count < 0) { return -1; }
+    if (count < 0) { return -1; }
+    if (fd < 0 || fd >= NR_FILES) { return -1; }
+    struct file_desc* file = proc_real(p_proc_current)->task.filp[fd];
+    if (file == NULL) { return -1; }
     if (!(file->fd_mode & I_R)) {
-        kprintf("read error: no permission");
+        kprintf("error: read: no permission\n");
         return -1;
     }
+    if (buf == NULL) { return count == 0 ? 0 : -1; }
+
     struct inode* inode = file->fd_dentry->d_inode;
     if (inode->i_type == I_DIRECTORY) { return -1; /* -EISDIR */ }
     int cnt = 0;
@@ -892,25 +903,36 @@ int kern_vfs_read(int fd, char* buf, int count) {
 }
 
 int kern_vfs_write(int fd, const char* buf, int count) {
-    process_t* p_proc = proc_real(p_proc_current);
-    struct file_desc* file = p_proc->task.filp[fd];
-    if (!file || count < 0) { return -1; }
+    if (count < 0) { return -1; }
+    if (fd < 0 || fd >= NR_FILES) { return -1; }
+    struct file_desc* file = proc_real(p_proc_current)->task.filp[fd];
+    if (file == NULL) { return -1; }
     if (!(file->fd_mode & I_W)) {
-        kprintf("write error: no permission");
+        kprintf("error: write: no permission\n");
         return -1;
     }
+    if (buf == NULL) { return count == 0 ? 0 : -1; }
+
     struct inode* inode = file->fd_dentry->d_inode;
-    int cnt = -1;
+    int cnt = 0;
     spinlock_lock_or_yield(&inode->lock);
     if (inode->i_fop && inode->i_fop->write) { cnt = inode->i_fop->write(file, count, buf); }
-    if (cnt) { inode->i_mtime = current_timestamp; }
+    if (cnt > 0) { inode->i_mtime = current_timestamp; }
     spinlock_release(&inode->lock);
     return cnt;
 }
 
 int kern_vfs_unlink(const char* path) {
+    if (path == NULL) { return -1; }
+    const size_t sz_path = strlen(path);
+    if (sz_path == 0 || sz_path + 1 > MAX_PATH) { return -1; }
+
+    //! FIXME: 如果不做 MAX_PATH 检查，路径长度溢出时 unlink 也会异常地返回
+    //! 0，即下层方法仍存在安全隐患
+    //! FIXME: 可以通过相对路径创建出绝对路径溢出 MAX_PATH 的问题件，该类文件
+    //! 会导致 fs 崩溃，如 ls 遍历目录将导致 page fault
+
     char dir_path[MAX_PATH] = {0};
-    if ((!path) || strlen(path) == 0) { return -1; }
     const char* file_name = strip_dir_path(path, dir_path);
     struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
     if (!dir) { return -1; }
@@ -968,12 +990,12 @@ int kern_vfs_mknod(const char* path, int mode, int dev) {
 }
 
 int kern_vfs_mkdir(const char* path, int mode) {
+    if (path == NULL) { return -1; }
+    size_t sz_path = strlen(path) + 1;
+    if (sz_path == 0 || sz_path > MAX_PATH) { return -1; }
     char dir_path[MAX_PATH] = {0};
-    if ((!path) || strlen(path) == 0) { return -1; }
     const char* file_name = strip_dir_path(path, dir_path);
     struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
-    struct inode* inode = NULL;
-    UNUSED(inode);
     if (!dir) { return -1; }
     dentry = _do_lookup(dir, file_name, 0);
     if (dentry) {
