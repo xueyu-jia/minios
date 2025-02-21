@@ -6,6 +6,7 @@
 #include <minios/cache.h>
 #include <minios/mempage.h>
 #include <klib/stdint.h>
+#include <stdbool.h>
 #include <list.h>
 
 struct inode;
@@ -161,7 +162,16 @@ struct fs_type {
 extern struct super_block *super_blocks[NR_SUPER_BLOCK];
 extern struct fs_type fstype_table[NR_FS_TYPE];
 
+/*!
+ * \brief lock-required free sb getter
+ */
 int get_free_superblock();
+
+/*!
+ * \brief lock-required superblock release
+ */
+bool release_superblock(struct super_block *sb);
+
 void generic_query_size_info(struct fs_size_info *info);
 int generic_file_readpage(address_space_t *file_mapping, memory_page_t *target);
 int generic_file_writepage(address_space_t *file_mapping, memory_page_t *target);

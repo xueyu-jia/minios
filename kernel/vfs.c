@@ -13,7 +13,7 @@
 #include <fs/orangefs/orangefs.h>
 #include <fs/fat32/fat32.h>
 #include <fs/ext4/ext4.h>
-#include <stddef.h>
+#include <klib/stddef.h>
 #include <compiler.h>
 #include <list.h>
 #include <string.h>
@@ -336,14 +336,14 @@ static struct dentry* _do_lookup(struct dentry* dir, const char* name, int spinl
             dentry = vfs_root;
         } else {
             while (dir != vfs_root && dir->d_vfsmount && dir->d_vfsmount->mnt_root == dir) {
-                struct dentry* _dir = dir->d_vfsmount->mnt_mountpoint;
-                if (_dir) {
-                    vfs_get_dentry(_dir);
+                struct dentry* mnt_dir = dir->d_vfsmount->mnt_mountpoint;
+                if (mnt_dir) {
+                    vfs_get_dentry(mnt_dir);
                 } else {
                     kprintf("error: invalid mountpoint\n");
                 }
                 vfs_put_dentry(dir);
-                dir = _dir;
+                dir = mnt_dir;
                 // dir = dir->d_vfsmount->mnt_mountpoint;
             }
             dentry = dir->d_parent; // 对于挂载点下的dentry，上层是挂载前的
@@ -470,8 +470,6 @@ static struct dentry* vfs_create(struct inode* dir, const char* file_name, int t
                                  int dev) {
     struct inode_operations* i_ops = NULL;
     struct dentry* dentry = NULL;
-    struct inode* inode = NULL;
-    UNUSED(inode);
     int state = -1;
     spinlock_lock_or_yield(&dir->lock);
     if (dir->i_type == I_DIRECTORY) { i_ops = dir->i_op; }
@@ -534,7 +532,7 @@ static struct super_block* vfs_read_super(int dev, u32 fstype) {
     list_init(&sb->sb_inode_list);
     int state = file_sys->fs_sop->fill_superblock(sb, dev);
     if (state != 0) {
-        kern_kfree((uint32_t)sb);
+        kern_kfree(ptr2u(sb));
         super_blocks[sb_index] = NULL;
         spinlock_release(&superblock_lock);
         kprintf("error: fs fill_superblock failed\n");
@@ -552,6 +550,7 @@ static int vfs_clear_super(struct super_block* sb) {
     struct inode* inode = NULL;
     struct dentry* dentry = NULL;
     int check_busy = 0;
+
     // check and clean all mounted inode
     spinlock_lock_or_yield(&inode_lock);
     list_head dentry_list;
@@ -720,11 +719,17 @@ int kern_vfs_umount(const char* target) {
     //! else the sb will be reported busy and reject the umount request
     vfs_put_dentry(mnt_root);
 
-    // clean inode
+    spinlock_lock_or_yield(&superblock_lock);
     int state = vfs_clear_super(sb);
-    // 如果存在正在使用的目录项，或者存在嵌套的下级挂载点
-    // 则报busy不予卸载
-    if (state) { return -1; }
+    if (state != 0) {
+        // 如果存在正在使用的目录项，或者存在嵌套的下级挂载点
+        // 则报 busy 不予卸载
+        spinlock_release(&superblock_lock);
+        return -1;
+    }
+    const bool sb_released = release_superblock(sb);
+    assert(sb_released);
+    spinlock_release(&superblock_lock);
 
     struct dentry* mount_point = remove_vfsmnt(mnt_root);
     if (!mount_point) { return -1; }
@@ -995,7 +1000,8 @@ int kern_vfs_mkdir(const char* path, int mode) {
     if (sz_path == 0 || sz_path > MAX_PATH) { return -1; }
     char dir_path[MAX_PATH] = {0};
     const char* file_name = strip_dir_path(path, dir_path);
-    struct dentry *dir = vfs_lookup(dir_path), *dentry = NULL;
+    struct dentry* dir = vfs_lookup(dir_path);
+    struct dentry* dentry = NULL;
     if (!dir) { return -1; }
     dentry = _do_lookup(dir, file_name, 0);
     if (dentry) {
@@ -1003,7 +1009,7 @@ int kern_vfs_mkdir(const char* path, int mode) {
         vfs_put_dentry(dir);
         return -1;
     }
-    dentry = vfs_create(dir->d_inode, file_name, I_DIRECTORY, mode & (~I_TYPE_MASK), 0);
+    dentry = vfs_create(dir->d_inode, file_name, I_DIRECTORY, mode & ~I_TYPE_MASK, 0);
     if (!dentry) {
         vfs_put_dentry(dir);
         return -1;
@@ -1016,14 +1022,14 @@ int kern_vfs_mkdir(const char* path, int mode) {
 }
 
 int kern_vfs_rmdir(const char* path) {
-    char dir_path[MAX_PATH] = {0};
-    if ((!path) || strlen(path) == 0) { return -1; }
-    if ((strcmp(path, "/") == 0)) {
+    char dir_path[MAX_PATH] = {};
+    if (!path || strlen(path) == 0) { return -1; }
+    if (strcmp(path, "/") == 0) {
         kprintf("rm root dir will damage system\n");
         return -1;
     }
     const char* file_name = strip_dir_path(path, dir_path);
-    if ((strcmp(file_name, ".") == 0) || (strcmp(file_name, "..") == 0)) {
+    if (strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0) {
         kprintf("path ended with . or .. is invalid\n");
         return -1;
     }
@@ -1103,13 +1109,17 @@ struct dirent* kern_vfs_readdir(DIR* dirp) {
     if (dirp->pos < dirp->total) {
         ent = (struct dirent*)(((char*)DIR_DATA(dirp)) + dirp->pos);
         dirp->pos += ent->d_len;
-        if (!strcmp(ent->d_name, "..")) { // check parent needed for mount point
-            vfs_get_dentry(dirp->file->fd_dentry);
-            struct dentry* found = _do_lookup(dirp->file->fd_dentry, ent->d_name, 1);
-            if (found) {
-                ent->d_ino = found->d_inode->i_no;
-                vfs_put_dentry(found);
-            }
+        if (false) {
+        } else if (strcmp(ent->d_name, "..") == 0) {
+            // check parent needed for mount point
+            struct dentry* dentry = dirp->file->fd_dentry;
+            vfs_get_dentry(dentry);
+            struct dentry* fa_dir = _do_lookup(dentry, ent->d_name, 1);
+            assert(fa_dir != NULL);
+            ent->d_ino = fa_dir->d_inode->i_no;
+            vfs_put_dentry(fa_dir);
+        } else if (strcmp(ent->d_name, ".") == 0) {
+            ent->d_ino = dirp->file->fd_dentry->d_inode->i_no;
         }
     }
     return ent;

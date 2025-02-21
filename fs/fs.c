@@ -24,6 +24,18 @@ int get_free_superblock() {
     }
     return sb_index;
 }
+
+bool release_superblock(struct super_block* sb) {
+    for (int i = 0; i < NR_SUPER_BLOCK; ++i) {
+        if (super_blocks[i] == sb) {
+            super_blocks[i] = NULL;
+            kern_kfree(ptr2u(sb));
+            return true;
+        }
+    }
+    return false;
+}
+
 #define MAX_DEV_PATH 16
 int init_block_dev() {
     for (int i = 0; i < 12; ++i) {
