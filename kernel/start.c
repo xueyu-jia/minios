@@ -10,7 +10,9 @@
 #include <minios/console.h>
 #include <minios/interrupt.h>
 #include <minios/asm.h>
+#include <minios/uart.h>
 #include <klib/stddef.h>
+#include <multiboot.h>
 #include <string.h>
 
 extern void refresh_gdt();
@@ -41,26 +43,38 @@ static void init_gdt() {
 }
 
 static void init_kernel_page() {
-    phyaddr_t k_pd_base = phy_kmalloc_4k();
+    phyaddr_t k_pd_base = phy_kmalloc(SZ_4K);
     kprintf("info: alloc page directory for kernel at pa 0x%p\n", k_pd_base);
     memset((void *)K_PHY2LIN(k_pd_base), 0, PGSIZE);
 
-    kprintf("info: prealloc page tables for va 0x%p~0x%p\n", ROUNDDOWN(KernelLinMapBase, SZ_4M),
-            ROUNDUP(KernelLinMapLimit, SZ_4M) - 1);
-    for (uintptr_t va = KernelLinMapBase; va < KernelLinMapLimit; va += SZ_4M) {
-        const phyaddr_t pt_base = phy_kmalloc_4k();
-        assert(PGOFF(pt_base) == 0 && "invalid physical page address");
-        memset(K_PHY2LIN(pt_base), 0, PGSIZE);
-        write_page_pde(k_pd_base, va, pt_base, PG_P | PG_USS | PG_RWW);
+    {
+        const uintptr_t base = ROUNDDOWN(KernelLinMapBase, SZ_4M);
+        const uintptr_t limit = ROUNDUP(KernelLinMapLimit, SZ_4M);
+        kprintf("info: prealloc page tables for mmap pages at va 0x%p~0x%p\n", base, limit - 1);
+        for (uintptr_t va = base; va < limit; va += SZ_4M) {
+            phyaddr_t pt_base = PHY_NULL;
+            if (pte_exist(k_pd_base, va)) {
+                pt_base = get_pte_phy_addr(k_pd_base, va);
+            } else {
+                pt_base = phy_kmalloc(SZ_4K);
+                assert(pt_base != PHY_NULL && PGOFF(pt_base) == 0);
+            }
+            memset(K_PHY2LIN(pt_base), 0, PGSIZE);
+            write_page_pde(k_pd_base, va, pt_base, PG_P | PG_USS | PG_RWW);
+        }
     }
-
-    kprintf("info: mapping va 0x%p~0x%p to pa 0x%p~0x%p for kernel\n", KernelLinBase,
-            ROUNDUP(KernelLinBase + kernel_size, PGSIZE) - 1, K_LIN2PHY(KernelLinBase),
-            K_LIN2PHY(ROUNDUP(KernelLinBase + kernel_size, PGSIZE) - 1));
-    for (uintptr_t va = KernelLinBase; va < KernelLinBase + kernel_size; va += PGSIZE) {
-        const int status = lin_mapping_phy_nopid(va, K_LIN2PHY(va), k_pd_base,
-                                                 PG_P | PG_USS | PG_RWW, PG_P | PG_USS | PG_RWW);
-        assert(status == 0 && "failed to map kernel page");
+    {
+        const uintptr_t kernel_space_limit =
+            ptr2u(K_PHY2LIN(MIN(pfn_to_phy(nr_mmap_pages), K_LIN2PHY(KernelLinLimitMAX))));
+        const uintptr_t base = KernelLinBase;
+        const uintptr_t limit = ROUNDUP(kernel_space_limit, PGSIZE);
+        kprintf("info: mapping va 0x%p~0x%p to pa 0x%p~0x%p for kernel\n", base, limit - 1,
+                K_LIN2PHY(base), K_LIN2PHY(limit - 1));
+        for (uintptr_t va = base; va < limit; va += PGSIZE) {
+            const int status = lin_mapping_phy_nopid(
+                va, K_LIN2PHY(va), k_pd_base, PG_P | PG_USS | PG_RWW, PG_P | PG_USS | PG_RWW);
+            assert(status == 0 && "failed to map kernel page");
+        }
     }
 
     lcr3(k_pd_base);
@@ -68,12 +82,13 @@ static void init_kernel_page() {
     kernel_pde_phy = k_pd_base;
 }
 
-#include <minios/uart.h>
-
-void cstart() {
+void cstart(phyaddr_t mbi_phy_addr) {
     kstate_on_init = true;
 
     init_simple_serial();
+
+    //! FIXME: kernel deps on the page table setup in our bootloader
+    kstate_mbi = K_PHY2LIN(mbi_phy_addr);
 
     memory_init();
 

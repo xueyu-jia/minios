@@ -1,6 +1,7 @@
 #pragma once
 
 #include <klib/stdint.h>
+#include <klib/sys/types.h>
 #include <minios/spinlock.h>
 
 typedef enum slab_type { EMPTY, PARTIAL, FULL } slab_type_t; // slab的类型
@@ -112,5 +113,6 @@ struct kmem_cache {
      sizeof(bitmap_entry_t))
 
 void init_cache();
-void *kmalloc(u32 size);
-int kfree(u32 object);
+
+phyaddr_t slab_alloc(size_t size);
+void slab_free(phyaddr_t addr);

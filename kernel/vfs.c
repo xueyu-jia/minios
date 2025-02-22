@@ -41,7 +41,7 @@ static void init_file_desc_table() {
 static struct file_desc* alloc_file() {
     struct file_desc* file = NULL;
     // spinlock_lock_or_yield(&file_desc_lock);
-    file = (struct file_desc*)kern_kmalloc(sizeof(struct file_desc));
+    file = kern_kmalloc(sizeof(struct file_desc));
     atomic_set(&file->fd_count, 1);
     // spinlock_release(&file_desc_lock);
     return file;
@@ -51,7 +51,7 @@ static void free_file(struct file_desc* file) {
     // spinlock_lock_or_yield(&file_desc_lock); // file动态分配不再需要锁
     vfs_put_dentry(file->fd_dentry);
     file->fd_dentry = 0;
-    kern_kfree((u32)file);
+    kern_kfree(file);
     // spinlock_release(&file_desc_lock);
 }
 
@@ -62,7 +62,7 @@ static struct inode* alloc_inode_locked(struct super_block* sb) {
 
     const int inode_impl_size =
         sizeof(struct inode) + fstype_table[sb->fs_type].fs_size_info.inode_size;
-    struct inode* inode = (struct inode*)kern_kmalloc(inode_impl_size);
+    struct inode* inode = kern_kmalloc(inode_impl_size);
     memset(inode, 0, inode_impl_size);
 
     inode->i_nlink = 1;
@@ -92,7 +92,7 @@ struct inode* vfs_new_inode(struct super_block* sb) {
 static void free_inode(struct inode* inode) {
     spinlock_lock_or_yield(&inode_lock);
     list_remove(&inode->i_list);
-    kern_kfree((u32)inode);
+    kern_kfree(inode);
     spinlock_release(&inode_lock);
 }
 
@@ -182,14 +182,14 @@ static int check_dir_entry_empty(struct dentry* dir) {
 
 static struct dentry* alloc_dentry(const char* name) {
     struct dentry* dentry;
-    dentry = (struct dentry*)kern_kmalloc(sizeof(struct dentry));
+    dentry = kern_kmalloc(sizeof(struct dentry));
     memset(dentry, 0, sizeof(struct dentry));
     spinlock_init(&dentry->lock, NULL);
     int len = strlen(name);
     if (len < MAX_DNAME_LEN) {
         strcpy(dentry->d_shortname, name);
     } else {
-        char* pstr = (char*)kern_kmalloc(len + 1);
+        char* pstr = kern_kmalloc(len + 1);
         strcpy(pstr, name);
         dentry->d_longname = pstr;
     }
@@ -204,8 +204,8 @@ static struct dentry* alloc_dentry(const char* name) {
 }
 
 static void free_dentry(struct dentry* dentry) {
-    if (dentry->d_longname) { kern_kfree((u32)dentry->d_longname); }
-    kern_kfree((u32)dentry);
+    if (dentry->d_longname) { kern_kfree(dentry->d_longname); }
+    kern_kfree(dentry);
 }
 
 // VFS api
@@ -526,13 +526,13 @@ static struct super_block* vfs_read_super(int dev, u32 fstype) {
     const int sb_private_size = file_sys->fs_size_info.sb_size;
     assert(sb_private_size >= 0);
     const int sb_impl_size = sizeof(struct super_block) + sb_private_size;
-    struct super_block* sb = (void*)kern_kmalloc(sb_impl_size);
+    struct super_block* sb = kern_kmalloc(sb_impl_size);
     memset(sb, 0, sb_impl_size);
 
     list_init(&sb->sb_inode_list);
     int state = file_sys->fs_sop->fill_superblock(sb, dev);
     if (state != 0) {
-        kern_kfree(ptr2u(sb));
+        kern_kfree(sb);
         super_blocks[sb_index] = NULL;
         spinlock_release(&superblock_lock);
         kprintf("error: fs fill_superblock failed\n");
@@ -596,7 +596,7 @@ static struct dentry* vfs_mount_dev(int dev, u32 fstype, const char* dev_name, s
     struct super_block* sb = vfs_get_super(dev, fstype);
     if (!sb) { return NULL; }
     if (sb->sb_vfsmount) {
-        kprintf("device already mounted\n");
+        kprintf("error: device already mounted\n");
         return NULL;
     }
     sb->sb_root->d_vfsmount = add_vfsmount(dev_name, mnt, sb->sb_root, sb);

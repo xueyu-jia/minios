@@ -29,7 +29,7 @@ bool release_superblock(struct super_block* sb) {
     for (int i = 0; i < NR_SUPER_BLOCK; ++i) {
         if (super_blocks[i] == sb) {
             super_blocks[i] = NULL;
-            kern_kfree(ptr2u(sb));
+            kern_kfree(sb);
             return true;
         }
     }
@@ -99,7 +99,7 @@ static int page_filemap(memory_page_t* target, address_space_t* file_mapping, in
                 return i;
             }
             if (i && (phy == last_phy + i - last)) { continue; }
-            bh = (buf_head*)kern_kzalloc(sizeof(buf_head));
+            bh = kern_kzalloc(sizeof(buf_head));
             bh->buffer = (void*)(page_data + i * size);
             spinlock_init(&bh->lock, NULL);
             map_bh(bh, inode->i_sb, phy);
@@ -114,7 +114,7 @@ static int page_filemap(memory_page_t* target, address_space_t* file_mapping, in
 
 static void page_unmap_buffer(memory_page_t* target) {
     for (int i = 0; i < MAX_BUF_PAGE; ++i) {
-        if (target->pg_buffer[i] != NULL) { kern_kfree((u32)target->pg_buffer[i]); }
+        if (target->pg_buffer[i] != NULL) { kern_kfree(target->pg_buffer[i]); }
     }
     memset(target->pg_buffer, 0, sizeof(target->pg_buffer));
 }

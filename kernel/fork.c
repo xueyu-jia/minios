@@ -56,12 +56,12 @@ int kern_fork() {
 // handle error
 alloc_pcb_failed:
     spinlock_release(&fa->task.lock);
-    kprintf("ALLOC PCB NULL,fork faild!");
+    kprintf("fork: no availabel pcb\n");
     return -1;
 
 init_page_failed:
     spinlock_release(&fa->task.lock);
-    kprintf("INIT PAGE FAILED ,fork faild!");
+    kprintf("fork: failed to init pages\n");
     return -1;
 }
 

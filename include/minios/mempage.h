@@ -16,10 +16,24 @@
 #define ALL_PAGES ((u32)(PHY_MEM_SIZE) / PGSIZE)
 #define MAX_BUF_PAGE (PGSIZE / SECTOR_SIZE)
 
+enum {
+    PAGESTATE_INVAL = 0, //<! invalid page
+    PAGESTATE_CRITICAL,  //<! reserved page
+    PAGESTATE_PHANTOM,   //<! a free page that will soon be added to the buddy
+    PAGESTATE_BUDDY,     //<! under management of buddy
+    //! page with state below all comes from buddy allocation
+    PAGESTATE_SLAB,      //<! under management of slab
+    PAGESTATE_ALLOCATED, //<! allocated page
+    NR_PAGESTATE,        //<! non-state, indicates the limit of page states
+};
+
 typedef struct memory_page {
     atomic_t count;
-    u32 inbuddy; // 当前page是否在buddy系统的管理中
-    u32 order;   // buddy的order
+    int state;
+    union {
+        int order;     // buddy 的 order
+        u32 size_hint; //!< bitset of block order
+    };
     struct memory_page *next;
     // slab
     kmem_cache_t *cache; // slab对应的cache

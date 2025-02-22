@@ -1,7 +1,7 @@
 #pragma once
 
-#include <compiler.h>
 #include <stddef.h>
+#include <compiler.h>
 #include <klib/stdint.h>
 
 #ifdef GCC_COMPILER
@@ -12,12 +12,12 @@
 
 ASMCALL u8 inb(int port) {
     u8 data;
-    __asm__ volatile("inb %w1, %0" : "=a"(data) : "d"(port));
+    asm volatile("inb %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
 ASMCALL void insb(int port, void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "insb\n"
@@ -28,12 +28,12 @@ ASMCALL void insb(int port, void *addr, int cnt) {
 
 ASMCALL u16 inw(int port) {
     u16 data;
-    __asm__ volatile("inw %w1, %0" : "=a"(data) : "d"(port));
+    asm volatile("inw %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
 ASMCALL void insw(int port, void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "insw\n"
@@ -44,12 +44,12 @@ ASMCALL void insw(int port, void *addr, int cnt) {
 
 ASMCALL u32 inl(int port) {
     u32 data;
-    __asm__ volatile("inl %w1, %0" : "=a"(data) : "d"(port));
+    asm volatile("inl %w1, %0" : "=a"(data) : "d"(port));
     return data;
 }
 
 ASMCALL void insl(int port, void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "insl\n"
@@ -59,11 +59,11 @@ ASMCALL void insl(int port, void *addr, int cnt) {
 }
 
 ASMCALL void outb(int port, u8 data) {
-    __asm__ volatile("outb %0, %w1" : : "a"(data), "d"(port));
+    asm volatile("outb %0, %w1" : : "a"(data), "d"(port));
 }
 
 ASMCALL void outsb(int port, const void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "outsb\n"
@@ -73,11 +73,11 @@ ASMCALL void outsb(int port, const void *addr, int cnt) {
 }
 
 ASMCALL void outw(int port, u16 data) {
-    __asm__ volatile("outw %0, %w1" : : "a"(data), "d"(port));
+    asm volatile("outw %0, %w1" : : "a"(data), "d"(port));
 }
 
 ASMCALL void outsw(int port, const void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "outsw\n"
@@ -87,7 +87,7 @@ ASMCALL void outsw(int port, const void *addr, int cnt) {
 }
 
 ASMCALL void outsl(int port, const void *addr, int cnt) {
-    __asm__ volatile(
+    asm volatile(
         "cld\n"
         "repne\n"
         "outsl\n"
@@ -97,54 +97,54 @@ ASMCALL void outsl(int port, const void *addr, int cnt) {
 }
 
 ASMCALL void outl(int port, u32 data) {
-    __asm__ volatile("outl %0, %w1" : : "a"(data), "d"(port));
+    asm volatile("outl %0, %w1" : : "a"(data), "d"(port));
 }
 
 ASMCALL void lcr0(u32 val) {
-    __asm__ volatile("movl %0, %%cr0" : : "r"(val));
+    asm volatile("movl %0, %%cr0" : : "r"(val));
 }
 
 ASMCALL u32 rcr0() {
     u32 val;
-    __asm__ volatile("movl %%cr0, %0" : "=r"(val));
+    asm volatile("movl %%cr0, %0" : "=r"(val));
     return val;
 }
 
 ASMCALL u32 rcr2() {
     u32 val;
-    __asm__ volatile("movl %%cr2, %0" : "=r"(val));
+    asm volatile("movl %%cr2, %0" : "=r"(val));
     return val;
 }
 
 ASMCALL void lcr3(u32 val) {
-    __asm__ volatile("movl %0, %%cr3" : : "r"(val));
+    asm volatile("movl %0, %%cr3" : : "r"(val));
 }
 
 ASMCALL u32 rcr3() {
     u32 val;
-    __asm__ volatile("movl %%cr3, %0" : "=r"(val));
+    asm volatile("movl %%cr3, %0" : "=r"(val));
     return val;
 }
 
 ASMCALL void lcr4(u32 val) {
-    __asm__ volatile("movl %0, %%cr4" : : "r"(val));
+    asm volatile("movl %0, %%cr4" : : "r"(val));
 }
 
 ASMCALL u32 rcr4() {
     u32 cr4;
-    __asm__ volatile("movl %%cr4, %0" : "=r"(cr4));
+    asm volatile("movl %%cr4, %0" : "=r"(cr4));
     return cr4;
 }
 
 ASMCALL void tlbflush() {
-    __asm__ volatile(
+    asm volatile(
         "mov %cr3, %eax\n"
         "mov %eax, %cr3\n");
 }
 
 ASMCALL u32 read_eflags() {
     u32 eflags;
-    __asm__ volatile(
+    asm volatile(
         "pushfl\n"
         "popl %0\n"
         : "=r"(eflags));
@@ -152,7 +152,7 @@ ASMCALL u32 read_eflags() {
 }
 
 ASMCALL void write_eflags(u32 eflags) {
-    __asm__ volatile(
+    asm volatile(
         "pushl %0\n"
         "popfl\n"
         :
@@ -161,13 +161,13 @@ ASMCALL void write_eflags(u32 eflags) {
 
 ASMCALL u32 read_ebp() {
     u32 ebp;
-    __asm__ volatile("movl %%ebp, %0" : "=r"(ebp));
+    asm volatile("movl %%ebp, %0" : "=r"(ebp));
     return ebp;
 }
 
 ASMCALL u32 read_esp() {
     u32 esp;
-    __asm__ volatile("movl %%esp, %0" : "=r"(esp));
+    asm volatile("movl %%esp, %0" : "=r"(esp));
     return esp;
 }
 
@@ -177,7 +177,7 @@ ASMCALL u64 rdtsc() {
 
 ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
     u32 result;
-    __asm__ volatile(
+    asm volatile(
         "lock\n"
         "xchgl %0, %1\n"
         : "+m"(*addr), "=a"(result)
@@ -187,19 +187,19 @@ ASMCALL u32 xchg(volatile u32 *addr, u32 newval) {
 }
 
 ASMCALL void clear_dir_flag() {
-    __asm__ volatile("cld");
+    asm volatile("cld");
 }
 
 ASMCALL void disable_int() {
-    __asm__ volatile("cli");
+    asm volatile("cli");
 }
 
 ASMCALL void enable_int() {
-    __asm__ volatile("sti");
+    asm volatile("sti");
 }
 
 ASMCALL void halt() {
-    __asm__ volatile("hlt");
+    asm volatile("hlt");
 }
 
 ASMCALL void cpuid(u32 id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx) {

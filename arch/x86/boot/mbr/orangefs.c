@@ -11,8 +11,7 @@ static int search_file(char *filename) {
     // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
     // nr_smap_sects个sector map扇区
     int inode_array_start_sect =
-        bootPartStartSector +
-        (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
+        boot_part_lba + (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
     // 读出存储1号inode 的扇区 1号inode是根目录的inode
     readsect((void *)BUF_ADDR, inode_array_start_sect);
     inode root_inode;
@@ -21,7 +20,7 @@ static int search_file(char *filename) {
     // %d\n",root_inode.i_size,root_inode.i_start_sect,root_inode.i_nr_sects);
     for (unsigned int i = 0; i < root_inode.i_nr_blocks * (BLOCK_SIZE / SECT_SIZE); ++i) {
         readsect((void *)BUF_ADDR,
-                 bootPartStartSector + root_inode.i_start_block * (BLOCK_SIZE / SECT_SIZE) + i);
+                 boot_part_lba + root_inode.i_start_block * (BLOCK_SIZE / SECT_SIZE) + i);
         dir_entry *de = (dir_entry *)(BUF_ADDR);
         for (unsigned int j = 0; j < SECTSIZE / DIR_ENTRY_SIZE; ++j) {
             /*             lprintf(de->name);
@@ -38,8 +37,7 @@ static inode get_inode(int inode_id) {
     // 1个boot扇区 1个superblock扇区 nr_imap_sects个inode map扇区
     // nr_smap_sects个sector map扇区
     int inode_array_start_sect =
-        bootPartStartSector +
-        (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
+        boot_part_lba + (1 + 1 + sb.nr_imap_sects + sb.nr_smap_sects) * (BLOCK_SIZE / SECT_SIZE);
     int nr_inode_per_sect = SECTSIZE / INODE_SIZE;
     int inode_sect = inode_array_start_sect + (inode_id - 1) / nr_inode_per_sect;
     int inode_offset_in_sect = (inode_id - 1) % nr_inode_per_sect;
@@ -49,7 +47,7 @@ static inode get_inode(int inode_id) {
 }
 void orangefs_init() {
     // superblock初始化
-    readsect((void *)BUF_ADDR, bootPartStartSector + (BLOCK_SIZE / SECT_SIZE));
+    readsect((void *)BUF_ADDR, boot_part_lba + (BLOCK_SIZE / SECT_SIZE));
     memcpy(&sb, (void *)BUF_ADDR, SUPER_BLOCK_SIZE);
     // lprintf("nr inodes %d nr 1st sect %d  nr_sects %d
     // \n",sb.nr_inodes,sb.n_1st_sect,sb.nr_sects);
@@ -72,7 +70,7 @@ int orangefs_read_file(char *filename,void *dst){
 0?target_inode.i_size/SECTSIZE:target_inode.i_size/SECTSIZE+1;
     //lprintf("isize %d numn sect %d\n",
 target_inode.i_size,target_inode.i_size/SECTSIZE); readsects(dst,
-bootPartStartSector+target_inode.i_start_block*(BLOCK_SIZE/SECT_SIZE),
+boot_part_lba+target_inode.i_start_block*(BLOCK_SIZE/SECT_SIZE),
 num_sect); return TRUE;
 }
 */
@@ -84,7 +82,7 @@ num_sect); return TRUE;
  * @return  TRUE or FALSE
  */
 static int orangefs_read_blocks(u32 block_number, u32 size, void *buf) {
-    return readsects(buf, bootPartStartSector + block_number * (BLOCK_SIZE / SECT_SIZE),
+    return readsects(buf, boot_part_lba + block_number * (BLOCK_SIZE / SECT_SIZE),
                      (BLOCK_SIZE / SECT_SIZE) * size);
 }
 

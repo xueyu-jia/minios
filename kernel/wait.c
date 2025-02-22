@@ -45,7 +45,7 @@ int kern_wait(int* wstatus) {
         if (fa_pcb->task.tree_info.child_p_num == 0) {
             if (wstatus != NULL) *wstatus = 0;
             spinlock_release(&fa_pcb->task.lock);
-            kprintf("no child_process!! error\n");
+            kprintf("error: wait: found no child\n");
             return -1;
         }
 

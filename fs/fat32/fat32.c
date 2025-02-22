@@ -103,7 +103,7 @@ static inline struct fat_info* alloc_fat_info(int cluster_start) {
 }
 
 static inline void free_fat_info(struct fat_info* info) {
-    kern_kfree((u32)info);
+    kern_kfree(info);
 }
 
 // if *bh not NULL, brelse origin blk
@@ -287,13 +287,14 @@ static int fat_entry_offset_by_ino(struct inode* dir, u32 ino) {
 }
 
 static inline u32 fat_ino(struct inode* dir, int entry) {
+    //! FIXME: that would cause unexpected ino for dot and dotdot file
     struct super_block* sb = dir->i_sb;
     int entry_block = sb->sb_blocksize / FAT_ENTRY_SIZE;
     int block = fat32_get_block(dir, (entry / entry_block), 0);
     return block * entry_block + entry % entry_block;
 }
 
-static char* fat_get_data(struct inode* inode, int off, buf_head** bh, int alloc_new) {
+static char* fat_get_data(struct inode* inode, int off, buf_head** bh, bool alloc_new) {
     struct super_block* sb = inode->i_sb;
     int clus_block = fat32_get_block(inode, off / sb->sb_blocksize, alloc_new);
     if (clus_block == -1) { return NULL; }
@@ -301,7 +302,7 @@ static char* fat_get_data(struct inode* inode, int off, buf_head** bh, int alloc
 }
 
 static inline struct fat_dir_slot* fat_get_slot(struct inode* dir, int order, buf_head** bh,
-                                                int alloc_new) {
+                                                bool alloc_new) {
     return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
@@ -489,8 +490,8 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
 
 static int fat_write_shortname(struct inode* dir, struct fat_dir_entry* entry, int order) {
     buf_head* bh = NULL;
-    struct fat_dir_entry* de = (struct fat_dir_entry*)fat_get_slot(dir, order, &bh, 1);
-    if (!de) return -1;
+    struct fat_dir_entry* de = (struct fat_dir_entry*)fat_get_slot(dir, order, &bh, true);
+    if (!de) { return -1; }
     *de = *entry;
     mark_buff_dirty(bh);
     brelse(bh);
@@ -513,7 +514,7 @@ static struct inode* fat_add_entry(struct inode* dir, const char* name, int is_d
     chksum = fat_chksum(shortname);
     for (int slot = nslot; slot > 0; slot--) { // 写入长目录项
         u8 order = slot | ((slot == nslot) ? DIR_LDIR_END : 0);
-        struct fat_dir_slot* ds = fat_get_slot(dir, free_slot_order + (nslot - slot), &bh, 1);
+        struct fat_dir_slot* ds = fat_get_slot(dir, free_slot_order + (nslot - slot), &bh, true);
         ds->attr = ATTR_LNAME;
         ds->order = order;
         offset = (slot - 1) * 13;
@@ -680,13 +681,13 @@ static int fat32_unlink_name(struct inode* dir, struct dentry* dentry) {
     if (ino == FAT_ROOT_INO) { return -1; }
     int pos = fat_entry_offset_by_ino(dir, ino);
     if (pos == -1) { return -1; }
-    ds = fat_get_slot(dir, pos, &bh, 0);
+    ds = fat_get_slot(dir, pos, &bh, false);
     chksum = fat_chksum(((struct fat_dir_entry*)ds)->name);
     do {
         ds->order = DIR_DELETE;
         mark_buff_dirty(bh);
         pos--;
-        ds = fat_get_slot(dir, pos, &bh, 0);
+        ds = fat_get_slot(dir, pos, &bh, false);
     } while (ds->checksum == chksum);
     if (bh) { brelse(bh); }
     return 0;
@@ -702,37 +703,46 @@ int fat32_rmdir(struct inode* dir, struct dentry* dentry) {
 }
 
 int fat32_mkdir(struct inode* dir, struct dentry* dentry, int mode) {
-    // struct tm time;
     struct super_block* sb = dir->i_sb;
     u32 timestamp = current_timestamp;
     char* name = dentry_name(dentry);
     if (fat_badname(name)) { return -1; }
+
     struct inode* inode = fat_add_entry(dir, name, 1, timestamp);
     inode->i_type = I_DIRECTORY;
     inode->i_mode = mode;
     inode->i_op = &fat32_inode_ops;
     inode->i_fop = &fat32_file_ops;
     inode->i_size = 2 * FAT_ENTRY_SIZE;
-    struct fat_dir_entry de;
-    memset(&de, 0, sizeof(struct fat_dir_entry));
-    memcpy(de.name, FAT_DOT, 11);
-    de.attr = ATTR_DIR;
-    de.size = FAT_SB(sb)->cluster_block * sb->sb_blocksize;
-    fat_update_datetime(timestamp, &de.cdate, &de.ctime, &de.ctime_10ms);
-    fat_update_datetime(timestamp, &de.mdate, &de.mtime, NULL);
-    fat_update_datetime(timestamp, &de.adate, NULL, NULL);
-    fat_write_shortname(inode, &de, 0);
-    memcpy(de.name, FAT_DOTDOT, 11);
-    de.attr = ATTR_DIR;
-    de.size = dir->i_size;
-    fat_update_datetime(dir->i_crtime, &de.cdate, &de.ctime, &de.ctime_10ms);
-    fat_update_datetime(dir->i_mtime, &de.mdate, &de.mtime, NULL);
-    fat_update_datetime(dir->i_atime, &de.adate, NULL, NULL);
-    fat_write_shortname(inode, &de, 1);
-    memset(&de, 0, sizeof(struct fat_dir_entry));
-    fat_write_shortname(inode, &de, 2);
+
+    struct fat_dir_entry de = {};
+    {
+        memcpy(de.name, FAT_DOT, 11);
+        de.attr = ATTR_DIR;
+        de.size = FAT_SB(sb)->cluster_block * sb->sb_blocksize;
+        fat_update_datetime(timestamp, &de.cdate, &de.ctime, &de.ctime_10ms);
+        fat_update_datetime(timestamp, &de.mdate, &de.mtime, NULL);
+        fat_update_datetime(timestamp, &de.adate, NULL, NULL);
+        fat_write_shortname(inode, &de, 0);
+    }
+    {
+        memcpy(de.name, FAT_DOTDOT, 11);
+        de.attr = ATTR_DIR;
+        de.size = dir->i_size;
+        fat_update_datetime(dir->i_crtime, &de.cdate, &de.ctime, &de.ctime_10ms);
+        fat_update_datetime(dir->i_mtime, &de.mdate, &de.mtime, NULL);
+        fat_update_datetime(dir->i_atime, &de.adate, NULL, NULL);
+        fat_write_shortname(inode, &de, 1);
+    }
+    {
+        //! FIXME: what the code below do ???
+        memset(&de, 0, sizeof(struct fat_dir_entry));
+        fat_write_shortname(inode, &de, 2);
+    }
+
     dentry->d_inode = inode;
     dentry->d_op = &fat32_dentry_ops;
+
     fat32_sync_inode(inode);
     return 0;
 }
@@ -781,7 +791,7 @@ int fat32_write(struct file_desc* file, unsigned int count, const char* buf) {
 }
 
 int fat32_readdir(struct file_desc* file, unsigned int count, struct dirent* start) {
-    char full_name[256]; // for long dir store real name
+    char full_name[MAX_PATH] = {}; // for long dir store real name
     int entry = 0;
     struct fat_dir_entry* de;
     buf_head* bh = NULL;

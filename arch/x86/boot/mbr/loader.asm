@@ -1,13 +1,11 @@
 ; MEMORY LAYOUT
 ; ===
-; 0xc0300000               kernel start linear address
-; 0x03200000~              buffer for reading kernel elf segment
-; 0x03100000~              kernel elf file
-; 0x03000000~              fat info/data in the current partition
-; 0x00300000               kernel start physical address
+; 0xc0600000               kernel start linear address
+; 0x00600000               kernel start physical address
 ; ---
-; 0x00201000~              page table
-; 0x00200000~0x00201000    page directory
+; 0x00200000~0x00600000    page table
+; 0x001ff000~0x00200000    page directory
+; 0x00100000~0x001ff000    heap for loader
 ; ---
 ; 0x000f0000~              [STABLE] system rom
 ; 0x000e0000~0x000f0000    [STABLE] expansion of system rom

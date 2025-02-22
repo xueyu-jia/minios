@@ -16,7 +16,7 @@ OffsetOfBootBuffer equ OffsetOfBoot + SizeOfSector
 OffsetOfBootMain   equ OffsetOfBPB + SizeOfBPB
 OffsetOfLoader     equ 0x0400
 
-PhyPageDirBase   equ 0x200000 ; base addr of page directory [2M]
-PhyPageTableBase equ 0x201000 ; base addr of page table [2M+4K]
+PhyPageDirBase   equ 0x1ff000 ; base addr of page directory [2M-4K]
+PhyPageTableBase equ 0x200000 ; base addr of page table [2M]
 
 PhyLoaderBase  equ BaseOfLoader << 4

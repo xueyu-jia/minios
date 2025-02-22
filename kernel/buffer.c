@@ -143,8 +143,8 @@ void init_buffer(int num_block) {
     // list_init(&dirty_list);
     for (int i = 0; i < NR_HASH; ++i) { list_init(&buf_hash_table[i]); }
     for (int i = 0; i < num_block; ++i) {
-        bh = (buf_head *)kern_kzalloc(sizeof(buf_head));
-        bh->buffer = (void *)kern_kzalloc(BLOCK_SIZE);
+        bh = kern_kzalloc(sizeof(buf_head));
+        bh->buffer = kern_kzalloc(BLOCK_SIZE);
         bh->b_state = BUFFER_FREE;
         bh->b_size = BLOCK_SIZE;
         spinlock_init(&bh->lock, NULL);

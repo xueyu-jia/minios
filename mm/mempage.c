@@ -2,6 +2,7 @@
 #include <minios/buddy.h>
 #include <minios/memman.h>
 #include <minios/console.h>
+#include <minios/assert.h>
 #include <fs/fs.h>
 #include <list.h>
 
@@ -62,10 +63,13 @@ void pagecache_writeback(address_space_t *mapping) {
 // spinlock_release page from mem pages
 // write back if dirty
 // require _page->pg_mapping lock
-int free_mem_page(memory_page_t *_page) {
-    if (_page->dirty) pagecache_writeback_one(_page);
-    list_remove(&_page->pg_list);
-    return free_pages(ubud, _page, 0);
+int free_mem_page(memory_page_t *page) {
+    assert(page != NULL);
+    assert(atomic_get(&page->count) == 0);
+    if (page->dirty) { pagecache_writeback_one(page); }
+    list_remove(&page->pg_list);
+    buddy_free(bud, page);
+    return 0;
 }
 
 /// @brief 释放page cache中的所有物理页
@@ -75,13 +79,9 @@ int free_mem_page(memory_page_t *_page) {
 // write back dirty pages if any
 // require _page->pg_mapping lock
 void free_mem_pages(address_space_t *mapping) {
-    memory_page_t *_page = NULL;
-    int cnt = 0;
+    assert(mapping != NULL);
     while (!list_empty(&mapping->page_list)) { // 因为释放操作会改变链表，所以不能使用list_for_each
-        _page = list_front(&mapping->page_list, memory_page_t, pg_list);
-        if (atomic_get(&_page->count) > 0) { kprintf("error: free busy page\n"); }
-        cnt++;
-        free_mem_page(_page);
+        memory_page_t *page = list_front(&mapping->page_list, memory_page_t, pg_list);
+        free_mem_page(page);
     }
-    UNUSED(cnt);
 }

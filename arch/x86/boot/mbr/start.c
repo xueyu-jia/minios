@@ -14,6 +14,7 @@
 #include <assert.h>
 #include <ahci.h>
 #include <disk.h>
+#include <multiboot.h>
 
 static void report_system_memory_map(const ards_t *ards_list, size_t total_ards) {
     const size_t arch_hex_width = sizeof(void *) * 2;
@@ -34,7 +35,51 @@ static void report_system_memory_map(const ards_t *ards_list, size_t total_ards)
 }
 
 static void set_current_partition(size_t partition_lba) {
-    bootPartStartSector = partition_lba;
+    boot_part_lba = partition_lba;
+}
+
+static phyaddr_t prepare_multiboot_info() {
+    auto fmi = __fmi_ptr();
+    phyaddr_t mbi_base = 0;
+
+    const size_t rough_mmap_size = fmi->count * sizeof(multiboot_mmap_entry_t);
+    const size_t rough_mbi_size = sizeof(multiboot_boot_info_t) + rough_mmap_size;
+    for (size_t i = 0; i < fmi->count; ++i) {
+        auto range = &fmi->page_ranges[i];
+        const size_t seg_size = range->limit - range->base;
+        if (range->limit <= SZ_1M) { continue; }
+        if (seg_size < rough_mbi_size) { continue; }
+        mbi_base = range->base;
+        range->base = ROUNDUP(range->base + rough_mbi_size, PGSIZE);
+        if (range->base == range->limit) {
+            for (size_t j = i + 1; j < fmi->count; ++j) {
+                fmi->page_ranges[j - 1] = fmi->page_ranges[j];
+            }
+            --fmi->count;
+        }
+        break;
+    }
+    assert(mbi_base != 0 && "no enough memory for multiboot info");
+
+    multiboot_boot_info_t *mbi = u2ptr(mbi_base);
+    lprintf("info: build multiboot boot info at 0x%p~0x%p\n", mbi_base,
+            mbi_base + sizeof(multiboot_boot_info_t));
+    memset(mbi, 0, sizeof(multiboot_boot_info_t));
+
+    //! enable memory map
+    multiboot_mmap_entry_t *mmap = (void *)&mbi[1];
+    lprintf("info: build multiboot mmap at 0x%p~0x%p\n", mmap, mmap + fmi->count);
+    mbi->flags |= BIT(6);
+    mbi->mmap_length = fmi->count * sizeof(multiboot_mmap_entry_t);
+    mbi->mmap_addr = ptr2u(mmap);
+    for (size_t i = 0; i < fmi->count; ++i) {
+        mmap[i].size = sizeof(multiboot_mmap_entry_t) - sizeof(mmap[i].size);
+        mmap[i].base_addr = fmi->page_ranges[i].base;
+        mmap[i].length = fmi->page_ranges[i].limit - fmi->page_ranges[i].base;
+        mmap[i].type = MULTIBOOT_MEMORY_AVAILABLE;
+    }
+
+    return ptr2u(mbi);
 }
 
 NORETURN static void load_kernel(size_t total_memory) {
@@ -79,23 +124,30 @@ NORETURN static void load_kernel(size_t total_memory) {
 
         lprintf("info: kernel loaded\n");
 
+        //! exclude critical physical memory ranges
+        {
+            const phyaddr_t base = PageDirBase;
+            const phyaddr_t limit = base + get_page_table_usage();
+            lprintf("info: exclude physical range 0x%p~0x%p occupied by page table of loader\n",
+                    base, limit);
+            exclude_physical_range(base, limit);
+        }
         {
             const phyaddr_t base = ROUNDDOWN(K_LIN2PHY(min_elf_va), PGSIZE);
             const phyaddr_t limit = ROUNDUP(K_LIN2PHY(max_elf_va) + 1, PGSIZE);
             lprintf("info: exclude physical range 0x%p~0x%p occupied by kernel elf\n", base, limit);
-            for (size_t i = 0; i < __fmi_ptr()->count; ++i) {
-                lprintf("[%02d] 0x%p~0x%p\n", i, __fmi_ptr()->page_ranges[i].base,
-                        __fmi_ptr()->page_ranges[i].limit);
-            }
             exclude_physical_range(base, limit);
-            lprintf("info: after exclusion\n", base, limit);
-            for (size_t i = 0; i < __fmi_ptr()->count; ++i) {
-                lprintf("[%02d] 0x%p~0x%p\n", i, __fmi_ptr()->page_ranges[i].base,
-                        __fmi_ptr()->page_ranges[i].limit);
-            }
         }
 
-        ((void (*)())(eh.e_entry))();
+        const phyaddr_t mb_phy_addr = prepare_multiboot_info();
+
+        lprintf("info: after exclusion and multiboot info setup\n");
+        for (size_t i = 0; i < __fmi_ptr()->count; ++i) {
+            lprintf("[%02d] 0x%p~0x%p\n", i, __fmi_ptr()->page_ranges[i].base,
+                    __fmi_ptr()->page_ranges[i].limit);
+        }
+
+        asm volatile("call *%0" ::"r"(eh.e_entry), "d"(mb_phy_addr));
     } while (0);
 
     abort("fatal: failed to load kernel elf\n");

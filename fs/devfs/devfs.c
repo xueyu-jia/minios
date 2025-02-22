@@ -88,7 +88,7 @@ int unregister_device(int dev) {
         spinlock_acquire(&devices_lock);
         list_remove(&dev_struct->dev_list);
         spinlock_release(&devices_lock);
-        kern_kfree((u32)dev_struct);
+        kern_kfree(dev_struct);
     }
     return 0;
 }

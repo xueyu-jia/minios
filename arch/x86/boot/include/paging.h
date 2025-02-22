@@ -2,9 +2,10 @@
 
 #include <type.h>
 
-#define PageDirBase 0x100000
-#define PageTblBase 0x101000
-#define PhyMallocBase 0x110000
+#define PhyMallocBase SZ_1M
+#define PageDirBase (SZ_2M - SZ_4K)
+#define PageTblBase SZ_2M
+#define PageTblLimit (SZ_2M + SZ_4M)
 
 #define PG_P 1   // 页存在属性位
 #define PG_RWR 0 // R/W 属性位值, 读/执行
@@ -67,4 +68,5 @@
 void map_laddr(phyaddr_t cr3, uintptr_t laddr, phyaddr_t paddr, u32 pte_attr);
 phyaddr_t phy_kmalloc(size_t size);
 
+size_t get_page_table_usage();
 void setup_paging();

@@ -53,6 +53,7 @@ bool ahci_sata_init() {
     }
     lprintf("info: found %d ahci controllers\n", ahci_cnt);
 
+    lprintf("info: map first ahci controller to va 0x%p\n", ahci_info[0].ABAR);
     map_laddr(rcr3(), ahci_info[0].ABAR, ahci_info[0].ABAR, PG_P | PG_USS | PG_RWW);
 
     HBA = u2ptr(ahci_info[0].ABAR);

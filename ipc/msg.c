@@ -90,7 +90,7 @@ int kern_msgsnd(int msqid, const void *msgp, int msgsz, int msgflg) {
         if (!q_list[msqid].used) { return -1; /* EIDRM */ }
     }
 
-    list_item *new_msg_node = (list_item *)kern_kmalloc(sizeof(list_item));
+    list_item *new_msg_node = kern_kmalloc(sizeof(list_item));
     write_msg_node(msqid, new_msg_node, msgsz, msg_ptr);
     insert_head_node(msqid, msg_ptr->type);
 
@@ -219,7 +219,7 @@ int kern_msgctl(int msqid, int cmd, msqid_ds_t *buf) {
             i_head = q_list[msqid].head;
             while (i_head) {
                 list_item *temp_nxt = i_head->nxt.head_nxt;
-                kern_kfree((u32)i_head);
+                kern_kfree(i_head);
                 i_head = temp_nxt;
             }
             q_list[msqid].used = 0;
@@ -267,8 +267,8 @@ void pop_front_msg_node(int msqid, list_item *head) {
     else
         f_pre->nxt.full_list_nxt = f_nxt;
     // 释放target内存
-    kern_kfree((u32)target->msg.buf);
-    kern_kfree((u32)target);
+    kern_kfree(target->msg.buf);
+    kern_kfree(target);
     // 修改队列信息
     q_list[msqid].info.msg_lrpid = kern_getpid();
     q_list[msqid].info.msg_qnum--;
@@ -294,7 +294,7 @@ void write_msg_node(int msqid, list_item *node, int msgsz, const mq_msg_t *msg_p
     q_list[msqid].info.msg_lspid = kern_getpid();
     q_list[msqid].info.msg_stime = kern_getticks();
     node->msg.type = msg_ptr->type;
-    node->msg.buf = (void *)kern_kmalloc(MAX(msgsz, 1)); //<! alloc at least 1 byte for convenience
+    node->msg.buf = kern_kmalloc(MAX(msgsz, 1)); //<! alloc at least 1 byte for convenience
     node->msgsz = msgsz;
     memcpy(node->msg.buf, msg_ptr->data, msgsz);
     return;
@@ -310,7 +310,7 @@ void write_msg_node(int msqid, list_item *node, int msgsz, const mq_msg_t *msg_p
 int newque(int id, key_t key) {
     if (id < 0 || id >= MAX_MSQ_NUM) return -1;
     memset(&q_list[id], 0, sizeof(msg_queue));
-    list_item *ph = (list_item *)kern_kmalloc(sizeof(list_item));
+    list_item *ph = kern_kmalloc(sizeof(list_item));
     memset(ph, 0, sizeof(list_item));
     q_list[id].used = 1;
     q_list[id].head = ph;
@@ -342,14 +342,14 @@ int ipc_findkey(key_t key) {
  */
 list_item *insert_head_node(int msqid, long type_new) {
     // 创建新的空头结点
-    list_item *new_head = (list_item *)kern_kmalloc(sizeof(list_item));
+    list_item *new_head = kern_kmalloc(sizeof(list_item));
     memset(new_head, 0, sizeof(list_item));
     new_head->msg.type = type_new;
     // 检查该类型是否存在
     list_item *i = NULL;
     for (i = q_list[msqid].head; i && i->msg.type <= type_new; i = i->nxt.head_nxt) {
         if (i->msg.type == type_new) {
-            kern_kfree((u32)new_head);
+            kern_kfree(new_head);
             return NULL;
         }
     }

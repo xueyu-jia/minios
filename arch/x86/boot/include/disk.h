@@ -27,7 +27,7 @@
 #define PART_NUM 4
 #define EXT_PART_FALG 0x05
 
-extern u32 bootPartStartSector;
+extern u32 boot_part_lba;
 extern bool found_sata_dev;
 
 // 读一个扇区

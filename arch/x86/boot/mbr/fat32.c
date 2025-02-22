@@ -40,9 +40,10 @@ u32 elf_first;
 static u32 get_next_clus_number(u32 current_clus) {
     u32 sec = current_clus * 4 / SECTSIZE; // 需要乘4是因为每个簇号大小为4字节
     u32 off = current_clus * 4 % SECTSIZE;
-    readsect((void *)BUF_ADDR, bootPartStartSector + elf_fd.fat_start_sec + sec);
+    readsect((void *)BUF_ADDR, boot_part_lba + elf_fd.fat_start_sec + sec);
     return *(u32 *)(BUF_ADDR + off); // 返回下一个簇的簇号
 }
+
 // 将文件名转为大写 .转为"  "
 static void fat32_uppercase_filename(char *src, char *dst) {
     char *p = src;
@@ -72,13 +73,13 @@ static void *read_cluster(void *dst, u32 current_clus) {
     int clus_start_sect = data_clus * bpb.BPB_SecPerClus + elf_fd.data_start_sec;
     // 根据每个簇包含的扇区数量将数据读入目的地址
     // for (int i = 0; i < bpb.BPB_SecPerClus; i++, dst += SECTSIZE)
-    // readsect(dst, bootPartStartSector+clus_start_sect + i);
-    readsects(dst, bootPartStartSector + clus_start_sect, bpb.BPB_SecPerClus);
+    // readsect(dst, boot_part_lba+clus_start_sect + i);
+    readsects(dst, boot_part_lba + clus_start_sect, bpb.BPB_SecPerClus);
     return dst + bpb.BPB_SecPerClus * SECTSIZE;
 }
 
 void fat32_init() {
-    readsect((void *)&bpb, bootPartStartSector);
+    readsect((void *)&bpb, boot_part_lba);
     assert(bpb.BPB_BytsPerSec == SECTSIZE);
     // 计算fat表起始扇区号
     elf_fd.fat_start_sec = bpb.BPB_RsvdSecCnt;
@@ -117,26 +118,7 @@ u32 fat32_find_file(char *filename) {
     }
     return file_clus;
 }
-// 读一个完整的文件，目前loader不需要
-// /*
-//  * @brief   read a file to buf
-//  * @param   filename
-//  * @param   buf
-//  * @return  0 if faile or 1 for success
-// */
-// int fat32_read_file(char *filename,void *buf)
-// {
-// 	fat32_open_file(filename);
-//     u32 file_clus = fat32_find_file(filename);
-//     if (file_clus == 0) return FALSE;
 
-// // 将文件的所有数据从磁盘中读入ELF_ADDR
-// while (file_clus < 0x0FFFFFF8) {
-//     buf = read_cluster(buf, file_clus);
-//     file_clus = get_next_clus_number(file_clus);
-// }
-// return TRUE;
-// }
 /*
  * @brief 得到文件的第i个簇的簇号
  */
@@ -145,6 +127,7 @@ u32 fat32_find_clus_i(u32 first_clus, u32 clus_i) {
     for (u32 i = 0; i < clus_i; ++i) { current_clus = get_next_clus_number(current_clus); }
     return current_clus;
 }
+
 /*
  * @brief 从文件的特定偏移量开始读数据
  * @param offset:在文件中的偏移量
@@ -182,6 +165,7 @@ int fat32_read(u32 offset, u32 lenth, void *buf) {
 
     return true;
 }
+
 /*
  * @brief 通过文件名打开一个文件，维持一个简单的FD
  * @return 0 if faile or 1 for success

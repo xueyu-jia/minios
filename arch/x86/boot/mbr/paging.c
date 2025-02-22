@@ -4,19 +4,28 @@
 #include <regs.h>
 #include <memory.h>
 #include <layout.h>
+#include <assert.h>
 #include <terminal.h>
 
+static phyaddr_t NEXT_PTE_PTR = PageTblBase;
+
 static phyaddr_t alloc_pte() {
-    static phyaddr_t NEXT_PTE_PTR = PageTblBase;
     const phyaddr_t pte_phy_addr = NEXT_PTE_PTR;
+    assert(pte_phy_addr <= PageTblLimit);
     NEXT_PTE_PTR += PGSIZE;
     memset(u2ptr(pte_phy_addr), 0, PGSIZE);
     return pte_phy_addr;
 }
 
+size_t get_page_table_usage() {
+    //! ATTENTION: page dir is tightly follwed by page tables
+    return NEXT_PTE_PTR - PageDirBase;
+}
+
 phyaddr_t phy_kmalloc(size_t size) {
     static phyaddr_t NEXT_PHY_ADDR = PhyMallocBase;
     const phyaddr_t phy_addr = NEXT_PHY_ADDR;
+    assert(phy_addr <= PageDirBase);
     NEXT_PHY_ADDR += size;
     return phy_addr;
 }

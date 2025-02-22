@@ -138,6 +138,7 @@ global	hwint15
 _start:
     mov	    esp, KernelStackTop
 
+    push    edx                 ; multiboot info phy addr from bootloader
     call	cstart
 
     lgdt	[gdt_ptr]

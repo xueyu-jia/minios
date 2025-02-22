@@ -70,7 +70,7 @@ int init_proc_page(u32 pid) { // 页表初始化函数
 
     u32 pde_addr_phy_temp;
 
-    pde_addr_phy_temp = phy_kmalloc_4k(); // 为页目录申请一页	//modified by mingxuan 2021-8-16
+    pde_addr_phy_temp = phy_kmalloc(SZ_4K);
 
     memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0,
            SZ_4K); // add by visual 2016.5.26
@@ -102,16 +102,15 @@ int lin_mapping_phy_nopid(
     u32 pte_addr_phy;
     u32 pde_addr_phy = kernel_pde_addr_phy; // add by visual 2016.5.19
 
-    if (0 == pte_exist(pde_addr_phy,
-                       va)) { // 页表不存在，创建一个，并填进页目录中
-        // pte_addr_phy = (u32)do_kmalloc_4k(); //为页表申请一页
-        pte_addr_phy = (u32)phy_kmalloc_4k(); // 为页表申请一页	//modified by mingxuan 2021-8-16
+    // 页表不存在，创建一个，并填进页目录中
+    if (!pte_exist(pde_addr_phy, va)) {
+        // 为页表申请一页
+        pte_addr_phy = phy_kmalloc(SZ_4K);
+        assert(pte_addr_phy != PHY_NULL);
 
-        memset((void *)K_PHY2LIN(pte_addr_phy), 0,
-               SZ_4K); // add by visual 2016.5.26
+        memset((void *)K_PHY2LIN(pte_addr_phy), 0, SZ_4K);
 
-        if ((pte_addr_phy & 0x3FF) != 0) // add by visual 2016.5.9
-        {
+        if ((pte_addr_phy & 0x3FF) != 0) {
             kprintf("lin_mapping_phy Error:pte_addr_phy");
             return -1;
         }
@@ -129,7 +128,7 @@ int lin_mapping_phy_nopid(
         if (0 == phy_exist(pte_addr_phy,
                            va)) { // 无物理页，申请物理页并修改phy_addr
             if (u2ptr(va) >= K_PHY2LIN(0)) {
-                pa = phy_kmalloc_4k(); // 从内核物理地址申请一页
+                pa = phy_kmalloc(SZ_4K); // 从内核物理地址申请一页
             } else {
                 pa = phy_malloc_4k(); // 从用户物理地址空间申请一页
             }
@@ -250,14 +249,14 @@ void clear_pde(u32 pid, u32 va) {
 // 释放页表，并清除该页表对应的页目录表项
 void free_pagetbl(u32 pid, u32 va) {
     u32 pagetbl_phy_addr = get_pte_phy_addr(get_pde_phy_addr(pid), va);
-    phy_kfree_4k(pagetbl_phy_addr);
+    phy_kfree(pagetbl_phy_addr);
     clear_pde(pid, va);
 }
 
 // 释放页目录表
 void free_pagedir(u32 pid) {
     u32 pagedir_phy_addr = get_pde_phy_addr(pid);
-    phy_kfree_4k(pagedir_phy_addr);
+    phy_kfree(pagedir_phy_addr);
     p_proc_current->task.cr3 = 0;
 }
 

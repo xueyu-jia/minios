@@ -94,14 +94,14 @@ void init_hd() {
 void hd_open(int drive) // modified by mingxuan 2020-10-27
 {
     // kprintf("Read hd information...  ");	//deleted by mingxuan 2021-2-7
-    if (satabuf == NULL) satabuf = (u8 *)kern_kmalloc(BLOCK_SIZE);
+    if (satabuf == NULL) satabuf = kern_kmalloc(BLOCK_SIZE);
     /* Get the number of drives from the BIOS data area */
-    u8 *pNrDrives = (u8 *)(0x475);
+    u8 *pNrDrives = u2ptr(0x475);
     UNUSED(pNrDrives);
 
     if (drive >= SATA_BASE && drive < SATA_LIMIT) // SATA
     {
-        u8 *buf = (u8 *)kern_kmalloc(512);
+        u8 *buf = kern_kmalloc(512);
         u32 port_num = ahci_info[0].satadrv_atport[drive - SATA_BASE];
         identity_SATA(&(HBA->ports[port_num]), buf);
 
@@ -112,7 +112,7 @@ void hd_open(int drive) // modified by mingxuan 2020-10-27
         hd_infos[drive].part[0].base = 0;
         /* Total Nr of User Addressable Sectors */
         hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
-        kern_kfree((u32)buf);
+        kern_kfree(buf);
     } else if (drive < SATA_BASE) {
         hd_identify(drive);
     }
@@ -226,8 +226,8 @@ void hd_service() {
         if (rwinfo) {
             hd_rdwt_real(rwinfo);
             proc = rwinfo->proc;
-            kern_kfree((u32)rwinfo->msg);
-            kern_kfree((u32)rwinfo);
+            kern_kfree(rwinfo->msg);
+            kern_kfree(rwinfo);
             wakeup(&hdque);
         }
 
@@ -241,14 +241,10 @@ static void hd_rdwt_real(hd_rwinfo_t *p) {
 }
 
 void hd_rdwt_sched(hd_messge_t *p) {
-    hd_rwinfo_t *rwinfo = (hd_rwinfo_t *)kern_kmalloc(sizeof(hd_rwinfo_t));
+    hd_rwinfo_t *rwinfo = kern_kmalloc(sizeof(hd_rwinfo_t));
     int size = p->CNT;
     UNUSED(size);
 
-    // buffer = (void*)K_PHY2LIN(sys_kmalloc(size));
-    // buffer = (void*)K_PHY2LIN(do_kmalloc(size));	//modified by mingxuan
-    // 2021-3-25
-    // buffer = (void*)kern_kmalloc(size);	//modified by mingxuan 2021-8-16
     rwinfo->msg = p;
     rwinfo->proc = p_proc_current;
 
@@ -260,8 +256,6 @@ void hd_rdwt_sched(hd_messge_t *p) {
         in_hd_queue(&hdque, rwinfo);
     }
     wait_event(&hdque);
-    // kern_kfree((u32)buffer);
-    // kern_kfree((u32)rwinfo);
 }
 
 void init_hd_queue(hd_queue_t *hdq) {
@@ -374,10 +368,9 @@ static void partition(int device, int style) {
     // added by ran
     struct part_info *logical = hdi->part;
 
-    char *sector_buf = (char *)kern_kmalloc(SECTOR_SIZE);
-    struct part_ent *part_tbl =
-        (struct part_ent *)((char *)sector_buf +
-                            PARTITION_TABLE_OFFSET); // first sector at most 4 item
+    char *sector_buf = kern_kmalloc(SECTOR_SIZE);
+    // first sector at most 4 item
+    struct part_ent *part_tbl = (void *)sector_buf + PARTITION_TABLE_OFFSET;
 
     if (style == P_PRIMARY) {
         read_part_table_sector(drive, 0, sector_buf);
@@ -468,7 +461,7 @@ static void partition(int device, int style) {
 
         // assert(0);
     }
-    kern_kfree((u32)sector_buf);
+    kern_kfree(sector_buf);
 }
 
 /*****************************************************************************
@@ -864,7 +857,7 @@ static int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
 // add by sundong 2023.5.26
 int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
-    hd_messge_t *driver_msg = (hd_messge_t *)kern_kmalloc(sizeof(hd_messge_t));
+    hd_messge_t *driver_msg = kern_kmalloc(sizeof(hd_messge_t));
     driver_msg->type = io_type;
     // driver_msg.DEVICE	= MINOR(dev);
     driver_msg->DEVICE = dev;
@@ -879,7 +872,7 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) 
 
     /// replace the statement above.
     hd_rdwt(driver_msg);
-    // kern_kfree((u32)driver_msg);
+    // kern_kfree(driver_msg);
     return 0;
 }
 
@@ -887,7 +880,7 @@ int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) 
 int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
     // driver_msg will be used in hd_service(another process) why use stack
     // memory??? jiangfeng 20240323 hd_messge_t driver_msg;
-    hd_messge_t *driver_msg = (hd_messge_t *)kern_kmalloc(sizeof(hd_messge_t));
+    hd_messge_t *driver_msg = kern_kmalloc(sizeof(hd_messge_t));
     driver_msg->type = io_type;
     // driver_msg.DEVICE	= MINOR(dev);
     driver_msg->DEVICE = dev;
@@ -898,7 +891,7 @@ int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void 
     driver_msg->BUF = buf;
 
     hd_rdwt_sched(driver_msg);
-    // kern_kfree((u32)driver_msg);
+    // kern_kfree(driver_msg);
 
     return 0;
 }

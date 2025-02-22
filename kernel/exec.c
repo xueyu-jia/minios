@@ -36,7 +36,7 @@ int kern_execve(const char* path, char* const* argv, char* const* envp) {
         goto permission_denied;
     }
 
-    path_cloned = (char*)kern_kmalloc(strlen(path) + 1);
+    path_cloned = kern_kmalloc(strlen(path) + 1);
     strcpy(path_cloned, path);
     const char* proc_name = extract_program_name(path_cloned);
 
@@ -89,12 +89,12 @@ permission_denied:
     goto close_on_error;
 
 close_on_error:
-    if (path_cloned != NULL) { kern_kfree((u32)path_cloned); }
+    if (path_cloned != NULL) { kern_kfree(path_cloned); }
     kern_vfs_close(fd);
     return -1;
 
 fatal_error:
-    kern_kfree((u32)path_cloned);
+    kern_kfree(path_cloned);
     do_exit(-1);
     //! can't reach
     return -1;
@@ -121,7 +121,7 @@ static int exec_replace_argv_and_envp(const char* path, char* const* argv, char*
     if (argc > MAXARG || space > SZ_4K) goto close_on_error;
 
     // 使用临时分配的页保存新进程的参数，因为要复制的参数有可能就位于原进程的参数区
-    char* tmp_buf = (char*)kern_kmalloc_4k();
+    char* tmp_buf = kern_kmalloc(SZ_4K);
     char** args_base_in_tmp = (char**)(tmp_buf + 12);
     char** envs_base_in_tmp = args_base_in_tmp + argc + 1;
     char* args_raw_base_in_tmp = ((char*)(tmp_buf + 12)) + SZ_4 * (count + 2);
@@ -147,7 +147,7 @@ static int exec_replace_argv_and_envp(const char* path, char* const* argv, char*
 
     // 将暂存区的数据拷贝到进程新的内存
     memcpy((void*)ArgLinBase, tmp_buf, space);
-    kern_kfree_4k((u32)tmp_buf);
+    kern_kfree(tmp_buf);
     return 0;
 
 close_on_error:
@@ -155,12 +155,11 @@ close_on_error:
 }
 
 static void* exec_read_and_load(int fd) {
-    elf32_hdr_t* elf_header = (elf32_hdr_t*)kern_kmalloc(sizeof(elf32_hdr_t));
+    elf32_hdr_t* elf_header = kern_kmalloc(sizeof(elf32_hdr_t));
     assert(elf_header != NULL);
     elf_read_header(fd, elf_header, 0);
 
-    elf32_phdr_t* elf_proghs =
-        (elf32_phdr_t*)kern_kmalloc(sizeof(elf32_phdr_t) * elf_header->e_phnum);
+    elf32_phdr_t* elf_proghs = kern_kmalloc(sizeof(elf32_phdr_t) * elf_header->e_phnum);
     assert(elf_proghs != NULL);
 
     for (int i = 0; i < elf_header->e_phnum; ++i) {
@@ -173,8 +172,8 @@ static void* exec_read_and_load(int fd) {
     void* entry_point = (void*)elf_header->e_entry;
     int resp = exec_load(fd, elf_header, elf_proghs);
 
-    kern_kfree((u32)elf_header);
-    kern_kfree((u32)elf_proghs);
+    kern_kfree(elf_header);
+    kern_kfree(elf_proghs);
 
     return resp == 0 ? entry_point : NULL;
 }

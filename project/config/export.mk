@@ -12,7 +12,7 @@ KERNEL_SCOPE_ENTRIES := minios klib uapi driver fs
 USER_SCOPE_ENTRIES := ulib
 
 #! core modules to be included into the kernel compilation
-CORE_MINIOS_MODULES := kernel ipc
+CORE_MINIOS_MODULES := kernel mm ipc
 
 #! all modules to be included into the kernel compilation
 MINIOS_MODULES := arch/$(ARCH) $(CORE_MINIOS_MODULES) $(KERNEL_SCOPE_ENTRIES)

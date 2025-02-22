@@ -1,6 +1,7 @@
 #include <minios/slab.h>
 #include <minios/buddy.h>
 #include <minios/memman.h>
+#include <minios/assert.h>
 #include <minios/layout.h>
 
 #define LEFTSHIFT(n) (1 << (n))
@@ -16,20 +17,30 @@ static u32 bitmap_check_avail(kmem_slab_t *slab);
 static void *slab_alloc_object(kmem_slab_t *slab);
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache);
 static void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder);
-static int slabCheckempty(kmem_slab_t *slab);
-static int slabCheckfull(kmem_slab_t *slab);
-static void deleteSlabfromOld(kmem_slab_t *slab);
+static int slab_check_empty(kmem_slab_t *slab);
+static int slab_check_full(kmem_slab_t *slab);
+static void delete_slab_from_old(kmem_slab_t *slab);
 static void *kmem_cache_alloc_obj(kmem_cache_t *cache);
-static kmem_cache_t *selectCache(int size);
-static int freeObjectToSlab(kmem_slab_t *slab, u32 obj);
-static void moveSlab(kmem_slab_t *slab);
-static int get_index(int objsize);
+static kmem_cache_t *select_cache(int size);
+static bool free_object_to_slab(kmem_slab_t *slab, u32 obj);
+static void move_slab(kmem_slab_t *slab);
+
+static int get_index(int objsize) {
+    int index = 0;
+    int temp = (objsize - 1) >> MIN_BUFF_ORDER;
+    while (temp) {
+        index++;
+        temp >>= 1;
+    }
+    return index;
+}
 
 void init_cache() {
     unsigned int order;
     char name[CACHE_NAME_LEN] = "Buffer_";
 
     for (order = MIN_BUFF_ORDER; order <= MAX_BUFF_ORDER; ++order) {
+        //! TODO: replace with sprintf
         int index = 7, temp = order;
         // 计算temp的位数
         int digits = 1;
@@ -51,16 +62,19 @@ void init_cache() {
     }
 }
 
-void *kmalloc(u32 size) {
-    void *buff = NULL;
-    kmem_cache_t *cache = selectCache(size);
-    buff = kmem_cache_alloc_obj(cache);
-    return (void *)K_LIN2PHY(buff);
+phyaddr_t slab_alloc(size_t size) {
+    kmem_cache_t *cache = select_cache(size);
+    if (cache == NULL) { return PHY_NULL; }
+    void *ptr = kmem_cache_alloc_obj(cache);
+    if (ptr == NULL) { return PHY_NULL; }
+    return K_LIN2PHY(ptr);
 }
 
-int kfree(u32 object) {
+void slab_free(phyaddr_t addr) {
+    if (addr == PHY_NULL) { return; }
+
     kmem_slab_t *slab = NULL;
-    memory_page_t *page = pfn_to_page(phy_to_pfn(object));
+    memory_page_t *page = pfn_to_page(phy_to_pfn(addr));
     int objsize = page->cache->objsize; // 得到对象的大小
 
     int flag = 0;
@@ -68,15 +82,15 @@ int kfree(u32 object) {
 
     int order = get_index(objsize);
     kmem_cache_t *cache = &kmem_caches[order];
-    object = ptr2u(K_PHY2LIN(object));
+    addr = ptr2u(K_PHY2LIN(addr));
     while (!flag) { // 对象所在的链表可能还没有添加到新的链表，循环查找
         for (int i = PARTIAL; i <= FULL && !flag; ++i) { // 依次查找partial链和full链
             spinlock_acquire(&(cache->list[i].lock));    // 先对每一个链上锁
             kmem_slab_t *temp = cache->list[i].head;
             while (temp) {
-                if ((object >= (u32)temp) && (object < (u32)temp + SLAB_BLOCK_SIZE)) {
+                if ((addr >= (u32)temp) && (addr < (u32)temp + SLAB_BLOCK_SIZE)) {
                     slab = temp;
-                    move = freeObjectToSlab(temp, object);
+                    move = free_object_to_slab(temp, addr);
                     flag = 1; // 找到
                     break;
                 }
@@ -85,30 +99,21 @@ int kfree(u32 object) {
             spinlock_release(&(cache->list[i].lock)); // 释放锁
         }
     }
-
-    if (move) { moveSlab(slab); }
-    return 0;
+    if (move) { move_slab(slab); }
 }
 
-/*
-        检查bitmap返回第一个检查到的空闲object
-
-        传入参数：
-                slab ： slab结构指针。从指针指向的slab所管理的page中分配对象
-
-        返回值：第一个空闲对象的下标
-*/
+/*!
+ * \brief 检查 bitmap 返回第一个检查到的空闲 object
+ */
 static u32 bitmap_check_avail(kmem_slab_t *slab) {
     u32 obj_index = 0;
     bitmap_entry_t *bitmap = slab->bitmap; // 找到位图起始地址
     kmem_cache_t *cache = slab->cache;
-    for (u32 i = 0; i < cache->bitmap_length; i++) // 遍历位图的每一个块
-    {
-        if (bitmap[i] != BITMAP_FULL) // 当前块没有被完全分配
-        {
+    for (u32 i = 0; i < cache->bitmap_length; ++i) {
+        // 当前块没有被完全分配
+        if (bitmap[i] != BITMAP_FULL) {
             u32 j = 0; // j 是空闲对象在位图块中的相对地址
             while (bitmap[i] & (1 << j)) { ++j; }
-
             obj_index = i * BITMAP_ENTRY_BITS + j; // 计算出空闲对象的次序
             break;
         }
@@ -129,16 +134,34 @@ static void *slab_alloc_object(kmem_slab_t *slab) {
     return obj;                                         // 返回对象地址
 }
 
+static memory_page_t *slab_alloc_slab_page() {
+    memory_page_t *page = buddy_alloc(bud, 0);
+    assert(page != NULL);
+    page->state = PAGESTATE_SLAB;
+    return page;
+}
+
+static void slab_free_slab_page(kmem_slab_t *slab) {
+    const phyaddr_t pa = K_LIN2PHY(slab);
+    assert(pa % PGSIZE == 0);
+    const int pfn = phy_to_pfn(pa);
+    assert(pfn >= 0 && pfn < (ssize_t)nr_mmap_pages);
+    memory_page_t *page = pfn_to_page(pfn);
+    assert(page->state == PAGESTATE_SLAB);
+    page->state = PAGESTATE_ALLOCATED;
+    buddy_free(bud, page);
+}
+
 /**
- * @brief 	给定cache分配新的slab
- * @param 	cache:某个cache的指针
- * @retval 	新创建的slab的指针
- * @details	给cache创建新的page。在page中初始化slab、位图、对象。
+ * @brief 	给定 cache 分配新的 slab
+ * @param 	cache 某个 cache 的指针
+ * @retval 	新创建的 slab 的指针
+ * @details	给 cache 创建新的 page，在 page 中初始化 slab、位图、对象
  */
 kmem_slab_t *kmem_cache_new_slab(kmem_cache_t *cache) {
     kmem_slab_t *slab;
 
-    memory_page_t *page = alloc_pages(kbud, 0);
+    memory_page_t *page = slab_alloc_slab_page();
     page->cache = cache;
 
     slab = (kmem_slab_t *)K_PHY2LIN(pfn_to_phy(page_to_pfn(page)));
@@ -210,7 +233,7 @@ static void kmem_cache_init(kmem_cache_t *cache, const char *name, u32 objorder)
                 0：不是empty
                 1：是empty
 */
-static int slabCheckempty(kmem_slab_t *slab) {
+static int slab_check_empty(kmem_slab_t *slab) {
     if (slab->used_obj == 0) { return 1; }
     return 0;
 }
@@ -224,7 +247,7 @@ static int slabCheckempty(kmem_slab_t *slab) {
                 0：不是full
                 1：是full
 */
-static int slabCheckfull(kmem_slab_t *slab) {
+static int slab_check_full(kmem_slab_t *slab) {
     if (slab->used_obj == slab->cache->obj_per_slab) return 1;
     return 0;
 }
@@ -236,7 +259,7 @@ static int slabCheckfull(kmem_slab_t *slab) {
                 slab ： 要删除的slab的指针
 
 */
-static void deleteSlabfromOld(kmem_slab_t *slab) {
+static void delete_slab_from_old(kmem_slab_t *slab) {
     kmem_cache_t *cache = slab->cache;
     slab_type_t type = slab->type;
     kmem_slab_t *cur, *prev;
@@ -259,96 +282,79 @@ static void deleteSlabfromOld(kmem_slab_t *slab) {
     cache->slab_count[type]--;
 }
 
-/*
-        从cache分配一个对象，返回对象的地址。分配后要对slab的类型进行判断，按照规则将slab从某个链中
-        移除，并且插入到新的链中。
-
-        传入参数：
-                cache ： 指向cache的指针，从这个指针指向的cache中分配对象
-
-        输出：
-                对象地址
-*/
+/*!
+ * \brief alloc object from slab cache
+ *
+ * \note 分配后要对 slab 的类型进行判断，按照规则将 slab 从某个链中移除，并且插入到新的链中
+ */
 static void *kmem_cache_alloc_obj(kmem_cache_t *cache) {
     void *obj = NULL;
-    int move = 0;
-    int flag = 0;
-    kmem_slab_t *slab;
-    // 首先从partial类型的slab分配
-    spinlock_acquire(&(cache->list[PARTIAL].lock)); // 先加锁，再判断
-    if (cache->slab_count[PARTIAL] > 0) {
-        slab = cache->list[PARTIAL].head;
-        obj = slab_alloc_object(slab); // 分配一个对象
-        flag = 1;                      // 表示分配对象成功
-        if (slabCheckfull(slab)) { // 判断此时page类型，page所有对象是否全部被分配
-            deleteSlabfromOld(slab); // 将page从原来的链中删除
-            slab->type = FULL;       // 修改当前的slab的类型
-            move = 1;                // 表示之后要将slab插入新的链表中
-        }
-        spinlock_release(&(cache->list[PARTIAL].lock)); // 分配成功，释放锁
-    } else {
-        spinlock_release(&(cache->list[PARTIAL].lock)); // 没有 PARTIAL 链表，释放锁
-    }
+    kmem_slab_t *slab = NULL;
 
-    // 没有partial类型的slab，就从empty类型的slab分配
-    if (!flag) {
+    bool should_move = false;
+
+    do {
+        bool done = false;
+
+        spinlock_acquire(&(cache->list[PARTIAL].lock));
+        if (cache->slab_count[PARTIAL] > 0) {
+            slab = cache->list[PARTIAL].head;
+            obj = slab_alloc_object(slab);
+            assert(obj != NULL);
+            done = true;
+            if (slab_check_full(slab)) {
+                delete_slab_from_old(slab);
+                slab->type = FULL;
+                should_move = true;
+            }
+        }
+        spinlock_release(&(cache->list[PARTIAL].lock));
+
+        if (done) { break; }
+
         spinlock_acquire(&(cache->list[EMPTY].lock));
         if (cache->slab_count[EMPTY] > 0) {
             slab = cache->list[EMPTY].head;
             obj = slab_alloc_object(slab);
-            deleteSlabfromOld(slab);
+            assert(obj != NULL);
+            done = true;
+            delete_slab_from_old(slab);
             slab->type = PARTIAL;
-            move = 1;
-            flag = 1;
-            spinlock_release(&(cache->list[EMPTY].lock));
-        } else {
-            spinlock_release(&(cache->list[EMPTY].lock));
+            should_move = true;
         }
-    }
+        spinlock_release(&(cache->list[EMPTY].lock));
 
-    // 两种类型都没有
-    if (!flag) {
-        slab = kmem_cache_new_slab(cache); // 分配一个新的page，初始化slab
-        obj = slab_alloc_object(slab);     // 分配对象
-        slab->type = PARTIAL;              // 修改类型
-        move = 1;                          // 移动
-    }
+        if (done) { break; }
 
-    if (move) {
-        moveSlab(slab); // 将slab移动到对应的类型链表上
-    }
+        slab = kmem_cache_new_slab(cache);
+        assert(slab != NULL);
+        obj = slab_alloc_object(slab);
+        assert(obj != NULL);
+        slab->type = PARTIAL;
+        should_move = true;
+    } while (0);
+
+    if (should_move) { move_slab(slab); }
 
     return obj;
 }
 
-/*
-        根据要分配的对象大小，选择从哪个cache分配对象
-
-        传入参数：
-                size：要分配的对象大小
-
-        输出：
-                cache的指针
-*/
-static kmem_cache_t *selectCache(int size) {
+/*!
+ * \brief 根据要分配的对象大小，选择从哪个 cache 分配对象
+ */
+static kmem_cache_t *select_cache(int size) {
     int index = get_index(size);
     return &(kmem_caches[index]);
 }
 
-/*
-        将一个对象释放到它所在的page中。同时判断释放后的slab类型，对满足规则的slab要从原来链表中
-        删除，并且修改slab类型为它现在的类型
-
-        输入参数：
-                slab : 要释放的对象所在的slab指针
-                obj  ：要释放的对象的地址
-        返回值：
-                0 ：表示slab没有从当前链表中删除
-                1 ：表示slab从当前链表中被删除
-
-*/
-
-static int freeObjectToSlab(kmem_slab_t *slab, u32 obj) {
+/*!
+ * \brief 将一个对象释放到它所在的 page 中
+ * \return slab 是否从当前链表删除
+ *
+ * \note 同时判断释放后的 slab 类型，对满足规则的 slab 要从原来
+ * 链表中删除，并且修改 slab 类型为它现在的类型
+ */
+static bool free_object_to_slab(kmem_slab_t *slab, u32 obj) {
     u32 obj_index;                  // 要释放的对象在slab中的次序
     u32 start_addr = slab->objects; // 对象在slab中的起始地址
     obj_index = (obj - start_addr) / (slab->cache->objsize);
@@ -356,68 +362,38 @@ static int freeObjectToSlab(kmem_slab_t *slab, u32 obj) {
     bitmap_set_free(slab->bitmap, obj_index);
     slab->used_obj--;
 
-    if (slab->type == PARTIAL) {    // slab 释放之前是 PARTIAL 类型
-        if (slabCheckempty(slab)) { // 释放后是 EMPTY 类型
-            deleteSlabfromOld(slab);
+    if (slab->type == PARTIAL) {      // slab 释放之前是 PARTIAL 类型
+        if (slab_check_empty(slab)) { // 释放后是 EMPTY 类型
+            delete_slab_from_old(slab);
             slab->type = EMPTY;
-            return 1;
+            return true;
         }
     } else if (slab->type == FULL) { // slab 释放之前是 FULL 类型
         // 将slab从原来链中移除，移动到新的slab链中
-        deleteSlabfromOld(slab);
+        delete_slab_from_old(slab);
         slab->type = PARTIAL;
-        return 1;
+        return true;
     }
 
-    return 0;
+    return false;
 }
 
-/*
-        将slab插入到 slab->type 类型的链表上
-
-        输入：
-                slab ：要插入的slab指针
-*/
-static void moveSlab(kmem_slab_t *slab) {
+/*!
+ * \brief 将 slab 插入到对应类型的链表上
+ */
+static void move_slab(kmem_slab_t *slab) {
     kmem_cache_t *cache = slab->cache;
     slab_type_t type = slab->type;
 
-    // empty链上的page个数不能超过最大值，多的需要被释放
-    if (type == EMPTY) {
-        if (slab->cache->slab_count[EMPTY] >= MAX_EMPTY) {
-            phy_kfree_4k(K_LIN2PHY(slab));
-            return;
-        }
+    // empty 链上的 page 个数不能超过最大值，多的需要被释放
+    if (type == EMPTY && slab->cache->slab_count[EMPTY] >= MAX_EMPTY) {
+        slab_free_slab_page(slab);
+        return;
     }
 
-    spinlock_acquire(&(cache->list[type].lock)); // 对要移动的链上锁
-    // 头插法
+    spinlock_acquire(&cache->list[type].lock);
     slab->next = cache->list[type].head;
     cache->list[type].head = slab;
-
-    cache->slab_count[type]++;
-    spinlock_release(&(cache->list[type].lock));
-}
-
-/*
-        由对象的大小得到要操作的cache的下标
-
-        传入参数：
-                objsize ：对象的大小
-
-        输出：
-                kmem_caches数组的下标
-
-
-*/
-static int get_index(int objsize) {
-    int index = 0;
-    int temp = (objsize - 1) >> MIN_BUFF_ORDER;
-    // objsize-1 是为了8、16、32、64...这些大小的对象找到对应的index
-    // >>MIN_BUFF_ORDER 是为了以 0 为起始
-    while (temp) {
-        index++;
-        temp >>= 1;
-    }
-    return index;
+    ++cache->slab_count[type];
+    spinlock_release(&cache->list[type].lock);
 }

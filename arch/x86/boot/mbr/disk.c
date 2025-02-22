@@ -5,7 +5,7 @@
 #include <global.h>
 #include <x86.h>
 
-u32 bootPartStartSector;
+u32 boot_part_lba;
 bool found_sata_dev = false;
 
 static void ide_waitdisk() {

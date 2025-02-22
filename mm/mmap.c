@@ -125,7 +125,7 @@ int kern_mmap(process_t *p_proc, struct file_desc *file, u32 addr, u32 len, u32 
     // 为简化流程，mmap这里没有实现vma的merge
     // 对于mmap,
     // merge操作不是必要的，但是对于某些对已有vma的操作，如mprotect必须实现merge
-    vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+    vma = kern_kmalloc(sizeof(struct vmem_area));
     vma->start = start_addr;
     vma->end = start_addr + len;
     vma->pgoff = pgoff;
@@ -148,7 +148,7 @@ fail_lock_out:
 
 static void split_vma(memmap_t *mmap, struct vmem_area *vma, u32 addr, bool split_before) {
     UNUSED(mmap);
-    struct vmem_area *new_vma = (struct vmem_area *)kern_kmalloc(sizeof(struct vmem_area));
+    struct vmem_area *new_vma = kern_kmalloc(sizeof(struct vmem_area));
     *new_vma = *vma;
     list_init(&new_vma->vma_list);
     if (new_vma->file) { fget(new_vma->file); }
