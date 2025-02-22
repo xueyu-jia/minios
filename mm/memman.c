@@ -85,7 +85,9 @@ void memory_init() {
             const phyaddr_t limit = ent->base_addr + ent->length;
             if (limit > SZ_1M && ent->length > mm_mmap_size) {
                 mem_map = K_PHY2LIN(ent->base_addr);
+                const phyaddr_t old_addr = ent->base_addr;
                 ent->base_addr = ROUNDUP(ent->base_addr + mm_mmap_size, PGSIZE);
+                ent->length -= ent->base_addr - old_addr;
                 break;
             }
             ent = (void *)ent + ent->size + sizeof(ent->size);

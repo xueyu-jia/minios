@@ -134,8 +134,10 @@ void buddy_init(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi) {
     while (ent < mmap_limit) {
         const phyaddr_t base = MAX(pa_lo, (phyaddr_t)ent->base_addr);
         const phyaddr_t limit = MIN(pa_hi, (phyaddr_t)(ent->base_addr + ent->length));
-        if (base >= limit) { continue; }
-        buddy_join_blk(bud, base, limit, true);
+        do {
+            if (base >= limit) { break; }
+            buddy_join_blk(bud, base, limit, true);
+        } while (0);
         ent = (void *)ent + ent->size + sizeof(ent->size);
     }
 }
