@@ -49,19 +49,22 @@ int kern_fork() {
     // disable_int();
     ch->task.stat = READY;
     spinlock_release(&fa->task.lock);
+
+    disable_int_begin();
     rq_insert(ch);
-    // enable_int();
+    disable_int_end();
+
     return ch->task.pid;
 
 // handle error
 alloc_pcb_failed:
     spinlock_release(&fa->task.lock);
-    kprintf("fork: no availabel pcb\n");
+    kprintf("error: fork: no availabel pcb\n");
     return -1;
 
 init_page_failed:
     spinlock_release(&fa->task.lock);
-    kprintf("fork: failed to init pages\n");
+    kprintf("error: fork: failed to init pages\n");
     return -1;
 }
 

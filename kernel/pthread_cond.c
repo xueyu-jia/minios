@@ -1,5 +1,6 @@
 #include <minios/pthread.h>
 #include <minios/sched.h>
+#include <minios/interrupt.h>
 #include <minios/clock.h>
 #include <minios/proc.h>
 #include <limits.h>
@@ -9,7 +10,9 @@ static int suspend_with_cancellation(process_t* self, int timeout) {
     while (ticks - ticks0 < timeout) {
         if (self->task.suspended == READY) {
             self->task.stat = READY;
+            disable_int_begin();
             rq_insert(self);
+            disable_int_end();
             return 0;
         }
         wait_event(&ticks);

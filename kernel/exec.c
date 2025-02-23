@@ -44,7 +44,7 @@ int kern_execve(const char* path, char* const* argv, char* const* envp) {
     err_code = exec_replace_argv_and_envp(proc_name, argv, envp);
 
     if (0 != err_code) {
-        kprintf("exec:replace argv and envp failed");
+        kprintf("error: execve: failed to replace argv and envp\n");
         goto close_on_error;
     }
 
@@ -60,7 +60,7 @@ int kern_execve(const char* path, char* const* argv, char* const* envp) {
     void* entry_point = exec_read_and_load(fd); // 读取并加载可执行文件的内容，并关闭文件
     kern_vfs_close(fd);
     if (entry_point == NULL) {
-        kprintf("exec_load error!\n");
+        kprintf("error: execve: failed to load elf: %s\n", path);
         goto fatal_error;
     }
 
@@ -73,19 +73,17 @@ int kern_execve(const char* path, char* const* argv, char* const* envp) {
         p_proc_current->task.memmap.stack_lin_base - p_proc_current->task.memmap.stack_lin_limit,
         PROT_READ | PROT_WRITE, MAP_PRIVATE, -1, 0);
     if (-1 == err_code) {
-        kprintf("kern_mmap_safe in exec error!\n");
+        kprintf("error: execve: failed to setup stack\n");
         goto fatal_error;
     }
     return 0;
 
 open_file_failed:
-    kprintf(path);
-    kprintf(":sys_exec open error!\n");
+    kprintf("error: execve: failed to open file: %s\n", path);
     return -1;
 
 permission_denied:
-    kprintf(path);
-    kprintf(":sys_exec permission denied!\n");
+    kprintf("error: execve: permission denied: %s\n", path);
     goto close_on_error;
 
 close_on_error:

@@ -33,13 +33,8 @@ void kern_exit(int status) {
     assert(exit_pcb->task.tree_info.ppid >= 0 && exit_pcb->task.tree_info.ppid < NR_PCBS);
     assert(fa_pcb->task.stat == READY || fa_pcb->task.stat == SLEEPING);
 
-    // 处理已退出的子进程 todo 需要修改数据结构tree_info_t，增加KILLED机制
-    // exit_handle_child_killed_proc(exit_pcb->task.pid);
-
     // 释放进程的所有页地址空间
     memmap_clear(exit_pcb);
-    free_all_pagetbl(exit_pcb->task.pid);
-    free_pagedir(exit_pcb->task.pid);
 
     //! NOTE: disable int to reduce op complexity
     if (fa_pcb->task.pid == NR_RECY_PROC) {
@@ -51,26 +46,31 @@ void kern_exit(int status) {
         exit_handle_child_thread(exit_pcb->task.pid, true);
         spinlock_lock_or_yield(&recy_pcb->task.lock);
         if (transfer_child_proc(exit_pcb->task.pid, NR_RECY_PROC) != 0) {
-            disable_int_begin();
             recy_pcb->task.stat = READY;
+            disable_int_begin();
             rq_insert(recy_pcb);
             disable_int_end();
         }
         spinlock_release(&recy_pcb->task.lock);
     }
+
     disable_int_begin();
     exit_pcb->task.stat = ZOMBY;
     exit_pcb->task.exit_status = status;
     rq_remove(exit_pcb);
-    disable_int_end();
-    // assert(exit_pcb->task.lock);
-    // assert(fa_pcb->task.lock);
-
     spinlock_release(&exit_pcb->task.lock);
     spinlock_release(&fa_pcb->task.lock);
     wakeup(fa_pcb);
+    //! ATTENTION: page table must release at the last sched of this proc, that means the proc
+    //! should never sched again as long as the page table is released
+    free_all_pagetbl(exit_pcb->task.pid);
+    free_pagedir(exit_pcb->task.pid);
+    disable_int_end();
+
+    //! NOTE: we don't care whether the following code can be executed since a clock interrupt will
+    //! also perform the sched
+
     sched_yield();
-    return;
 }
 
 /**
@@ -123,15 +123,13 @@ static void exit_file(process_t* p_proc) {
 
 static void exit_handle_child_thread(u32 pid, bool lock_recy) {
     UNUSED(lock_recy);
-
     //! NOTE: fixed, now recursive delete
     process_t* pcb = (process_t*)pid2proc(pid);
-    process_t* recy_pcb = (process_t*)pid2proc(NR_RECY_PROC);
-    UNUSED(recy_pcb);
-
     for (int i = 0; i < pcb->task.tree_info.child_t_num; ++i) {
         process_t* ch = (process_t*)pid2proc(pcb->task.tree_info.child_thread[i]);
+        disable_int_begin();
         rq_remove(ch);
+        disable_int_end();
         ch->task.stat = ZOMBY;
         free_pcb(ch);
     }

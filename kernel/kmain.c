@@ -8,6 +8,7 @@
 #include <minios/dev.h>
 #include <minios/hd.h>
 #include <minios/keyboard.h>
+#include <minios/interrupt.h>
 #include <minios/kstate.h>
 #include <minios/layout.h>
 #include <minios/mmap.h>
@@ -36,13 +37,17 @@ static bool init_proc() {
     for (int i = 0; i < NR_TASKS; ++i) {
         int pid = kthread_create(task_table[i].name, (void *)task_table[i].initial_eip,
                                  task_table[i].rt, task_table[i].rpl, task_table[i].priority_nice);
+        disable_int_begin();
         rq_insert(&proc_table[pid]);
+        disable_int_end();
     }
 
     extern void initial();
     int initial_pid = kthread_create("initial", initial, false, RPL_TASK, 0);
     assert(initial_pid == PID_INIT && "unexpected pid for initial process");
+    disable_int_begin();
     rq_insert(&proc_table[initial_pid]);
+    disable_int_end();
 
     process_t *init = &proc_table[PID_INIT];
     init->task.tree_info.type = TYPE_PROCESS;         // 当前是进程还是线程

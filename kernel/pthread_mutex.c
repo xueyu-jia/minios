@@ -2,6 +2,7 @@
 #include <minios/proc.h>
 #include <minios/sched.h>
 #include <minios/spinlock.h>
+#include <minios/interrupt.h>
 #include <stdbool.h>
 
 // 挂起等待条件满足后被唤醒
@@ -9,7 +10,9 @@ int mutex_suspend_with_cancellation(process_t* self, pthread_mutex_t* mutex) {
     while (true) {
         if (self->task.suspended == READY) {
             self->task.stat = READY;
+            disable_int_begin();
             rq_insert(self);
+            disable_int_end();
             mutex->owner = self->task.tid;
             return 0;
         }
@@ -53,7 +56,9 @@ int kern_pthread_mutex_lock(pthread_mutex_t* mutex) {
     // 该线程挂起,等待唤醒
     p_proc_current->task.suspended = SLEEPING;
     p_proc_current->task.stat = SLEEPING;
+    disable_int_begin();
     rq_remove(p_proc_current);
+    disable_int_end();
 
     // spinlock_release(mutex);
     spinlock_release(&mutex->lock);
@@ -98,7 +103,9 @@ int kern_pthread_mutex_unlock(pthread_mutex_t* mutex) {
                 //! it's assumed to be ready soon later
                 //! NOTE: for instance, use wakeup here, but there's still execution order issues to
                 //! be solved
+                disable_int_begin();
                 rq_insert(&proc_table[i]);
+                disable_int_end();
             }
         }
     }

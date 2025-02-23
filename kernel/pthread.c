@@ -171,7 +171,10 @@ int kern_pthread_create_internal(pthread_t *tid, const pthread_attr_t *attr,
     ch->task.tid = fa->task.tree_info.child_t_num;
 
     ch->task.stat = READY;
+
+    disable_int_begin();
     rq_insert(ch);
+    disable_int_end();
 
     spinlock_release(&ch->task.lock);
     spinlock_release(&fa->task.lock);
@@ -192,10 +195,12 @@ void kern_pthread_exit(void *retval) {
         wakeup(fa);
     }
 
-    p_proc_current->task.retval = retval;
+    disable_int_begin();
     p_proc_current->task.stat = ZOMBY;
-
+    p_proc_current->task.retval = retval;
     rq_remove(p_proc_current);
+    disable_int_end();
+
     sched_yield();
 }
 

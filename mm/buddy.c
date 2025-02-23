@@ -8,7 +8,7 @@
 #include <string.h>
 
 //! FIXME: spinlock for buddy system would cause deadlock in fs testcases
-#if 0
+#if 1
 #define might_deadlock_lock(spinlock) spinlock_lock_or_yield(spinlock)
 #define might_deadlock_unlock(spinlock) spinlock_release(spinlock)
 #else

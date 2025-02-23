@@ -4,6 +4,7 @@
 #include <minios/console.h>
 #include <minios/assert.h>
 #include <minios/spinlock.h>
+#include <minios/interrupt.h>
 #include <compiler.h>
 
 /*
@@ -56,10 +57,12 @@ int kern_wait(int* wstatus) {
                 spinlock_release(&fa_pcb->task.lock);
                 return pid;
             }
-            // disable_int();
-            // fa_pcb->task.stat = SLEEPING;
+            disable_int_begin();
             spinlock_release(&fa_pcb->task.lock);
             wait_event(fa_pcb);
+            //! FIXME: we sleep before turn on (maybe) the ints, it does work well but is it surely
+            //! right? is the nearest turn on action comes from the idle proc?
+            disable_int_end();
             continue;
         }
 
@@ -70,13 +73,11 @@ int kern_wait(int* wstatus) {
 
         fa_pcb->task.child_exit_status = exit_pcb->task.exit_status;
         int child_pid = exit_pcb->task.pid;
-        // disable_int();
         spinlock_lock_or_yield(&exit_pcb->task.lock);
         // 释放子进程的进程表项
         free_pcb(exit_pcb); // modified by mingxuan 2021-8-21
         spinlock_release(&exit_pcb->task.lock);
         spinlock_release(&fa_pcb->task.lock);
-        // enable_int();
         if (wstatus != NULL) *wstatus = fa_pcb->task.child_exit_status;
         return child_pid;
     }

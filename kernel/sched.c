@@ -143,7 +143,9 @@ void cfs_sched() {
             sched_assert(pid != -1);
             auto idle = &proc_table[pid];
             idle->task.stat = READY;
+            disable_int_begin();
             rq_insert(idle);
+            disable_int_end();
             sched_assert(rq_front_p() == idle);
             SCHED_NEXT(rq_front_p());
         }
@@ -208,9 +210,16 @@ void proc_update() {
     if (!p_proc_current->task.is_rt) { ++p_proc_current->task.cpu_use; }
 }
 
+int trap_flag = 0;
+void trap_stub() {}
 void schedule() {
+    const int old = p_proc_current->task.pid;
     cfs_sched();
+    const int pid = p_proc_current->task.pid;
     cr3_ready = p_proc_next->task.cr3;
+    assert(cr3_ready != 0);
+    //kprintf("trace: sched %d to %d\n", old, p_proc_current->task.pid);
+    if (trap_flag && old == pid && old == 19) { trap_stub(); }
 }
 
 u32 get_min_vruntime() {
@@ -263,10 +272,7 @@ void rq_insert(process_t* proc) {
     sched_entity* tail = proc->task.is_rt ? rt_rq_tail : rq_tail;
     sched_entity* queue = proc->task.is_rt ? rt_rq_array : rq_array;
     sched_entity* new_ent = find_new_sched_entity(queue);
-    if (new_ent == NULL) {
-        kprintf("in_rq error1: cannot find a rq_array\n");
-        return; // mark 这里没做错误处理和提示，之后要加上
-    }
+    assert(new_ent != NULL);
     new_ent->pid = proc->task.pid;
     new_ent->p_process = proc;
     new_ent->next = NULL;
@@ -281,6 +287,7 @@ void rq_insert(process_t* proc) {
     } else // not empty,find propery position
     {
         sched_entity* pos = head;
+        assert(pos != NULL);
         // avoid re_in_rq
         if (proc->task.is_rt) {
             while (pos->next != NULL &&
@@ -312,6 +319,7 @@ void rq_insert(process_t* proc) {
 }
 
 void rq_remove(process_t* proc) {
+    assert(proc != NULL);
     while (!(proc->task.is_rt ? is_rt_rq_empty() : is_rq_empty())) {
         auto ent = proc->task.is_rt ? rt_rq_front() : rq_front();
         while (ent != NULL && ent->pid != proc->task.pid) { ent = ent->next; }
@@ -370,7 +378,9 @@ void wakeup(void* channel) {
         proc->task.stat = READY;
         proc->task.channel = NULL;
         if (!proc->task.is_rt) { proc->task.vruntime = min_vruntime; }
+        disable_int_begin();
         rq_insert(proc);
+        disable_int_end();
     }
 
     disable_int_end();
@@ -387,9 +397,11 @@ void kern_nice(int inc) {
 
 void kern_set_rt(bool turn_rt) {
     if (!!turn_rt == !!p_proc_current->task.is_rt) { return; }
+    disable_int_begin();
     rq_remove(p_proc_current);
     p_proc_current->task.is_rt = turn_rt;
     rq_insert(p_proc_current);
+    disable_int_end();
     sched();
 }
 
