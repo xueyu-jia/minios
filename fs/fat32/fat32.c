@@ -2,6 +2,7 @@
 #include <minios/buffer.h>
 #include <minios/clock.h>
 #include <minios/memman.h>
+#include <minios/assert.h>
 #include <minios/time.h>
 #include <minios/vfs.h>
 #include <minios/console.h>
@@ -303,7 +304,7 @@ static char* fat_get_data(struct inode* inode, int off, buf_head** bh, bool allo
 
 static inline struct fat_dir_slot* fat_get_slot(struct inode* dir, int order, buf_head** bh,
                                                 bool alloc_new) {
-    return (struct fat_dir_slot*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
+    return (void*)fat_get_data(dir, (order)*FAT_ENTRY_SIZE, bh, alloc_new);
 }
 
 // get next fat short entry from *%start in inode %dir,
@@ -397,24 +398,21 @@ static int fat_find_free(struct inode* dir, int num) {
     return res;
 }
 
-static int fat_check_short(struct inode* dir, const char* name) {
+static bool fat_shortname_exists(struct inode* dir, const char* name) {
     buf_head* bh = NULL;
-    struct fat_dir_slot* ds;
-    int start, res = 0;
-    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
-        ds = fat_get_slot(dir, start, &bh, 0);
-        if (ds->order == DIR_DELETE) {
-            continue;
-        } else if (ds->order == 0) {
-            break; // 后面的均为空闲，不用找了
-        }
-        if (!strncmp(name, ((struct fat_dir_entry*)ds)->name, 11)) {
-            res = -1;
-            break;
-        }
+    bool found = false;
+    for (int start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
+        struct fat_dir_slot* ds = fat_get_slot(dir, start, &bh, false);
+        //! FIXME: but why can be null?
+        if (ds == NULL || ds->order == DIR_DELETE) { continue; }
+        // 后面的均为空闲，不用找了
+        if (ds->order == 0) { break; }
+        if (strncmp(name, ((struct fat_dir_entry*)ds)->name, 11) != 0) { continue; }
+        found = true;
+        break;
     }
     if (bh) { brelse(bh); }
-    return res;
+    return found;
 }
 
 static int fat_check_empty(struct inode* dir) {
@@ -471,12 +469,12 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
         if (type) { baselen = offset; }
     }
     if ((u8)shortname[0] == DIR_DELETE) { shortname[0] = 0x05; }
-    if (!fat_check_short(dir, shortname)) return 0;
+    if (!fat_shortname_exists(dir, shortname)) { return 0; }
     if (baselen > 6) { baselen = 6; }
     shortname[baselen] = '~';
     for (int i = 0; i < 10; ++i) {
         shortname[baselen + 1] = '0' + i;
-        if (!fat_check_short(dir, shortname)) { return 0; }
+        if (!fat_shortname_exists(dir, shortname)) { return 0; }
     }
     // 尝试达到10次仍然重复,使用tick产生随机序列
     // 事实上，现有已知的实现大多也是这么处理的
@@ -484,7 +482,7 @@ static int fat_gen_shortname(struct inode* dir, const char* fullname, char* shor
     itoa(rand & 0xFFFF, shortname + baselen - 4, 16);
     shortname[baselen] = '~';
     shortname[baselen + 1] = '0' + rand % 10;
-    if (!fat_check_short(dir, shortname)) { return 0; }
+    if (!fat_shortname_exists(dir, shortname)) { return 0; }
     return -1;
 }
 
