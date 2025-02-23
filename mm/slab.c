@@ -3,6 +3,7 @@
 #include <minios/memman.h>
 #include <minios/assert.h>
 #include <minios/layout.h>
+#include <minios/console.h>
 
 #define LEFTSHIFT(n) (1 << (n))
 // 将address向上(高地址)对齐,对齐标准为(2^n)
@@ -73,33 +74,54 @@ phyaddr_t slab_alloc(size_t size) {
 void slab_free(phyaddr_t addr) {
     if (addr == PHY_NULL) { return; }
 
-    kmem_slab_t *slab = NULL;
-    memory_page_t *page = pfn_to_page(phy_to_pfn(addr));
-    int objsize = page->cache->objsize; // 得到对象的大小
-
-    int flag = 0;
-    int move = 0;
-
-    int order = get_index(objsize);
+    const memory_page_t *page = pfn_to_page(phy_to_pfn(addr));
+    const int order = get_index(page->cache->objsize);
     kmem_cache_t *cache = &kmem_caches[order];
-    addr = ptr2u(K_PHY2LIN(addr));
-    while (!flag) { // 对象所在的链表可能还没有添加到新的链表，循环查找
-        for (int i = PARTIAL; i <= FULL && !flag; ++i) { // 依次查找partial链和full链
-            spinlock_acquire(&(cache->list[i].lock));    // 先对每一个链上锁
-            kmem_slab_t *temp = cache->list[i].head;
-            while (temp) {
-                if ((addr >= (u32)temp) && (addr < (u32)temp + SLAB_BLOCK_SIZE)) {
-                    slab = temp;
-                    move = free_object_to_slab(temp, addr);
-                    flag = 1; // 找到
+    const uintptr_t va = ptr2u(K_PHY2LIN(addr));
+
+    kmem_slab_t *slab = NULL;
+    bool found = false;
+    bool should_move = false;
+
+    const int chains[] = {PARTIAL, FULL};
+    const int max_retries = 1024;
+    int retries = 0;
+
+    while (true) {
+        // 对象所在的链表可能还没有添加到新的链表，循环查找
+        for (int i = 0; i < ARRAY_SIZE(chains); ++i) {
+            spinlock_acquire(&cache->list[chains[i]].lock);
+            slab = cache->list[chains[i]].head;
+            while (slab != NULL) {
+                if (va >= ptr2u(slab) && va < ptr2u(slab) + SLAB_BLOCK_SIZE) {
+                    should_move = free_object_to_slab(slab, va);
+                    found = true;
                     break;
                 }
-                temp = temp->next;
+                slab = slab->next;
             }
-            spinlock_release(&(cache->list[i].lock)); // 释放锁
+            spinlock_release(&cache->list[chains[i]].lock);
+            if (found) { break; }
+        }
+        if (found) { break; }
+        if (++retries >= max_retries) {
+            bool might_already_free = false;
+            slab = cache->list[EMPTY].head;
+            while (slab != NULL) {
+                if (va >= ptr2u(slab) && va < ptr2u(slab) + SLAB_BLOCK_SIZE) {
+                    might_already_free = true;
+                    break;
+                }
+                slab = slab->next;
+            }
+            spinlock_release(&cache->list[EMPTY].lock);
+            assert(might_already_free);
+            kprintf("error: slab_free: request to free an unallocated object 0x%p\n", va);
+            break;
         }
     }
-    if (move) { move_slab(slab); }
+
+    if (should_move) { move_slab(slab); }
 }
 
 /*!
