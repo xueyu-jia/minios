@@ -415,26 +415,22 @@ static bool fat_shortname_exists(struct inode* dir, const char* name) {
     return found;
 }
 
-static int fat_check_empty(struct inode* dir) {
+static bool fat_is_dir_empty(struct inode* dir) {
     buf_head* bh = NULL;
-    struct fat_dir_slot* ds;
-    int start, res = 0;
-    for (start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
-        ds = fat_get_slot(dir, start, &bh, 0);
-        if (ds->order == DIR_DELETE) {
-            continue;
-        } else if (ds->order == 0) {
-            break; // 后面的均为空闲，不用找了
-        }
-        if ((!strncmp(FAT_DOT, ((struct fat_dir_entry*)ds)->name, 11)) ||
-            (!strncmp(FAT_DOTDOT, ((struct fat_dir_entry*)ds)->name, 11))) {
-            continue;
-        }
-        res = -1;
+    bool found_any = false;
+    for (int start = 0; (u64)start * FAT_ENTRY_SIZE < dir->i_size; ++start) {
+        struct fat_dir_slot* ds = fat_get_slot(dir, start, &bh, false);
+        //! FIXME: but why can be null?
+        if (ds == NULL || ds->order == DIR_DELETE) { continue; }
+        // 后面的均为空闲，不用找了
+        if (ds->order == 0) { break; }
+        if (strncmp(FAT_DOT, ((struct fat_dir_entry*)ds)->name, 11) == 0) { continue; }
+        if (strncmp(FAT_DOTDOT, ((struct fat_dir_entry*)ds)->name, 11) == 0) { continue; }
+        found_any = true;
         break;
     }
     if (bh) { brelse(bh); }
-    return res;
+    return !found_any;
 }
 
 // get shortname return 0 if legal
@@ -513,6 +509,9 @@ static struct inode* fat_add_entry(struct inode* dir, const char* name, int is_d
     for (int slot = nslot; slot > 0; slot--) { // 写入长目录项
         u8 order = slot | ((slot == nslot) ? DIR_LDIR_END : 0);
         struct fat_dir_slot* ds = fat_get_slot(dir, free_slot_order + (nslot - slot), &bh, true);
+        //! FIXME: 你他妈的 fat_get_slot 到底允不允许返回 NULL 啊？！已经三次在个把小时的长测
+        //! 例中爆了！都是因为这个傻逼 ds 为空导致的 page fault！
+        if (ds == NULL) { continue; }
         ds->attr = ATTR_LNAME;
         ds->order = order;
         offset = (slot - 1) * 13;
@@ -696,7 +695,7 @@ int fat32_unlink(struct inode* dir, struct dentry* dentry) {
 }
 
 int fat32_rmdir(struct inode* dir, struct dentry* dentry) {
-    if (fat_check_empty(dentry->d_inode)) { return -1; }
+    if (!fat_is_dir_empty(dentry->d_inode)) { return -1; }
     return fat32_unlink_name(dir, dentry);
 }
 
