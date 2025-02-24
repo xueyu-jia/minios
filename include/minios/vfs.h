@@ -2,14 +2,6 @@
 
 #include <fs/fs.h>
 
-enum {
-    FS_TYPE_NONE,
-    FS_TYPE_DEV,
-    FS_TYPE_ORANGE,
-    FS_TYPE_FAT32,
-    FS_TYPE_EXT4,
-};
-
 struct stat;
 
 extern struct dentry *vfs_root;
