@@ -28,6 +28,7 @@ int execl(const char *path, const char *arg0, ...) {
 
     va_list ap;
     va_start(ap, arg0);
+    argv[i++] = arg0;
     while ((arg = va_arg(ap, const char *)) != NULL) {
         if (i < MAXARG) { argv[i++] = arg; }
     }
@@ -49,6 +50,7 @@ int execle(const char *path, const char *arg0, ...) {
 
     va_list ap;
     va_start(ap, arg0);
+    argv[i++] = arg0;
     while ((arg = va_arg(ap, const char *)) != NULL) {
         if (i < MAXARG) { argv[i++] = arg; }
     }
