@@ -211,6 +211,19 @@ void do_command(int argc, char **args) {
 #include <stdlib.h>
 #include <time.h>
 
+void cleanup_tmpdir() {
+    {
+        DIR *dir = opendir("/tmp");
+        if (!dir) { return; }
+        closedir(dir);
+    }
+    if (fork() == 0) {
+        execl("/bin/rm", "/bin/rm", "-r", "/tmp", NULL);
+        exit(-1);
+    }
+    wait(NULL);
+}
+
 int main(int argc, char *argv[], char *envp[]) {
 #define BUF_SIZE 512
 
@@ -239,22 +252,9 @@ int main(int argc, char *argv[], char *envp[]) {
         }
     }
 
-    //! 2024-02-23 08:23 -> 11:10 | fat_check_short 指针没判空
-    //! 2024-02-23 11:33 ->
-    srand(clock());
-    const char *tcs[] = {
-        "./test/basic", "./test/proc", "./test/fs", "./test/ipc", "./test/pthread",
-    };
-
     while (true) {
         if (fd_in == stdin) { printf("\nminiOS:%s $ ", getcwd(cwdbuf, MAX_PATH)); }
-#if 0
         fgets(cmdbuf, BUF_SIZE, fd_in);
-#else
-        const char *tc = tcs[rand() % ARRAY_SIZE(tcs)];
-        printf("%s\n", tc);
-        strcpy(cmdbuf, tc);
-#endif
         const size_t len = strlen(cmdbuf);
         if (fd_in != stdin && len == 0) {
             close(fd_in);
