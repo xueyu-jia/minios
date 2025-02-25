@@ -495,7 +495,7 @@ static struct dentry* vfs_create(struct inode* dir, const char* file_name, int t
     return dentry;
 }
 
-static struct super_block* vfs_read_super(int dev, u32 fstype) {
+static struct super_block* vfs_read_super(int dev, int fstype) {
     if (dev) {
         // 对于 fstype FS_TYPE_NONE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
         if (fstype == FS_TYPE_NONE) {
@@ -581,7 +581,7 @@ out_inode:
     return 0;
 }
 
-static struct super_block* vfs_get_super(int dev, u32 fstype) {
+static struct super_block* vfs_get_super(int dev, int fstype) {
     for (int i = 0; i < NR_SUPER_BLOCK; ++i) {
         if (super_blocks[i] == NULL) { continue; }
         const auto sb = super_blocks[i];
@@ -592,7 +592,7 @@ static struct super_block* vfs_get_super(int dev, u32 fstype) {
 
 // 挂载块设备核心实现
 // 返回文件系统分区实例的根目录项
-static struct dentry* vfs_mount_dev(int dev, u32 fstype, const char* dev_name, struct dentry* mnt) {
+static struct dentry* vfs_mount_dev(int dev, int fstype, const char* dev_name, struct dentry* mnt) {
     struct super_block* sb = vfs_get_super(dev, fstype);
     if (!sb) { return NULL; }
     if (sb->sb_vfsmount) {
@@ -652,12 +652,11 @@ void init_fs(int drive) {
 
 int get_fstype_by_name(const char* fstype_name) {
     int fstype = FS_TYPE_NONE;
-    for (; fstype < NR_FS_TYPE; ++fstype) {
-        if (!strcmp(fstype_name, fstype_table[fstype].fstype_name)) { break; }
-    }
-    if (fstype == NR_FS_TYPE) {
-        // unknown fs type
-        return FS_TYPE_NONE;
+    for (int type = 0; type < NR_FS_TYPE; ++type) {
+        if (strcmp(fstype_name, fstype_table[type].fstype_name) == 0) {
+            fstype = type;
+            break;
+        }
     }
     return fstype;
 }

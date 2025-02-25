@@ -390,7 +390,7 @@ typedef struct hd_cmd {
 struct part_info {
     u32 base;    /* # of start sector (NOT byte offset, but SECTOR) */
     u32 size;    /* how many sectors in this partition */
-    u32 fs_type; // added by mingxuan 2020-10-27
+    int fs_type; // added by mingxuan 2020-10-27
 };
 
 /* main drive struct, one entry per drive */
@@ -433,9 +433,9 @@ void init_hd();
 void init_open_hd();
 void hd_open(int device);
 void hd_close(int device);
-int get_hd_part_dev(int drive, int part, u32 fs_type);
-int get_hd_dev(int drive, u32 fs_type);
-u32 get_hd_fstype(int dev);
+int get_hd_part_dev(int drive, int part, int fs_type);
+int get_hd_dev(int drive, int fs_type);
+int get_hd_fstype(int dev);
 void hd_service();
 
 void hd_rdwt(hd_messge_t *p);

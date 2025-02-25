@@ -4,12 +4,12 @@
 #include <uapi/minios/fs.h>
 
 enum {
+    FS_TYPE_NONE = -1,
     FS_TYPE_DEV,
     FS_TYPE_ORANGE,
     FS_TYPE_FAT32,
     FS_TYPE_EXT4,
     NR_FS_TYPE,
-    FS_TYPE_NONE = 0xffffffff,
 };
 
 #define MAX_DNAME_LEN 32

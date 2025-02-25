@@ -139,7 +139,7 @@ void init_open_hd() {
     }
 }
 
-int get_hd_dev(int drive, u32 fs_type) {
+int get_hd_dev(int drive, int fs_type) {
     int i;
     for (i = 1; i < NR_PRIM_PER_DRIVE;
          i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
@@ -155,7 +155,7 @@ int get_hd_dev(int drive, u32 fs_type) {
     return -1;
 }
 
-int get_hd_part_dev(int drive, int part, u32 fs_type) {
+int get_hd_part_dev(int drive, int part, int fs_type) {
     if (hd_infos[drive].part[part].fs_type == fs_type) {
         return MAKE_DEV(DEV_HD_BASE + drive, part);
     }
@@ -163,7 +163,7 @@ int get_hd_part_dev(int drive, int part, u32 fs_type) {
     return -1;
 }
 
-u32 get_hd_fstype(int dev) {
+int get_hd_fstype(int dev) {
     return hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].fs_type;
 }
 
@@ -341,7 +341,7 @@ static void read_part_table_sector(int drive, int nr_sect, void *sect_buf) {
 }
 
 static int partition_get_fstype(int drive, int start_sect) {
-    for (int type = 1; type < NR_FS_TYPE; ++type) {
+    for (int type = 0; type < NR_FS_TYPE; ++type) {
         if (fstype_table[type].identify) {
             if (fstype_table[type].identify(drive, (u32)start_sect) == 1) { return type; }
         }
