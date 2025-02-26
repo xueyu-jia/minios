@@ -81,8 +81,9 @@ void free_pcb(process_t* p) {
  */
 void init_process(process_t* proc, char name[32], enum proc_stat stat, int pid, int is_rt,
                   int priority_or_nice) {
-    strcpy(proc->task.p_name, name);            // 名称
-    proc->task.pid = pid;                       // pid
+    strcpy(proc->task.p_name, name); // 名称
+    proc->task.pid = pid;            // pid
+    proc->task.tid = 0;
     proc->task.stat = stat;                     // 初始化状态 -1表示未初始化
     proc->task.ticks = proc->task.priority = 1; // 时间片和优先级
 

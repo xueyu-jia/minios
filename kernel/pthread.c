@@ -185,6 +185,7 @@ int kern_pthread_create_internal(pthread_t *tid, const pthread_attr_t *attr,
 }
 
 pthread_t kern_pthread_self() {
+    //! NOTE: tid of main thread is 0
     return p_proc_current->task.tid;
 }
 
