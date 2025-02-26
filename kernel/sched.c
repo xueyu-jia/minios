@@ -210,16 +210,10 @@ void proc_update() {
     if (!p_proc_current->task.is_rt) { ++p_proc_current->task.cpu_use; }
 }
 
-int trap_flag = 0;
-void trap_stub() {}
 void schedule() {
-    const int old = p_proc_current->task.pid;
     cfs_sched();
-    const int pid = p_proc_current->task.pid;
     cr3_ready = p_proc_next->task.cr3;
     assert(cr3_ready != 0);
-    //kprintf("trace: sched %d to %d\n", old, p_proc_current->task.pid);
-    if (trap_flag && old == pid && old == 19) { trap_stub(); }
 }
 
 u32 get_min_vruntime() {
