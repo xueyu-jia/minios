@@ -7,18 +7,11 @@
 #include <klib/stdint.h>
 #include <stdbool.h>
 
-//! 8259A interrupt controller ports
-//! <Master> I/O port for interrupt controller
-#define INT_M_CTL 0x20
-//! <Master> setting bits in this port disables ints
-#define INT_M_CTLMASK 0x21
-//! <Slave> I/O port for second interrupt controller
-#define INT_S_CTL 0xA0
-//! <Slave> setting bits in this port disables ints
-#define INT_S_CTLMASK 0xA1
-
 //! hardware interrupts
 #define NR_IRQ 16
+#define INT_VECTOR_IRQ0 0x20
+#define INT_VECTOR_IRQ8 0x28
+
 #define CLOCK_IRQ 0          //<! clock
 #define KEYBOARD_IRQ 1       //<! keyboard
 #define CASCADE_IRQ 2        //<! cascade enable for 2nd AT controller
@@ -34,10 +27,7 @@
 #define FPU_IRQ 13           //<! fpu exception
 #define AT_WINI_IRQ 14       //<! AT winchester disk
 
-/* 中断向量 */
-#define INT_VECTOR_IRQ0 0x20
-#define INT_VECTOR_IRQ8 0x28
-
+//! software interrupts
 #define INT_VECTOR_DIVIDE 0x00
 #define INT_VECTOR_DEBUG 0x01
 #define INT_VECTOR_NMI 0x02
@@ -45,7 +35,7 @@
 #define INT_VECTOR_OVERFLOW 0x04
 #define INT_VECTOR_BOUNDS 0x05
 #define INT_VECTOR_INVAL_OP 0x06
-#define INT_VECTOR_COPROC_NOT 0x07
+#define INT_VECTOR_DEVICE_NOT 0x07
 #define INT_VECTOR_DOUBLE_FAULT 0x08
 #define INT_VECTOR_COPROC_SEG 0x09
 #define INT_VECTOR_INVAL_TSS 0x0a
@@ -53,7 +43,7 @@
 #define INT_VECTOR_STACK_FAULT 0x0c
 #define INT_VECTOR_PROTECTION 0x0d
 #define INT_VECTOR_PAGE_FAULT 0x0e
-#define INT_VECTOR_COPROC_ERR 0x10
+#define INV_VECTOR_FP_EXCEPTION 0x10
 
 #define disable_int_begin()                                      \
     {                                                            \
@@ -73,40 +63,6 @@ void spurious_irq(int irq);
 void put_irq_handler(int irq, irq_handler_t handler);
 
 void init_interrupt_controller();
-
-void hwint00();
-void hwint01();
-void hwint02();
-void hwint03();
-void hwint04();
-void hwint05();
-void hwint06();
-void hwint07();
-void hwint08();
-void hwint09();
-void hwint10();
-void hwint11();
-void hwint12();
-void hwint13();
-void hwint14();
-void hwint15();
-
-void divide_error();
-void single_step_exception();
-void nmi();
-void breakpoint_exception();
-void overflow();
-void bounds_check();
-void inval_opcode();
-void copr_not_available();
-void double_fault();
-void copr_seg_overrun();
-void inval_tss();
-void segment_not_present();
-void stack_exception();
-void general_protection();
-void page_fault();
-void copr_error();
 
 void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
 void general_protection_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);

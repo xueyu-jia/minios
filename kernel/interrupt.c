@@ -8,6 +8,50 @@
 #include <minios/syscall.h>
 #include <klib/stddef.h>
 
+//! 8259A interrupt controller ports
+//! <Master> I/O port for interrupt controller
+#define INT_M_CTL 0x20
+//! <Master> setting bits in this port disables ints
+#define INT_M_CTLMASK 0x21
+//! <Slave> I/O port for second interrupt controller
+#define INT_S_CTL 0xA0
+//! <Slave> setting bits in this port disables ints
+#define INT_S_CTLMASK 0xA1
+
+extern void hwint00();
+extern void hwint01();
+extern void hwint02();
+extern void hwint03();
+extern void hwint04();
+extern void hwint05();
+extern void hwint06();
+extern void hwint07();
+extern void hwint08();
+extern void hwint09();
+extern void hwint10();
+extern void hwint11();
+extern void hwint12();
+extern void hwint13();
+extern void hwint14();
+extern void hwint15();
+
+extern void division_error();
+extern void debug_exception();
+extern void nmi();
+extern void breakpoint_exception();
+extern void overflow_exception();
+extern void bound_range_exceeded();
+extern void invalid_opcode();
+extern void device_not_available();
+extern void double_fault();
+extern void copr_seg_overrun();
+extern void invalid_tss();
+extern void segment_not_present();
+extern void stack_seg_exception();
+extern void general_protection();
+extern void page_fault();
+extern void floating_point_exception();
+
 irq_handler_t irq_table[NR_IRQ];
 
 static void init_8259A();
@@ -236,22 +280,6 @@ static void init_idt() {
     idt_ptr.base = ptr2u(idt);
     idt_ptr.limit = sizeof(idt) - 1;
 
-    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, divide_error, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, single_step_exception, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, RPL_USER);
-    init_idt_desc(INT_VECTOR_OVERFLOW, DA_386IGate, overflow, RPL_USER);
-    init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bounds_check, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_INVAL_OP, DA_386IGate, inval_opcode, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_COPROC_NOT, DA_386IGate, copr_not_available, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_DOUBLE_FAULT, DA_386IGate, double_fault, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, inval_tss, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_STACK_FAULT, DA_386IGate, stack_exception, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_PROTECTION, DA_386IGate, general_protection, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_COPROC_ERR, DA_386IGate, copr_error, RPL_KERNEL);
     init_idt_desc(INT_VECTOR_IRQ0 + 0, DA_386IGate, hwint00, RPL_KERNEL);
     init_idt_desc(INT_VECTOR_IRQ0 + 1, DA_386IGate, hwint01, RPL_KERNEL);
     init_idt_desc(INT_VECTOR_IRQ0 + 2, DA_386IGate, hwint02, RPL_KERNEL);
@@ -268,6 +296,24 @@ static void init_idt() {
     init_idt_desc(INT_VECTOR_IRQ8 + 5, DA_386IGate, hwint13, RPL_KERNEL);
     init_idt_desc(INT_VECTOR_IRQ8 + 6, DA_386IGate, hwint14, RPL_KERNEL);
     init_idt_desc(INT_VECTOR_IRQ8 + 7, DA_386IGate, hwint15, RPL_KERNEL);
+
+    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, division_error, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, debug_exception, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, RPL_USER);
+    init_idt_desc(INT_VECTOR_OVERFLOW, DA_386IGate, overflow_exception, RPL_USER);
+    init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bound_range_exceeded, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_INVAL_OP, DA_386IGate, invalid_opcode, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DEVICE_NOT, DA_386IGate, device_not_available, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DOUBLE_FAULT, DA_386IGate, double_fault, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, invalid_tss, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_STACK_FAULT, DA_386IGate, stack_seg_exception, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_PROTECTION, DA_386IGate, general_protection, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, RPL_KERNEL);
+    init_idt_desc(INV_VECTOR_FP_EXCEPTION, DA_386IGate, floating_point_exception, RPL_KERNEL);
+
     init_idt_desc(INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, RPL_USER);
 }
 
@@ -275,9 +321,9 @@ static void init_idt_desc(unsigned char vector, u8 desc_type, int_handler handle
                           unsigned char privilege) {
     gate_descriptor_t *p_gate = &idt[vector];
     u32 base = (u32)handler;
-    p_gate->offset_low = base & 0xFFFF;
+    p_gate->offset_low = base & 0xffff;
     p_gate->selector = SELECTOR_KERNEL_CS;
     p_gate->dcount = 0;
     p_gate->attr = desc_type | (privilege << 5);
-    p_gate->offset_high = (base >> 16) & 0xFFFF;
+    p_gate->offset_high = (base >> 16) & 0xffff;
 }

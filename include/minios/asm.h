@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stddef.h>
-#include <compiler.h>
 #include <klib/stdint.h>
+#include <compiler.h>
 
 #ifdef GCC_COMPILER
 #define ASMCALL __attribute__((optimize("O3"))) static inline

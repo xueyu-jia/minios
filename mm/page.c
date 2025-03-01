@@ -7,6 +7,7 @@
 #include <minios/protect.h>
 #include <minios/assert.h>
 #include <minios/spinlock.h>
+#include <minios/asm.h>
 #include <klib/size.h>
 #include <klib/stddef.h>
 #include <string.h>
@@ -19,6 +20,10 @@ u32 kernel_pde_phy;
 u32 nr_kmapping_pages = 0;
 static u32 kmapping_pages[KernelLinMapMaxPage];
 static spinlock_t kmap_lock;
+
+void refresh_page_cache() {
+    tlbflush();
+}
 
 void switch_pde() {
     cr3_ready = p_proc_current->task.cr3;
