@@ -28,18 +28,18 @@ task_t task_table[NR_TASKS] = {
 };
 
 int kern_getpid() {
-    return p_proc_current->task.pid;
+    return proc_real(p_proc_current)->task.pid;
 }
 
 int kern_getpid_by_name(const char* name) {
     for (process_t* proc = proc_table; proc < proc_table + NR_PCBS; ++proc) {
-        if (strcmp(proc->task.p_name, name) == 0) { return proc->task.pid; }
+        if (strcmp(proc->task.p_name, name) == 0) { return proc_real(proc)->task.pid; }
     }
     return -1;
 }
 
 void kern_get_proc_msg(proc_msg* msg) {
-    msg->pid = p_proc_current->task.pid;
+    msg->pid = proc_real(p_proc_current)->task.pid;
     msg->nice = p_proc_current->task.nice;
     msg->sum_cpu_use = p_proc_current->task.sum_cpu_use;
     msg->vruntime = p_proc_current->task.vruntime;
