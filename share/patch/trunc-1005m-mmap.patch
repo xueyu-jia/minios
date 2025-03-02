@@ -1,0 +1,53 @@
+diff --git a/arch/x86/boot/mbr/start.c b/arch/x86/boot/mbr/start.c
+index 12bdc67..47d432d 100644
+--- a/arch/x86/boot/mbr/start.c
++++ b/arch/x86/boot/mbr/start.c
+@@ -153,6 +153,39 @@ NORETURN static void load_kernel(size_t total_memory) {
+     abort("fatal: failed to load kernel elf\n");
+ }
+ 
++void patch_over1005m_mmap(ards_t *ards_list, size_t *total_ards) {
++#define HI_MEM_BASE 0x00100000ull
++    enum {
++        MM_RAM = 1,
++        MM_RESERVED = 2,
++    };
++    assert(*total_ards > 0);
++    assert(ards_list[0].base == 0ull && ards_list[0].size < HI_MEM_BASE);
++    assert(ards_list[0].type == MM_RAM);
++    int start_idx = 1;
++    int next_ram_idx = -1;
++    while (true) {
++        next_ram_idx = -1;
++        for (size_t i = start_idx; i < *total_ards; ++i) {
++            if (ards_list[i].type != MM_RAM) { continue; }
++            next_ram_idx = i;
++            break;
++        }
++        assert(next_ram_idx != -1);
++        const auto base = ards_list[next_ram_idx].base;
++        const auto limit = base + ards_list[next_ram_idx].size;
++        if (base == HI_MEM_BASE) { break; }
++        assert(base < HI_MEM_BASE && limit < HI_MEM_BASE);
++        ards_list[next_ram_idx].type = MM_RESERVED;
++        start_idx = next_ram_idx + 1;
++    }
++    const phyaddr_t limit_1005m = 0x3ebf1000;
++    const phyaddr_t hi_mem_limit = HI_MEM_BASE + ards_list[next_ram_idx].size;
++    ards_list[next_ram_idx].size = MIN(hi_mem_limit, limit_1005m) - HI_MEM_BASE;
++    *total_ards = next_ram_idx + 1;
++#undef HI_MEM_BASE
++}
++
+ void cstart(size_t partition_lba, ards_t *ards_list, size_t total_ards) {
+     //! NOTE: take account of the fact that vga buffer is actually a mmio memory and will not be
+     //! reported in ards list, we simply ignore it and use the port io uart instead throughout the
+@@ -167,6 +200,8 @@ void cstart(size_t partition_lba, ards_t *ards_list, size_t total_ards) {
+     lprintf("info: current partition lba: %d\n", partition_lba);
+     set_current_partition(partition_lba);
+ 
++    patch_over1005m_mmap(ards_list, &total_ards);
++
+     report_system_memory_map(ards_list, total_ards);
+ 
+     const size_t free_pages = probe_memory(ards_list, total_ards);

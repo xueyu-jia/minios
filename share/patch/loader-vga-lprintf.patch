@@ -1,0 +1,105 @@
+diff --git a/arch/x86/boot/include/terminal.h b/arch/x86/boot/include/terminal.h
+index 2500c39..048b687 100644
+--- a/arch/x86/boot/include/terminal.h
++++ b/arch/x86/boot/include/terminal.h
+@@ -1,3 +1,5 @@
+ #pragma once
+ 
+ int lprintf(const char *fmt, ...);
++
++void clear_screen();
+diff --git a/arch/x86/boot/mbr/paging.c b/arch/x86/boot/mbr/paging.c
+index b9ddf4a..e2f2a19 100644
+--- a/arch/x86/boot/mbr/paging.c
++++ b/arch/x86/boot/mbr/paging.c
+@@ -63,6 +63,9 @@ void setup_paging() {
+         }
+     }
+ 
++    //! map vga 80x25 memory
++    map_laddr(cr3, 0xb8000, 0xb8000, PG_P | PG_USU | PG_RWW);
++
+     const phyaddr_t pt_limit = alloc_pte();
+     lprintf("info: pa 0x%p~0x%p is assigned to page tables, %d in total\n", PageTblBase,
+             pt_limit - 1, (pt_limit - PageTblBase) / PGSIZE);
+diff --git a/arch/x86/boot/mbr/start.c b/arch/x86/boot/mbr/start.c
+index 12bdc67..d01c7ae 100644
+--- a/arch/x86/boot/mbr/start.c
++++ b/arch/x86/boot/mbr/start.c
+@@ -147,6 +147,8 @@ NORETURN static void load_kernel(size_t total_memory) {
+                     __fmi_ptr()->page_ranges[i].limit);
+         }
+ 
++        clear_screen();
++
+         asm volatile("call *%0" ::"r"(eh.e_entry), "d"(mb_phy_addr));
+     } while (0);
+ 
+diff --git a/arch/x86/boot/mbr/terminal.c b/arch/x86/boot/mbr/terminal.c
+index 7ba666e..148edd8 100644
+--- a/arch/x86/boot/mbr/terminal.c
++++ b/arch/x86/boot/mbr/terminal.c
+@@ -3,11 +3,52 @@
+ #include <ctype.h>
+ #include <fmt.h>
+ #include <serial.h>
++#include <string.h>
++
++struct vmem_char {
++    char code;
++    u8 attr;
++};
++
++#define VW 80
++#define VH 25
++#define VA 0xb8000
++#define VMEM ((struct vmem_char *)(void *)(VA))
++
++static int row = -1;
++static int col = VW;
++static int page = 0;
++
++static inline void put_page_nr() {
++    struct vmem_char *d = VMEM;
++    const char *hextbl = "0123456789abcdef";
++    const char lno[5] = {'[', hextbl[(page / 16) % 16], hextbl[page % 16], ']', ' '};
++    memset(d + row * VW, 0, sizeof(struct vmem_char) * VW);
++    for (int i = 0; i < ARRAY_SIZE(lno); ++i) {
++        d[row * VW + i].code = lno[i];
++        d[row * VW + i].attr = 0x0f;
++    }
++    col = ARRAY_SIZE(lno);
++}
+ 
+ static inline bool do_putch(char ch) {
+-    const bool accepted = isprint(ch) || ch == '\n' || ch == '\t';
+-    if (accepted) { serial_write(ch); }
+-    return accepted;
++    if (!isprint(ch) && ch != '\n') { return false; }
++    if (ch == '\n' || col == VW) {
++        if (col == 0) { put_page_nr(); }
++        ++row;
++        col = 0;
++        if (row == VH) {
++            row = 0;
++            ++page;
++        }
++    }
++    if (ch != '\n') {
++        if (col == 0) { put_page_nr(); }
++        VMEM[row * VW + col].code = ch;
++        VMEM[row * VW + col].attr = 0x0f;
++        ++col;
++    }
++    return true;
+ }
+ 
+ static char *putch_handler(char *buf, void *user, int len) {
+@@ -35,3 +76,7 @@ int lprintf(const char *fmt, ...) {
+     va_end(ap);
+     return rc;
+ }
++
++void clear_screen() {
++    memset(VMEM, 0, VW * VH * sizeof(uint16_t));
++}
