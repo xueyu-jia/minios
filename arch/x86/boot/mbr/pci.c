@@ -53,9 +53,9 @@ void pci_visit(cb_pci_visit_t visit, void *arg) {
     if (visit == NULL) { return; }
     bool completed = false;
     pci_device_info_t info = {};
-    for (int bus = 0; bus < PCI_MAX_BUS && !completed; ++bus) {
-        for (int dev = 0; dev < PCI_MAX_DEV && !completed; ++dev) {
-            for (int func = 0; func < PCI_MAX_FUNC && !completed; ++func) {
+    for (int bus = 0; bus <= PCI_MAX_BUS && !completed; ++bus) {
+        for (int dev = 0; dev <= PCI_MAX_DEV && !completed; ++dev) {
+            for (int func = 0; func <= PCI_MAX_FUNC && !completed; ++func) {
                 const int id = PCI_MAKE_ID(bus, dev, func);
                 const bool retrived = pci_read_device_info(id, &info);
                 if (!retrived || info.vendor_id == PCI_INVALID_VENDOR_ID) { continue; }
