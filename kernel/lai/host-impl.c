@@ -4,6 +4,8 @@
 #include <minios/assert.h>
 #include <minios/ioremap.h>
 #include <minios/console.h>
+#include <minios/asm.h>
+#include <driver/pci/pci.h>
 #include <compiler.h>
 #include <string.h>
 
@@ -133,4 +135,61 @@ void *laihost_scan(const char *sign, size_t index) {
     }
 
     return acpi_find_sdt(sign, index);
+}
+
+void laihost_outb(uint16_t port, uint8_t value) {
+    outb(port, value);
+}
+
+void laihost_outw(uint16_t port, uint16_t value) {
+    outw(port, value);
+}
+
+void laihost_outd(uint16_t port, uint32_t value) {
+    outl(port, value);
+}
+
+uint8_t laihost_inb(uint16_t port) {
+    return inb(port);
+}
+
+uint16_t laihost_inw(uint16_t port) {
+    return inw(port);
+}
+
+uint32_t laihost_ind(uint16_t port) {
+    return inl(port);
+}
+
+void laihost_pci_writeb(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset,
+                        uint8_t value) {
+    UNUSED(seg);
+    pci_io_w8(PCI_MAKE_ID(bbn, slot, fun), offset, value);
+}
+
+void laihost_pci_writew(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset,
+                        uint16_t value) {
+    UNUSED(seg);
+    pci_io_w16(PCI_MAKE_ID(bbn, slot, fun), offset, value);
+}
+
+void laihost_pci_writed(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset,
+                        uint32_t value) {
+    UNUSED(seg);
+    pci_io_w32(PCI_MAKE_ID(bbn, slot, fun), offset, value);
+}
+
+uint8_t laihost_pci_readb(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset) {
+    UNUSED(seg);
+    return pci_io_r8(PCI_MAKE_ID(bbn, slot, fun), offset);
+}
+
+uint16_t laihost_pci_readw(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset) {
+    UNUSED(seg);
+    return pci_io_r16(PCI_MAKE_ID(bbn, slot, fun), offset);
+}
+
+uint32_t laihost_pci_readd(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun, uint16_t offset) {
+    UNUSED(seg);
+    return pci_io_r32(PCI_MAKE_ID(bbn, slot, fun), offset);
 }

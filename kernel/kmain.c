@@ -19,6 +19,7 @@
 #include <minios/sched.h>
 #include <minios/shm.h>
 #include <minios/vfs.h>
+#include <driver/acpi/acpi.h>
 #include <driver/pci/pci.h>
 #include <driver/pci/vendor.h>
 #include <fs/devfs/devfs.h>
@@ -74,8 +75,9 @@ static bool do_scan_pci_tree(pci_device_info_t *info, void *arg) {
         vendor_info.vendor_name = "Unknown";
         vendor_info.device_name = "Unknown";
     }
-    kprintf("visit pci device: vendor_id=%#x \"%s\" device_id=%#x \"%s\"\n", info->vendor_id,
-            vendor_info.vendor_name, info->device_id, vendor_info.device_name);
+    kprintf("%02x:%02x:%02x vendor_id=%#x \"%s\" device_id=%#x \"%s\"\n", PCI_GET_BUS(info->id),
+            PCI_GET_DEV(info->id), PCI_GET_FUNC(info->id), info->vendor_id, vendor_info.vendor_name,
+            info->device_id, vendor_info.device_name);
     return true;
 }
 
@@ -83,10 +85,46 @@ static void scan_pci_tree() {
     pci_visit(do_scan_pci_tree, NULL);
 }
 
+static void write_kernel_pte(uintptr_t va, phyaddr_t pa, int attr) {
+    assert(PGOFF(va) == 0 && PGOFF(pa) == 0);
+    uint32_t *pd = K_PHY2LIN(kernel_pde_phy);
+    uint32_t *pt = K_PHY2LIN(PTE_ADDR(pd[PDX(va)]));
+    pt[PTX(va)] = (pa) | attr;
+}
+
+static void switch_kernel_stack() {
+    const int nr_pages = SZ_1M / PGSIZE;
+    auto page = buddy_alloc(bud, buddy_fit_order(SZ_1M));
+    assert(page != NULL);
+
+    auto lower_guard_page = &page[0];
+    write_kernel_pte(ptr2u(kpage_lin(lower_guard_page)), 0, 0);
+    auto upper_guard_page = &page[nr_pages - 1];
+    write_kernel_pte(ptr2u(kpage_lin(upper_guard_page)), 0, 0);
+
+    for (int i = 0; i < nr_pages; ++i) { page[i].state = PAGESTATE_CRITICAL; }
+    lower_guard_page->state = PAGESTATE_INVAL;
+    upper_guard_page->state = PAGESTATE_INVAL;
+    bud->total_mem -= SZ_1M;
+    bud->used_mem -= SZ_1M;
+
+    memset(kpage_lin(&lower_guard_page[1]), 0, (nr_pages - 2) * PGSIZE);
+    const void *stack_top = kpage_lin(upper_guard_page);
+    asm volatile(
+        "leave\n"
+        "movl (%%esp), %%ebx\n"
+        "movl %%eax, %%esp\n"
+        "jmp *%%ebx"
+        :
+        : "a"(stack_top));
+}
+
 int kernel_main() {
     might_setup_debugging_environment();
 
     //! ATTENTION: ints is disabled through the whole `kernel_main` except for init_fs
+
+    switch_kernel_stack();
 
     disp_pos = 0;
     kstate_reenter_cntr = 0;
@@ -96,6 +134,11 @@ int kernel_main() {
     sched_init();
     const bool proc_inited = init_proc() && init_cpu();
     assert(proc_inited && "failed to init proc and cpu");
+
+    kprintf("info: init acpi\n");
+    init_acpi();
+    kprintf("info: scan acpi device tree\n");
+    scan_acpi_sdst();
 
     kprintf("info: scan pci tree\n");
     scan_pci_tree();
@@ -149,10 +192,6 @@ int kernel_main() {
             break;
         }
     }
-
-#ifdef BLAME_STAT
-    stat_init(); // stat performance
-#endif
 
     kprintf("info: kernel init done\n");
     kstate_on_init = false;

@@ -29,6 +29,7 @@ extern p_proc_next
 
 [section .bss]
 
+; ATTENTION: only for temporary use, switch to somewhere else in kernel main
 kernel_stack_space resb 0x1000
 kernel_stask_top:
 

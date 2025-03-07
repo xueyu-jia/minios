@@ -11,10 +11,25 @@
 #include "libc.h"
 #include "ns_impl.h"
 
-uint64_t bswap64(uint64_t);
-uint32_t bswap32(uint32_t);
-uint16_t bswap16(uint16_t);
-uint8_t char_to_hex(char);
+static uint32_t bswap32(uint32_t dword) {
+    return (uint32_t)((dword >> 24) & 0xFF) | ((dword << 8) & 0xFF0000) | ((dword >> 8) & 0xFF00) |
+           ((dword << 24) & 0xFF000000);
+}
+
+static uint8_t char_to_hex(char character) {
+    if (character <= '9')
+        return character - '0';
+    else if (character >= 'A' && character <= 'F')
+        return character - 'A' + 10;
+    else if (character >= 'a' && character <= 'f')
+        return character - 'a' + 10;
+
+    return 0;
+}
+
+static char hex_to_char(uint8_t hex) {
+    return hex < 0xa ? '0' + hex : hex - 10 + 'A';
+}
 
 int lai_is_name(char character) {
     if ((character >= '0' && character <= '9') || (character >= 'A' && character <= 'Z') ||
@@ -24,34 +39,6 @@ int lai_is_name(char character) {
 
     else
         return 0;
-}
-
-uint16_t bswap16(uint16_t word) {
-    return (uint16_t)((word >> 8) & 0xFF) | ((word << 8) & 0xFF00);
-}
-
-uint32_t bswap32(uint32_t dword) {
-    return (uint32_t)((dword >> 24) & 0xFF) | ((dword << 8) & 0xFF0000) | ((dword >> 8) & 0xFF00) |
-           ((dword << 24) & 0xFF000000);
-}
-
-uint64_t bswap64(uint64_t qword) {
-    return (
-        uint64_t)((qword & ((uint64_t)0xff << 56)) >> 56 | (qword & ((uint64_t)0xff << 48)) >> 40 |
-                  (qword & ((uint64_t)0xff << 40)) >> 24 | (qword & ((uint64_t)0xff << 32)) >> 8 |
-                  (qword & ((uint64_t)0xff << 24)) << 8 | (qword & ((uint64_t)0xff << 16)) << 24 |
-                  (qword & ((uint64_t)0xff << 8)) << 40 | (qword & ((uint64_t)0xff << 0)) << 56);
-}
-
-uint8_t char_to_hex(char character) {
-    if (character <= '9')
-        return character - '0';
-    else if (character >= 'A' && character <= 'F')
-        return character - 'A' + 10;
-    else if (character >= 'a' && character <= 'f')
-        return character - 'a' + 10;
-
-    return 0;
 }
 
 void lai_eisaid(lai_variable_t *object, const char *id) {
@@ -78,4 +65,16 @@ void lai_eisaid(lai_variable_t *object, const char *id) {
 
     out = bswap32(out);
     object->integer = (uint64_t)out & 0xFFFFFFFF;
+}
+
+void lai_eisaid_to_str(uint32_t eisaid, char *buf) {
+    const uint32_t val = bswap32(eisaid);
+    buf[0] = 0x40 + ((val >> 26) & 0x1f);
+    buf[1] = 0x40 + ((val >> 21) & 0x1f);
+    buf[2] = 0x40 + ((val >> 16) & 0x1f);
+    buf[3] = hex_to_char((val >> 12) & 0xf);
+    buf[4] = hex_to_char((val >> 8) & 0xf);
+    buf[5] = hex_to_char((val >> 4) & 0xf);
+    buf[6] = hex_to_char((val >> 0) & 0xf);
+    buf[7] = 0;
 }
