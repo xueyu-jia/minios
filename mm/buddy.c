@@ -142,6 +142,13 @@ void buddy_init(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi) {
     }
 }
 
+int buddy_fit_order(size_t size) {
+    for (int order = 0; order < BUDDY_ORDER_LIMIT; ++order) {
+        if (size <= block_size[order]) { return order; }
+    }
+    unreachable();
+}
+
 memory_page_t *buddy_alloc(buddy_t *bud, int order) {
     assert(bud != NULL);
     assert(order >= 0 && order < BUDDY_ORDER_LIMIT);

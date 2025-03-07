@@ -41,6 +41,11 @@ void buddy_init(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi);
 ssize_t buddy_join_blk(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi, bool strict);
 
 /*!
+ * \brief get best-fit order of the given size
+ */
+int buddy_fit_order(size_t size);
+
+/*!
  * \brief allocate 2^order sized memory block from buddy system
  */
 memory_page_t *buddy_alloc(buddy_t *bud, int order);

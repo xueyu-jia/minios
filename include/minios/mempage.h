@@ -13,7 +13,6 @@
 #define MEMPAGE_CACHED 1
 #define MEMPAGE_SAVE 2
 
-#define ALL_PAGES ((u32)(PHY_MEM_SIZE) / PGSIZE)
 #define MAX_BUF_PAGE (PGSIZE / SECTOR_SIZE)
 
 enum {

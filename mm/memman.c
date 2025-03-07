@@ -147,16 +147,9 @@ void memory_init() {
     init_cache();
 }
 
-static int which_order(size_t size) {
-    for (int order = 0; order < BUDDY_ORDER_LIMIT; ++order) {
-        if (size <= block_size[order]) { return order; }
-    }
-    unreachable();
-}
-
 phyaddr_t phy_kmalloc(size_t size) {
     if (size <= BIT(MAX_BUFF_ORDER)) { return slab_alloc(size); }
-    memory_page_t *page = buddy_alloc(bud, which_order(size));
+    memory_page_t *page = buddy_alloc(bud, buddy_fit_order(size));
     if (page == NULL) { return PHY_NULL; }
     const ssize_t page_size = page->size_hint * PGSIZE;
     const phyaddr_t pa = pfn_to_phy(page_to_pfn(page));
