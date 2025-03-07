@@ -7,6 +7,7 @@ char *itoa(int num, char *str, int radix);
 void *memcpy(void *p_dst, const void *p_src, size_t size);
 void memset(void *p_dst, char ch, size_t size);
 int memcmp(const void *p1, const void *p2, int size);
+void *memmove(void *dest, const void *src, size_t count);
 char *strcpy(char *p_dst, const char *p_src);
 char *strncpy(char *dest, const char *src, int n);
 char *strcat(char *dst, const char *src);

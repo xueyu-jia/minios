@@ -31,6 +31,24 @@ int memcmp(const void *p1, const void *p2, int size) {
     return 0;
 }
 
+void *memmove(void *dest, const void *src, size_t count) {
+    char *tmp;
+    const char *s;
+
+    if (dest <= src) {
+        tmp = dest;
+        s = src;
+        while (count--) *tmp++ = *s++;
+    } else {
+        tmp = dest;
+        tmp += count;
+        s = src;
+        s += count;
+        while (count--) *--tmp = *--s;
+    }
+    return dest;
+}
+
 char *strcat(char *dst, const char *src) {
     if (dst == 0 || src == 0) return 0;
     char *temp = dst;
