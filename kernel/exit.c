@@ -30,6 +30,7 @@ void kern_exit(int status) {
     //! FIXME: fa proc may exit before the child proc
 
     spinlock_lock_or_yield(&fa_pcb->task.lock);
+    //! ATTENTION: ppid -1 indicates an earliest created kthread that should never die
     assert(exit_pcb->task.tree_info.ppid >= 0 && exit_pcb->task.tree_info.ppid < NR_PCBS);
     assert(fa_pcb->task.stat == READY || fa_pcb->task.stat == SLEEPING);
 
