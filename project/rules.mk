@@ -7,7 +7,9 @@ RULES_ORDERED_SEQ := cache $(if $(PROJECT_USE_STRICT_RULES),object,object-fast) 
 	lib boot kernel user image install tools config simulate lsp
 $(call import,$(addprefix rules.,$(RULES_ORDERED_SEQ)))
 
+ifeq ($(filter kill-deps,$(__GOALS__)),)
 -include $(SOURCE_DEPS_FILE)
+endif
 
 boot: #<! build bootloaders only
 lib: $(LIBGENERIC_FILE) $(LIBULIB_FILE) $(LIBKLIB_FILE) #<! build libraries only
@@ -43,6 +45,9 @@ ifneq ($(ARCH),)
 		$(call leave-job,fail,clean-up all stuffs,);            \
 	fi
 endif
+
+kill-deps: force #<! invalidate generated source file build deps
+	@rm -rf $(SOURCE_DEPS_FILE) $(SOURCE_DEPS_FILE).swp
 
 config: $(CONFIG_GEN_FILES) #<! configure *.in files
 
