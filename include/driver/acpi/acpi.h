@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lai/core.h> // IWYU pragma: export
+#include <driver/acpi/lai/core.h> // IWYU pragma: export
 
 void init_acpi();
 
