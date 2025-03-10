@@ -66,7 +66,7 @@ void proc_backtrace() {
     kprintf("backtrace of process [pid=%d]:\n", proc2pid(p_proc_current));
     asm volatile("mov %%ebp, %0 " : "=r"(ebp));
     for (int i = 0; ebp && i < 8; ++i) {
-        if (i >= skip) { kprintf("%*s=> 0x%p (%#x)", 4, "", ebp, ((u32*)ebp)[1]); }
+        if (i >= skip) { kprintf("%*s=> 0x%p (%#x)\n", 4, "", ebp, ((u32*)ebp)[1]); }
         ebp = ((u32*)ebp)[0];
         if (ebp >= KernelLinMapBase || ebp < ShareLinLimitMAX) { break; }
     }

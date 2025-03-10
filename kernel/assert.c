@@ -1,5 +1,6 @@
 #include <minios/assert.h>
 #include <minios/console.h>
+#include <minios/proc.h>
 #include <minios/asm.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -41,6 +42,7 @@ void _abort(const char *file, const char *func, int line, const char *fmt, ...) 
     kprintf(buffer);
 
     disable_int();
+    proc_backtrace();
     while (true) { halt(); }
 }
 
