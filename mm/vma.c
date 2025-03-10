@@ -5,6 +5,7 @@
 #include <minios/shm.h>
 #include <minios/assert.h>
 #include <minios/console.h>
+#include <minios/kstate.h>
 #include <fs/fs.h>
 
 static address_space_t *get_mapping(memmap_t *mmap, struct vmem_area *vma) {
@@ -32,7 +33,8 @@ static memory_page_t *find_or_create_page(memmap_t *mmap, struct vmem_area *vma,
             spinlock_lock_or_yield(&mapping->host->lock);
             generic_file_readpage(mapping, page);
             spinlock_release(&mapping->host->lock);
-        } else {
+        } else if (!kstate_on_init) {
+            //! FIXME: write to user pages in kerel setup stage is not allowed but we might need it
             zero_page(page);
         }
         add_mem_page(mapping, page);
