@@ -17,6 +17,48 @@
 #include <multiboot.h>
 
 static void preprocess_memory_map(ards_t *ards_list, size_t *total_ards) {
+    const int n = *total_ards;
+
+    for (int i = 0; i < n - 1; ++i) {
+        int k = i;
+        for (int j = i + 1; j < n; ++j) {
+            if (ards_list[j].base < ards_list[k].base) { k = j; }
+        }
+        if (k != i) {
+            ards_t tmp = ards_list[i];
+            ards_list[i] = ards_list[k];
+            ards_list[k] = tmp;
+        }
+    }
+
+    for (int i = 0; i < n - 1; ++i) {
+        int j = i;
+        while (j + 1 < n && ards_list[j + 1].base == ards_list[i].base) {
+            ++j;
+            assert(ards_list[j].type == ards_list[i].type);
+        }
+        if (i == j) { continue; }
+        uint64_t real_size = ards_list[i].size;
+        for (int k = i + 1; k <= j; ++k) {
+            if (ards_list[k].size > real_size) { real_size = ards_list[k].size; }
+            ards_list[k].size = 0;
+        }
+        ards_list[i].size = real_size;
+        i = j;
+    }
+
+    int m = 0;
+    for (int i = 0; i < n; ++i) {
+        if (ards_list[i].size == 0) { continue; }
+        if (i != m) { ards_list[m] = ards_list[i]; }
+        ++m;
+    }
+    *total_ards = m;
+
+    for (int i = 1; i < m; ++i) {
+        assert(ards_list[i].base - ards_list[i - 1].base >= ards_list[i - 1].size);
+    }
+
     //! ATTENTION: we can not represent so much memory under 32-bit mode, so trick it before the
     //! broken mmap trick us
     for (size_t i = 0; i < *total_ards; ++i) {
