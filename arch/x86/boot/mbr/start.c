@@ -16,21 +16,23 @@
 #include <disk.h>
 #include <multiboot.h>
 
-static void report_system_memory_map(const ards_t *ards_list, size_t total_ards) {
-    const size_t arch_hex_width = sizeof(void *) * 2;
-    char fmtbuf[64] = {};
-    nstrfmt(fmtbuf, sizeof(fmtbuf),
-            "ARDS[%%02d] base=0x%%0%dp limit=0x%%0%dp size=%%.2fMB type=%%s\n", arch_hex_width,
-            arch_hex_width);
+static void preprocess_memory_map(ards_t *ards_list, size_t *total_ards) {
+    //! ATTENTION: we can not represent so much memory under 32-bit mode, so trick it before the
+    //! broken mmap trick us
+    for (size_t i = 0; i < *total_ards; ++i) {
+        if (ards_list[i].base_lo + (ards_list[i].size_lo - 1) == 0xffffffff) {
+            *total_ards = i + 1;
+            break;
+        }
+    }
+}
 
+static void report_system_memory_map(const ards_t *ards_list, size_t total_ards) {
     lprintf("info: report system memory map\n");
     for (size_t i = 0; i < total_ards; ++i) {
         const ards_t *ards = &ards_list[i];
-        const size_t size = ((u64)ards->size_hi << 32) | ards->size_lo;
-        const phyaddr_t base = ((u64)ards->base_hi << 32) | ards->base_lo;
-        //! NOTE: calc rhs first to avoid overflow
-        const phyaddr_t limit = base + (size - 1);
-        lprintf(fmtbuf, i, base, limit, size * 1. / MB, get_ards_type_str(ards->type));
+        lprintf("ARDS[%02d] base=0x%016llx limit=0x%016llx size=%.2fMB type=%s\n", i, ards->base,
+                ards->base + (ards->size - 1), ards->size * 1. / MB, get_ards_type_str(ards->type));
     }
 }
 
@@ -167,6 +169,7 @@ void cstart(size_t partition_lba, ards_t *ards_list, size_t total_ards) {
     lprintf("info: current partition lba: %d\n", partition_lba);
     set_current_partition(partition_lba);
 
+    preprocess_memory_map(ards_list, &total_ards);
     report_system_memory_map(ards_list, total_ards);
 
     const size_t free_pages = probe_memory(ards_list, total_ards);
