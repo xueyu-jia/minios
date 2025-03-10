@@ -35,7 +35,7 @@ static void stat_buddy_pages(const char *name, const buddy_t *bud) {
         const auto area = bud->free_area[i];
         if (area.free_count == 0) { continue; }
         kprintf("%s order=%02d (%02d)", name, i, area.free_count);
-        const auto size = block_size[i];
+        const auto size = buddy_order_size[i];
         memory_page_t *node = area.free_list;
         while (node) {
             const auto pa = pfn_to_phy(page_to_pfn(node));
@@ -139,7 +139,7 @@ void memory_init() {
     kernel_size = SZ_32M;
 
     //! init buddy system for normal region
-    for (int i = 0; i < BUDDY_ORDER_LIMIT; ++i) { block_size[i] = SZ_4K << i; }
+    for (int i = 0; i < BUDDY_ORDER_LIMIT; ++i) { buddy_order_size[i] = SZ_4K << i; }
     buddy_init(bud, 0, highest_page_addr);
     stat_buddy_pages("bud", bud);
 
@@ -149,7 +149,7 @@ void memory_init() {
 
 phyaddr_t phy_kmalloc(size_t size) {
     if (size <= BIT(MAX_BUFF_ORDER)) { return slab_alloc(size); }
-    memory_page_t *page = buddy_alloc(bud, buddy_fit_order(size));
+    memory_page_t *page = buddy_alloc_restricted(bud, buddy_fit_order(size), 0, SZ_1G - 1);
     if (page == NULL) { return PHY_NULL; }
     const ssize_t page_size = page->size_hint * PGSIZE;
     const phyaddr_t pa = pfn_to_phy(page_to_pfn(page));

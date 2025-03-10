@@ -1,4 +1,3 @@
-#include <minios/ahci.h>
 #include <minios/asm.h>
 #include <minios/assert.h>
 #include <minios/blame.h>
@@ -95,7 +94,7 @@ static void write_kernel_pte(uintptr_t va, phyaddr_t pa, int attr) {
 
 static void switch_kernel_stack() {
     const int nr_pages = SZ_1M / PGSIZE;
-    auto page = buddy_alloc(bud, buddy_fit_order(SZ_1M));
+    auto page = buddy_alloc_restricted(bud, buddy_fit_order(SZ_1M), 0, SZ_1G - 1);
     assert(page != NULL);
 
     auto lower_guard_page = &page[0];

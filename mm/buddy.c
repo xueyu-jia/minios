@@ -19,7 +19,7 @@
 static buddy_t buddy = {};
 buddy_t *bud = &buddy;
 
-size_t block_size[BUDDY_ORDER_LIMIT];
+size_t buddy_order_size[BUDDY_ORDER_LIMIT];
 
 static int get_buddy_pfn(int pfn, int order) {
     return pfn ^ (1 << order);
@@ -80,7 +80,7 @@ static void buddy_remove_page(buddy_t *bud, memory_page_t *page) {
 static void buddy_join_phantom_pages(buddy_t *bud, int pfn, int order, bool strict) {
     assert(bud != NULL);
     assert(order >= 0 && order < BUDDY_ORDER_LIMIT);
-    const ssize_t nr_pages = block_size[order] / PGSIZE;
+    const ssize_t nr_pages = buddy_order_size[order] / PGSIZE;
     assert(pfn >= 0 && pfn + nr_pages <= (ssize_t)nr_mmap_pages);
     memory_page_t *const blk_head = pfn_to_page(pfn);
     if (strict) {
@@ -92,7 +92,7 @@ static void buddy_join_phantom_pages(buddy_t *bud, int pfn, int order, bool stri
         }
     }
     buddy_join_page(bud, blk_head, order);
-    fetch_add(&bud->total_mem, block_size[order]);
+    fetch_add(&bud->total_mem, buddy_order_size[order]);
 }
 
 ssize_t buddy_join_blk(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi, bool strict) {
@@ -105,10 +105,10 @@ ssize_t buddy_join_blk(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi, bool stri
     const ssize_t old_total_mem = bud->total_mem;
     while (pa_lo < pa_hi) {
         for (int i = BUDDY_ORDER_LIMIT - 1; i >= 0; --i) {
-            if (pa_lo + block_size[i] > pa_hi) { continue; }
-            if (pa_lo % block_size[i] != 0) { continue; }
+            if (pa_lo + buddy_order_size[i] > pa_hi) { continue; }
+            if (pa_lo % buddy_order_size[i] != 0) { continue; }
             buddy_join_phantom_pages(bud, phy_to_pfn(pa_lo), i, strict);
-            pa_lo += block_size[i];
+            pa_lo += buddy_order_size[i];
             break;
         }
     }
@@ -144,12 +144,26 @@ void buddy_init(buddy_t *bud, phyaddr_t pa_lo, phyaddr_t pa_hi) {
 
 int buddy_fit_order(size_t size) {
     for (int order = 0; order < BUDDY_ORDER_LIMIT; ++order) {
-        if (size <= block_size[order]) { return order; }
+        if (size <= buddy_order_size[order]) { return order; }
     }
     unreachable();
+    return -1;
 }
 
-memory_page_t *buddy_alloc(buddy_t *bud, int order) {
+static bool buddy_alloc_impl_always_true_filter(memory_page_t *page, void *arg) {
+    UNUSED(page, arg);
+    return true;
+}
+
+static bool buddy_alloc_impl_range_restricted_filter(memory_page_t *page, void *arg) {
+    const uintptr_t *range = arg;
+    const phyaddr_t base = pfn_to_phy(page_to_pfn(page));
+    const phyaddr_t limit = base + (buddy_order_size[page->order] - 1);
+    return range[0] <= base && limit <= range[1];
+}
+
+static memory_page_t *buddy_alloc_impl(buddy_t *bud, int order,
+                                       bool (*filter)(memory_page_t *, void *), void *arg) {
     assert(bud != NULL);
     assert(order >= 0 && order < BUDDY_ORDER_LIMIT);
 
@@ -160,6 +174,7 @@ memory_page_t *buddy_alloc(buddy_t *bud, int order) {
         struct free_area *area = &bud->free_area[i];
         page = area->free_list;
         if (page == NULL) { continue; }
+        if (!filter(page, arg)) { continue; }
         buddy_remove_page(bud, page);
         for (int j = i - 1; j >= order; --j) {
             //! NOTE: patch the state to trick the buddy_join_page(...)
@@ -169,12 +184,22 @@ memory_page_t *buddy_alloc(buddy_t *bud, int order) {
         }
         page->state = PAGESTATE_ALLOCATED;
         page->size_hint = BIT(order);
-        bud->used_mem += block_size[order];
+        bud->used_mem += buddy_order_size[order];
         break;
     }
     might_deadlock_unlock(&bud->lock);
 
     return page;
+}
+
+memory_page_t *buddy_alloc(buddy_t *bud, int order) {
+    return buddy_alloc_impl(bud, order, buddy_alloc_impl_always_true_filter, NULL);
+}
+
+memory_page_t *buddy_alloc_restricted(buddy_t *bud, int order, uintptr_t addr_min,
+                                      uintptr_t addr_max) {
+    uintptr_t range[2] = {addr_min, addr_max};
+    return buddy_alloc_impl(bud, order, buddy_alloc_impl_range_restricted_filter, range);
 }
 
 void buddy_free(buddy_t *bud, memory_page_t *blk_head) {
@@ -224,6 +249,6 @@ void buddy_free(buddy_t *bud, memory_page_t *blk_head) {
         blk_head->state = PAGESTATE_PHANTOM;
         buddy_join_page(bud, blk_head, hi_order);
     }
-    bud->used_mem -= block_size[origin_order];
+    bud->used_mem -= buddy_order_size[origin_order];
     might_deadlock_unlock(&bud->lock);
 }

@@ -157,7 +157,7 @@ static void *slab_alloc_object(kmem_slab_t *slab) {
 }
 
 static memory_page_t *slab_alloc_slab_page() {
-    memory_page_t *page = buddy_alloc(bud, 0);
+    memory_page_t *page = buddy_alloc_restricted(bud, 0, 0, SZ_1G - 1);
     assert(page != NULL);
     page->state = PAGESTATE_SLAB;
     return page;
