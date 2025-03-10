@@ -172,9 +172,10 @@ static memory_page_t *buddy_alloc_impl(buddy_t *bud, int order,
     might_deadlock_lock(&bud->lock);
     for (int i = order; i < BUDDY_ORDER_LIMIT; ++i) {
         struct free_area *area = &bud->free_area[i];
-        page = area->free_list;
-        if (page == NULL) { continue; }
-        if (!filter(page, arg)) { continue; }
+        memory_page_t *candidate_page = area->free_list;
+        if (candidate_page == NULL) { continue; }
+        if (!filter(candidate_page, arg)) { continue; }
+        page = candidate_page;
         buddy_remove_page(bud, page);
         for (int j = i - 1; j >= order; --j) {
             //! NOTE: patch the state to trick the buddy_join_page(...)
