@@ -53,4 +53,5 @@ new_uuid = $(shell uuidgen | sed 's/-//g')
 #! range <start> <end>
 #! range <start> <end> <step>
 #! NOTE: <end> is exclusive
-range = $(shell seq $(if $(2),$(1),0) $(call or_else,$(3),1) $(call arith_dec,$(call or_else,$(2),$(1))))
+_range = $(shell seq $(1) $(2) $(call $(if $(call cmp_lt,$(2),0),arith_inc,arith_dec),$(3)))
+range = $(call _range,$(if $(2),$(1),0),$(call or_else,$(3),1),$(call or_else,$(2),$(1)))

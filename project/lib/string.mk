@@ -21,3 +21,5 @@ to_upper = $(shell $(ECHO) '$(1)' | tr '[:lower:]' '[:upper:]')
 
 scmp_eq = $(call test,'$(1)' == '$(2)')
 scmp_ne = $(call test,'$(1)' != '$(2)')
+
+uniq = $(shell $(ECHO) '$(1)' | awk '{ for (i = 1; i <= NF; ++i) if (!(seen[$$i]++)) printf "%s ", $$i; }')
