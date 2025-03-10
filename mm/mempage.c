@@ -68,6 +68,7 @@ int free_mem_page(memory_page_t *page) {
     assert(atomic_get(&page->count) == 0);
     if (page->dirty) { pagecache_writeback_one(page); }
     list_remove(&page->pg_list);
+    page->user_va = NULL;
     buddy_free(bud, page);
     return 0;
 }

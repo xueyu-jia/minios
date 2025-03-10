@@ -243,6 +243,7 @@ static int drop_page(memory_page_t *page) {
         return retval;
     }
     assert(page->state == PAGESTATE_ALLOCATED && page->size_hint == BIT(0));
+    page->user_va = NULL;
     buddy_free(bud, page);
     return 0;
 }
@@ -324,27 +325,31 @@ memory_page_t *alloc_user_page(u32 pgoff) {
     list_init(&page->pg_list);
     list_init(&page->pg_lru);
     memset(page->pg_buffer, 0, sizeof(page->pg_buffer));
-    kmap(page);
+    page->user_va = kmap(page);
     return page;
 }
 
 // req. ring 0
 void copy_page(memory_page_t *dst, memory_page_t *src) {
-    memcpy(kpage_lin(dst), kpage_lin(src), PGSIZE);
+    void *va_dst = dst->user_va ? dst->user_va : kpage_lin(dst);
+    void *va_src = src->user_va ? src->user_va : kpage_lin(src);
+    memcpy(va_dst, va_src, PGSIZE);
 }
 
 // req. ring 0
 void zero_page(memory_page_t *page) {
-    memset(kpage_lin(page), 0, PGSIZE);
+    void *ptr = page->user_va ? page->user_va : kpage_lin(page);
+    memset(ptr, 0, PGSIZE);
 }
 
 // req. ring 0
 void copy_from_page(memory_page_t *page, void *buf, u32 len, u32 offset) {
-    memcpy(buf, kpage_lin(page) + offset, len);
+    void *src = page->user_va ? page->user_va : kpage_lin(page);
+    memcpy(buf, src + offset, len);
 }
 
 // req. ring 0
-void copy_to_page(memory_page_t *_page, const void *buf, u32 len, u32 offset) {
-    u32 vaddr = ptr2u(kpage_lin(_page));
-    memcpy((void *)vaddr + offset, buf, len);
+void copy_to_page(memory_page_t *page, const void *buf, u32 len, u32 offset) {
+    void *dst = page->user_va ? page->user_va : kpage_lin(page);
+    memcpy(dst + offset, buf, len);
 }

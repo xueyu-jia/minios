@@ -46,6 +46,8 @@ typedef struct memory_page {
     struct list_node pg_lru;
     buf_head *pg_buffer[MAX_BUF_PAGE];
     u32 pg_off;
+    //! TODO: i wanna a better solution plz
+    void *user_va; //<! mapped laddr for user page
 } memory_page_t;
 
 void init_mem_page(address_space_t *mapping, int type);
