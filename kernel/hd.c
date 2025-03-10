@@ -1,5 +1,4 @@
 #include <minios/hd.h>
-#include <minios/ahci.h>
 #include <minios/dev.h>
 #include <minios/memman.h>
 #include <minios/console.h>
@@ -13,6 +12,7 @@
 #include <minios/asm.h>
 #include <minios/vfs.h>
 #include <minios/layout.h>
+#include <driver/ata/ahci.h>
 #include <fs/fs.h>
 #include <string.h>
 

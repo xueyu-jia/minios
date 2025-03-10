@@ -22,6 +22,7 @@
 #include <driver/acpi/acpi.h>
 #include <driver/pci/pci.h>
 #include <driver/pci/vendor.h>
+#include <driver/ata/ahci.h>
 #include <fs/devfs/devfs.h>
 
 #ifdef GDBSTUB

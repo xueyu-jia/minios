@@ -1,4 +1,4 @@
-#include <minios/ahci.h>
+#include <driver/ata/ahci.h>
 #include <minios/console.h>
 #include <minios/page.h>
 #include <minios/memman.h>
@@ -18,7 +18,7 @@ volatile int sata_wait_flag = 1;
 // 0 : no error;  1: error
 volatile int sata_error_flag = 0;
 
-HBA_MEM *HBA;
+HBA_MEM *HBA = NULL;
 
 // 可能存在多个AHCI控制器，为了方便目前只支持1个，这里只用遍历到的第一个。
 AHCI_INFO ahci_info[MAX_AHCI_NUM];
@@ -74,7 +74,7 @@ int ahci_sata_init() {
         return FALSE;
     }
 
-    int lin_hba = kmapping_phy(ahci_info[0].ABAR);
+    uintptr_t lin_hba = kmapping_phy(ahci_info[0].ABAR);
     if (lin_hba == 0) {
         kprintf("failed to map ahci memory\n");
         return false;
