@@ -43,3 +43,5 @@ const char *get_ards_type_str(int type);
 
 size_t probe_memory(ards_t *ards_list, size_t total_ards);
 void exclude_physical_range(phyaddr_t base, phyaddr_t limit);
+
+uintptr_t vma_alloc_page();

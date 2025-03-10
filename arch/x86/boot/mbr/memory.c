@@ -109,3 +109,10 @@ void exclude_physical_range(phyaddr_t base, phyaddr_t limit) {
     }
     fmi->count = q;
 }
+
+uintptr_t vma_alloc_page() {
+    static uintptr_t next_va = SZ_1G;
+    const uintptr_t va = next_va;
+    next_va += SZ_4K;
+    return va;
+}

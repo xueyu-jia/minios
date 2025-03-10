@@ -8,6 +8,7 @@
 #include <pci.h>
 #include <type.h>
 #include <disk.h>
+#include <memory.h>
 
 #define PCI_SUBCLS_SATA_CTRL 0x06
 
@@ -53,10 +54,11 @@ bool ahci_sata_init() {
     }
     lprintf("info: found %d ahci controllers\n", ahci_cnt);
 
-    lprintf("info: map first ahci controller to va 0x%p\n", ahci_info[0].ABAR);
-    map_laddr(rcr3(), ahci_info[0].ABAR, ahci_info[0].ABAR, PG_P | PG_USS | PG_RWW);
+    const uintptr_t hba_va = vma_alloc_page();
+    lprintf("info: map first ahci controller to va 0x%p from pa 0x%p\n", hba_va, ahci_info[0].ABAR);
+    map_laddr(rcr3(), hba_va, ahci_info[0].ABAR, PG_P | PG_USS | PG_RWW);
 
-    HBA = u2ptr(ahci_info[0].ABAR);
+    HBA = u2ptr(hba_va);
 
     ahci_info[0].is_ahci_mode = HBA->ghc >> 31;
     if (!ahci_info[0].is_ahci_mode) {
