@@ -193,3 +193,12 @@ uint32_t laihost_pci_readd(uint16_t seg, uint8_t bbn, uint8_t slot, uint8_t fun,
     UNUSED(seg);
     return pci_io_r32(PCI_MAKE_ID(bbn, slot, fun), offset);
 }
+
+void *laihost_map(size_t pa, size_t size) {
+    return ioremap(pa, size);
+}
+
+void laihost_unmap(void *va, size_t size) {
+    UNUSED(size);
+    iounmap(va);
+}
