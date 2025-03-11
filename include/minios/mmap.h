@@ -15,7 +15,22 @@ struct file_desc;
 #define PROT_WRITE 2
 #define PROT_EXEC 4
 
+/*!
+ * \brief map pa into kernel space
+ *
+ * \return mapped va
+ * \retval NULL failed to find an available va
+ *
+ * \note for pa over 1g, map into kernel shared mmap address space
+ * \attention you're expected to maintain the user_va field in page mannually when needed
+ */
 void *kmap(memory_page_t *page);
+
+/*!
+ * \brief unmap pa from kernel space if needed
+ *
+ * \attention you're expected to maintain the user_va field in page mannually when needed
+ */
 void kunmap(memory_page_t *page);
 
 int kern_mmap(process_t *p_proc, struct file_desc *file, u32 addr, u32 len, u32 prot, u32 flag,

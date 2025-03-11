@@ -48,8 +48,8 @@ void refresh_page_cache();
 int init_proc_page(u32 pid);
 void write_page_pde(u32 PageDirPhyAddr, u32 va, u32 TblPhyAddr, u32 Attribute);
 void write_page_pte(u32 TblPhyAddr, u32 va, u32 PhyAddr, u32 Attribute);
-int kmapping_phy(u32 phy_addr);
-int kunmapping_phy(u32 phy_addr);
+uintptr_t kmapping_phy(phyaddr_t phy_addr);
+int kunmapping_phy(phyaddr_t phy_addr);
 int map_laddr(u32 va, u32 phy_addr, u32 pid, u32 pde_attr, u32 pte_attr);
 int lin_mapping_phy_nopid(u32 va, u32 pa, u32 kernel_pde_addr_phy, u32 pde_attr, u32 pte_attr);
 

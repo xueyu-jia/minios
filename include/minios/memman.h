@@ -12,8 +12,6 @@
 #define FAULT_NOPAGE 1
 #define FAULT_WRITE 2
 
-extern u32 kernel_size;
-extern bool big_kernel;
 extern memory_page_t* mem_map;
 extern size_t nr_mmap_pages;
 

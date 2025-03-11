@@ -17,10 +17,6 @@
 #include <klib/atomic.h>
 #include <string.h>
 
-bool big_kernel = 0;
-u32 kernel_size = 0;      // 表示内核大小的全局变量
-u32 kernel_code_size = 0; // 为内核代码数据分配的内存大小
-
 memory_page_t *mem_map = NULL;
 size_t nr_mmap_pages = 0;
 
@@ -132,11 +128,7 @@ void memory_init() {
     mmap_ent[0].base_addr = SZ_4K;
     mmap_ent[0].length -= SZ_4K;
 
-    //! init kernel info
-    //! FIXME: init with elf info
-    big_kernel = true;
-    kernel_code_size = SZ_8M;
-    kernel_size = SZ_32M;
+    //! TODO: init kernel info
 
     //! init buddy system for normal region
     for (int i = 0; i < BUDDY_ORDER_LIMIT; ++i) { buddy_order_size[i] = SZ_4K << i; }
@@ -243,6 +235,7 @@ static int drop_page(memory_page_t *page) {
         return retval;
     }
     assert(page->state == PAGESTATE_ALLOCATED && page->size_hint == BIT(0));
+    kunmap(page);
     page->user_va = NULL;
     buddy_free(bud, page);
     return 0;

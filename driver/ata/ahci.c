@@ -76,7 +76,7 @@ int ahci_sata_init() {
 
     uintptr_t lin_hba = kmapping_phy(ahci_info[0].ABAR);
     if (lin_hba == 0) {
-        kprintf("failed to map ahci memory\n");
+        kprintf("error: failed to map ahci memory\n");
         return false;
     }
 

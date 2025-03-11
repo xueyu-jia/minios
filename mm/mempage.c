@@ -3,6 +3,7 @@
 #include <minios/memman.h>
 #include <minios/console.h>
 #include <minios/assert.h>
+#include <minios/mmap.h>
 #include <fs/fs.h>
 #include <list.h>
 
@@ -68,6 +69,7 @@ int free_mem_page(memory_page_t *page) {
     assert(atomic_get(&page->count) == 0);
     if (page->dirty) { pagecache_writeback_one(page); }
     list_remove(&page->pg_list);
+    kunmap(page);
     page->user_va = NULL;
     buddy_free(bud, page);
     return 0;

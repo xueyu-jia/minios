@@ -267,7 +267,8 @@ static int exec_pcb_init(const char* proc_name) {
     p_proc_current->task.memmap.arg_lin_base = ArgLinBase;
     p_proc_current->task.memmap.arg_lin_limit = ArgLinLimitMAX;
     p_proc_current->task.memmap.kernel_lin_base = KernelLinBase; // 内核基址
-    p_proc_current->task.memmap.kernel_lin_limit = KernelLinBase + kernel_size;
+    //! FIXME: expect real kernel va max
+    p_proc_current->task.memmap.kernel_lin_limit = KernelLinLimitMAX;
     list_init(&p_proc_current->task.memmap.vma_map);
     init_mem_page(&p_proc_current->task.memmap.anon_pages, MEMPAGE_AUTO);
 

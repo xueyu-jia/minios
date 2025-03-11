@@ -502,7 +502,7 @@ static struct super_block* vfs_read_super(int dev, int fstype) {
             fstype = get_hd_fstype(dev);
         } else if (get_hd_fstype(dev) != fstype) {
             // dismatch fstype
-            kprintf("fail: fstype not match");
+            kprintf("error: fstype not match\n");
             return NULL;
         }
         //! TODO: check hd busy
@@ -611,9 +611,10 @@ static void mount_root(int root_drive) {
 #ifdef ROOT_PART
     dev = get_hd_part_dev(root_drive, ROOT_PART, root_fstype);
 #else
-    dev = get_hd_dev(root_drive,
-                     root_fstype); // 自动匹配符合文件系统类型的第一个分区
+    // 自动匹配符合文件系统类型的第一个分区
+    dev = get_hd_dev(root_drive, root_fstype);
 #endif
+    assert(dev != -1);
     // struct super_block *sb = vfs_get_super(dev, root_fstype);
     vfs_root = vfs_mount_dev(dev, root_fstype, "/", NULL);
 }

@@ -178,63 +178,78 @@ int map_laddr(u32 va,       // 线性地址
     return lin_mapping_phy_nopid(va, pa, pde_addr_phy, pde_attr, pte_attr);
 }
 
-// used for DMA/PCI etc. mapping kernel lin addr(>kernelsize) to phyaddr
-// 在公共内核页表映射一个页面到物理地址phy_addr
-int kmapping_phy(u32 pa) {
-    u32 lin_addr;
-    spinlock_lock_or_yield(&kmap_lock);
-    if (pa >= K_LIN2PHY(KernelLinMapBase)) { // 高端地址，3G+phy_addr无法直接访问
-        if (nr_kmapping_pages == KernelLinMapMaxPage) {
-            kprintf("no free kmapping space");
-            spinlock_release(&kmap_lock);
-            return -1;
-        }
-
-        int index = 0;
-        while (index < KernelLinMapMaxPage && kmapping_pages[index] != 0) index++;
-        kmapping_pages[index] = pa;
-        lin_addr = KernelLinMapBase + pfn_to_phy(index);
-        nr_kmapping_pages++;
-    } else if (pa >= kernel_size) {
-        lin_addr = ptr2u(K_PHY2LIN(pa)); // 用户页物理地址，默认没有内核页表，需要写页表
+uintptr_t kmapping_phy(phyaddr_t pa) {
+    assert(PGOFF(pa) == 0);
+    const size_t pfn = phy_to_pfn(pa);
+    if (pfn < nr_mmap_pages) {
+        assert(pfn_to_page(pfn)->state != PAGESTATE_INVAL);
+        assert(pfn_to_page(pfn)->state != PAGESTATE_CRITICAL);
     } else {
-        spinlock_release(&kmap_lock);
-        return ptr2u(K_PHY2LIN(pa)); // 无需映射，可直接访问
+        //! NOTE: pa not in ram covered range, perhaps a hw mmio addr in high mem
     }
-    lin_mapping_phy_nopid(lin_addr, pa, kernel_pde_phy, PG_P | PG_USS | PG_RWW,
-                          PG_P | PG_USS | PG_RWW);
+
+    uintptr_t va = ptr2u(NULL);
+    spinlock_lock_or_yield(&kmap_lock);
+    do {
+        if (pa < K_LIN2PHY(KernelLinLimitMAX)) {
+            va = ptr2u(K_PHY2LIN(pa));
+            break;
+        }
+        if (nr_kmapping_pages == KernelLinMapMaxPage) {
+            kprintf("error: no available slots in kernel mmap space\n");
+            break;
+        }
+        int index = 0;
+        while (index < KernelLinMapMaxPage && kmapping_pages[index] != 0) { ++index; }
+        assert(index < KernelLinMapMaxPage);
+        va = KernelLinMapBase + index * PGSIZE;
+        const int retval = lin_mapping_phy_nopid(va, pa, kernel_pde_phy, PG_P | PG_USS | PG_RWW,
+                                                 PG_P | PG_USS | PG_RWW);
+        assert(retval == 0);
+        kmapping_pages[index] = pa;
+        ++nr_kmapping_pages;
+    } while (0);
     spinlock_release(&kmap_lock);
-    return lin_addr;
+    return va;
 }
 
-int kunmapping_phy(u32 pa) {
-    u32 lin_addr = ptr2u(K_PHY2LIN(pa));
+int kunmapping_phy(phyaddr_t pa) {
+    assert(PGOFF(pa) == 0);
+
+    bool has_pgobj = true;
+    const size_t pfn = phy_to_pfn(pa);
+    if (pfn < nr_mmap_pages) {
+        assert(pfn_to_page(pfn)->state != PAGESTATE_INVAL);
+        assert(pfn_to_page(pfn)->state != PAGESTATE_CRITICAL);
+    } else {
+        has_pgobj = false;
+        //! NOTE: pa not in ram covered range, perhaps a hw mmio addr in high mem
+    }
+
+    int retval = 0;
     spinlock_lock_or_yield(&kmap_lock);
-    if (pa >= K_LIN2PHY(KernelLinMapBase)) {
+    do {
+        if (pa < K_LIN2PHY(KernelLinLimitMAX)) { break; }
         if (nr_kmapping_pages == 0) {
-            kprintf("no kmapping now");
-            spinlock_release(&kmap_lock);
-            return -1;
+            kprintf("warn: kunmapping_phy: pa 0x%p is not mapped yet\n", pa);
+            break; //<! just ignore it since pa is "released" indeed
         }
         int index = 0;
-        while (index < KernelLinMapMaxPage && kmapping_pages[index] != pa) index++;
-        if (index == KernelLinMapMaxPage) {
-            kprintf("no phy in kmapping");
-            spinlock_release(&kmap_lock);
-            return -1;
+        if (has_pgobj && pfn_to_page(pfn)->user_va) {
+            index = (ptr2u(pfn_to_page(pfn)->user_va) - KernelLinMapBase) / PGSIZE;
+            assert(kmapping_pages[index] == pa);
+        } else {
+            while (index < KernelLinMapMaxPage && kmapping_pages[index] != pa) { ++index; }
+            assert(index < KernelLinMapMaxPage);
         }
+        const uintptr_t va = KernelLinMapBase + index * PGSIZE;
+        write_page_pte(get_pte_phy_addr(kernel_pde_phy, va), va, 0, 0);
+        refresh_page_cache();
         kmapping_pages[index] = 0;
-        lin_addr = KernelLinMapBase + pfn_to_phy(index);
-        nr_kmapping_pages--;
-    } else if (pa < kernel_size) {
-        spinlock_release(&kmap_lock);
-        return 0;
-    }
-    u32 pte_phy_addr = get_pte_phy_addr(kernel_pde_phy, lin_addr);
-    write_page_pte(pte_phy_addr, lin_addr, 0, 0);
-    refresh_page_cache();
+        --nr_kmapping_pages;
+    } while (0);
     spinlock_release(&kmap_lock);
-    return 0;
+    return retval;
 }
 
 // 清除页表项但不释放物理页

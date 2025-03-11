@@ -90,17 +90,10 @@ void init_hd() {
  *
  * @param device The device to be opened.
  *****************************************************************************/
-// PUBLIC void hd_open(int device) //no need for int device, mingxuan
-void hd_open(int drive) // modified by mingxuan 2020-10-27
-{
-    // kprintf("Read hd information...  ");	//deleted by mingxuan 2021-2-7
-    if (satabuf == NULL) satabuf = kern_kmalloc(BLOCK_SIZE);
-    /* Get the number of drives from the BIOS data area */
-    u8 *pNrDrives = u2ptr(0x475);
-    UNUSED(pNrDrives);
+void hd_open(int drive) {
+    if (satabuf == NULL) { satabuf = kern_kmalloc(BLOCK_SIZE); }
 
-    if (drive >= SATA_BASE && drive < SATA_LIMIT) // SATA
-    {
+    if (drive >= SATA_BASE && drive < SATA_LIMIT) {
         u8 *buf = kern_kmalloc(512);
         u32 port_num = ahci_info[0].satadrv_atport[drive - SATA_BASE];
         identity_SATA(&(HBA->ports[port_num]), buf);
@@ -159,7 +152,7 @@ int get_hd_part_dev(int drive, int part, int fs_type) {
     if (hd_infos[drive].part[part].fs_type == fs_type) {
         return MAKE_DEV(DEV_HD_BASE + drive, part);
     }
-    kprintf("fatal: FSTYPE provided incorrect");
+    kprintf("fatal: fstype provided incorrect\n");
     return -1;
 }
 

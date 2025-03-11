@@ -7,23 +7,12 @@
 #include <fs/fs.h>
 #include <stdbool.h>
 
-/**
- * kmap: 将page对应的物理页映射到内核，返回可访问的线性地址
- * 对于
- * 如果无法建立映射，返回-1
- */
 void *kmap(memory_page_t *page) {
-    u32 phy = pfn_to_phy(page_to_pfn(page));
-    return (void *)kmapping_phy(phy);
+    return (void *)kmapping_phy(pfn_to_phy(page_to_pfn(page)));
 }
 
-/**
- * kunmap: 将page对应的物理页在内核页表的映射移除，
- * 内核段页表不进行任何操作
- */
 void kunmap(memory_page_t *page) {
-    u32 phy = pfn_to_phy(page_to_pfn(page));
-    kunmapping_phy(phy);
+    kunmapping_phy(pfn_to_phy(page_to_pfn(page)));
 }
 
 // addr 查找的起始线性地址, 返回地址区间与已有页面的重叠页面数
