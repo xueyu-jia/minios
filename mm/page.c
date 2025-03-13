@@ -1,4 +1,4 @@
-﻿#include <minios/page.h>
+#include <minios/page.h>
 #include <minios/buddy.h>
 #include <minios/memman.h>
 #include <minios/layout.h>
@@ -76,9 +76,9 @@ int init_proc_page(u32 pid) { // 页表初始化函数
     u32 pde_addr_phy_temp;
 
     pde_addr_phy_temp = phy_kmalloc(SZ_4K);
+    if (pde_addr_phy_temp == PHY_NULL) { return -1; }
 
-    memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0,
-           SZ_4K); // add by visual 2016.5.26
+    memset((void *)K_PHY2LIN(pde_addr_phy_temp), 0, SZ_4K);
 
     if ((pde_addr_phy_temp & 0x3FF) != 0) // add by visual 2016.5.9
     {
