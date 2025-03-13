@@ -14,6 +14,7 @@
 #include <minios/msg.h>
 #include <minios/page.h>
 #include <minios/proc.h>
+#include <minios/time.h>
 #include <minios/protect.h>
 #include <minios/sched.h>
 #include <minios/shm.h>
@@ -119,6 +120,25 @@ static void switch_kernel_stack() {
         : "a"(stack_top));
 }
 
+static void report_available_memory() {
+    const size_t msize = kern_total_mem_size();
+    struct {
+        const char *name;
+        size_t unit;
+    } units[] = {
+        {"GB", SZ_1G},
+        {"MB", SZ_1M},
+        {"KB", SZ_1K},
+        {"B", SZ_1},
+    };
+    for (int i = 0; i < ARRAY_SIZE(units); ++i) {
+        if (msize < units[i].unit) { continue; }
+        kprintf("info: memory available for kernel: %.2f%s\n", msize * 1. / units[i].unit,
+                units[i].name);
+        break;
+    }
+}
+
 int kernel_main() {
     might_setup_debugging_environment();
 
@@ -174,24 +194,8 @@ int kernel_main() {
     init_ttys();
     spinlock_init(&video_mem_lock, "vmem");
 
-    {
-        const size_t msize = kern_total_mem_size();
-        struct {
-            const char *name;
-            size_t unit;
-        } units[] = {
-            {"GB", SZ_1G},
-            {"MB", SZ_1M},
-            {"KB", SZ_1K},
-            {"B", SZ_1},
-        };
-        for (int i = 0; i < ARRAY_SIZE(units); ++i) {
-            if (msize < units[i].unit) { continue; }
-            kprintf("info: memory available for kernel: %.2f%s\n", msize * 1. / units[i].unit,
-                    units[i].name);
-            break;
-        }
-    }
+    report_available_memory();
+    kern_get_time(&kstate_os_startup_time);
 
     kprintf("info: kernel init done\n");
     kstate_on_init = false;

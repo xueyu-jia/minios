@@ -1,5 +1,6 @@
 #pragma once
 
+#include <minios/time.h>
 #include <stdbool.h>
 #include <multiboot.h>
 
@@ -11,3 +12,6 @@ extern int kstate_reenter_cntr;
 
 //! multiboot info
 extern multiboot_boot_info_t* kstate_mbi;
+
+//! when the system was started up
+extern struct tm kstate_os_startup_time;
