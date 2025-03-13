@@ -69,11 +69,8 @@ void init_hd() {
     enable_irq(CASCADE_IRQ);
     enable_irq(AT_WINI_IRQ);
 
-    for (size_t i = 0; i < (sizeof(hd_infos) / sizeof(hd_infos[0])); i++)
-        memset(&hd_infos[i], 0, sizeof(hd_infos[0]));
-    hd_infos[0].open_cnt = 0;
+    memset(hd_infos, 0, sizeof(hd_infos));
 
-    // init hd rdwt queue. added by xw, 18/8/27
     init_hd_queue(&hdque);
     ksem_init(&hdque_mutex, 1);
     ksem_init(&hdque_empty, HDQUE_MAXSIZE);
@@ -92,13 +89,10 @@ void init_hd() {
  *****************************************************************************/
 void hd_open(int drive) {
     if (satabuf == NULL) { satabuf = kern_kmalloc(BLOCK_SIZE); }
-
     if (drive >= SATA_BASE && drive < SATA_LIMIT) {
-        u8 *buf = kern_kmalloc(512);
-        u32 port_num = ahci_info[0].satadrv_atport[drive - SATA_BASE];
-        identity_SATA(&(HBA->ports[port_num]), buf);
-
-        // print_identify_info((u16*)buf);
+        u8 *buf = kern_kmalloc(SECTOR_SIZE);
+        u32 port_num = ahci_active()->sata_drv_port[drive - SATA_BASE];
+        identity_sata(&ahci_hba()->ports[port_num], buf);
         u16 *hdinfo = (u16 *)buf;
         int cmd_set_supported = hdinfo[83];
         UNUSED(cmd_set_supported);
@@ -109,7 +103,8 @@ void hd_open(int drive) {
     } else if (drive < SATA_BASE) {
         hd_identify(drive);
     }
-    if (hd_infos[drive].open_cnt++ == 0) { partition(MAKE_DEV(drive + DEV_HD_BASE, 0), P_PRIMARY); }
+    if (hd_infos[drive].open_cnt == 0) { partition(MAKE_DEV(drive + DEV_HD_BASE, 0), P_PRIMARY); }
+    ++hd_infos[drive].open_cnt;
 }
 
 /*****************************************************************************
@@ -122,29 +117,24 @@ void hd_open(int drive) {
  *****************************************************************************/
 void hd_close(int device) {
     int drive = DRV_OF_DEV(device);
-
-    hd_infos[drive].open_cnt--;
+    --hd_infos[drive].open_cnt;
 }
 
 void init_open_hd() {
-    for (u32 dev_index = 0; dev_index < ahci_info[0].satadrv_num; ++dev_index) {
+    for (u32 dev_index = 0; dev_index < ahci_info[0].total_sata_drv; ++dev_index) {
         hd_open(SATA_BASE + dev_index);
     }
 }
 
 int get_hd_dev(int drive, int fs_type) {
-    int i;
-    for (i = 1; i < NR_PRIM_PER_DRIVE;
-         i++) // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
-    {
+    // 跳过第1个主分区，因为第1个分区是启动分区 comment added by ran
+    for (int i = 1; i < NR_PRIM_PER_DRIVE; i++) {
         if (hd_infos[drive].part[i].fs_type == fs_type) return MAKE_DEV(DEV_HD_BASE + drive, i);
     }
-
-    // added by mingxuan 2020-10-29
-    for (i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; ++i) {
+    for (int i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; ++i) {
         if (hd_infos[drive].part[i].fs_type == fs_type) return MAKE_DEV(DEV_HD_BASE + drive, i);
     }
-    assert(0);
+    unreachable();
     return -1;
 }
 
@@ -168,7 +158,8 @@ int hd_rdwt_base(int drive, int type, u32 sect_nr, u32 count, void *buf) {
     if (drive >= SATA_BASE && drive < SATA_LIMIT) {
         SATA_rdwt(drive, type, sect, count, buf);
         return 1;
-    } else if (drive >= IDE_BASE && drive < IDE_LIMIT) {
+    }
+    if (drive >= IDE_BASE && drive < IDE_LIMIT) {
         IDE_rdwt(drive, type, sect, count, buf);
         return 1;
     }
@@ -194,8 +185,6 @@ void hd_rdwt(hd_messge_t *p) {
         return;
     }
     sect_nr += info->base;
-    // u32	count =(p->CNT + SECTOR_SIZE - 1) / SECTOR_SIZE;
-
     void *la = (void *)va2la(p->PROC_NR, p->BUF);
     hd_rdwt_base(drive, p->type, sect_nr, p->CNT, la);
 }
@@ -473,17 +462,11 @@ static void hd_identify(int drive) {
     interrupt_wait();
     port_read(REG_DATA, hdbuf, SECTOR_SIZE);
 
-    // print_identify_info((u16*)hdbuf);	//deleted by mingxuan 2021-2-7
-
     u16 *hdinfo = (u16 *)hdbuf;
 
     int cmd_set_supported = hdinfo[83];
 
-    // kprintf("LBA48 supported:");
-    if ((cmd_set_supported & 0x0400)) {
-        hd_LBA48_sup[drive] = 1;
-        // kprintf("YES  ");
-    } // by zql 2022.4.26
+    if ((cmd_set_supported & 0x0400)) { hd_LBA48_sup[drive] = 1; }
 
     hd_infos[drive].part[0].base = 0;
     /* Total Nr of User Addressable Sectors */
@@ -699,7 +682,7 @@ static void IDE_rdwt(int drive, int type, u64 sect_nr, u32 count, void *buf) {
         cmd.device =
             0x40 | ((drive << 4) & 0xFF); // 0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
         cmd.command = (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-    } // by qianglong 2022.4.26
+    }      // by qianglong 2022.4.26
     else { // LBA28
         cmd.device = MAKE_DEVICE_REG(1, drive, (sect_nr >> 24) & 0xF);
         cmd.command = (type == DEV_READ) ? ATA_READ : ATA_WRITE;
@@ -763,11 +746,11 @@ static int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
     }
     drive -= SATA_BASE;
 
-    int port_num = ahci_info[0].satadrv_atport[drive];
-    HBA_PORT *port = &(HBA->ports[port_num]);
+    int port_num = ahci_info[0].sata_drv_port[drive];
+    HBA_PORT *port = &(ahci_hba()->ports[port_num]);
     port->is = (u32)-1; // Clear pending interrupt bits
 
-    int slot = find_cmdslot(port);
+    int slot = ahci_find_cmd_slot(port);
     if (slot == -1) return FALSE;
 
     HBA_CMD_HEADER *cmdheader = (HBA_CMD_HEADER *)K_PHY2LIN(port->clb);
@@ -832,7 +815,8 @@ static int SATA_rdwt_sects(int drive, int type, u64 sect_nr, u32 count) {
 
     if (kstate_on_init) {
         port->ci = 1 << slot; // Issue command
-        while (sata_wait_flag);
+        while (sata_wait_flag)
+            ;
         sata_wait_flag = 1;
     } else {
         /*此处采用开关中断的设计是为了防止sata中断在将hd_service设置为SLEEPING前到来*/
