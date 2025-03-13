@@ -15,8 +15,7 @@ static void rewrite_kernel_ptes(uintptr_t va, phyaddr_t pa, size_t size, int att
 
 void *ioremap(phyaddr_t phy_addr, size_t size) {
     const off_t off = PGOFF(phy_addr);
-    const int order = buddy_fit_order(size + off);
-    auto page = buddy_alloc_restricted(bud, order, 0, SZ_1G - 1);
+    auto page = buddy_alloc_kernel_pages(buddy_fit_order(size + off));
     if (page == NULL) { return NULL; }
     const phyaddr_t pa = pfn_to_phy(page_to_pfn(page));
     void *addr_aligned = K_PHY2LIN(pa);

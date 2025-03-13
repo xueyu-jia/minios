@@ -168,7 +168,7 @@ static bool free_object_to_slab(kmem_slab_t *slab, u32 obj) {
  * \brief alloc a memory page for slab ctor
  */
 static memory_page_t *slab_alloc_slab_page() {
-    memory_page_t *page = buddy_alloc_restricted(bud, 0, 0, SZ_1G - 1);
+    memory_page_t *page = buddy_alloc_kernel_pages(0);
     assert(page != NULL);
     page->state = PAGESTATE_SLAB;
     return page;

@@ -141,7 +141,7 @@ void memory_init() {
 
 phyaddr_t phy_kmalloc(size_t size) {
     if (size <= BIT(MAX_BUFF_ORDER)) { return slab_alloc(size); }
-    memory_page_t *page = buddy_alloc_restricted(bud, buddy_fit_order(size), 0, SZ_1G - 1);
+    memory_page_t *page = buddy_alloc_kernel_pages(buddy_fit_order(size));
     if (page == NULL) { return PHY_NULL; }
     const ssize_t page_size = page->size_hint * PGSIZE;
     const phyaddr_t pa = pfn_to_phy(page_to_pfn(page));

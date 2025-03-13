@@ -72,7 +72,7 @@ int buddy_fit_order(size_t size);
 memory_page_t *buddy_alloc(buddy_t *bud, int order);
 
 /*!
- * \brief allocated 2^order sized memory block in the restricted range from buddy system
+ * \brief allocate 2^order sized memory block in the restricted range from buddy system
  *
  * \param bud buddy object
  * \param order order of the requested memory block
@@ -84,6 +84,12 @@ memory_page_t *buddy_alloc(buddy_t *bud, int order);
  */
 memory_page_t *buddy_alloc_restricted(buddy_t *bud, int order, uintptr_t addr_min,
                                       uintptr_t addr_max);
+
+/*!
+ * \brief allocate 2^order sized memory block in kernel space that can be accessed directly via
+ * K_PHY2LIN without extra mappings
+ */
+memory_page_t *buddy_alloc_kernel_pages(int order);
 
 /*!
  * \brief free memory block to buddy system

@@ -94,7 +94,7 @@ static void write_kernel_pte(uintptr_t va, phyaddr_t pa, int attr) {
 
 static void switch_kernel_stack() {
     const int nr_pages = SZ_1M / PGSIZE;
-    auto page = buddy_alloc_restricted(bud, buddy_fit_order(SZ_1M), 0, SZ_1G - 1);
+    auto page = buddy_alloc_kernel_pages(buddy_fit_order(SZ_1M));
     assert(page != NULL);
 
     auto lower_guard_page = &page[0];

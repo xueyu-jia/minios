@@ -203,6 +203,10 @@ memory_page_t *buddy_alloc_restricted(buddy_t *bud, int order, uintptr_t addr_mi
     return buddy_alloc_impl(bud, order, buddy_alloc_impl_range_restricted_filter, range);
 }
 
+memory_page_t *buddy_alloc_kernel_pages(int order) {
+    return buddy_alloc_restricted(bud, order, 0, K_LIN2PHY(KernelLinLimitMAX) - 1);
+}
+
 void buddy_free(buddy_t *bud, memory_page_t *blk_head) {
     assert(bud != NULL);
     assert(blk_head != NULL);
