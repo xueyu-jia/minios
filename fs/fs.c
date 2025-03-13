@@ -88,7 +88,8 @@ static int page_filemap(memory_page_t* target, address_space_t* file_mapping, in
         kprintf("error: no get_block op\n");
         return -1;
     }
-    void* page_data = (void*)kpage_lin(target);
+    assert(target->user_va != NULL);
+    void* page_data = target->user_va;
     int phy, last_phy, last;
     for (int i = 0; i < nr; ++i) {
         if (target->pg_buffer[i] == NULL) {
