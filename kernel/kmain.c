@@ -182,10 +182,10 @@ int kernel_main() {
     kprintf("info: init fs\n");
     enable_int();
     {
-        //! ATTENTION: order matters, register must before init_open_hd and init_fs
+        //! ATTENTION: order matters, register must before hd_open_and_init and init_fs
         register_fs_types();
         init_buffer(64);
-        init_open_hd();
+        hd_open_and_init();
         init_fs(SATA_BASE);
     }
     disable_int();

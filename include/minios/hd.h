@@ -79,7 +79,7 @@ enum msgtype {
  * @brief  Partition Entry struct.
  *
  * <b>Master Boot Record (MBR):</b>
- *   Located at offset 0x1BE in the 1st sector of a disk. MBR contains
+ *   Located at offset 0x1be in the 1st sector of a disk. MBR contains
  *   four 16-byte partition entries. Should end with 55h & AAh.
  *
  * <b>partitions in MBR:</b>
@@ -160,11 +160,8 @@ struct part_ent {
 
 }; // PARTITION_ENTRY;
 
-// added by mingxuan 2020-10-27
 struct fs_flags {
     u8 orange_flag;
-    // u8 reserved1;
-    // u8 reserved2;
     u16 reserved;
     u32 fat32_flag1;
     u32 fat32_flag2;
@@ -180,8 +177,8 @@ struct fs_flags {
  * INPUT/OUTPUT	*/
 /*	-----		----			-----------
  * ------------	*/
-#define REG_DATA 0x1F0         /*	Data				I/O		*/
-#define REG_FEATURES 0x1F1     /*	Features			O		*/
+#define REG_DATA 0x1f0         /*	Data				I/O		*/
+#define REG_FEATURES 0x1f1     /*	Features			O		*/
 #define REG_ERROR REG_FEATURES /*	Error				I		*/
 /* 	The contents of this register are valid only when the error bit
         (ERR) in the Status Register is set, except at drive power-up or at the
@@ -205,12 +202,12 @@ struct fs_flags {
            `--------------------------------------------- 7. Bad block mark
    detected in the requested sector's ID field
 */
-#define REG_NSECTOR 0x1F2  /*	Sector Count			I/O		*/
-#define REG_LBA_LOW 0x1F3  /*	Sector Number / LBA Bits 0-7	I/O		*/
-#define REG_LBA_MID 0x1F4  /*	Cylinder Low / LBA Bits 8-15	I/O		*/
-#define REG_LBA_HIGH 0x1F5 /*	Cylinder High / LBA Bits 16-23	I/O		*/
+#define REG_NSECTOR 0x1f2  /*	Sector Count			I/O		*/
+#define REG_LBA_LOW 0x1f3  /*	Sector Number / LBA Bits 0-7	I/O		*/
+#define REG_LBA_MID 0x1f4  /*	Cylinder Low / LBA Bits 8-15	I/O		*/
+#define REG_LBA_HIGH 0x1f5 /*	Cylinder High / LBA Bits 16-23	I/O		*/
 #define REG_DEVICE                             \
-    0x1F6 /*	Drive | Head | LBA bits 24-27	I/O \
+    0x1f6 /*	Drive | Head | LBA bits 24-27	I/O \
            */
           /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
                   +-----+-----+-----+-----+-----+-----+-----+-----+
@@ -231,7 +228,7 @@ struct fs_flags {
              When         L=1, addressing is by 'LBA' mode.
           */
 #define REG_STATUS       \
-    0x1F7 /*	Status				I \
+    0x1f7 /*	Status				I \
            */
 /* 	Any pending interrupt is cleared whenever this register is read.
         |  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
@@ -291,7 +288,7 @@ struct fs_flags {
  * INPUT/OUTPUT	*/
 /*	-----		----			-----------
  * ------------	*/
-#define REG_DEV_CTRL 0x3F6
+#define REG_DEV_CTRL 0x3f6
 /*	Device Control			O		*/
 /*	|  7  |  6  |  5  |  4  |  3  |  2  |  1  |  0  |
         +-----+-----+-----+-----+-----+-----+-----+-----+
@@ -319,7 +316,7 @@ struct fs_flags {
    interrupt acknowledge or clear a pending interrupt.
 */
 
-#define REG_DRV_ADDR 0x3F7 /*	Drive Address			I		*/
+#define REG_DRV_ADDR 0x3f7 /*	Drive Address			I		*/
 
 typedef struct hd_cmd {
     u8 features;
@@ -349,24 +346,18 @@ typedef struct hd_cmd {
 #define BUF u.m3.m3p2
 #define OFFSET u.m3.m3i2
 #define WHENCE u.m3.m3i3
-
-/* #define	PID		u.m3.m3i2 */
-/* #define	STATUS		u.m3.m3i1 */
 #define RETVAL u.m3.m3i1
-/* #define	STATUS		u.m3.m3i1 */
 
 #define DIOCTL_GET_GEO 1
 
 #define MAX_DRIVES 2
 #define NR_PART_PER_DRIVE 4 // 每块硬盘(驱动器)只能有4个主分区, mingxuan
 #define NR_SUB_PER_PART 11  // 扩展分区最多有11个逻辑分区, mingxuan
-#define NR_SUB_PER_DRIVE \
-    (NR_SUB_PER_PART * NR_PART_PER_DRIVE) // 每块硬盘(驱动器)最多有16 * 4 =
-                                          // 64个逻辑分区, mingxuan
-#define NR_PRIM_PER_DRIVE \
-    (NR_PART_PER_DRIVE +  \
-     1) // 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待,
-        // mingxuan
+// 每块硬盘(驱动器)最多有16 * 4 = 64个逻辑分区, mingxuan
+#define NR_SUB_PER_DRIVE (NR_SUB_PER_PART * NR_PART_PER_DRIVE)
+// 表示的是hd[0～4]这5个分区，因为有些代码中我们把整块硬盘（hd0）和主分区（hd[1～4]）放在一起看待,
+// mingxuan
+#define NR_PRIM_PER_DRIVE (NR_PART_PER_DRIVE + 1)
 
 /**
  * @def MAX_PRIM
@@ -380,10 +371,6 @@ typedef struct hd_cmd {
 #define MAX_PRIM (MAX_DRIVES * NR_PRIM_PER_DRIVE - 1)     // MAX_PRIM = 2 * 4 - 1 = 9
 #define MAX_SUBPARTITIONS (NR_SUB_PER_DRIVE * MAX_DRIVES) // MAX_SUBPARTITIONS = 64 * 2 = 128
 
-#define P_PRIMARY 0
-#define P_EXTENDED 1
-
-// #define ORANGES_PART	0x99	/* Orange'S partition */
 #define NO_PART 0x00  /* unused entry */
 #define EXT_PART 0x05 /* extended partition */
 
@@ -397,14 +384,11 @@ struct part_info {
 struct hd_info {
     int open_cnt;
     struct part_info part[NR_PRIM_PER_DRIVE + NR_SUB_PER_PART];
-    // struct part_info	primary[NR_PRIM_PER_DRIVE];	// NR_PRIM_PER_DRIVE = 5
-    // struct part_info	logical[NR_SUB_PER_DRIVE];	// NR_SUB_PER_DRIVE = 16
-    // *4 =64
 };
 
 #define HD_TIMEOUT 10000 /* in millisec */
-#define PARTITION_TABLE_OFFSET 0x1BE
-#define ATA_IDENTIFY 0xEC
+#define PARTITION_TABLE_OFFSET 0x1be
+#define ATA_IDENTIFY 0xec
 #define ATA_READ 0x20     // LBA24
 #define ATA_READ_EXT 0x24 // LBA48,by qianglong 2022.4.25
 #define ATA_WRITE 0x30
@@ -412,7 +396,7 @@ struct hd_info {
 
 /* for DEVICE register. */
 #define MAKE_DEVICE_REG(lba, drv, lba_highest) \
-    (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xF) | 0xA0)
+    (((lba) << 6) | ((drv) << 4) | (lba_highest & 0xf) | 0xa0)
 
 #define HDQUE_MAXSIZE 64
 
@@ -430,40 +414,23 @@ typedef struct {
 extern struct hd_info hd_infos[12];
 
 void init_hd();
-void init_open_hd();
-void hd_open(int device);
-void hd_close(int device);
-int get_hd_part_dev(int drive, int part, int fs_type);
-int get_hd_dev(int drive, int fs_type);
-int get_hd_fstype(int dev);
+void hd_open_and_init();
+
 void hd_service();
 
+int hd_make_part_dev(int drive, int part, int fs_type);
+int hd_find_dev_of_fstype(int drive, int fs_type);
+int hd_get_fstype(int dev);
+
+void hd_open(int drive);
+void hd_close(int drive);
+void hd_ioctl(hd_messge_t *p);
 void hd_rdwt(hd_messge_t *p);
 void hd_rdwt_sched(hd_messge_t *p);
-void hd_ioctl(hd_messge_t *p);
+
+void rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
+void rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
+
 int orangefs_identify(int drive, u32 nr_sect);
 int fat32_identify(int drive, u32 nr_sect);
 int ext4_identify(int drive, u32 nr_sect);
-
-int rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-int rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf);
-
-// 硬盘中数据块的读写
-#define RD_BLOCK_SCHED(dev, block_nr, fsbuf)                                                      \
-    rw_blocks_sched(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* read one block */ \
-                    proc2pid(p_proc_current),                                /*current task id*/  \
-                    fsbuf);
-
-#define WR_BLOCK_SCHED(dev, block_nr, fsbuf)                      \
-    rw_blocks_sched(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, \
-                    BLOCK_SIZE, /* write one block */             \
-                    proc2pid(p_proc_current), fsbuf);
-
-#define RD_BLOCK(dev, block_nr, fsbuf)                                                      \
-    rw_blocks(DEV_READ, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* read one block */ \
-              proc2pid(p_proc_current),                                /*current task id*/  \
-              fsbuf);
-
-#define WR_BLOCK(dev, block_nr, fsbuf)                                                        \
-    rw_blocks(DEV_WRITE, dev, (u64)(block_nr) * BLOCK_SIZE, BLOCK_SIZE, /* write one block */ \
-              proc2pid(p_proc_current), fsbuf);

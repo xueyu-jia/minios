@@ -143,10 +143,6 @@ static int orange_free_smap_bit(struct super_block *sb, int start_sect_nr, int n
 
     for (; i < ORANGE_SB(sb)->nr_smap_blocks; ++i) { /* smap_blk0_nr + i :
                                            current sect nr. */
-        // RD_SECT_SCHED(dev, smap_blk0_nr + i, fsbuf);	//modified by xw,
-        // 18/12/27
-        // BUF_RD_BLOCK(dev, smap_blk0_nr + i, fsbuf); // modified by mingxuan
-        // 2019-5-20
         bh = bread(sb->sb_dev, smap_blk0_nr + i);
         fsbuf = bh->buffer;
 

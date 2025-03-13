@@ -36,33 +36,20 @@ bool release_superblock(struct super_block* sb) {
     return false;
 }
 
-#define MAX_DEV_PATH 16
 int init_block_dev() {
     for (int i = 0; i < 12; ++i) {
-        if (hd_infos[i].open_cnt > 0) {
-            for (int j = 0; j < 16; ++j) {
-                if (hd_infos[i].part[j].size > 0) {
-                    int major = i, minor = j;
-                    UNUSED(major);
-                    register_device(MAKE_DEV(DEV_HD_BASE + i, minor), DEV_BLOCK_TYPE,
-                                    &blk_file_ops);
-                }
-            }
+        if (hd_infos[i].open_cnt == 0) { continue; }
+        for (int j = 0; j < 16; ++j) {
+            if (hd_infos[i].part[j].size == 0) { continue; }
+            register_device(MAKE_DEV(DEV_HD_BASE + i, j), DEV_BLOCK_TYPE, &blk_file_ops);
         }
     }
     return 0;
 }
 
-// add by sundong 2023.5.19
 // 在根文件系统下创建tty字符设备文件，设备文件分别是/dev/tty0、/dev/tty1、/dev/tty2
 int init_char_dev() {
-    // struct super_block *sb = get_super_block(drive);
-    // real_mkdir(sb, "dev");
-    // char ttypath[MAX_DEV_PATH] = {"/dev/tty0"};
     for (int i = 0; i < NR_CONSOLES; ++i) {
-        // ttypath[strlen(ttypath) - 1] = '0' + i;
-        // kern_vfs_mknod(ttypath, I_CHAR_SPECIAL|I_R|I_W,
-        // MAKE_DEV(DEV_CHAR_TTY, i));
         register_device(MAKE_DEV(DEV_CHAR_TTY, i), DEV_CHAR_TYPE, &tty_file_ops);
     }
     return 0;

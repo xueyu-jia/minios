@@ -499,8 +499,8 @@ static struct super_block* vfs_read_super(int dev, int fstype) {
     if (dev) {
         // 对于 fstype FS_TYPE_NONE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
         if (fstype == FS_TYPE_NONE) {
-            fstype = get_hd_fstype(dev);
-        } else if (get_hd_fstype(dev) != fstype) {
+            fstype = hd_get_fstype(dev);
+        } else if (hd_get_fstype(dev) != fstype) {
             // dismatch fstype
             kprintf("error: fstype not match\n");
             return NULL;
@@ -609,13 +609,11 @@ static void mount_root(int root_drive) {
     int root_fstype = get_fstype_by_name(ROOT_FSTYPE);
     int dev = -1;
 #ifdef ROOT_PART
-    dev = get_hd_part_dev(root_drive, ROOT_PART, root_fstype);
+    dev = hd_make_part_dev(root_drive, ROOT_PART, root_fstype);
 #else
-    // 自动匹配符合文件系统类型的第一个分区
-    dev = get_hd_dev(root_drive, root_fstype);
+    dev = hd_find_dev_of_fstype(root_drive, root_fstype);
 #endif
     assert(dev != -1);
-    // struct super_block *sb = vfs_get_super(dev, root_fstype);
     vfs_root = vfs_mount_dev(dev, root_fstype, "/", NULL);
 }
 
