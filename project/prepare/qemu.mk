@@ -28,10 +28,12 @@ QEMU_FLAGS_TEMPLATE += -rtc base=utc
 QEMU_FLAGS_TEMPLATE += -boot menu=on
 QEMU_FLAGS_TEMPLATE += -device isa-serial,chardev=com1
 QEMU_FLAGS_TEMPLATE += -chardev null,id=com1,logfile=$(OBJDIR)minios-$(ARCH).serial.$(shell date +%Y%m%d%H).log,logappend=on
-QEMU_FLAGS_TEMPLATE += $(foreach i,$(call range,2,5), \
--device isa-serial,chardev=com$(i)                    \
--chardev null,id=com$(i),path=com$(i)-redirect.log    \
+QEMU_FLAGS_TEMPLATE += $(foreach i,$(call range,2,5),              \
+-device isa-serial,chardev=com$(i)                                 \
+-chardev null,id=com$(i),logfile=com$(i)-redirect.log,logappend=on \
 )
+QEMU_FLAGS_TEMPLATE += -device isa-parallel,chardev=lpt1
+QEMU_FLAGS_TEMPLATE += -chardev null,id=lpt1,logfile=lpt1-redirect.log,logappend=on
 QEMU_FLAGS_TEMPLATE += $(if $(QEMU_DISPLAY),-display $(QEMU_DISPLAY),)
 
 #! get_qemu_flags <hdd-list> <fhd-list>
