@@ -1,23 +1,4 @@
 #include <minios/time.h>
-#include <minios/clock.h>
-#include <minios/asm.h>
-#include <minios/dev.h>
-#include <minios/assert.h>
-#include <fmt.h>
-#include <string.h>
-
-#define RTC_ADDR 0x70
-#define RTC_DATA 0x71
-
-u8 read_rtc(int addr) {
-    //:** must disable int and ***
-    outb(RTC_ADDR, addr);
-    return inb(RTC_DATA);
-}
-
-int bcd2byte(u8 x) {
-    return ((x >> 4) & 0xF) * 10 + (x & 0xF);
-}
 
 // 计算自1970-1-1 00:00:00 UTC 的秒数(时间戳) 全是技巧的Gauss算法, copy自linux
 u32 mktime(struct tm* time) {
@@ -83,86 +64,12 @@ struct tm* gmtime(u32 timestamp, struct tm* tm_time) {
 }
 
 struct tm* localtime(u32 timestamp, struct tm* tm_time) {
-    tm_time->__tm_gmtoff = (LOCAL_TIMEZONE)*3600;
+    tm_time->__tm_gmtoff = LOCAL_TIMEZONE * 3600;
     _gmtime(timestamp, tm_time);
     return tm_time;
-}
-
-static void get_rtc_datetime(struct tm* time) {
-    //! ATTENTION: \b MUST disable int
-    int year, mon, day, hour, min, sec;
-    do {
-        year = read_rtc(0x9);
-        mon = read_rtc(0x8);
-        day = read_rtc(0x7);
-        hour = read_rtc(0x4);
-        min = read_rtc(0x2);
-        sec = read_rtc(0);
-    } while (sec != read_rtc(0));
-    if (!(read_rtc(0xB) & 0x4)) {
-        year = bcd2byte(year);
-        mon = bcd2byte(mon);
-        day = bcd2byte(day);
-        hour = bcd2byte(hour);
-        min = bcd2byte(min);
-        sec = bcd2byte(sec);
-    }
-    year += 1900;
-    if (year < 1970) year += 100;
-    time->tm_year = year - 1900;
-    time->tm_mon = mon - 1;
-    time->tm_mday = day;
-    time->tm_hour = hour;
-    time->tm_min = min;
-    time->tm_sec = sec;
-    time->__tm_gmtoff = RTC_TIMEZONE * 3600;
-}
-
-u32 get_init_rtc_timestamp() {
-    struct tm time = {0};
-    get_rtc_datetime(&time);
-    return mktime(&time);
 }
 
 int kern_get_time(struct tm* time) {
     localtime(current_timestamp, time);
     return 0;
 }
-
-static int rtc_file_read(struct file_desc* file, unsigned int count, char* buf) {
-    const int dev = file->fd_dentry->d_inode->i_b_cdev;
-    if (DEV_MAJOR(dev) != DEV_CHAR_RTC) { return -1; }
-    const int nr_rtc = DEV_MINOR(dev);
-    //! TODO: support more rtc clock
-    if (nr_rtc != 0) { return -1; }
-    static size_t last_rd_off = 0;
-    static size_t tm_len = 0;
-    struct tm tm = {};
-    char tm_buf[64] = {};
-    if (last_rd_off == 0) {
-        kern_get_time(&tm);
-        nstrfmt(tm_buf, sizeof(tm_buf), "%4d-%02d-%02d %02d:%02d:%02d%c%02d:00", tm.tm_year + 1900,
-                tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-                LOCAL_TIMEZONE >= 0 ? '+' : '-',
-                LOCAL_TIMEZONE >= 0 ? LOCAL_TIMEZONE : -LOCAL_TIMEZONE);
-        tm_len = strlen(tm_buf);
-    }
-    if (tm_len < last_rd_off + count) {
-        memcpy(buf, tm_buf, tm_len);
-        const int rd_cnt = tm_len - last_rd_off;
-        last_rd_off = 0;
-        return rd_cnt;
-    }
-    if (last_rd_off == tm_len) {
-        last_rd_off = 0;
-        return 0;
-    }
-    memcpy(buf, tm_buf + last_rd_off, count);
-    last_rd_off += count;
-    return count;
-}
-
-struct file_operations rtc_file_ops = {
-    .read = rtc_file_read,
-    .write = NULL,
-};

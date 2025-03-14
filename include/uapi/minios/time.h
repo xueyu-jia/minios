@@ -20,3 +20,6 @@ struct tm {
 typedef ssize_t clock_t;
 
 #define CLOCKS_PER_SEC 1000
+
+#define UTC 0
+#define LOCAL_TIMEZONE +8

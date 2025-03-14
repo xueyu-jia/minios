@@ -1148,8 +1148,6 @@ static void init_fsroot() {
     for (int i = 0; i < NR_CONSOLES; ++i) {
         register_device(DEV_MAKE_ID(DEV_CHAR_TTY, i), &tty_file_ops);
     }
-
-    register_device(DEV_MAKE_ID(DEV_CHAR_RTC, 0), &rtc_file_ops);
 }
 
 void register_fs_types() {

@@ -23,6 +23,7 @@
 #include <driver/pci/pci.h>
 #include <driver/pci/vendor.h>
 #include <driver/ata/ahci.h>
+#include <driver/rtc/rtc.h>
 #include <fs/devfs/devfs.h>
 
 #ifdef GDBSTUB
@@ -164,10 +165,11 @@ int kernel_main() {
     scan_pci_tree();
 
     kprintf("info: init devices\n");
+    init_devices();
+    rtc_probe();
     init_kb();
     ahci_sata_init();
     init_hd();
-    init_devices();
 
     kprintf("info: init ipc objects\n");
     init_msgq();

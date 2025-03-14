@@ -7,6 +7,7 @@
 #include <minios/interrupt.h>
 #include <minios/console.h>
 #include <minios/regs.h>
+#include <driver/rtc/rtc.h>
 #include <klib/stddef.h>
 
 //! 8253/8254 PIT (Programmable Interval Timer)
@@ -71,7 +72,11 @@ void init_clock() {
     outb(TIMER0, (u8)((TIMER_FREQ / HZ) >> 8));
     /* initialize clock-irq */
     put_irq_handler(CLOCK_IRQ, clock_handler); /* 设定时钟中断处理程序 */
-    current_timestamp = get_init_rtc_timestamp();
+    {
+        struct tm tm = {};
+        rtc_get_datetime(&tm);
+        current_timestamp = mktime(&tm);
+    }
     enable_irq(CLOCK_IRQ); /* 让8259A可以接收时钟中断 */
 }
 
