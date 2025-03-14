@@ -3,8 +3,8 @@
 #include <minios/vga.h>
 #include <minios/interrupt.h>
 #include <minios/layout.h>
-#include <minios/uart.h>
 #include <minios/spinlock.h>
+#include <driver/serial/uart.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
@@ -281,31 +281,20 @@ static void w_copy(unsigned int dst, const unsigned int src, int size) {
            size << 1);
 }
 
-static inline bool do_putch(char ch) {
-    const bool accepted = isprint(ch) || ch == '\n' || ch == '\t';
-    if (accepted) { serial_write(ch); }
-    return accepted;
-}
+cb_strfmt_t __klog_handler_cb = NULL;
+void* __klog_handler_arg = NULL;
 
-static char* putch_handler(char* buf, void* user, int len) {
-    for (int i = 0; i < len; ++i) {
-        if (do_putch(buf[i])) { ++*(int*)user; }
-    }
-    return buf;
-}
-
-static int kvprintf(const char* fmt, va_list ap) {
-    int cnt = 0;
+static void kvprintf(const char* fmt, va_list ap) {
     char buf[64] = {};
     strfmt_handler_t handler = {
-        .callback = putch_handler,
-        .user = &cnt,
+        .callback = __klog_handler_cb,
+        .user = __klog_handler_arg,
     };
     vstrfmtcb(&handler, buf, sizeof(buf), fmt, ap);
-    return cnt;
 }
 
 void kprintf(const char* fmt, ...) {
+    if (!__klog_handler_cb) { return; }
     va_list ap;
     va_start(ap, fmt);
     kvprintf(fmt, ap);

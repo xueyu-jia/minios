@@ -18,7 +18,7 @@ enum {
 #define DEV_MINOR_SHIFT 0
 
 #define DEV_MAKE_ID(major, minor) \
-    ((((major)&DEV_MAJOR_MASK) << DEV_MAJOR_SHIFT) | (((minor)&DEV_MINOR_MASK) << DEV_MINOR_SHIFT))
+    ((((major) & DEV_MAJOR_MASK) << DEV_MAJOR_SHIFT) | (((minor) & DEV_MINOR_MASK) << DEV_MINOR_SHIFT))
 
 #define DEV_MAJOR(x) (((x) >> DEV_MAJOR_SHIFT) & DEV_MAJOR_MASK)
 #define DEV_MINOR(x) (((x) >> DEV_MINOR_SHIFT) & DEV_MINOR_MASK)

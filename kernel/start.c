@@ -10,10 +10,10 @@
 #include <minios/console.h>
 #include <minios/interrupt.h>
 #include <minios/asm.h>
-#include <minios/uart.h>
 #include <klib/stddef.h>
 #include <multiboot.h>
 #include <string.h>
+#include <ctype.h>
 
 extern void refresh_gdt();
 
@@ -45,7 +45,7 @@ static void init_gdt() {
 static void init_kernel_page() {
     phyaddr_t k_pd_base = phy_kmalloc(SZ_4K);
     kprintf("info: alloc page directory for kernel at pa 0x%p\n", k_pd_base);
-    memset((void *)K_PHY2LIN(k_pd_base), 0, PGSIZE);
+    memset((void*)K_PHY2LIN(k_pd_base), 0, PGSIZE);
 
     {
         const uintptr_t base = ROUNDDOWN(KernelLinMapBase, SZ_4M);
@@ -82,10 +82,49 @@ static void init_kernel_page() {
     kernel_pde_phy = k_pd_base;
 }
 
+static char* early_klog_handler(char* buf, void* user, int len) {
+    UNUSED(user);
+    for (int i = 0; i < len; ++i) {
+        const char ch = buf[i];
+        const bool accepted = isprint(ch) || ch == '\n' || ch == '\t';
+        if (accepted) {
+            while (!(inb(0x3f8 + 5) & 0x20)) {}
+            outb(0x3f8, ch);
+        }
+    }
+    return buf;
+}
+
+static void early_init_klog() {
+    outb(0x3f8 + 1, 0x00); //<! disable all interrupts
+    outb(0x3f8 + 3, 0x80); //<! enable dlab (set baud rate divisor)
+    outb(0x3f8 + 0, 0x03); //<! set divisor to 3 (lo byte) 38400 baud
+    outb(0x3f8 + 1, 0x00); //<! (hi byte)
+    outb(0x3f8 + 3, 0x03); //<! 8 bits, no parity, one stop bit
+    outb(0x3f8 + 2, 0xc7); //<! enable fifo, clear them, with 14-byte threshold
+    outb(0x3f8 + 4, 0x0b); //<! irqs enabled, rts/dsr set
+    outb(0x3f8 + 4, 0x1e); //<! set in loopback mode, test the serial chip
+
+    //! test the serial chip by sending a byte and checking if it is received correctly
+    const uint8_t test_byte = 0xae;
+    while (!(inb(0x3f8 + 5) & 0x20)) {}
+    outb(0x3f8, test_byte);
+    while (!(inb(0x3f8 + 5) & 0x01)) {}
+    const uint8_t received_byte = inb(0x3f8);
+    assert(received_byte == test_byte);
+
+    //! if serial is not faulty set it in normal operation mode, i.e. not-loopback with IRQs enabled
+    //! and OUT#1 and OUT#2 bits enabled
+    outb(0x3f8 + 4, 0x0f);
+
+    extern void* __klog_handler_cb;
+    __klog_handler_cb = early_klog_handler;
+}
+
 void cstart(phyaddr_t mbi_phy_addr) {
     kstate_on_init = true;
 
-    init_simple_serial();
+    early_init_klog();
 
     //! FIXME: kernel deps on the page table setup in our bootloader
     kstate_mbi = K_PHY2LIN(mbi_phy_addr);

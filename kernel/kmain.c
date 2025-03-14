@@ -24,6 +24,7 @@
 #include <driver/pci/vendor.h>
 #include <driver/ata/ahci.h>
 #include <driver/rtc/rtc.h>
+#include <driver/serial/uart.h>
 #include <fs/devfs/devfs.h>
 
 #ifdef GDBSTUB
@@ -167,6 +168,7 @@ int kernel_main() {
     kprintf("info: init devices\n");
     init_devices();
     rtc_probe();
+    serial_uart_probe();
     init_kb();
     ahci_sata_init();
     init_hd();
