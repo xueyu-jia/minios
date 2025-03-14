@@ -16,33 +16,56 @@
 #include <fs/fs.h>
 #include <string.h>
 
-struct hd_info hd_infos[12] = {};
-static bool hd_lba48_sup[4] = {};
+hd_info_t hd_drvs[NR_DRIVES];
+static void *hd_sata_buf;
 
-static volatile int hd_int_waiting_flag = 1;
-static volatile uint8_t hd_status = 0;
+static hd_queue_t hdque;
+static semaphore_t hdque_mutex;
+static semaphore_t hdque_empty;
+static semaphore_t hdque_full;
 
-static u8 hdbuf[SECTOR_SIZE * 2] = {};
-static void *hd_sata_buf = NULL;
+hd_info_t *hd_lookup(int dev) {
+    const int type = HD_DEV_GET_DRIVE(dev);
+    const int index = HD_DEV_GET_INDEX(dev);
+    for (int i = 0; i < NR_DRIVES; ++i) {
+        struct hd_info *drv = &hd_drvs[i];
+        if (drv->open_cnt == 0) { continue; }
+        if (drv->type != type || drv->index != index) { continue; }
+        return drv;
+    }
+    return NULL;
+}
 
-static hd_queue_t hdque = {};
-static semaphore_t hdque_mutex = {};
-static semaphore_t hdque_empty = {};
-static semaphore_t hdque_full = {};
+hd_part_info_t *hd_lookup_part(int dev) {
+    hd_info_t *drv = hd_lookup(dev);
+    const int part = HD_DEV_GET_PART(dev);
+    assert(part < NR_DRIVE_PARTS);
+    //! TODO: support hd without mbr
+    hd_part_info_t *info = &drv->parts[part + 1];
+    return info->size == 0 ? NULL : info;
+}
 
-#define DRV_OF_DEV(dev) (MAJOR(dev) - DEV_HD_BASE)
+hd_info_t *hd_get_slot() {
+    for (int i = 0; i < NR_DRIVES; ++i) {
+        struct hd_info *drv = &hd_drvs[i];
+        if (drv->open_cnt > 0) { continue; }
+        return drv;
+    }
+    return NULL;
+}
 
 int hd_get_fstype(int dev) {
-    return hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].fs_type;
+    const hd_part_info_t *part = hd_lookup_part(dev);
+    return part ? part->fs_type : -1;
 }
 
 /*!
  * \brief detect the fs type for a hd block start at the given sectors
  */
-static int hd_blk_detect_fstype(int drive, size_t nr_sector) {
+static int hd_blk_detect_fstype(int dev, size_t nr_sector) {
     for (int type = 0; type < NR_FS_TYPE; ++type) {
         if (!fstype_table[type].identify) { continue; }
-        const bool matched = fstype_table[type].identify(drive, nr_sector);
+        const bool matched = fstype_table[type].identify(dev, nr_sector);
         if (matched) { return type; }
     }
     return FS_TYPE_NONE;
@@ -86,27 +109,8 @@ static void hd_queue_dequeue(hd_queue_t *q, hd_rwinfo_t **rwinfo) {
     ksem_post(&hdque_empty, 1);
 }
 
-static void hd_wait_int() {
-    while (hd_int_waiting_flag) {}
-    hd_int_waiting_flag = 1;
-}
-
-static void hd_notify_int() {
-    hd_int_waiting_flag = 0;
-}
-
-static void hd_handler(int irq) {
-    UNUSED(irq);
-    // Interrupts are cleared when the host
-    // - reads the Status Register,
-    // - issues a reset, or
-    // - writes to the Command Register.
-    hd_status = inb(REG_STATUS);
-    hd_notify_int();
-}
-
 void init_hd() {
-    memset(hd_infos, 0, sizeof(hd_infos));
+    memset(hd_drvs, 0, sizeof(hd_drvs));
 
     hd_queue_init(&hdque);
     ksem_init(&hdque_mutex, 1);
@@ -114,10 +118,6 @@ void init_hd() {
     ksem_init(&hdque_full, 0);
 
     hd_sata_buf = kern_kmalloc(BLOCK_SIZE);
-
-    put_irq_handler(AT_WINI_IRQ, hd_handler);
-    enable_irq(CASCADE_IRQ);
-    enable_irq(AT_WINI_IRQ);
 }
 
 void hd_service() {
@@ -133,27 +133,8 @@ void hd_service() {
 }
 
 void hd_open_and_init() {
-    for (size_t i = 0; i < ahci_active()->total_sata_drv; ++i) { hd_open(SATA_BASE + i); }
-}
-
-/*!
- * \brief DEV_IOCTL msg handler
- */
-void hd_ioctl(hd_messge_t *p) {
-    const int drive = DRV_OF_DEV(p->DEVICE);
-    const int nr_part = p->DEVICE & 0x0fffff;
-
-    struct hd_info *info = &hd_infos[drive];
-
-    switch (p->REQUEST) {
-        case DIOCTL_GET_GEO: {
-            void *dst = va2la(p->PROC_NR, p->BUF);
-            void *src = va2la(proc2pid(p_proc_current), &info->part[nr_part]);
-            memcpy(dst, src, sizeof(struct part_info));
-        } break;
-        default: {
-            unreachable();
-        } break;
+    for (size_t i = 0; i < ahci_active()->total_sata_drv; ++i) {
+        hd_open(HD_DEV_MAKE_BLK(DEV_BLK_HD_SATA, i));
     }
 }
 
@@ -161,113 +142,20 @@ static hd_messge_t *hd_build_drv_msg(int io_type, int dev, u64 pos, int bytes, i
                                      void *buf) {
     hd_messge_t *msg = kern_kmalloc(sizeof(hd_messge_t));
     assert(msg != NULL);
-
     msg->type = io_type;
-    msg->DEVICE = dev;
-    msg->POSITION = pos;
-    msg->CNT = bytes;
-    msg->PROC_NR = proc_nr;
-    msg->BUF = buf;
-
+    msg->dev = dev;
+    msg->pos = pos;
+    msg->cnt = bytes;
+    msg->pid = proc_nr;
+    msg->buf = buf;
     return msg;
 }
 
-static bool hd_wait_status(int mask, int expected, int timeout) {
-    const int beg = kern_clock();
-    while (true) {
-        if ((hd_status & mask) == expected) { return true; }
-        const int end = kern_clock();
-        if ((end - beg) * 1000 / CLOCKS_PER_SEC >= timeout) { break; }
-    }
-    return false;
-}
-
-static void hd_post_cmd(hd_cmd_t *cmd, int drive) {
-    /**
-     * For all commands, the host must first check if BSY=1,
-     * and should proceed no further unless and until BSY=0
-     */
-    while (true) {
-        const bool busy = !hd_wait_status(STATUS_BSY, 0, HD_TIMEOUT);
-        if (!busy) { break; }
-    }
-
-    /* Activate the Interrupt Enable (nIEN) bit */
-    outb(REG_DEV_CTRL, 0);
-
-    // 若是大硬盘，则LBA48第一次写
-    if (hd_lba48_sup[drive]) {
-        outb(REG_FEATURES, cmd->features);
-        outb(REG_NSECTOR, cmd->count_LBA48);
-        outb(REG_LBA_LOW, cmd->lba_low_LBA48);
-        outb(REG_LBA_MID, cmd->lba_mid_LBA48);
-        outb(REG_LBA_HIGH, cmd->lba_high_LBA48);
-    }
-
-    /* Load required parameters in the Command Block Registers */
-    outb(REG_FEATURES, cmd->features);
-    outb(REG_NSECTOR, cmd->count);
-    outb(REG_LBA_LOW, cmd->lba_low);
-    outb(REG_LBA_MID, cmd->lba_mid);
-    outb(REG_LBA_HIGH, cmd->lba_high);
-    outb(REG_DEVICE, cmd->device);
-    /* Write the command code to the Command Register */
-    outb(REG_CMD, cmd->command);
-}
-
-static void hd_rdwt_impl_ide(int drive, int type, u64 nr_sector, u32 count, void *buf) {
-    const size_t nr_sectors = ROUNDUP(count, SECTOR_SIZE) / SECTOR_SIZE;
-
-    hd_cmd_t cmd = {};
-    cmd.features = 0;
-    cmd.count = nr_sectors & 0xff;
-    cmd.lba_low = nr_sector & 0xff;
-    cmd.lba_mid = (nr_sector >> 8) & 0xff;
-    cmd.lba_high = (nr_sector >> 16) & 0xff;
-    if (hd_lba48_sup[drive]) { // LBA48
-        assert(nr_sectors < BIT(16));
-        cmd.count_LBA48 = (nr_sectors >> 8) & 0xff;
-        cmd.lba_low_LBA48 = (nr_sector >> 24) & 0xff;
-        cmd.lba_mid_LBA48 = (nr_sector >> 32) & 0xff;
-        cmd.lba_high_LBA48 = (nr_sector >> 40) & 0xff;
-        // 0~3位,0；第4位0表示主盘,1表示从盘；7~5位,010,表示为LBA
-        cmd.device = 0x40 | ((drive << 4) & 0xff);
-        cmd.command = (type == DEV_READ) ? ATA_READ_EXT : ATA_WRITE_EXT;
-    } else { // LBA28
-        assert(nr_sectors < BIT(8));
-        cmd.device = MAKE_DEVICE_REG(1, drive, (nr_sector >> 24) & 0xf);
-        cmd.command = (type == DEV_READ) ? ATA_READ : ATA_WRITE;
-    }
-    hd_post_cmd(&cmd, drive);
-
-    ssize_t bytes_left = count;
-    void *ptr = buf;
-    if (type == DEV_READ) {
-        while (bytes_left > 0) {
-            const size_t bytes = MIN(SECTOR_SIZE, bytes_left);
-            hd_wait_int();
-            insw(REG_DATA, hdbuf, SECTOR_SIZE);
-            memcpy(ptr, hdbuf, bytes);
-            bytes_left -= bytes;
-            ptr += bytes;
-        }
-    } else {
-        while (bytes_left > 0) {
-            const size_t bytes = MIN(SECTOR_SIZE, bytes_left);
-            const bool ready = hd_wait_status(STATUS_DRQ, STATUS_DRQ, HD_TIMEOUT);
-            assert(ready);
-            memcpy(hdbuf, ptr, bytes);
-            outsw(REG_DATA, hdbuf, SECTOR_SIZE);
-            hd_wait_int();
-            bytes_left -= bytes;
-            ptr += bytes;
-        }
-    }
-}
-
-static int sata_rdwt_impl(int drive, int type, u64 nr_sector, u32 count) {
-    assert(drive >= SATA_BASE && drive < SATA_LIMIT);
-    const int nr_sata_drv = drive - SATA_BASE;
+static int sata_rdwt_impl(int dev, int type, u64 nr_sector, u32 count) {
+    assert(HD_DEV_IS_BLK(dev));
+    assert(HD_DEV_GET_DRIVE(dev) == DEV_BLK_HD_SATA);
+    const size_t nr_sata_drv = HD_DEV_GET_INDEX(dev);
+    assert(nr_sata_drv < ahci_active()->total_sata_drv);
     int nr_port = ahci_active()->sata_drv_port[nr_sata_drv];
     HBA_PORT *port = &ahci_hba()->ports[nr_port];
 
@@ -282,7 +170,7 @@ static int sata_rdwt_impl(int drive, int type, u64 nr_sector, u32 count) {
     // Command FIS size
     cmd_hdr->cfl = sizeof(FIS_REG_H2D) / sizeof(u32);
     // 0:device to host,read ;1:host to device,write
-    cmd_hdr->w = (type == DEV_READ) ? 0 : 1;
+    cmd_hdr->w = type == HD_CMD_READ ? 0 : 1;
     cmd_hdr->c = 0;
     // Software shall not set CH(pFreeSlot).P when building queued ATA commands.
     cmd_hdr->p = 0;
@@ -312,7 +200,7 @@ static int sata_rdwt_impl(int drive, int type, u64 nr_sector, u32 count) {
     cmdfis->fis_type = FIS_TYPE_REG_H2D;
     cmdfis->c = 1; // Command
 
-    cmdfis->command = type == DEV_READ ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
+    cmdfis->command = type == HD_CMD_READ ? ATA_CMD_READ_DMA_EX : ATA_CMD_WRITE_DMA_EX;
 
     cmdfis->lba0 = nr_sector & 0xff;
     cmdfis->lba1 = (nr_sector >> 8) & 0xff;
@@ -332,7 +220,7 @@ static int sata_rdwt_impl(int drive, int type, u64 nr_sector, u32 count) {
     while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < max_spin) { ++spin; }
     if (spin == max_spin) { return -1; }
 
-    if (kstate_on_init) {
+    if (unlikely(kstate_on_init)) {
         port->ci = 1 << slot; // Issue command
         while (sata_wait_flag) {}
         sata_wait_flag = 1;
@@ -347,86 +235,86 @@ static int sata_rdwt_impl(int drive, int type, u64 nr_sector, u32 count) {
     return sata_error_flag == 1 ? -1 : 0;
 }
 
-static void hd_rdwt_impl_sata(int drive, int type, u64 nr_sector, u32 count, void *buf) {
+static void hd_rdwt_impl_sata(int dev, int type, u64 nr_sector, u32 count, void *buf) {
     const size_t nr_sectors = ROUNDUP(count, SECTOR_SIZE) / SECTOR_SIZE;
-    if (type == DEV_WRITE) { memcpy(hd_sata_buf, buf, count); }
-    const int retval = sata_rdwt_impl(drive, type, nr_sector, nr_sectors);
+    if (type == HD_CMD_WRITE) { memcpy(hd_sata_buf, buf, count); }
+    const int retval = sata_rdwt_impl(dev, type, nr_sector, nr_sectors);
     assert(retval == 0);
-    if (type == DEV_READ) { memcpy(buf, hd_sata_buf, count); }
+    if (type == HD_CMD_READ) { memcpy(buf, hd_sata_buf, count); }
 }
 
-static void hd_rdwt_router(int drive, int type, size_t nr_sector, size_t count, void *buf) {
-    if (drive >= SATA_BASE && drive < SATA_LIMIT) {
-        hd_rdwt_impl_sata(drive, type, nr_sector, count, buf);
-    } else if (drive >= IDE_BASE && drive < IDE_LIMIT) {
-        hd_rdwt_impl_ide(drive, type, nr_sector, count, buf);
-    } else {
-        unreachable();
+static void hd_rdwt_router(int dev, int type, size_t nr_sector, size_t count, void *buf) {
+    assert(HD_DEV_IS_BLK(dev));
+    switch (HD_DEV_GET_DRIVE(dev)) {
+        case DEV_BLK_HD_SATA: {
+            hd_rdwt_impl_sata(dev, type, nr_sector, count, buf);
+        } break;
+        default: {
+            unreachable();
+        } break;
     }
 }
 
 void hd_rdwt(hd_messge_t *p) {
-    int drive = DRV_OF_DEV(p->DEVICE);
-    u64 pos = p->POSITION;
-    struct part_info *info = &hd_infos[drive].part[p->DEVICE & 0x0f];
-    u32 nr_sector = (pos >> SECTOR_SIZE_SHIFT);
-    assert(nr_sector < info->size);
-    nr_sector += info->base;
-    void *la = (void *)va2la(p->PROC_NR, p->BUF);
-    hd_rdwt_router(drive, p->type, nr_sector, p->CNT, la);
+    const hd_part_info_t *part = hd_lookup_part(p->dev);
+    assert(part != NULL);
+    size_t nr_sector = p->pos / SECTOR_SIZE;
+    assert(nr_sector < part->size);
+    nr_sector += part->base;
+    void *la = va2la(p->pid, p->buf);
+    hd_rdwt_router(HD_DEV_TO_BLK(p->dev), p->type, nr_sector, p->cnt, la);
 }
 
 void hd_rdwt_sched(hd_messge_t *p) {
     hd_rwinfo_t *rwinfo = kern_kmalloc(sizeof(hd_rwinfo_t));
-    int size = p->CNT;
-    UNUSED(size);
-
     rwinfo->msg = p;
     rwinfo->proc = p_proc_current;
-
-    assert(p->type == DEV_READ || p->type == DEV_WRITE);
+    assert(p->type == HD_CMD_READ || p->type == HD_CMD_WRITE);
     hd_queue_enqueue(&hdque, rwinfo);
     wait_event(&hdque);
 }
 
-static void hd_load_mbr_partition(int device) {
-    const int drive = DRV_OF_DEV(device);
-    struct hd_info *info = &hd_infos[drive];
+static void hd_load_mbr_partition(int dev) {
+    assert(HD_DEV_IS_BLK(dev));
+    hd_info_t *drv = hd_lookup(dev);
+    assert(drv != NULL);
 
     void *sector_buf = kern_kmalloc(SECTOR_SIZE);
     assert(sector_buf != NULL);
 
-    const struct part_ent *part_tbl = sector_buf + PARTITION_TABLE_OFFSET;
-    hd_rdwt_router(drive, DEV_READ, 0, SECTOR_SIZE, sector_buf);
+    const struct mbr_part_ent *part_tbl = sector_buf + MBR_PART_TABLE_OFFSET;
+    hd_rdwt_router(dev, HD_CMD_READ, 0, SECTOR_SIZE, sector_buf);
 
     int nr_prim_parts = 0;
     int nr_part_extended = -1;
 
-    for (int i = 0; i < NR_PART_PER_DRIVE; ++i) {
-        if (part_tbl[i].sys_id == NO_PART) { continue; }
-        if (part_tbl[i].sys_id == EXT_PART) {
+    for (int i = 0; i < NR_MBR_PRIM_PART; ++i) {
+        if (part_tbl[i].sys_id == MBR_PART_NONE) { continue; }
+        if (part_tbl[i].sys_id == MBR_PART_EXT) {
             assert(nr_part_extended == -1);
             nr_part_extended = i;
         }
         const int nr_dev = i + 1;
-        info->part[nr_dev].base = part_tbl[i].start_sect;
-        info->part[nr_dev].size = part_tbl[i].nr_sects;
-        info->part[nr_dev].fs_type = hd_blk_detect_fstype(drive, info->part[nr_dev].base);
+        drv->parts[nr_dev].base = part_tbl[i].start_sect;
+        drv->parts[nr_dev].size = part_tbl[i].nr_sects;
+        drv->parts[nr_dev].fs_type = hd_blk_detect_fstype(dev, drv->parts[nr_dev].base);
         ++nr_prim_parts;
+        ++drv->nr_parts;
     }
 
     if (nr_part_extended != -1) {
         const int nr_dev = nr_part_extended + 1;
         const int nr_ext_part_base = 5;
-        const int nr_ext_sector = info->part[nr_dev].base;
+        const int nr_ext_sector = drv->parts[nr_dev].base;
         int logical_part_off = 0;
-        for (int i = 0; i < NR_SUB_PER_PART; ++i) {
+        for (int i = 0; i < NR_MBR_EXT_PART; ++i) {
             const int nr_subdev = nr_ext_part_base + i;
             const int nr_sector = nr_ext_sector + logical_part_off;
-            hd_rdwt_router(drive, DEV_READ, nr_sector, SECTOR_SIZE, sector_buf);
-            info->part[nr_subdev].base = nr_sector + part_tbl[0].start_sect;
-            info->part[nr_subdev].size = part_tbl[0].nr_sects;
-            if (part_tbl[1].sys_id == NO_PART) { break; }
+            hd_rdwt_router(dev, HD_CMD_READ, nr_sector, SECTOR_SIZE, sector_buf);
+            drv->parts[nr_subdev].base = nr_sector + part_tbl[0].start_sect;
+            drv->parts[nr_subdev].size = part_tbl[0].nr_sects;
+            ++drv->nr_parts;
+            if (part_tbl[1].sys_id == MBR_PART_NONE) { break; }
             logical_part_off = part_tbl[1].start_sect;
         }
     }
@@ -437,62 +325,53 @@ static void hd_load_mbr_partition(int device) {
     kern_kfree(sector_buf);
 }
 
-static void hd_identify(int drive) {
-    hd_cmd_t cmd = {
-        .device = MAKE_DEVICE_REG(0, drive, 0),
-        .command = ATA_IDENTIFY,
-    };
-    hd_post_cmd(&cmd, drive);
-    hd_wait_int();
-    insw(REG_DATA, hdbuf, SECTOR_SIZE);
-
-    u16 *hdinfo = (u16 *)hdbuf;
-
-    const int cmd_set_supported = hdinfo[83];
-    if (cmd_set_supported & 0x0400) { hd_lba48_sup[drive] = true; }
-
-    hd_infos[drive].part[0].base = 0;
-    hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
-}
-
-void hd_open(int drive) {
-    if (hd_infos[drive].open_cnt == 0) {
-        if (drive >= SATA_BASE && drive < SATA_LIMIT) {
-            const int nr_port = ahci_active()->sata_drv_port[drive - SATA_BASE];
-            void *buf = kern_kmalloc(SECTOR_SIZE);
-            assert(buf != NULL);
-            identity_sata(&ahci_hba()->ports[nr_port], buf);
-            u16 *hdinfo = buf;
-            hd_infos[drive].part[0].base = 0;
-            hd_infos[drive].part[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
-            kern_kfree(buf);
-        } else if (drive < SATA_BASE) {
-            hd_identify(drive);
-        }
-        hd_load_mbr_partition(MAKE_DEV(drive + DEV_HD_BASE, 0));
+void hd_open(int dev) {
+    assert(HD_DEV_GET_DRIVE(dev) == DEV_BLK_HD_SATA);
+    assert(HD_DEV_GET_INDEX(dev) < ahci_active()->total_sata_drv);
+    hd_info_t *drv = hd_lookup(dev);
+    if (drv != NULL) {
+        atomic_inc(&drv->open_cnt);
+        return;
     }
-    atomic_inc(&hd_infos[drive].open_cnt);
+    drv = hd_get_slot();
+    assert(drv != NULL);
+    atomic_inc(&drv->open_cnt);
+    drv->type = HD_DEV_GET_DRIVE(dev);
+    drv->index = HD_DEV_GET_INDEX(dev);
+    const int nr_port = ahci_active()->sata_drv_port[drv->index];
+    void *buf = kern_kmalloc(SECTOR_SIZE);
+    assert(buf != NULL);
+    identity_sata(&ahci_hba()->ports[nr_port], buf);
+    u16 *hdinfo = buf;
+    drv->parts[0].base = 0;
+    drv->parts[0].size = ((int)hdinfo[61] << 16) + hdinfo[60];
+    kern_kfree(buf);
+    hd_load_mbr_partition(dev);
 }
 
-void hd_close(int drive) {
-    atomic_dec(&hd_infos[drive].open_cnt);
+void hd_close(int dev) {
+    hd_info_t *drv = hd_lookup(dev);
+    assert(drv != NULL);
+    atomic_dec(&drv->open_cnt);
+    if (drv->open_cnt == 0) { memset(drv, 0, sizeof(hd_info_t)); }
 }
 
-int hd_find_dev_of_fstype(int drive, int fs_type) {
-    for (int i = 1; i < NR_PRIM_PER_DRIVE; ++i) {
-        if (hd_infos[drive].part[i].fs_type != fs_type) { continue; }
-        return MAKE_DEV(DEV_HD_BASE + drive, i);
-    }
-    for (int i = NR_PRIM_PER_DRIVE; i < NR_PRIM_PER_DRIVE + NR_SUB_PER_PART; ++i) {
-        if (hd_infos[drive].part[i].fs_type != fs_type) { continue; }
-        return MAKE_DEV(DEV_HD_BASE + drive, i);
+int hd_make_part_dev(int dev, int part, int fs_type) {
+    assert(hd_lookup(dev) != NULL);
+    assert(hd_lookup(dev)->parts[part + 1].size > 0);
+    assert(hd_lookup(dev)->parts[part + 1].fs_type == fs_type);
+    return HD_DEV_MAKE(HD_DEV_GET_DRIVE(dev), HD_DEV_GET_INDEX(dev), part);
+}
+
+int hd_find_dev_of_fstype(int dev, int fs_type) {
+    hd_info_t *drv = hd_lookup(dev);
+    assert(drv != NULL);
+    for (int i = 0, j = 0; i < NR_DRIVE_PARTS && j < (ssize_t)drv->nr_parts; ++i) {
+        if (drv->parts[i + 1].size > 0) { ++j; }
+        if (drv->parts[i + 1].fs_type != fs_type) { continue; }
+        return hd_make_part_dev(dev, i, fs_type);
     }
     return -1;
-}
-
-int hd_make_part_dev(int drive, int part, int fs_type) {
-    assert(hd_infos[drive].part[part].fs_type == fs_type);
-    return MAKE_DEV(DEV_HD_BASE + drive, part);
 }
 
 void rw_blocks(int io_type, int dev, u64 pos, int bytes, int proc_nr, void *buf) {
@@ -503,23 +382,28 @@ void rw_blocks_sched(int io_type, int dev, u64 pos, int bytes, int proc_nr, void
     hd_rdwt_sched(hd_build_drv_msg(io_type, dev, pos, bytes, proc_nr, buf));
 }
 
-int orangefs_identify(int drive, u32 nr_sect) {
-    struct fs_flags fs_flags_real;
-    hd_rdwt_router(drive, DEV_READ, nr_sect + 8, sizeof(struct fs_flags), &fs_flags_real);
+int orangefs_identify(int dev, u32 nr_sect) {
+    struct {
+        u8 orange_flag;
+        u16 reserved;
+        u32 fat32_flag1;
+        u32 fat32_flag2;
+    } fs_flags_real;
+    hd_rdwt_router(dev, HD_CMD_READ, nr_sect + 8, sizeof(fs_flags_real), &fs_flags_real);
     return fs_flags_real.orange_flag == 0x11;
 }
 
-int fat32_identify(int drive, u32 nr_sect) {
+int fat32_identify(int dev, u32 nr_sect) {
     char sect_buf[SECTOR_SIZE] = {};
-    hd_rdwt_router(drive, DEV_READ, nr_sect, SECTOR_SIZE, sect_buf);
+    hd_rdwt_router(dev, HD_CMD_READ, nr_sect, SECTOR_SIZE, sect_buf);
     const char *fat32_flag = (void *)(sect_buf + 0x52);
     return strncmp(fat32_flag, "FAT32   ", 8) == 0;
 }
 
-int ext4_identify(int drive, u32 nr_sect) {
+int ext4_identify(int dev, u32 nr_sect) {
     char sect_buf[SECTOR_SIZE] = {};
     // 这里要 +2 因为前 1024 字节是填充 0
-    hd_rdwt_router(drive, DEV_READ, nr_sect + 2, SECTOR_SIZE, sect_buf);
+    hd_rdwt_router(dev, HD_CMD_READ, nr_sect + 2, SECTOR_SIZE, sect_buf);
     const u16 magic = *(u16 *)(sect_buf + 0x38);
     return magic == 0xef53;
 }

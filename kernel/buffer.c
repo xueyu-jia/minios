@@ -200,7 +200,7 @@ static inline void sync_buff(buf_head *bh) {
     update_bh_lru(bh, BUFFER_LOCKED);
     int tick = ticks;
     UNUSED(tick);
-    rw_buffer(DEV_WRITE, bh, bh->b_size);
+    rw_buffer(HD_CMD_WRITE, bh, bh->b_size);
     bh->b_flush = 0;
     update_bh_lru(bh, BUFFER_CLEAN);
 }
@@ -296,7 +296,7 @@ buf_head *bread(u32 dev, u32 block) {
     // 若used == 1，说明已经在hash tbl中了，buffer中也有数据了
     spinlock_lock_or_yield(&bh->lock);
     if (!bh->used) {
-        rw_buffer(DEV_READ, bh, bh->b_size);
+        rw_buffer(HD_CMD_READ, bh, bh->b_size);
         bh->used = 1;
         bh->count = 1;
     } else {

@@ -6,7 +6,7 @@ struct stat;
 
 extern struct dentry *vfs_root;
 
-void init_fs(int root_drive);
+void init_fs(int blkdev);
 
 void register_fs_types();
 int get_fstype_by_name(const char *fstype_name);

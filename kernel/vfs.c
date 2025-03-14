@@ -452,16 +452,21 @@ static void init_special_inode(struct inode* inode, int type, int mode, int dev)
     inode->i_type = type;
     inode->i_b_cdev = dev;
     switch (type) {
-        case I_CHAR_SPECIAL:
+        case I_CHAR_SPECIAL: {
             inode->i_size = 0;
             inode->i_fop = &tty_file_ops;
-            break;
-        case I_BLOCK_SPECIAL:
-            inode->i_size = hd_infos[MAJOR(dev) - DEV_HD_BASE].part[MINOR(dev)].size
-                            << SECTOR_SIZE_SHIFT;
+        } break;
+        case I_BLOCK_SPECIAL: {
+            const hd_info_t* drv = hd_lookup(dev);
+            assert(drv != NULL);
+            const uint64_t nr_sectors =
+                HD_DEV_IS_BLK(dev) ? drv->parts[0].size : drv->parts[HD_DEV_GET_PART(dev) + 1].size;
+            inode->i_size = nr_sectors * SECTOR_SIZE;
             inode->i_fop = &blk_file_ops;
-        default:
-            break;
+        } break;
+        default: {
+            unreachable();
+        } break;
     }
     spinlock_release(&inode->lock);
 }
@@ -496,7 +501,7 @@ static struct dentry* vfs_create(struct inode* dir, const char* file_name, int t
 }
 
 static struct super_block* vfs_read_super(int dev, int fstype) {
-    if (dev) {
+    if (DEV_MAJOR(dev) != DEV_NONE) {
         // 对于 fstype FS_TYPE_NONE, 可以认为其为 自动 ，即跟随hd_infos中的FSTYPE
         if (fstype == FS_TYPE_NONE) {
             fstype = hd_get_fstype(dev);
@@ -603,50 +608,6 @@ static struct dentry* vfs_mount_dev(int dev, int fstype, const char* dev_name, s
     sb->sb_vfsmount = sb->sb_root->d_vfsmount;
     if (mnt) { mnt->d_mounted = true; }
     return sb->sb_root;
-}
-
-static void mount_root(int root_drive) {
-    int root_fstype = get_fstype_by_name(ROOT_FSTYPE);
-    int dev = -1;
-#ifdef ROOT_PART
-    dev = hd_make_part_dev(root_drive, ROOT_PART, root_fstype);
-#else
-    dev = hd_find_dev_of_fstype(root_drive, root_fstype);
-#endif
-    assert(dev != -1);
-    vfs_root = vfs_mount_dev(dev, root_fstype, "/", NULL);
-}
-
-int init_block_dev();
-int init_char_dev();
-int kern_vfs_mkdir(const char* path, int mode);
-static void init_fsroot() {
-    kern_vfs_mkdir("/dev", I_RWX);
-    struct dentry* dev_dir = _do_lookup(vfs_root, "dev", 0);
-    vfs_mount_dev(NO_DEV, FS_TYPE_DEV, "dev", dev_dir);
-    vfs_put_dentry(dev_dir);
-    // 加入devfs之后，设备文件的初始化实际上只进行设备的注册
-    init_block_dev();
-    init_char_dev();
-}
-
-void register_fs_types() {
-    register_fs_type("devfs", FS_TYPE_DEV, &devfs_file_ops, &devfs_inode_ops, NULL, &devfs_sb_ops,
-                     NULL);
-    register_fs_type("orangefs", FS_TYPE_ORANGE, &orange_file_ops, &orange_inode_ops, NULL,
-                     &orange_sb_ops, orangefs_identify);
-    register_fs_type("fat32", FS_TYPE_FAT32, &fat32_file_ops, &fat32_inode_ops, &fat32_dentry_ops,
-                     &fat32_sb_ops, fat32_identify);
-    register_fs_type("ext4", FS_TYPE_EXT4, &ext4_file_ops, &ext4_inode_ops, &ext4_dentry_ops,
-                     &ext4_sb_ops, ext4_identify);
-}
-
-void init_fs(int drive) {
-    spinlock_init(&inode_lock, "");
-    spinlock_init(&file_desc_lock, "");
-    init_file_desc_table();
-    mount_root(drive);
-    init_fsroot();
 }
 
 int get_fstype_by_name(const char* fstype_name) {
@@ -1161,4 +1122,62 @@ int kern_vfs_stat(const char* path, struct stat* statbuf) {
     statbuf->st_crtim = inode->i_crtime;
     vfs_put_dentry(dentry);
     return 0;
+}
+
+static void init_fsroot() {
+    kern_vfs_mkdir("/dev", I_RWX);
+    struct dentry* dev_dir = _do_lookup(vfs_root, "dev", 0);
+    vfs_mount_dev(DEV_NONE, FS_TYPE_DEV, "dev", dev_dir);
+    vfs_put_dentry(dev_dir);
+
+    // 加入devfs之后，设备文件的初始化实际上只进行设备的注册
+
+    for (int i = 0; i < NR_DRIVES; ++i) {
+        if (hd_drvs[i].open_cnt == 0) { continue; }
+        const int type = hd_drvs[i].type;
+        const int index = hd_drvs[i].index;
+        register_device(HD_DEV_MAKE_BLK(type, index), &blk_file_ops);
+        for (int j = 0, k = 0; j < NR_DRIVE_PARTS && k < (ssize_t)hd_drvs[i].nr_parts; ++j) {
+            if (hd_drvs[i].parts[j + 1].size == 0) { continue; }
+            register_device(HD_DEV_MAKE(type, index, j), &blk_file_ops);
+            ++k;
+        }
+    }
+
+    for (int i = 0; i < NR_CONSOLES; ++i) {
+        register_device(DEV_MAKE_ID(DEV_CHAR_TTY, i), &tty_file_ops);
+    }
+}
+
+void register_fs_types() {
+    register_fs_type("devfs", FS_TYPE_DEV, &devfs_file_ops, &devfs_inode_ops, NULL, &devfs_sb_ops,
+                     NULL);
+    register_fs_type("orangefs", FS_TYPE_ORANGE, &orange_file_ops, &orange_inode_ops, NULL,
+                     &orange_sb_ops, orangefs_identify);
+    register_fs_type("fat32", FS_TYPE_FAT32, &fat32_file_ops, &fat32_inode_ops, &fat32_dentry_ops,
+                     &fat32_sb_ops, fat32_identify);
+    register_fs_type("ext4", FS_TYPE_EXT4, &ext4_file_ops, &ext4_inode_ops, &ext4_dentry_ops,
+                     &ext4_sb_ops, ext4_identify);
+}
+
+static void mount_root(int drvdev) {
+    const int fstype = get_fstype_by_name(ROOT_FSTYPE);
+    assert(fstype != FS_TYPE_NONE);
+    int dev = -1;
+#ifdef ROOT_PART
+    dev = hd_make_part_dev(drvdev, ROOT_PART - 1, fstype);
+#else
+    dev = hd_find_dev_of_fstype(root_drive, root_fstype);
+#endif
+    assert(dev != -1);
+    vfs_root = vfs_mount_dev(dev, fstype, "/", NULL);
+}
+
+void init_fs(int blkdev) {
+    assert(HD_DEV_IS_BLK(blkdev));
+    spinlock_init(&inode_lock, "inode.ops");
+    spinlock_init(&file_desc_lock, "file-desc.ops");
+    init_file_desc_table();
+    mount_root(blkdev);
+    init_fsroot();
 }

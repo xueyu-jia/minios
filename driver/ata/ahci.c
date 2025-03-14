@@ -277,6 +277,7 @@ int ahci_sata_init() {
     if (sata_irq < 16) {
         put_irq_handler(sata_irq, sata_handler);
         enable_irq(sata_irq);
+        if (sata_irq >= 8) { enable_irq(CASCADE_IRQ); }
     } else {
         kprintf("error: found sata irq ge 16");
         return false;

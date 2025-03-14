@@ -1,24 +1,24 @@
 #pragma once
 
 #include <fs/fs.h>
-#include <minios/dev.h>
 
-#define DEV_CHAR_TYPE 1
-#define DEV_BLOCK_TYPE 2
+typedef struct {
+    struct list_node self;
+    list_head devices;
+    struct file_operations *file_ops;
+    int type;
+} device_set_t;
 
-// 每个device结构体对应一个主设备号的设备
-struct device {
-    int dev_major;
-    int dev_type; // CHAR / BLOCK
-    u32 dev_minor_map;
-    struct file_operations *dev_fop;
-    struct list_node dev_list;
-};
+typedef struct {
+    struct list_node self;
+    int id;
+} device_t;
 
 extern struct superblock_operations devfs_sb_ops;
 extern struct inode_operations devfs_inode_ops;
 extern struct file_operations devfs_file_ops;
 
 void init_devices();
-struct device *register_device(int dev, int type, struct file_operations *fop);
+
+int register_device(int dev, struct file_operations *fops);
 int unregister_device(int dev);

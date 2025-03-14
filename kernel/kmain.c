@@ -186,7 +186,7 @@ int kernel_main() {
         register_fs_types();
         init_buffer(64);
         hd_open_and_init();
-        init_fs(SATA_BASE);
+        init_fs(HD_DEV_MAKE_BLK(DEV_BLK_HD_SATA, 0));
     }
     disable_int();
 

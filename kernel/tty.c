@@ -226,16 +226,16 @@ int tty_read(tty_t* tty, char* buf, int len) {
 
 int tty_file_write(struct file_desc* file, unsigned int count, const char* buf) {
     int dev = file->fd_dentry->d_inode->i_b_cdev;
-    int nr_tty = MINOR(dev);
-    if (MAJOR(dev) != DEV_CHAR_TTY) { kprintf("Error: MAJOR(dev) != DEV_CHAR_TTY\n"); }
+    int nr_tty = DEV_MINOR(dev);
+    if (DEV_MAJOR(dev) != DEV_CHAR_TTY) { kprintf("Error: MAJOR(dev) != DEV_CHAR_TTY\n"); }
     tty_write(&tty_table[nr_tty], buf, count);
     return count;
 }
 
 int tty_file_read(struct file_desc* file, unsigned int count, char* buf) {
     int dev = file->fd_dentry->d_inode->i_b_cdev;
-    int nr_tty = MINOR(dev);
-    if (MAJOR(dev) != DEV_CHAR_TTY) { kprintf("Error: MAJOR(dev) != DEV_CHAR_TTY\n"); }
+    int nr_tty = DEV_MINOR(dev);
+    if (DEV_MAJOR(dev) != DEV_CHAR_TTY) { kprintf("Error: MAJOR(dev) != DEV_CHAR_TTY\n"); }
     return tty_read(&tty_table[nr_tty], buf, count);
 }
 

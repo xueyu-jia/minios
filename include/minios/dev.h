@@ -1,26 +1,24 @@
 #pragma once
 
-/* major device numbers (corresponding to kernel/global.c::dd_map[]) */
-#define NO_DEV 0
-#define DEV_FLOPPY 1
-#define DEV_CDROM 2
-#define DEV_HD_BASE 3
-#define DEV_HD_LIMIT 11
+enum {
+    DEV_NONE,
+    DEV_CHAR_TTY,
+    DEV_CHAR_SERIAL,
+    DEV_CHAR_RTC,
+    DEV_BLK_FLOPPY,
+    DEV_BLK_CDROM,
+    DEV_BLK_HD_IDE,
+    DEV_BLK_HD_SATA,
+    DEV_BLK_HD_SCSI,
+};
 
-// DEV_HD drive   hd dev = DEV_HD_BASE + drive
-#define IDE_BASE 0
-#define IDE_LIMIT 4
-#define SATA_BASE 4
-#define SATA_LIMIT 8
-#define SCSI_BASE 8
-#define SCSI_LIMIT 8
+#define DEV_MAJOR_MASK 0xfff
+#define DEV_MAJOR_SHIFT 20
+#define DEV_MINOR_MASK 0xfffff
+#define DEV_MINOR_SHIFT 0
 
-#define DEV_CHAR_TTY 13
+#define DEV_MAKE_ID(major, minor) \
+    ((((major)&DEV_MAJOR_MASK) << DEV_MAJOR_SHIFT) | (((minor)&DEV_MINOR_MASK) << DEV_MINOR_SHIFT))
 
-/* make device number from major and minor numbers */
-#define MAJOR_SHIFT 20
-#define MAKE_DEV(a, b) (((a) << MAJOR_SHIFT) | (b))
-
-/* separate major and minor numbers from device number */
-#define MAJOR(x) ((x >> MAJOR_SHIFT) & 0x0FFF)
-#define MINOR(x) (x & 0x0FFFFF)
+#define DEV_MAJOR(x) (((x) >> DEV_MAJOR_SHIFT) & DEV_MAJOR_MASK)
+#define DEV_MINOR(x) (((x) >> DEV_MINOR_SHIFT) & DEV_MINOR_MASK)
