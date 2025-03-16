@@ -186,13 +186,12 @@ static void sata_handler(int irq) {
         return;
     }
 
-    const int nr_ports = ahci_active()->nr_ports;
     int nr_port = 0;
-    while (nr_port < nr_ports) {
+    while (nr_port < 32) {
         if (port_bitmap & BIT(nr_port)) { break; }
         ++nr_port;
     }
-    assert(nr_port < nr_ports);
+    assert(nr_port < 32);
 
     //! NOTE: write BIT(i) will clear the interrupt status at BIT(i)
 
