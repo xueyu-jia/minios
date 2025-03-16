@@ -6,6 +6,7 @@
 #include <minios/kstate.h>
 #include <minios/console.h>
 #include <minios/syscall.h>
+#include <minios/kstate.h>
 #include <driver/pic/8259.h>
 #include <klib/stddef.h>
 #include <string.h>
@@ -117,7 +118,8 @@ void disable_irq(int irq) {
 }
 
 void spurious_irq(int irq) {
-    kprintf("trapped into spurious irq %d\n", irq);
+    UNUSED(irq);
+    ++kstate_spurious_irq_cntr;
 }
 
 void put_irq_handler(int irq, irq_handler_t handler) {
@@ -129,14 +131,18 @@ void put_irq_handler(int irq, irq_handler_t handler) {
 
 void irq_router(int irq) {
     assert(irq >= 0 && irq < NR_IRQ);
-    if (irq_table[irq] == NULL) {
-        spurious_irq(irq);
-        return;
-    }
-    if (irq != 0) { enable_int(); }
-    irq_table[irq](irq);
-    if (irq != 0) { disable_int(); }
-    pic_send_eoi(irq);
+    do {
+        if (irq_table[irq] == NULL) {
+            assert(irq == 7);
+            assert(!(pic_get_isr() & BIT(irq)));
+            spurious_irq(irq);
+            break;
+        }
+        if (irq != 0) { enable_int(); }
+        irq_table[irq](irq);
+        if (irq != 0) { disable_int(); }
+        pic_send_eoi(irq);
+    } while (0);
 }
 
 static const char *int_str_table[64] = {"#DE Divide Error",
