@@ -244,7 +244,7 @@ u32 identity_SATA(HBA_PORT *port, u8 *buf) {
 }
 
 int sata_read(int dev, u16 *buf, u64 sect, u32 count) {
-    HBA_PORT *port = &(HBA->ports[dev]);
+    HBA_PORT *port = &(HBA->ports[ahci_info[0].satadrv_atport[dev]]);
 
     port->is = (u32)-1; // Clear pending interrupt bits
     int spin = 0;       // Spin lock timeout counter

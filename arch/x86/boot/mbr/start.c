@@ -133,7 +133,8 @@ NORETURN static void load_kernel(size_t total_memory) {
     assert(fs_inited && "failed to init bootfs");
 
     do {
-        open_file(KERNEL_FILENAME);
+        const bool found = open_file(KERNEL_FILENAME);
+        assert(found && "failed to find kernel file");
 
         elf32_hdr_t eh = {};
         bool noerr = read(0, sizeof(elf32_hdr_t), (void *)&eh);
