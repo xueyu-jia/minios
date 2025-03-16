@@ -45,7 +45,8 @@ bool pic_is_irq_masked(int irq) {
 
 void pic_send_eoi(int irq) {
     assert(irq >= 0 && irq < 16);
-    outb((irq < 8 ? PIC_M_PORT : PIC_S_PORT) + PIC_CMD, PIC_CMD_EOI);
+    if (irq >= 8) { outb(PIC_S_PORT + PIC_CMD, PIC_CMD_EOI); }
+    outb(PIC_M_PORT + PIC_CMD, PIC_CMD_EOI);
 }
 
 uint16_t pic_get_irr() {
