@@ -1,12 +1,7 @@
 %include "off_consts.inc"
 
-INT_M_CTL     equ 0x20 ; I/O port for interrupt controller         <Master>
-INT_M_CTLMASK equ 0x21 ; setting bits in this port disables ints   <Master>
-INT_S_CTL     equ 0xa0 ; I/O port for second interrupt controller  <Slave>
-INT_S_CTLMASK equ 0xa1 ; setting bits in this port disables ints   <Slave>
-EOI           equ 0x20
-
 ; external fn
+extern irq_router
 extern sched
 extern restore
 extern restart_restore
@@ -16,7 +11,6 @@ extern general_protection_handler
 
 ; external var
 extern kstate_reenter_cntr
-extern irq_table
 extern kstate_on_init
 
 [bits 32]
@@ -28,61 +22,18 @@ irq_stack_top:
 
 [section .text]
 
-; impl_hwint_master <irq-name>, <irq-id>
-%macro impl_hwint_master 2
+; impl_irq_handler <irq-name>, <irq-id>
+%macro impl_irq_handler 2
     global %1
     align 16
 %1:
     push    0xffffffff                  ; push dummy value to the err code place in the context
-    call    save_int                    ; save context
-    inc     dword [kstate_reenter_cntr] ; mark as entering kernel
-    in      al, INT_M_CTLMASK           ; mask current int -->
-    or      al, (1 << (%2))             ;
-    out     INT_M_CTLMASK, al           ; <--
-    mov     al, EOI                     ; set master EOI -->
-    out     INT_M_CTL, al               ; <--
-    sti                                 ; enable respond to new int
-    push    %2                          ; run int handler -->
-    call    [irq_table + 4 * (%2)]      ;
-    add     esp, 4                      ; <--
-    cli
+    call    save_int
+    inc     dword [kstate_reenter_cntr]
+    push    %2
+    call    irq_router
+    add     esp, 4
     dec     dword [kstate_reenter_cntr]
-    in      al, INT_M_CTLMASK           ; unmask current int -->
-    and     al, ~(1 << (%2))            ;
-    out     INT_M_CTLMASK, al           ; <--
-    cmp     dword [kstate_reenter_cntr], 0
-    jnz     restore
-    pop     esp
-    cmp     dword [kstate_on_init], 0
-    jnz     restore
-    call    sched
-    jmp     restart_restore
-%endmacro
-
-; impl_hwint_slave <irq-name>, <irq-id>
-%macro impl_hwint_slave 2
-    global %1
-    align 16
-%1:
-    push    0xffffffff                  ; push dummy value to the err code place in the context
-    call    save_int                    ; save context
-    inc     dword [kstate_reenter_cntr] ; mark as entering kernel
-    in      al, INT_S_CTLMASK           ; mask current int -->
-    or      al, (1 << ((%2) - 8))       ;
-    out     INT_S_CTLMASK, al           ; <--
-    mov     al, EOI                     ; set master & slave EOI -->
-    out     INT_M_CTL, al               ;
-    nop                                 ;
-    out     INT_S_CTL, al               ; <--
-    sti                                 ; enable respond to new int
-    push    %2                          ; run int handler -->
-    call    [irq_table + 4 * (%2)]      ;
-    add     esp, 4                      ; <--
-    cli
-    dec     dword [kstate_reenter_cntr]
-    in      al, INT_S_CTLMASK           ; unmask current int -->
-    and     al, ~(1 << ((%2) - 8))      ;
-    out     INT_S_CTLMASK, al           ; <--
     cmp     dword [kstate_reenter_cntr], 0
     jnz     restore
     pop     esp
@@ -190,22 +141,22 @@ save_int:
     ; already in irq stack
     jmp     [esp + OFF_RETADDR]
 
-impl_hwint_master hwint00, 0  ; interrupt routine for irq 0 (the clock)
-impl_hwint_master hwint01, 1  ; interrupt routine for irq 1 (keyboard)
-impl_hwint_master hwint02, 2  ; interrupt routine for irq 2 (cascade)
-impl_hwint_master hwint03, 3  ; interrupt routine for irq 3 (second serial)
-impl_hwint_master hwint04, 4  ; interrupt routine for irq 4 (first serial)
-impl_hwint_master hwint05, 5  ; interrupt routine for irq 5 (XT winchester)
-impl_hwint_master hwint06, 6  ; interrupt routine for irq 6 (floppy)
-impl_hwint_master hwint07, 7  ; interrupt routine for irq 7 (printer)
-impl_hwint_slave  hwint08, 8  ; interrupt routine for irq 8 (realtime clock)
-impl_hwint_slave  hwint09, 9  ; interrupt routine for irq 9 (irq 2 redirected)
-impl_hwint_slave  hwint10, 10 ; interrupt routine for irq 10
-impl_hwint_slave  hwint11, 11 ; interrupt routine for irq 11
-impl_hwint_slave  hwint12, 12 ; interrupt routine for irq 12
-impl_hwint_slave  hwint13, 13 ; interrupt routine for irq 13 (fpu exception)
-impl_hwint_slave  hwint14, 14 ; interrupt routine for irq 14 (AT winchester)
-impl_hwint_slave  hwint15, 15 ; interrupt routine for irq 15
+impl_irq_handler hwint00, 0  ; interrupt routine for irq 0 (the clock)
+impl_irq_handler hwint01, 1  ; interrupt routine for irq 1 (keyboard)
+impl_irq_handler hwint02, 2  ; interrupt routine for irq 2 (cascade)
+impl_irq_handler hwint03, 3  ; interrupt routine for irq 3 (second serial)
+impl_irq_handler hwint04, 4  ; interrupt routine for irq 4 (first serial)
+impl_irq_handler hwint05, 5  ; interrupt routine for irq 5 (XT winchester)
+impl_irq_handler hwint06, 6  ; interrupt routine for irq 6 (floppy)
+impl_irq_handler hwint07, 7  ; interrupt routine for irq 7 (printer)
+impl_irq_handler hwint08, 8  ; interrupt routine for irq 8 (realtime clock)
+impl_irq_handler hwint09, 9  ; interrupt routine for irq 9 (irq 2 redirected)
+impl_irq_handler hwint10, 10 ; interrupt routine for irq 10
+impl_irq_handler hwint11, 11 ; interrupt routine for irq 11
+impl_irq_handler hwint12, 12 ; interrupt routine for irq 12
+impl_irq_handler hwint13, 13 ; interrupt routine for irq 13 (fpu exception)
+impl_irq_handler hwint14, 14 ; interrupt routine for irq 14 (AT winchester)
+impl_irq_handler hwint15, 15 ; interrupt routine for irq 15
 
 impl_exception_no_errcode division_error,           0,  exception_handler          ; division error, fault, #DE, no error code
 impl_exception_no_errcode debug_exception,          1,  exception_handler          ; debug exception, fault/trap, #DB, no error code

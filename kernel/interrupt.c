@@ -6,8 +6,9 @@
 #include <minios/kstate.h>
 #include <minios/console.h>
 #include <minios/syscall.h>
-#include <klib/stddef.h>
 #include <driver/pic/8259.h>
+#include <klib/stddef.h>
+#include <string.h>
 
 extern void hwint00();
 extern void hwint01();
@@ -98,7 +99,7 @@ static void init_idt() {
 }
 
 void init_interrupt_controller() {
-    for (int i = 0; i < NR_IRQ; ++i) { irq_table[i] = spurious_irq; }
+    memset(irq_table, 0, sizeof(irq_table));
     init_idt();
     pic_8259_init(INT_VECTOR_IRQ0, INT_VECTOR_IRQ8);
 }
@@ -124,6 +125,18 @@ void put_irq_handler(int irq, irq_handler_t handler) {
     disable_irq(irq);
     irq_table[irq] = handler;
     if (!masked) { enable_irq(irq); }
+}
+
+void irq_router(int irq) {
+    assert(irq >= 0 && irq < NR_IRQ);
+    if (irq_table[irq] == NULL) {
+        spurious_irq(irq);
+        return;
+    }
+    if (irq != 0) { enable_int(); }
+    irq_table[irq](irq);
+    if (irq != 0) { disable_int(); }
+    pic_send_eoi(irq);
 }
 
 static const char *int_str_table[64] = {"#DE Divide Error",

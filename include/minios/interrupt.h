@@ -63,6 +63,7 @@ void spurious_irq(int irq);
 void put_irq_handler(int irq, irq_handler_t handler);
 
 void init_interrupt_controller();
+void irq_router(int irq);
 
 void exception_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
 void general_protection_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags);
