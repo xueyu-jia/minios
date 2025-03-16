@@ -2,23 +2,38 @@
 #include <minios/asm.h>
 #include <minios/assert.h>
 #include <klib/stddef.h>
+#include <compiler.h>
+
+void NAKED pic_io_wait() {
+    asm volatile(
+        "nop\n"
+        "ret\n");
+}
 
 int pic_8259_init(int irq0_off, int irq8_off) {
     //! icw 1: init
     outb(PIC_M_PORT + PIC_CMD, PIC_CMD_ICW1_RESERVED | PIC_CMD_ICW1_ICW4);
+    pic_io_wait();
     outb(PIC_S_PORT + PIC_CMD, PIC_CMD_ICW1_RESERVED | PIC_CMD_ICW1_ICW4);
+    pic_io_wait();
 
     //! icw 2: set int vector offset
     outb(PIC_M_PORT + PIC_DATA, irq0_off);
+    pic_io_wait();
     outb(PIC_S_PORT + PIC_DATA, irq8_off);
+    pic_io_wait();
 
     //! icw 3: set cascade mode, cascade at irq 2
     outb(PIC_M_PORT + PIC_DATA, BIT(2));
+    pic_io_wait();
     outb(PIC_S_PORT + PIC_DATA, 2);
+    pic_io_wait();
 
     //! icw 4: set ctl word
     outb(PIC_M_PORT + PIC_DATA, PIC_DATA_ICW4_8086);
+    pic_io_wait();
     outb(PIC_S_PORT + PIC_DATA, PIC_DATA_ICW4_8086);
+    pic_io_wait();
 
     pic_disable();
 
@@ -26,8 +41,16 @@ int pic_8259_init(int irq0_off, int irq8_off) {
 }
 
 void pic_disable() {
-    outb(PIC_M_PORT + PIC_DATA, 0xff);
-    outb(PIC_S_PORT + PIC_DATA, 0xff);
+    pic_set_mask(0xffff);
+}
+
+uint16_t pic_get_mask() {
+    return inb(PIC_M_PORT + PIC_DATA) | (inb(PIC_S_PORT + PIC_DATA) << 8);
+}
+
+void pic_set_mask(uint16_t mask) {
+    outb(PIC_M_PORT + PIC_DATA, (mask >> 0) & 0xff);
+    outb(PIC_S_PORT + PIC_DATA, (mask >> 8) & 0xff);
 }
 
 void pic_set_irq_mask(int irq, bool on) {

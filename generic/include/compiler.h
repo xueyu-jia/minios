@@ -37,6 +37,7 @@
 #define PACKED __attribute__((packed))
 #define NORETURN __attribute__((noreturn))
 #define ALIGN(n) __attribute__((aligned(n)))
+#define NAKED __attribute__((naked))
 
 #define CONSTRUCTOR __attribute__((constructor))
 #define DESTRUCTOR __attribute__((destructor))

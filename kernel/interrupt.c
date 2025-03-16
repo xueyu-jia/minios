@@ -111,10 +111,12 @@ bool is_irq_masked(int irq) {
 
 void enable_irq(int irq) {
     pic_set_irq_mask(irq, false);
+    if (irq >= 8) { pic_set_irq_mask(CASCADE_IRQ, false); }
 }
 
 void disable_irq(int irq) {
     pic_set_irq_mask(irq, true);
+    if (irq >= 8 && (pic_get_mask() & 0xff00)) { pic_set_irq_mask(CASCADE_IRQ, true); }
 }
 
 void spurious_irq(int irq) {

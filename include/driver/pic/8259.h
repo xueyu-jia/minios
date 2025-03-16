@@ -63,6 +63,16 @@ int pic_8259_init(int irq0_off, int irq8_off);
 void pic_disable();
 
 /*!
+ * \brief get slave:master irq mask
+ */
+uint16_t pic_get_mask();
+
+/*!
+ * \brief set slave:master irq mask
+ */
+void pic_set_mask(uint16_t mask);
+
+/*!
  * \brief set or clear mask of the specific irq
  */
 void pic_set_irq_mask(int irq, bool on);
@@ -80,11 +90,11 @@ bool pic_is_irq_masked(int irq);
 void pic_send_eoi(int irq);
 
 /*!
- * \brief get master:slave in-request irq
+ * \brief get slave:master in-request irq
  */
 uint16_t pic_get_irr();
 
 /*!
- * \brief get master:slave in-service irq
+ * \brief get slave:master in-service irq
  */
 uint16_t pic_get_isr();
