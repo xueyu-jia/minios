@@ -275,7 +275,9 @@ static int do_scan_acpi_sdst_visit_device(lai_nsnode_t *dev, lai_state_t *state,
                             uint8_t irq_info;
                         } PACKED *d = crs_buf;
                         char bitset[16] = {};
-                        for (int i = 0; i < 16; ++i) { bitset[i] = !!(d->irq_mask & BIT(i)) + '0'; }
+                        for (int i = 16; i > 0; --i) {
+                            bitset[16 - i] = !!(d->irq_mask & BIT(i - 1)) + '0';
+                        }
                         acpi_put_dev_prop("IRQ Mask: 0b%016.16s", bitset);
                         acpi_put_dev_prop("Wake Capability: %s",
                                           !!(d->irq_info & BIT(5)) ? "true" : "false");
