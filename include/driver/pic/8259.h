@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 //! \see https://helppc.netcore2k.net/hardware/8259
+//! ATTENTION: ocw4 isr & irr bit in the document above is incorrect
 
 #define PIC_M_PORT 0x20
 #define PIC_S_PORT 0xa0
@@ -33,8 +34,8 @@
 #define PIC_CMD_OCW2_EOI_ROTATE_NON_SPECIFIC PIC_CMD_OCW2_EOI(0x05)
 #define PIC_CMD_OCW2_EOI_SET_PRIORITY PIC_CMD_OCW2_EOI(0x06)
 #define PIC_CMD_OCW2_EOI_ROTATE_SPECIFIC PIC_CMD_OCW2_EOI(0x07)
-#define PIC_CMD_OCW3_READ_ISR 0x00
-#define PIC_CMD_OCW3_READ_IRR 0x01
+#define PIC_CMD_OCW3_READ_IRR 0x00
+#define PIC_CMD_OCW3_READ_ISR 0x01
 #define PIC_CMD_OCW3_ACT_IF_BIT0 0x02
 #define PIC_CMD_OCW3_POLL_CMD_ISSUED 0x04
 #define PIC_CMD_OCW3_RESERVED 0x08
