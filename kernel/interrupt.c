@@ -7,16 +7,7 @@
 #include <minios/console.h>
 #include <minios/syscall.h>
 #include <klib/stddef.h>
-
-//! 8259A interrupt controller ports
-//! <Master> I/O port for interrupt controller
-#define INT_M_CTL 0x20
-//! <Master> setting bits in this port disables ints
-#define INT_M_CTLMASK 0x21
-//! <Slave> I/O port for second interrupt controller
-#define INT_S_CTL 0xA0
-//! <Slave> setting bits in this port disables ints
-#define INT_S_CTLMASK 0xA1
+#include <driver/pic/8259.h>
 
 extern void hwint00();
 extern void hwint01();
@@ -54,63 +45,74 @@ extern void floating_point_exception();
 
 irq_handler_t irq_table[NR_IRQ];
 
-static void init_8259A();
-static void init_idt();
-
-void init_interrupt_controller() {
-    init_8259A();
-    //! set default irq handler
-    for (int i = 0; i < NR_IRQ; ++i) { irq_table[i] = spurious_irq; }
-
-    init_idt();
+static void init_idt_desc(unsigned char vector, u8 desc_type, int_handler handler,
+                          unsigned char privilege) {
+    gate_descriptor_t *p_gate = &idt[vector];
+    u32 base = (u32)handler;
+    p_gate->offset_low = base & 0xffff;
+    p_gate->selector = SELECTOR_KERNEL_CS;
+    p_gate->dcount = 0;
+    p_gate->attr = desc_type | (privilege << 5);
+    p_gate->offset_high = (base >> 16) & 0xffff;
 }
 
-static void init_8259A() {
-    //! NOTE: reference can be found at:
-    //! https://github.com/intel/CODK-A-X86/blob/master/external/zephyr/drivers/interrupt_controller/i8259.c
+static void init_idt() {
+    idt_ptr.base = ptr2u(idt);
+    idt_ptr.limit = sizeof(idt) - 1;
 
-    //! ICW1: init
-    //! NOTE: require ICW4 & initiates initialization sequence
-    outb(INT_M_CTL, 0x11);
-    outb(INT_S_CTL, 0x11);
+    init_idt_desc(INT_VECTOR_IRQ0 + 0, DA_386IGate, hwint00, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 1, DA_386IGate, hwint01, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 2, DA_386IGate, hwint02, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 3, DA_386IGate, hwint03, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 4, DA_386IGate, hwint04, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 5, DA_386IGate, hwint05, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 6, DA_386IGate, hwint06, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ0 + 7, DA_386IGate, hwint07, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 0, DA_386IGate, hwint08, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 1, DA_386IGate, hwint09, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 2, DA_386IGate, hwint10, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 3, DA_386IGate, hwint11, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 4, DA_386IGate, hwint12, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 5, DA_386IGate, hwint13, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 6, DA_386IGate, hwint14, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_IRQ8 + 7, DA_386IGate, hwint15, RPL_KERNEL);
 
-    //! ICW2: set int vector offset
-    //! NOTE: master begins at irq 0, slave begins at irq 8
-    outb(INT_M_CTLMASK, INT_VECTOR_IRQ0);
-    outb(INT_S_CTLMASK, INT_VECTOR_IRQ8);
+    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, division_error, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, debug_exception, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, RPL_USER);
+    init_idt_desc(INT_VECTOR_OVERFLOW, DA_386IGate, overflow_exception, RPL_USER);
+    init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bound_range_exceeded, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_INVAL_OP, DA_386IGate, invalid_opcode, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DEVICE_NOT, DA_386IGate, device_not_available, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_DOUBLE_FAULT, DA_386IGate, double_fault, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, invalid_tss, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_STACK_FAULT, DA_386IGate, stack_seg_exception, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_PROTECTION, DA_386IGate, general_protection, RPL_KERNEL);
+    init_idt_desc(INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, RPL_KERNEL);
+    init_idt_desc(INV_VECTOR_FP_EXCEPTION, DA_386IGate, floating_point_exception, RPL_KERNEL);
 
-    //! ICW3: set cascade mode
-    //! NOTE: cascade at irq 4, slave connect to irq 2
-    outb(INT_M_CTLMASK, 0x4);
-    outb(INT_S_CTLMASK, 0x2);
+    init_idt_desc(INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, RPL_USER);
+}
 
-    //! ICW4: set ctrl word
-    //! NOTE: set mode 8086
-    outb(INT_M_CTLMASK, 0x1);
-    outb(INT_S_CTLMASK, 0x1);
-
-    //! OCW1: ints barrier
-    //! NOTE: barrier all interrupts
-    outb(INT_M_CTLMASK, 0xff);
-    outb(INT_S_CTLMASK, 0xff);
+void init_interrupt_controller() {
+    for (int i = 0; i < NR_IRQ; ++i) { irq_table[i] = spurious_irq; }
+    init_idt();
+    pic_8259_init(INT_VECTOR_IRQ0, INT_VECTOR_IRQ8);
 }
 
 bool is_irq_masked(int irq) {
-    const uint8_t mask = 1 << (irq % 8);
-    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
-    return !!(inb(port) & mask);
+    return pic_is_irq_masked(irq);
 }
 
 void enable_irq(int irq) {
-    const uint8_t mask = 1 << (irq % 8);
-    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
-    outb(port, inb(port) & ~mask);
+    pic_set_irq_mask(irq, false);
 }
 
 void disable_irq(int irq) {
-    const uint8_t mask = 1 << (irq % 8);
-    const int port = irq < 8 ? INT_M_CTLMASK : INT_S_CTLMASK;
-    outb(port, inb(port) | mask);
+    pic_set_irq_mask(irq, true);
 }
 
 void spurious_irq(int irq) {
@@ -218,9 +220,14 @@ void general_protection_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 e
 }
 
 void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
-    kprintf("[%s] eip=%#08x eflags=%#x cs=%#x err_code=%d from \"%s\" [pid=%d]\n",
-            int_str_table[vec_no], eip, eflags, cs, err_code, p_proc_current->task.p_name,
-            p_proc_current->task.pid);
+    struct tm time;
+    kern_get_time(&time);
+    kprintf(
+        "%d-%02d-%02d %02d:%02d:%02d [%s] eip=%#08x eflags=%#x cs=%#x err_code=%d from \"%s\" "
+        "[pid=%d]\n",
+        time.tm_year + 1900, time.tm_mon + 1, time.tm_mday, time.tm_hour, time.tm_min, time.tm_sec,
+        int_str_table[vec_no], eip, eflags, cs, err_code, p_proc_current->task.p_name,
+        p_proc_current->task.pid);
 
     typedef struct {
         u32 present : 1;
@@ -271,59 +278,4 @@ void page_fault_handler(u32 vec_no, u32 err_code, u32 eip, u32 cs, u32 eflags) {
     proc_backtrace();
 
     p_proc_current->task.stat = KILLED;
-}
-
-static void init_idt_desc(unsigned char vector, u8 desc_type, int_handler handler,
-                          unsigned char privilege);
-
-static void init_idt() {
-    idt_ptr.base = ptr2u(idt);
-    idt_ptr.limit = sizeof(idt) - 1;
-
-    init_idt_desc(INT_VECTOR_IRQ0 + 0, DA_386IGate, hwint00, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 1, DA_386IGate, hwint01, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 2, DA_386IGate, hwint02, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 3, DA_386IGate, hwint03, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 4, DA_386IGate, hwint04, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 5, DA_386IGate, hwint05, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 6, DA_386IGate, hwint06, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ0 + 7, DA_386IGate, hwint07, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 0, DA_386IGate, hwint08, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 1, DA_386IGate, hwint09, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 2, DA_386IGate, hwint10, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 3, DA_386IGate, hwint11, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 4, DA_386IGate, hwint12, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 5, DA_386IGate, hwint13, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 6, DA_386IGate, hwint14, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_IRQ8 + 7, DA_386IGate, hwint15, RPL_KERNEL);
-
-    init_idt_desc(INT_VECTOR_DIVIDE, DA_386IGate, division_error, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_DEBUG, DA_386IGate, debug_exception, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_NMI, DA_386IGate, nmi, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_BREAKPOINT, DA_386IGate, breakpoint_exception, RPL_USER);
-    init_idt_desc(INT_VECTOR_OVERFLOW, DA_386IGate, overflow_exception, RPL_USER);
-    init_idt_desc(INT_VECTOR_BOUNDS, DA_386IGate, bound_range_exceeded, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_INVAL_OP, DA_386IGate, invalid_opcode, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_DEVICE_NOT, DA_386IGate, device_not_available, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_DOUBLE_FAULT, DA_386IGate, double_fault, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_COPROC_SEG, DA_386IGate, copr_seg_overrun, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_INVAL_TSS, DA_386IGate, invalid_tss, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_SEG_NOT, DA_386IGate, segment_not_present, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_STACK_FAULT, DA_386IGate, stack_seg_exception, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_PROTECTION, DA_386IGate, general_protection, RPL_KERNEL);
-    init_idt_desc(INT_VECTOR_PAGE_FAULT, DA_386IGate, page_fault, RPL_KERNEL);
-    init_idt_desc(INV_VECTOR_FP_EXCEPTION, DA_386IGate, floating_point_exception, RPL_KERNEL);
-
-    init_idt_desc(INT_VECTOR_SYS_CALL, DA_386IGate, sys_call, RPL_USER);
-}
-
-static void init_idt_desc(unsigned char vector, u8 desc_type, int_handler handler,
-                          unsigned char privilege) {
-    gate_descriptor_t *p_gate = &idt[vector];
-    u32 base = (u32)handler;
-    p_gate->offset_low = base & 0xffff;
-    p_gate->selector = SELECTOR_KERNEL_CS;
-    p_gate->dcount = 0;
-    p_gate->attr = desc_type | (privilege << 5);
-    p_gate->offset_high = (base >> 16) & 0xffff;
 }
