@@ -116,7 +116,7 @@ void enable_irq(int irq) {
 
 void disable_irq(int irq) {
     pic_set_irq_mask(irq, true);
-    if (irq >= 8 && (pic_get_mask() & 0xff00)) { pic_set_irq_mask(CASCADE_IRQ, true); }
+    if (irq >= 8 && (pic_get_mask() & 0xff00) == 0xff00) { pic_set_irq_mask(CASCADE_IRQ, true); }
 }
 
 void spurious_irq(int irq) {
