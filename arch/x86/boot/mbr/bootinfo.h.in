@@ -1,0 +1,3 @@
+#pragma once
+
+#define BOOT_DEVICE "@INSDEV@"
