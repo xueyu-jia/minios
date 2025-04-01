@@ -16,6 +16,8 @@
 #include <disk.h>
 #include <multiboot.h>
 
+#include "bootinfo.h"
+
 static void preprocess_memory_map(ards_t *ards_list, size_t *total_ards) {
     const int n = *total_ards;
 
@@ -86,6 +88,7 @@ static phyaddr_t prepare_multiboot_info() {
     auto fmi = __fmi_ptr();
     phyaddr_t mbi_base = 0;
 
+    const bool has_explicit_boot_device = strlen(BOOT_DEVICE) > 0;
     const size_t rough_mmap_size = fmi->count * sizeof(multiboot_mmap_entry_t);
     const size_t rough_mbi_size = sizeof(multiboot_boot_info_t) + rough_mmap_size;
     for (size_t i = 0; i < fmi->count; ++i) {
@@ -109,6 +112,18 @@ static phyaddr_t prepare_multiboot_info() {
     lprintf("info: build multiboot boot info at 0x%p~0x%p\n", mbi_base,
             mbi_base + sizeof(multiboot_boot_info_t));
     memset(mbi, 0, sizeof(multiboot_boot_info_t));
+
+    if (has_explicit_boot_device) {
+        mbi->flags |= BIT(1);
+        //! ATTENTION: boot from multiple hard disks is not supported in legacy bios, and all the
+        //! hdd device will have 0x80 as its device id, so here we remake the actual hdd id to
+        //! figure out our boot device
+        //! ATTENTION: BOOT_DEVICE should always match the format of "/dev/sd_" and dev id here only
+        //! indicates the index of a sata hdd
+        const uint8_t dev = 0x80 + (BOOT_DEVICE[7] - 'a');
+        //! specify boot device without boot partition hints
+        mbi->boot_device = (dev << 24) | 0xffffff;
+    }
 
     //! enable memory map
     multiboot_mmap_entry_t *mmap = (void *)&mbi[1];
@@ -198,13 +213,15 @@ NORETURN static void load_kernel(size_t total_memory) {
     abort("fatal: failed to load kernel elf\n");
 }
 
-void cstart(size_t partition_lba, ards_t *ards_list, size_t total_ards) {
+void cstart(int boot_device, size_t partition_lba, ards_t *ards_list, size_t total_ards) {
     //! NOTE: take account of the fact that vga buffer is actually a mmio memory and will not be
     //! reported in ards list, we simply ignore it and use the port io uart instead throughout the
     //! boot process, graphics device like vga will be initialized later in the kernel through a
     //! regular device probe-and-init procedure
     //! NOTE: gs and descriptor table are also not initialized for video memory, do not try to
     //! access it for now; meanwhile, remember to handle it in kernel if needed
+
+    lprintf("info: boot from device 0x%02x %s\n", boot_device, BOOT_DEVICE);
 
     const bool serial_inited = serial_init();
     assert(serial_inited && "failed to init uart device for serial output in loader");
@@ -224,6 +241,7 @@ void cstart(size_t partition_lba, ards_t *ards_list, size_t total_ards) {
 
     setup_paging();
 
+    init_disk();
     ahci_sata_init();
 
     load_kernel(free_pages * PGSIZE);

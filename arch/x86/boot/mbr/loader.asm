@@ -47,7 +47,7 @@ _start:
     jmp     Main
 
 ; variables
-DriverNumber    db 0            ; current driver number
+DriverNumber    dd 0            ; current driver number
 PartitionLBA    dd 0            ; current partition start LBA
 TotalARDS       dd 0            ; total ards found
 ARDSBuffer      times 1024 db 0 ; buffer for reading ards
@@ -96,7 +96,9 @@ Main:
     mov     sp, OffsetOfLoader
 
     ; save boot info from boot
-    mov     [DriverNumber], dl
+    xor     eax, eax
+    mov     al, dl
+    mov     [DriverNumber], eax
     mov     [PartitionLBA], ebx
 
     ; clear screen and hide cursor for a better view of messages
@@ -164,6 +166,7 @@ align 32
 extern cstart
 
 ; physical address of variables used in real mode
+PhyDriverNumber equ PhyLoaderBase + DriverNumber
 PhyPartitionLBA equ PhyLoaderBase + PartitionLBA
 PhyTotalARDS    equ PhyLoaderBase + TotalARDS
 PhyARDSBuffer   equ PhyLoaderBase + ARDSBuffer
@@ -182,6 +185,7 @@ ProtectMain:
     push    dword [PhyTotalARDS]
     push    dword PhyARDSBuffer
     push    dword [PhyPartitionLBA]
+    push    dword [PhyDriverNumber]
     call    cstart
 
 [SECTION .data]

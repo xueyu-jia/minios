@@ -4,8 +4,13 @@
 #include <terminal.h>
 #include <global.h>
 #include <x86.h>
+#include <string.h>
+#include <assert.h>
+
+#include "bootinfo.h"
 
 u32 boot_part_lba;
+int boot_dev_index = -1;
 bool found_sata_dev = false;
 
 static void ide_waitdisk() {
@@ -47,8 +52,19 @@ int readsect(void *dst, u32 offset) {
 
 int readsects(void *dst, u32 offset, u32 count) {
     if (found_sata_dev) {
-        return sata_read(0, dst, offset, count);
+        return sata_read(boot_dev_index, dst, offset, count);
     } else {
         return ide_read(dst, offset, count);
+    }
+}
+
+void init_disk() {
+    const int dev_len = strlen(BOOT_DEVICE);
+    if (dev_len == 0) {
+        boot_dev_index = 0;
+    } else if (dev_len != 8 || strncmp(BOOT_DEVICE, "/dev/sd", 7) != 0) {
+        unreachable();
+    } else {
+        boot_dev_index = BOOT_DEVICE[7] - 'a';
     }
 }

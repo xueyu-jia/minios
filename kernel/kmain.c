@@ -190,7 +190,9 @@ int kernel_main() {
         register_fs_types();
         init_buffer(64);
         hd_open_and_init();
-        init_fs(HD_DEV_MAKE_BLK(DEV_BLK_HD_SATA, 0));
+        const int boot_dev_idx =
+            (kstate_mbi->flags & BIT(1)) ? (kstate_mbi->boot_device >> 24) & 0x7f : 0;
+        init_fs(HD_DEV_MAKE_BLK(DEV_BLK_HD_SATA, boot_dev_idx));
     }
     disable_int();
 

@@ -30,6 +30,8 @@
 extern u32 boot_part_lba;
 extern bool found_sata_dev;
 
+void init_disk();
+
 // 读一个扇区
 int readsect(void* dst, u32 offset);
 void find_act_part(void* dst);
