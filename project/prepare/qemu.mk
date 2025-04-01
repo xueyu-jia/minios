@@ -25,7 +25,7 @@ QEMU_FLAGS_TEMPLATE += $(foreach i,$(call range,$(words $(2))),               \
 -device usb-storage,bus=ehci.$(i),drive=fhd$(i)                               \
 )
 QEMU_FLAGS_TEMPLATE += -rtc base=utc
-QEMU_FLAGS_TEMPLATE += -boot menu=on
+QEMU_FLAGS_TEMPLATE += -boot menu=on,splash-time=3000
 QEMU_FLAGS_TEMPLATE += -device isa-serial,chardev=com1
 QEMU_FLAGS_TEMPLATE += -chardev null,id=com1,logfile=$(OBJDIR)minios-$(ARCH).serial.$(shell date +%Y%m%d%H).log,logappend=on
 QEMU_FLAGS_TEMPLATE += $(foreach i,$(call range,2,5),              \
