@@ -20,7 +20,7 @@ install: #<! install latest user files to image and target device
 simulate: #<! simulate minios on qemu, no installation performed
 monitor: #<! launch gdb with qemu remote debug mode
 
-build: boot lib kernel user image #<! build all stuffs
+build: config boot lib kernel user image #<! build all stuffs
 
 all: build
 

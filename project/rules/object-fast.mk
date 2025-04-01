@@ -4,12 +4,12 @@ endef
 $(foreach src,$(GENERIC_SOURCES),$(eval $(call declare_generic_obj_deps,$(src))))
 
 define declare_kernel_obj_deps
-$(call kernel_s2o,$(1)): $(1) $(CONFIG_GEN_FILES)
+$(call kernel_s2o,$(1)): $(1)
 endef
 $(foreach src,$(MINIOS_SOURCES),$(eval $(call declare_kernel_obj_deps,$(src))))
 
 define declare_user_obj_deps
-$(call user_s2o,$(1)): $(1) $(CONFIG_GEN_FILES)
+$(call user_s2o,$(1)): $(1)
 endef
 $(foreach src,$(USER_SOURCES),$(eval $(call declare_user_obj_deps,$(src))))
 
