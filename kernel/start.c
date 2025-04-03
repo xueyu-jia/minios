@@ -105,6 +105,12 @@ static void early_init_klog() {
     outb(0x3f8 + 4, 0x0b); //<! irqs enabled, rts/dsr set
     outb(0x3f8 + 4, 0x1e); //<! set in loopback mode, test the serial chip
 
+    //! ATTENTION: it is a double insurance against external hardware and software status anomalies,
+    //! here, before entering loopback mode, all data has been received and no more data is about to
+    //! be received, but the fact is that there are always some abnormal circumstances that will
+    //! make the UART device receive some unread data from unknown sources before switching the mode
+    while (inb(0x3f8 + 5) & 0x20) { (void)inb(0x3f8); }
+
     //! test the serial chip by sending a byte and checking if it is received correctly
     const uint8_t test_byte = 0xae;
     while (!(inb(0x3f8 + 5) & 0x20)) {}
