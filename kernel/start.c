@@ -109,7 +109,7 @@ static void early_init_klog() {
     //! here, before entering loopback mode, all data has been received and no more data is about to
     //! be received, but the fact is that there are always some abnormal circumstances that will
     //! make the UART device receive some unread data from unknown sources before switching the mode
-    while (inb(0x3f8 + 5) & 0x20) { (void)inb(0x3f8); }
+    while (inb(0x3f8 + 5) & 0x01) { (void)inb(0x3f8); }
 
     //! test the serial chip by sending a byte and checking if it is received correctly
     const uint8_t test_byte = 0xae;
